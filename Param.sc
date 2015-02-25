@@ -54,24 +54,10 @@ Param {
 
 }
 
+
+
 BaseParam {
 
-}
-
-+Slider {
-	mapParam { arg param;
-		param = param.asParam;
-		this.action = { arg self;
-			param.set(self.value)
-		};
-		//param.register(this)
-	}
-}
-
-+SequenceableCollection {
-	asParam: { arg self;
-		Param(this)
-	}
 }
 
 NdefParam : BaseParam {
@@ -106,11 +92,44 @@ NdefParam : BaseParam {
 }
 
 MIDIMap {
-	*new { arg param, msgNum, chan, msgType, srcID;
-		^super.new.init(param, msgNum, chan, msgType, srcID)
+	classvar responders
+	
+	*initClass {
+		responders = MultiLevelIdentityDictionary.new;
+	}
+
+	*new { arg param, msgNum=\all, chan=\all, msgType=\cc, srcID=\all;
+		var func;
+
+		func = { arg val, num, chan, src;
+			param.midi_set(///////////////////// TODO)
+
+		};
+
+		if(responders[srcID, msgType, chan, msgNum].notNil) {
+			responders[srcID, msgType, chan, msgNum].free
+		};
+		responders[srcID, msgType, chan, msgNum] = MIDIFunc(func, msgNum, chan, msgType, srcID);
 	}
 
 	init { arg param, msgNum, chan, msgType, srcID;
 		
+	}
+}
+
+
++Slider {
+	mapParam { arg param;
+		param = param.asParam;
+		this.action = { arg self;
+			param.set(self.value)
+		};
+		//param.register(this)
+	}
+}
+
++SequenceableCollection {
+	asParam { arg self;
+		^Param(this)
 	}
 }
