@@ -52,6 +52,10 @@ Param {
 		wrapper.normSet(val);
 	}
 
+	map { arg msgNum=\all, chan=\all, msgType=\cc, srcID=\all, blockmode;
+		MIDIMap(this, srcID, msgType, chan, msgNum, blockmode);
+	}
+
 }
 
 
@@ -92,24 +96,50 @@ NdefParam : BaseParam {
 }
 
 MIDIMap {
-	classvar responders
+	classvar responders;
+	classvar midivalues;
 	
 	*initClass {
 		responders = MultiLevelIdentityDictionary.new;
+		midivalues = MultiLevelIdentityDictionary.new;
 	}
 
-	*new { arg param, msgNum=\all, chan=\all, msgType=\cc, srcID=\all;
+	*new { arg param, msgNum=\all, chan=\all, msgType=\cc, srcID=\all, blockmode;
 		var func;
+		var path;
+		path = [srcID, msgType, chan, msgNum];
 
 		func = { arg val, num, chan, src;
-			param.midi_set(///////////////////// TODO)
-
+			val = val/127;
+			if(blockmode.isNil) {
+				param.normSet(val);
+				midivalues.put(*path++[val]);
+			};
 		};
 
-		if(responders[srcID, msgType, chan, msgNum].notNil) {
-			responders[srcID, msgType, chan, msgNum].free
+		if(responders.at(*path).notNil) {
+			responders.at(*path).free
 		};
-		responders[srcID, msgType, chan, msgNum] = MIDIFunc(func, msgNum, chan, msgType, srcID);
+		responders.put(*path ++ [
+			MIDIFunc(func, msgNum, chan, msgType, srcID).permanent_(true)
+		]);
+	}
+
+	free { arg msgNum=\all, chan=\all, msgType=\cc, srcID=\all;
+		var path = [srcID, msgType, chan, msgNum];
+		responders.at(*path).free
+	}
+
+	get { arg msgNum=\all, chan=\all, msgType=\cc, srcID=\all;
+		var path = [srcID, msgType, chan, msgNum];
+		responders.at(*path)
+	}
+	
+	*freeAll {
+		responders.do { arg resp;
+			resp.free;
+		};
+		responders = MultiLevelIdentityDictionary.new;
 	}
 
 	init { arg param, msgNum, chan, msgType, srcID;
