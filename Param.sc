@@ -218,8 +218,13 @@ MIDIMap {
 			controller.put(\set, { arg ...args; this.value = param.normGet.debug("controolll") });
 			controller.debug("11x");
 			this.parent.debug("parent");
-			if(this.parent.isNil)
-			//this.parent.onClose = this.parent.onClose.add({ controller.remove; debug("remove simpleController!!"); });
+			if(this.parent.isNil) {
+				"error: parent is nil, can't map Param".postln;
+			} {
+				debug("mapping");
+				this.parent.deleteOnClose = true;
+				this.parent.onClose = this.parent.onClose.add({ controller.remove; debug("remove simpleController!!"); });
+			};
 			controller.debug("11x");
 		}
 	}
