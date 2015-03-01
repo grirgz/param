@@ -23,6 +23,10 @@ Param {
 		};
 	}
 
+	setBusMode { arg enable=true, free=true;
+		wrapper.setBusMode(enable, free);
+	}
+
 	key {
 		^wrapper.key;
 	}
@@ -39,6 +43,10 @@ Param {
 		^wrapper.spec;
 	}
 
+	at { arg idx;
+		^wrapper.at(idx);
+	}
+
 
 	newWrapper { arg args;
 		//object = args[0];
@@ -46,15 +54,27 @@ Param {
 		//spec = args[2];
 		switch(args[0].class,
 			Ndef, {
-				^wrapper = NdefParam(*args);
+				wrapper = NdefParam(*args);
 			},
 			Pdef, {
-				^wrapper = PdefParam(*args);
+				switch(args[1].class,
+					Association, {
+						var idx;
+						var asso = args[1];
+						args[1] = asso.key;
+						idx = asso.value;
+						wrapper = PdefParamSlot(*args++[idx]);
+					},
+					Symbol, {
+						wrapper = PdefParam(*args);
+					}
+				)
 			},
 			//Volume, {
 			//	wrapper = VolumefParam(args);
 			//},
 		);
+		^wrapper;
 	}
 
 	get {
@@ -141,16 +161,17 @@ Param {
 		^spec
 	}
 
-	*getSynthDefSpec { arg argName, defname=nil, default_spec=\widefreq;
-		var spec = nil;
-		try { 
-			spec = if( SynthDescLib.global.synthDescs[defname].metadata.specs[argName].notNil, {
-				var sp;
-				sp = SynthDescLib.global.synthDescs[defname].metadata.specs[argName];
-				sp.asSpec;
-			})
+	*toSynthDefSpec { arg spec, argName, defname=nil, default_spec=\widefreq;
+		if(spec.isNil) {
+			try { 
+				spec = if( SynthDescLib.global.synthDescs[defname].metadata.specs[argName].notNil, {
+					var sp;
+					sp = SynthDescLib.global.synthDescs[defname].metadata.specs[argName];
+					sp.asSpec;
+				})
+			};
+			spec = this.toSpec(spec, argName, default_spec);
 		};
-		spec = this.toSpec(spec, argName, default_spec);
 		^spec;
 	}
 
@@ -163,25 +184,23 @@ BaseParam {
 }
 
 NdefParam : BaseParam {
-	var <target, <property, >spec, <key;
+	var <target, <property, <spec, <key;
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
-	
+
 	init { arg obj, meth, sp;
 		target = obj;
 		property = meth;
-		spec = sp.asSpec;
+		spec = this.toSpec(sp);
 		key = obj.key;
 	}
 
 	// retrieve default spec if no default spec given
 	toSpec { arg spec;
-		if(spec.isNil) {
-			spec = self.target.getSpec(property);
-			spec = Param.toSpec(spec, property);
-		};
-		^spec;
+		spec = spec ? target.getSpec(key);
+		spec = Param.toSpec(spec, property);
+		^spec.asSpec;
 	}
 
 	get {
@@ -205,15 +224,30 @@ NdefParam : BaseParam {
 
 PdefParam : BaseParam {
 	var <target, <property, <spec, <key;
+	var <multiParam = false;
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
-	
+
 	init { arg obj, meth, sp;
 		target = obj;
 		property = meth;
-		spec = sp.asSpec;
+		spec = this.toSpec(sp);
 		key = obj.key;
+		if(spec.isKindOf(XArraySpec)) {
+			multiParam = true;
+		};
+	}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg spec;
+		var instr = target.getHalo(\instrument);
+		spec = Param.toSynthDefSpec(spec, property, instr);
+		^spec.asSpec;
+	}
+	
+	at { arg idx;
+		^Param(target, property -> idx, spec)
 	}
 
 	setBusMode { arg enable=true, free=true;
@@ -221,7 +255,7 @@ PdefParam : BaseParam {
 			if(this.inBusMode) {
 				// NOOP
 			} {
-				var val = this.getRaw;
+				var val = this.get;
 				var numChannels = 1;
 				var bus;
 				val.debug("setBusMode: val");
@@ -233,7 +267,11 @@ PdefParam : BaseParam {
 					// FIXME: hardcoded server
 					// hardcoded rate, but can't convert audio buffer to a number, so it's ok
 				bus.debug("setBusMode: bus");
-				bus.set(val);
+				if(val.isSequenceableCollection) {
+					bus.setn(val);
+				} {
+					bus.set(val);
+				};
 				val.debug("setBusMode: val");
 				this.setRaw(bus.asMap);
 				bus.asMap.debug("setBusMode: busmap");
@@ -245,8 +283,8 @@ PdefParam : BaseParam {
 				var map = this.getRaw;
 				var numChannels = 1;
 				var bus;
-				bus = map.asBus;
-				this.setRaw(bus.getCached);
+				bus = map.asCachedBus;
+				this.setRaw(target.nestOn(bus.getCached));
 				if(free) {
 					bus.free;
 				};
@@ -284,6 +322,37 @@ PdefParam : BaseParam {
 		this.set(spec.map(val))
 	}
 
+}
+
+PdefParamSlot : PdefParam {
+	var <index;
+
+	*new { arg obj, meth, sp, index;
+		var inst;
+		obj.debug("obj");
+		inst = super.new(obj, meth, sp);
+		inst.pdefParamSlotInit(index);
+		^inst;
+	}
+
+	pdefParamSlotInit { arg idx;
+		index = idx;
+	}
+
+	spec {
+		spec.at(index);
+	}
+
+	set { arg val;
+		var vals = target.getVal(property);
+		vals[index] = val;
+		target.setVal(property, vals);
+	}
+
+	get {
+		var vals = target.getVal(property);
+		^vals[index];
+	}
 }
 
 MIDIMap {
@@ -359,16 +428,21 @@ CachedBus : Bus {
 		var val;
 		if(values.size == 1) {
 			val = values[0];
+			super.set(val);
 		} {
 			val = values;
+			super.setn(val);
 		};
 		cache[this.rate][this.index] = val;
-		super.set(*values);
+	}
+
+	setn { arg values;
+		this.set(*values)
 	}
 
 	getCached {
 		if(cache[this.rate][this.index].isNil) {
-			this.get({ arg x; cache = x });
+			this.get({ arg x; cache[this.rate][this.index] = x });
 			^0
 		} {
 			^cache[this.rate][this.index]
@@ -379,7 +453,7 @@ CachedBus : Bus {
 
 
 +Symbol {
-	asBus { arg busclass;
+	asBus { arg numChannels=1, busclass;
 		var rate;
 		var index;
 		var map;
@@ -397,17 +471,37 @@ CachedBus : Bus {
 			}
 		);
 		index = map[1..].asInteger;
-		//FIXME: hardcoded numchannels
-		^busclass.new(rate, index, 1, Server.default);
+		^busclass.new(rate, index, numChannels, Server.default);
 	}
 
-	asCachedBus {
-		^this.asBus(CachedBus);
+	asCachedBus { arg numChannels=1;
+		^this.asBus(numChannels, CachedBus);
 	}
 
 }
 
 +Pdef {
+	nestOn { arg val;
+		if(val.isSequenceableCollection) {
+			if(val[0].isSequenceableCollection) {
+				// NOOP
+			} {
+				val = [val]
+			}
+		};
+		^val
+	}
+
+	nestOff { arg val;
+		if(val.isSequenceableCollection) {
+			if(val[0].isSequenceableCollection) {
+				val = val[0];
+			} {
+				// NOOP
+			}
+		};
+		^val
+	}
 
 	getVal { arg key;
 		var curval;
@@ -416,21 +510,25 @@ CachedBus : Bus {
 			var bus = curval.asCachedBus;
 			^bus.getCached;
 		} {
-			^this.get(key);
+			^this.nestOff(this.get(key));
 		};
-
 	}
 
 	setVal { arg key, val;
 		var curval;
 		curval = this.get(key);
 		if(curval.class == Symbol) {
-			var bus = curval.asCachedBus;
-			bus.set(val);
+			var bus;
+			if(val.isSequenceableCollection) {
+				bus = curval.asCachedBus(val.size);
+				bus.setn(val);
+			} {
+				bus = curval.asCachedBus;
+				bus.set(val);
+			}
 		} {
-			this.set(key, val)
+			this.set(key, this.nestOn(val))
 		};
-
 	}
 }
 
