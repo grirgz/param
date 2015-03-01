@@ -7,8 +7,8 @@ Param {
 	}
 
 	== { arg param;
-		( this.wrapper.method == param.wrapper.method)
-		and: { this.wrapper.target_object == param.wrapper.target_object } 
+		( this.wrapper.property == param.wrapper.property)
+		and: { this.wrapper.target == param.wrapper.target } 
 	}
 
 	asParam {
@@ -27,12 +27,12 @@ Param {
 		^wrapper.key;
 	}
 
-	target_object {
-		^wrapper.target_object;
+	target {
+		^wrapper.target;
 	}
 
-	method {
-		^wrapper.method;
+	property {
+		^wrapper.property;
 	}
 
 	spec {
@@ -42,7 +42,7 @@ Param {
 
 	newWrapper { arg args;
 		//object = args[0];
-		//method = args[1];
+		//property = args[1];
 		//spec = args[2];
 		switch(args[0].class,
 			Ndef, {
@@ -101,7 +101,7 @@ Param {
 				debug("action!");
 			};
 			debug("11x ========== CREATING!!!!!!!!!!!!");
-			controller = SimpleController(param.target_object);
+			controller = SimpleController(param.target);
 			controller.debug("11x");
 			slider.addHalo(\simpleController, controller);
 			controller.debug("11x");
@@ -130,6 +130,30 @@ Param {
 		Knob.new.mapParam(this);
 	}
 
+	*toSpec { arg spec, argName, default_spec=\widefreq;
+		if(spec.isNil, {
+			if( argName.asSpec.notNil, {
+				spec = argName.asSpec;
+			}, {
+				spec = default_spec.asSpec;
+			});
+		});
+		^spec
+	}
+
+	*getSynthDefSpec { arg argName, defname=nil, default_spec=\widefreq;
+		var spec = nil;
+		try { 
+			spec = if( SynthDescLib.global.synthDescs[defname].metadata.specs[argName].notNil, {
+				var sp;
+				sp = SynthDescLib.global.synthDescs[defname].metadata.specs[argName];
+				sp.asSpec;
+			})
+		};
+		spec = this.toSpec(spec, argName, default_spec);
+		^spec;
+	}
+
 }
 
 
@@ -139,25 +163,34 @@ BaseParam {
 }
 
 NdefParam : BaseParam {
-	var <target_object, <method, <spec, <key;
+	var <target, <property, >spec, <key;
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
 	
 	init { arg obj, meth, sp;
-		target_object = obj;
-		method = meth;
+		target = obj;
+		property = meth;
 		spec = sp.asSpec;
 		key = obj.key;
 	}
 
+	// retrieve default spec if no default spec given
+	toSpec { arg spec;
+		if(spec.isNil) {
+			spec = self.target.getSpec(property);
+			spec = Param.toSpec(spec, property);
+		};
+		^spec;
+	}
+
 	get {
-		^target_object.get(method)
+		^target.get(property)
 	}
 
 	set { arg val;
-		target_object.set(method, val);
-		//target_object.changed(\set, method); // already exists in Ndef
+		target.set(property, val);
+		//target.changed(\set, property); // already exists in Ndef
 	}
 
 	normGet {
@@ -171,14 +204,14 @@ NdefParam : BaseParam {
 }
 
 PdefParam : BaseParam {
-	var <target_object, <method, <spec, <key;
+	var <target, <property, <spec, <key;
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
 	
 	init { arg obj, meth, sp;
-		target_object = obj;
-		method = meth;
+		target = obj;
+		property = meth;
 		spec = sp.asSpec;
 		key = obj.key;
 	}
@@ -191,14 +224,19 @@ PdefParam : BaseParam {
 				var val = this.getRaw;
 				var numChannels = 1;
 				var bus;
+				val.debug("setBusMode: val");
 				if(val.isSequenceableCollection) {
 					numChannels = val.size;
 				};
+				numChannels.debug("setBusMode: nc");
 				bus = CachedBus.control(Server.default,numChannels );
 					// FIXME: hardcoded server
 					// hardcoded rate, but can't convert audio buffer to a number, so it's ok
+				bus.debug("setBusMode: bus");
 				bus.set(val);
+				val.debug("setBusMode: val");
 				this.setRaw(bus.asMap);
+				bus.asMap.debug("setBusMode: busmap");
 			}
 		} {
 			if(this.inBusMode.not) {
@@ -223,19 +261,19 @@ PdefParam : BaseParam {
 	}
 
 	get {
-		^target_object.getVal(method)
+		^target.getVal(property)
 	}
 
 	getRaw {
-		^target_object.get(method)
+		^target.get(property)
 	}
 
 	set { arg val;
-		target_object.setVal(method, val);
+		target.setVal(property, val);
 	}
 
 	setRaw { arg val;
-		target_object.set(method, val);
+		target.set(property, val);
 	}
 
 	normGet {
@@ -309,7 +347,7 @@ MIDIMap {
 }
 
 CachedBus : Bus {
-	classvar cache = nil;
+	classvar cache;
 
 	*initClass {
 		cache = IdentityDictionary.new;
@@ -318,10 +356,13 @@ CachedBus : Bus {
 	}
 
 	set { arg ... values;
+		var val;
 		if(values.size == 1) {
-			values = values[0];
+			val = values[0];
+		} {
+			val = values;
 		};
-		cache[this.rate][this.index] = values;
+		cache[this.rate][this.index] = val;
 		super.set(*values);
 	}
 
