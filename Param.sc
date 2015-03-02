@@ -27,6 +27,10 @@ Param {
 		wrapper.setBusMode(enable, free);
 	}
 
+	numChannels {
+		^this.spec.numChannels;
+	}
+
 	key {
 		^wrapper.key;
 	}
@@ -126,6 +130,7 @@ Param {
 			slider.addHalo(\simpleController, controller);
 			controller.debug("11x");
 			controller.put(\set, { arg ...args; slider.value = param.normGet.debug("controolll"); args.debug("args"); });
+			slider.value = param.normGet;
 			controller.debug("11x");
 			slider.onClose = slider.onClose.addFunc({ controller.remove; debug("remove simpleController!!"); });
 			controller.debug("11x");
@@ -143,11 +148,15 @@ Param {
 	}
 
 	asSlider {
-		Slider.new.mapParam(this);
+		^Slider.new.mapParam(this);
 	}
 
 	asKnob {
-		Knob.new.mapParam(this);
+		^Knob.new.mapParam(this);
+	}
+
+	asMultiSlider {
+		^MultiSliderView.new.size_(this.numChannels).mapParam(this);
 	}
 
 	*toSpec { arg spec, argName, default_spec=\widefreq;
@@ -192,15 +201,19 @@ NdefParam : BaseParam {
 	init { arg obj, meth, sp;
 		target = obj;
 		property = meth;
+		sp.debug("sp1");
 		spec = this.toSpec(sp);
 		key = obj.key;
 	}
 
 	// retrieve default spec if no default spec given
-	toSpec { arg spec;
-		spec = spec ? target.getSpec(key);
-		spec = Param.toSpec(spec, property);
-		^spec.asSpec;
+	toSpec { arg sp;
+		sp.debug("sp2");
+		sp = sp ? target.getSpec(property);
+		sp.debug("sp3");
+		sp = Param.toSpec(sp, property);
+		sp.debug("sp4");
+		^sp.asSpec;
 	}
 
 	get {
@@ -219,7 +232,6 @@ NdefParam : BaseParam {
 	normSet { arg val;
 		this.set(spec.map(val))
 	}
-
 }
 
 PdefParam : BaseParam {
@@ -251,51 +263,11 @@ PdefParam : BaseParam {
 	}
 
 	setBusMode { arg enable=true, free=true;
-		if(enable) {
-			if(this.inBusMode) {
-				// NOOP
-			} {
-				var val = this.get;
-				var numChannels = 1;
-				var bus;
-				val.debug("setBusMode: val");
-				if(val.isSequenceableCollection) {
-					numChannels = val.size;
-				};
-				numChannels.debug("setBusMode: nc");
-				bus = CachedBus.control(Server.default,numChannels );
-					// FIXME: hardcoded server
-					// hardcoded rate, but can't convert audio buffer to a number, so it's ok
-				bus.debug("setBusMode: bus");
-				if(val.isSequenceableCollection) {
-					bus.setn(val);
-				} {
-					bus.set(val);
-				};
-				val.debug("setBusMode: val");
-				this.setRaw(bus.asMap);
-				bus.asMap.debug("setBusMode: busmap");
-			}
-		} {
-			if(this.inBusMode.not) {
-				// NOOP
-			} {
-				var map = this.getRaw;
-				var numChannels = 1;
-				var bus;
-				bus = map.asCachedBus;
-				this.setRaw(target.nestOn(bus.getCached));
-				if(free) {
-					bus.free;
-				};
-			}
-
-		}
-
+		target.setBusMode(property, enable, free);
 	}
 
 	inBusMode {
-		^( this.getRaw.class == Symbol)
+		^target.inBusMode(property)
 	}
 
 	get {
@@ -321,7 +293,6 @@ PdefParam : BaseParam {
 	normSet { arg val;
 		this.set(spec.map(val))
 	}
-
 }
 
 PdefParamSlot : PdefParam {
@@ -503,27 +474,93 @@ CachedBus : Bus {
 		^val
 	}
 
+	setBusMode { arg key, enable=true, free=true;
+		"whatktktj".debug;
+		if(enable) {
+			"1whatktktj".debug;
+			if(this.inBusMode(key)) {
+				// NOOP
+				"2whatktktj".debug;
+			} {
+				var val = this.getVal(key);
+				var numChannels = 1;
+				var bus;
+				"3whatktktj".debug;
+				val.debug("setBusMode: val");
+				if(val.isSequenceableCollection) {
+					numChannels = val.size;
+				};
+				numChannels.debug("setBusMode: nc");
+				bus = CachedBus.control(Server.default,numChannels );
+					// FIXME: hardcoded server
+					// hardcoded rate, but can't convert audio buffer to a number, so it's ok
+				bus.debug("setBusMode: bus");
+				if(val.isSequenceableCollection) {
+					bus.setn(val);
+				} {
+					bus.set(val);
+				};
+				val.debug("setBusMode: val");
+				this.set(key, this.nestOn(bus.asMap));
+				bus.asMap.debug("setBusMode: busmap");
+			}
+		} {
+			if(this.inBusMode(key).not) {
+				// NOOP
+			} {
+				var val = this.getVal(key);
+				var map = this.get(key);
+				var numChannels = 1;
+				var bus;
+				map = this.nestOff(map);
+				bus = map.asCachedBus;
+				this.set(key, this.nestOn(val));
+				if(free) {
+					bus.free;
+				};
+			}
+
+		}
+
+	}
+
+	inBusMode { arg key;
+		var val = this.get(key);
+		if(val.isSequenceableCollection) {
+			// multichannel
+			if(val[0].isSequenceableCollection) {
+				// nested
+				^(val[0][0].class == Symbol)
+			} {
+				^(val[0].class == Symbol)
+			}
+		} {
+			^(val.class == Symbol)
+		}
+	}
+
 	getVal { arg key;
 		var curval;
 		curval = this.get(key);
-		if(curval.class == Symbol) {
+		curval = this.nestOff(curval);
+		if(this.inBusMode(key)) {
 			var bus = curval.asCachedBus;
 			^bus.getCached;
 		} {
-			^this.nestOff(this.get(key));
+			^curval;
 		};
 	}
 
 	setVal { arg key, val;
-		var curval;
-		curval = this.get(key);
-		if(curval.class == Symbol) {
+		if(this.inBusMode(key)) {
 			var bus;
-			if(val.isSequenceableCollection) {
-				bus = curval.asCachedBus(val.size);
+			var curval;
+			curval = this.get(key);
+			curval = this.nestOff(curval);
+			bus = curval.asCachedBus;
+			if(curval.isSequenceableCollection) {
 				bus.setn(val);
 			} {
-				bus = curval.asCachedBus;
 				bus.set(val);
 			}
 		} {
@@ -550,11 +587,45 @@ CachedBus : Bus {
 	mapParam { arg param;
 		param.mapSlider(this);
 	}
-	
+}
+
++MultiSliderView {
+	unmapParam {
+		Param.unmapSlider(this);
+	}
+
+	mapParam { arg param;
+		param.mapSlider(this);
+	}
 }
 
 +SequenceableCollection {
 	asParam { arg self;
 		^Param(this)
 	}
+
+	asCachedBus {
+		^this.at(0).asCachedBus(this.size)
+	}
+
+	asBus {
+		^this.at(0).asBus(this.size)
+	}
 }
+
++Bus {
+	asMap {
+		^mapSymbol ?? {
+			if(index.isNil) { MethodError("bus not allocated.", this).throw };
+			mapSymbol = if(rate == \control) { "c" } { "a" };
+			if(this.numChannels > 1) {
+				mapSymbol = numChannels.collect({ arg x;
+					(mapSymbol ++ ( index + x)).asSymbol;
+				})
+			} {
+				mapSymbol = (mapSymbol ++ index).asSymbol;
+			}
+		}
+	}
+}
+
