@@ -113,7 +113,7 @@ Param {
 		MIDIMap.free(msgNum, chan, msgType, srcID, blockmode);
 	}
 
-	mapSlider { arg slider;
+	mapSlider { arg slider, action;
 		var controller;
 		var param = this;
 		controller = slider.getHalo(\simpleController, controller);
@@ -129,6 +129,7 @@ Param {
 			param = param.asParam;
 			debug("11x");
 			slider.action = { arg self;
+				action.value(self);
 				param.normSet(self.value);
 				debug("action!");
 			};
@@ -165,6 +166,24 @@ Param {
 
 	asMultiSlider {
 		^MultiSliderView.new.elasticMode_(1).size_(this.numChannels).mapParam(this);
+	}
+
+	asEnvelopeView {
+		var view;
+		view = XEnvelopeView.new(nil, Rect(0, 0, 230, 80))
+			.drawLines_(true)
+			.selectionColor_(Color.red)
+			.drawRects_(true)
+			.step_(0)
+			.thumbSize_(10)
+			.elasticSelection_(true)
+			.keepHorizontalOrder_(true)
+			.mapParam(this)
+			.grid_(Point(this.spec.times[0].unmap(1/8),1/8))
+			.totalDur_(this.spec.times[0].unmap(2))
+			.gridOn_(true);
+
+		^view;
 	}
 
 	*toSpec { arg spec, argName, default_spec=\widefreq;
@@ -505,7 +524,14 @@ CachedBus : Bus {
 
 XEnvelopeView : EnvelopeView {
 	var curves;
-	
+	var <timeScale = 1;
+	var duration;
+	var envDur;
+	var rawValue;
+	var rawGrid;
+	var autoTimeScale = true;
+	var <totalDur = 8;
+
 	curves {
 		^curves
 	}
@@ -516,34 +542,93 @@ XEnvelopeView : EnvelopeView {
 		super.curves = xcurves;
 	}
 
+	valueXY_ { arg val;
+		val = val.deepCopy;
+		envDur = val[0].last;
+		if(envDur > totalDur) {
+			totalDur = envDur;
+		};
+		val[0] = val[0] / totalDur;
+		super.value = val;
+		this.updateGrid;
+	}
+
+	valueXY { 
+		var val = super.value.deepCopy; // deepCopy to avoid messing with internal value
+		val[0] = val[0] * totalDur;
+		^val;
+	}
+
+	value {
+		^this.getEnv;
+	}
+
+	value_ { arg val;
+		this.setEnv(val);
+	}
+
+	zoomFit {
+		var val = this.valueXY;
+		envDur = val[0].last;
+		this.totalDur = envDur;
+	}
+
+	totalDur_ { arg newdur;
+		// FIXME: if valueXY is nil, crash
+		var curval = this.valueXY.deepCopy;
+		totalDur = newdur;
+		this.valueXY = curval;
+	}
+
 	setEnv { arg env;
 		var times = [0] ++ env.times.integrate;
-		if( times.last > 0 ) {timeScale = 1 / times.last};
-		this.value = [times, env.levels];
+		this.valueXY = [times, env.levels];
 		this.curves = env.curves;
 	}
 
-	timeScale_ { arg val;
-	
+	grid_ { arg val;
+		rawGrid = val;
+		this.updateGrid;
 	}
 
-	getEnv {
+	grid {
+		^rawGrid;
+	}
+
+	updateGrid {
+		rawGrid = rawGrid ? Point(1/8,1/8);
+		super.grid = Point( rawGrid.x / totalDur,rawGrid.y).debug("grid")
+	}
+
+	getEnv { arg val;
 		var curves;
 		var times;
 		var levels;
 		var env;
-		var envview = this;
-		times.debug("times");
-		times = envview.value[0];
-		times.debug("times2");
+		if(val.isNil) {
+			val = this.valueXY;
+		};
+		times = val[0];
 		times = times.drop(1);
-		times.debug("times3");
 		times = times.differentiate;
-		times.debug("times4");
-		levels = envview.value[1];
-		curves = envview.curves;
+		levels = val[1];
+		curves = this.curves;
 		env = Env.new(levels, times, curves);
-		env
+		^env
+	}
+
+	unmapParam {
+		Param.unmapSlider(this);
+	}
+
+	mapParam { arg param;
+		param.mapSlider(this, { arg self;
+			var val = self.valueXY;
+			if( val[0][0] != 0) {
+				val[0][0] = 0;
+				self.valueXY = val;
+			};
+		});
 	}
 }
 
@@ -578,6 +663,7 @@ XEnvelopeView : EnvelopeView {
 
 +Pdef {
 	nestOn { arg val;
+		// see also .bubble and .unbubble
 		if(val.isSequenceableCollection) {
 			if(val[0].isSequenceableCollection) {
 				// NOOP
@@ -758,3 +844,32 @@ XEnvelopeView : EnvelopeView {
 	}
 }
 
++SequenceableCollection {
+	asEnv {
+		var val = this.value.deepCopy;
+		var first;
+		var levels = List.new, times = List.new, curves = List.new;
+		var releaseNode, loopNode;
+		val.debug("val");
+		val = val.clump(4);
+		val.debug("val");
+		first = val.removeAt(0);
+		val.debug("val");
+		levels.add(first[0]);
+		releaseNode = if(first[2] == -99) { nil } { first[2] };
+		loopNode = if(first[3] == -99) { nil } { first[3] };
+		levels.debug("levels");
+		
+		val.do { arg point, x;
+			levels.add( point[0] );
+			times.add( point[1] );
+			//FIXME: dont know how to do with shape names ???
+			curves.add( point[3] );
+		};
+		levels.debug("levels");
+		times.debug("times");
+		curves.debug("curves");
+		^Env(levels, times, curves, releaseNode, loopNode)
+	}
+
+}
