@@ -53,24 +53,32 @@ Param {
 
 
 	newWrapper { arg args;
-		//object = args[0];
-		//property = args[1];
-		//spec = args[2];
-		switch(args[0].class,
+		var target = args[0];
+		var property = args[1];
+		var spec = args[2];
+		switch(target.class,
 			Ndef, {
 				wrapper = NdefParam(*args);
 			},
 			Pdef, {
-				switch(args[1].class,
+				switch(property.class,
 					Association, {
 						var idx;
-						var asso = args[1];
+						var asso = property;
 						args[1] = asso.key;
 						idx = asso.value;
 						wrapper = PdefParamSlot(*args++[idx]);
 					},
 					Symbol, {
-						wrapper = PdefParam(*args);
+						switch(PdefParam.toSpec(spec, target, property).class.debug("deja, WTF, spec"),
+							XEnvSpec, {
+								wrapper = PdefEnvParam(*args);
+							}, 
+							// else
+							{
+								wrapper = PdefParam(*args);
+							}
+						);
 					}
 				)
 			},
@@ -156,7 +164,7 @@ Param {
 	}
 
 	asMultiSlider {
-		^MultiSliderView.new.size_(this.numChannels).mapParam(this);
+		^MultiSliderView.new.elasticMode_(1).size_(this.numChannels).mapParam(this);
 	}
 
 	*toSpec { arg spec, argName, default_spec=\widefreq;
@@ -257,6 +265,12 @@ PdefParam : BaseParam {
 		spec = Param.toSynthDefSpec(spec, property, instr);
 		^spec.asSpec;
 	}
+
+	*toSpec { arg xspec, xtarget, xproperty;
+		var instr = xtarget.getHalo(\instrument);
+		xspec = Param.toSynthDefSpec(xspec, xproperty, instr);
+		^xspec.asSpec;
+	}
 	
 	at { arg idx;
 		^Param(target, property -> idx, spec)
@@ -325,6 +339,73 @@ PdefParamSlot : PdefParam {
 		^vals[index];
 	}
 }
+
+PdefEnvParam : PdefParam {
+	var <target, <property, <spec, <key;
+	var <multiParam = false;
+	*new { arg obj, meth, sp;
+		^super.new(obj, meth, sp).pdefEnvParamInit(obj, meth, sp);
+	}
+
+	pdefEnvParamInit { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		spec = this.toSpec(sp);
+		key = obj.key;
+		multiParam = true;
+	}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg spec;
+		var instr = target.getHalo(\instrument);
+		spec = Param.toSynthDefSpec(spec, property, instr);
+		^spec.asSpec;
+	}
+
+	*toSpec { arg xspec, xtarget, xproperty;
+		var instr = xtarget.getHalo(\instrument);
+		xspec = Param.toSynthDefSpec(xspec, xproperty, instr);
+		^xspec.asSpec;
+	}
+	
+	at { arg idx;
+		^Param(target, property -> idx, spec)
+	}
+
+	setBusMode { arg enable=true, free=true;
+		target.setBusMode(property, enable, free);
+	}
+
+	inBusMode {
+		^target.inBusMode(property)
+	}
+
+	get {
+		^target.getVal(property)
+	}
+
+	getRaw {
+		^target.get(property)
+	}
+
+	set { arg val;
+		target.setVal(property, val);
+	}
+
+	setRaw { arg val;
+		target.set(property, val);
+	}
+
+	normGet {
+		^spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(spec.map(val))
+	}
+
+}
+
 
 MIDIMap {
 	classvar responders;
@@ -552,20 +633,24 @@ CachedBus : Bus {
 	}
 
 	setVal { arg key, val;
-		if(this.inBusMode(key)) {
-			var bus;
-			var curval;
-			curval = this.get(key);
-			curval = this.nestOff(curval);
-			bus = curval.asCachedBus;
-			if(curval.isSequenceableCollection) {
-				bus.setn(val);
-			} {
-				bus.set(val);
-			}
-		} {
+		if(val.isKindOf(Env)) {
 			this.set(key, this.nestOn(val))
-		};
+		} {
+			if(this.inBusMode(key)) {
+				var bus;
+				var curval;
+				curval = this.get(key);
+				curval = this.nestOff(curval);
+				bus = curval.asCachedBus;
+				if(curval.isSequenceableCollection) {
+					bus.setn(val);
+				} {
+					bus.set(val);
+				}
+			} {
+				this.set(key, this.nestOn(val))
+			};
+		}
 	}
 }
 
@@ -629,3 +714,20 @@ CachedBus : Bus {
 	}
 }
 
++Env {
+	//var curves;
+	
+	curves {
+		// curves
+		^this.getHalo(\curves)
+	}
+
+	curves_ { arg curves;
+		curves.debug("curves::");
+		this.addHalo(\curves, curves);
+		this.invokeMethod( \setCurves,
+			if(curves.size > 0) { [curves.collect{|c| QCurve(c)}] } { QCurve(curves) }
+		);
+		//curves = curves;
+	}
+}
