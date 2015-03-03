@@ -503,6 +503,50 @@ CachedBus : Bus {
 
 }
 
+XEnvelopeView : EnvelopeView {
+	var curves;
+	
+	curves {
+		^curves
+	}
+
+	curves_ { arg xcurves;
+		curves.debug("curves::");
+		curves = xcurves;
+		super.curves = xcurves;
+	}
+
+	setEnv { arg env;
+		var times = [0] ++ env.times.integrate;
+		if( times.last > 0 ) {timeScale = 1 / times.last};
+		this.value = [times, env.levels];
+		this.curves = env.curves;
+	}
+
+	timeScale_ { arg val;
+	
+	}
+
+	getEnv {
+		var curves;
+		var times;
+		var levels;
+		var env;
+		var envview = this;
+		times.debug("times");
+		times = envview.value[0];
+		times.debug("times2");
+		times = times.drop(1);
+		times.debug("times3");
+		times = times.differentiate;
+		times.debug("times4");
+		levels = envview.value[1];
+		curves = envview.curves;
+		env = Env.new(levels, times, curves);
+		env
+	}
+}
+
 
 +Symbol {
 	asBus { arg numChannels=1, busclass;
@@ -714,20 +758,3 @@ CachedBus : Bus {
 	}
 }
 
-+Env {
-	//var curves;
-	
-	curves {
-		// curves
-		^this.getHalo(\curves)
-	}
-
-	curves_ { arg curves;
-		curves.debug("curves::");
-		this.addHalo(\curves, curves);
-		this.invokeMethod( \setCurves,
-			if(curves.size > 0) { [curves.collect{|c| QCurve(c)}] } { QCurve(curves) }
-		);
-		//curves = curves;
-	}
-}
