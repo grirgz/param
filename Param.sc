@@ -882,6 +882,8 @@ XEnvelopeView : EnvelopeView {
 	}
 }
 
+/////////////////////////// 3.6.7
+
 +Slider {
 	unmapParam {
 		Param.unmapSlider(this);
@@ -911,6 +913,39 @@ XEnvelopeView : EnvelopeView {
 		param.mapSlider(this);
 	}
 }
+
+/////////////////////////// 3.6.6
++QKnob {
+	unmapParam {
+		Param.unmapSlider(this);
+	}
+
+	mapParam { arg param;
+		param.mapSlider(this);
+	}
+}
+
++QSlider {
+	unmapParam {
+		Param.unmapSlider(this);
+	}
+
+	mapParam { arg param;
+		param.mapSlider(this);
+	}
+}
+
++QMultiSliderView {
+	unmapParam {
+		Param.unmapSlider(this);
+	}
+
+	mapParam { arg param;
+		param.mapSlider(this);
+	}
+}
+/////////////////////////// END 3.6.6
+
 
 +SequenceableCollection {
 	asParam { arg self;
