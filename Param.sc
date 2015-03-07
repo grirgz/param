@@ -72,7 +72,8 @@ Param {
 					Symbol, {
 						switch(PdefParam.toSpec(spec, target, property).class.debug("deja, WTF, spec"),
 							XEnvSpec, {
-								wrapper = PdefEnvParam(*args);
+								//wrapper = PdefEnvParam(*args);
+								wrapper = PdefParam(*args);
 							}, 
 							// else
 							{
@@ -186,6 +187,30 @@ Param {
 		^view;
 	}
 
+	asView {
+		case(
+			{ this.spec.class == XEnvSpec }, {
+				^this.asEnvelopeView;
+			},
+			{ this.spec.class == XArraySpec }, {
+				^this.asMultiSlider;
+			}, {
+				^this.asKnob;
+			}
+		)
+
+	}
+
+	edit {
+		var win;
+		var widget;
+		win = Window.new;
+		widget = this.asView;
+		win.layout = HLayout.new(widget);
+		win.alwaysOnTop = true;
+		win.front;
+	}
+
 	*toSpec { arg spec, argName, default_spec=\widefreq;
 		if(spec.isNil, {
 			if( argName.asSpec.notNil, {
@@ -199,20 +224,52 @@ Param {
 
 	*toSynthDefSpec { arg spec, argName, defname=nil, default_spec=\widefreq;
 		if(spec.isNil) {
-			try { 
-				spec = if( SynthDescLib.global.synthDescs[defname].metadata.specs[argName].notNil, {
-					var sp;
-					sp = SynthDescLib.global.synthDescs[defname].metadata.specs[argName];
-					sp.asSpec;
-				})
+			var val;
+			var rval;
+			val = SynthDescLib.global.synthDescs[defname];
+			if(val.notNil) {
+				val = val.metadata;
+				if(val.notNil) {
+					val = val.specs;
+					if(val.notNil) {
+						rval = val[argName];
+					}
+				} {
+					// no metadata but maybe a default value
+					var def = Param.getSynthDefDefaultValue(argName, defname);
+					if(def.class == Float) {
+						rval = default_spec;
+					} {
+						if(def.class.isSequenceableCollection) {
+							rval = XArraySpec(default_spec!def.size);
+						}
+					};
+				};
 			};
+			rval = rval.asSpec;
 			spec = this.toSpec(spec, argName, default_spec);
 		};
 		^spec;
 	}
 
-}
+	*getSynthDefDefaultValue { arg argName, defname;
+		var desc;
+		var val;
+		"getSynthDefDefaultValue 1".debug;
+		desc = SynthDescLib.global.synthDescs[defname];
+		desc.debug("getSynthDefDefaultValue 2");
+		val = if(desc.notNil) {
+			var con = desc.controlDict[argName];
+		con.debug("getSynthDefDefaultValue 4");
+			if(con.notNil) {
+		"getSynthDefDefaultValue 5".debug;
+				con.defaultValue;
+			}
+		};
+		^val;
+	}
 
+}
 
 
 BaseParam {
@@ -244,7 +301,12 @@ NdefParam : BaseParam {
 	}
 
 	get {
-		^target.get(property)
+		var val;
+		val = target.get(property);
+		if(spec.class == XEnvSpec) {
+			val = val.asEnv;
+		};
+		^val;
 	}
 
 	set { arg val;
@@ -278,17 +340,44 @@ PdefParam : BaseParam {
 		};
 	}
 
-	// retrieve default spec if no default spec given
-	toSpec { arg spec;
-		var instr = target.getHalo(\instrument);
-		spec = Param.toSynthDefSpec(spec, property, instr);
-		^spec.asSpec;
+	*instrument { arg target;
+		var val;
+		val = target.getHalo(\instrument) ?? { 
+			var inval = target.source;
+			if(inval.notNil) {
+				inval = inval.patternpairs.clump(2).detect { arg pair;
+					pair[0] == \instrument
+				};
+				if(inval.notNil) {
+					inval = inval[1];
+					if(inval.class == Symbol) {
+						inval;
+					} {
+						nil
+					}
+				} {
+					nil
+				}
+			} {
+				nil
+			};
+		};
+		^val;
 	}
 
+	instrument { 
+		^PdefParam.instrument(target)
+	}
+
+	// retrieve default spec if no default spec given
 	*toSpec { arg xspec, xtarget, xproperty;
-		var instr = xtarget.getHalo(\instrument);
+		var instr = PdefParam.instrument(xtarget);
 		xspec = Param.toSynthDefSpec(xspec, xproperty, instr);
 		^xspec.asSpec;
+	}
+
+	toSpec { arg spec;
+		^this.class.toSpec(spec, target, property)
 	}
 	
 	at { arg idx;
@@ -304,7 +393,15 @@ PdefParam : BaseParam {
 	}
 
 	get {
-		^target.getVal(property)
+		var val = target.getVal(property);
+		if(val.isNil) {
+			var instr = this.instrument;
+			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec.default };
+			if(spec.class == XEnvSpec) {
+				val = val.asEnv;
+			};
+		};
+		^val;
 	}
 
 	getRaw {
@@ -360,6 +457,7 @@ PdefParamSlot : PdefParam {
 }
 
 PdefEnvParam : PdefParam {
+	// not used currently
 	var <target, <property, <spec, <key;
 	var <multiParam = false;
 	*new { arg obj, meth, sp;
@@ -872,4 +970,10 @@ XEnvelopeView : EnvelopeView {
 		^Env(levels, times, curves, releaseNode, loopNode)
 	}
 
+}
+
++Env {
+	asEnv {
+		^this
+	}
 }
