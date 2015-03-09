@@ -15,6 +15,10 @@ Param {
 		^this
 	}
 
+	asLabel {
+		^wrapper.asLabel;
+	}
+
 	init { arg args;
 		if (args.size > 1) {
 			this.newWrapper(args)
@@ -146,6 +150,55 @@ Param {
 			controller.debug("11x");
 		}
 	}
+
+	makeSimpleController { arg slider, action, updateAction, customAction;
+		var controller;
+		var param = this;
+		controller = slider.getHalo(\simpleController, controller);
+		controller.debug("11");
+		if(controller.notNil) {
+			slider.addHalo(\simpleController, nil);
+			debug("notnil:remove simpleController!!");
+			controller.remove;
+		};
+		if(action.isNil) {
+			action = { arg self;
+				param.normSet(self.value);
+			}
+		};
+		if(updateAction.isNil) {
+			updateAction = { arg self;
+				self.value = param.normGet.debug("controolll")
+			}
+		};
+		if(param.notNil) {
+			param = param.asParam;
+			slider.action = { arg self;
+				action.value(self);
+				customAction.value(self);
+				param.normSet(self.value);
+				debug("action!");
+			};
+			controller = SimpleController(param.target);
+			slider.addHalo(\simpleController, controller);
+			controller.put(\set, { arg ...args; updateAction.(slider, param) });
+			updateAction.(slider, param);
+			slider.onClose = slider.onClose.addFunc({ controller.remove; debug("remove simpleController!!"); });
+		}
+	}
+
+	mapStaticTextValue { arg view, action, precision=6;
+		this.makeSimpleController(view, nil, { arg view, param;
+			view.value = param.get.asFloat.asStringPrec(precision);
+		}, action)
+	}
+
+	mapStaticTextLabel { arg view, action, precision=6;
+		this.makeSimpleController(view, nil, { arg view, param;
+			view.value = param.asLabel;
+		}, action)
+	}
+
 
 	*unmapSlider { arg slider;
 		var controller;
@@ -282,6 +335,10 @@ NdefParam : BaseParam {
 		^super.new.init(obj, meth, sp);
 	}
 
+	asLabel {
+		^"Ndef % %".format(target.key, property)
+	}
+
 	init { arg obj, meth, sp;
 		target = obj;
 		property = meth;
@@ -338,6 +395,10 @@ PdefParam : BaseParam {
 		if(spec.isKindOf(XArraySpec)) {
 			multiParam = true;
 		};
+	}
+
+	asLabel {
+		^"Pdef % %".format(target.key, property)
 	}
 
 	*instrument { arg target;
@@ -436,6 +497,10 @@ PdefParamSlot : PdefParam {
 		^inst;
 	}
 
+	asLabel {
+		^"Pdef % % %".format(target.key, this.property, index)
+	}
+
 	pdefParamSlotInit { arg idx;
 		index = idx;
 	}
@@ -523,6 +588,14 @@ PdefEnvParam : PdefParam {
 
 }
 
+////////////////////////////////////////
+
+ParamGroup : List {
+	*new { arg anArray;
+		^super.new.setCollection( anArray.collect(_.asParam) )
+	}
+}
+
 
 MIDIMap {
 	classvar responders;
@@ -584,6 +657,8 @@ MIDIMap {
 
 }
 
+////////////////////////////////////////
+
 CachedBus : Bus {
 	classvar cache;
 
@@ -620,7 +695,7 @@ CachedBus : Bus {
 
 }
 
-XEnvelopeView : EnvelopeView {
+XEnvelopeView : QEnvelopeView {
 	var curves;
 	var <timeScale = 1;
 	var duration;
@@ -730,6 +805,17 @@ XEnvelopeView : EnvelopeView {
 	}
 }
 
+XStaticText : QStaticText {
+	value {
+		this.string;
+	}
+
+	value_ { arg val;
+		this.string = val
+	}
+}
+
+//////////////////////////////////
 
 +Symbol {
 	asBus { arg numChannels=1, busclass;
@@ -959,25 +1045,7 @@ XEnvelopeView : EnvelopeView {
 	asBus {
 		^this.at(0).asBus(this.size)
 	}
-}
 
-+Bus {
-	asMap {
-		^mapSymbol ?? {
-			if(index.isNil) { MethodError("bus not allocated.", this).throw };
-			mapSymbol = if(rate == \control) { "c" } { "a" };
-			if(this.numChannels > 1) {
-				mapSymbol = numChannels.collect({ arg x;
-					(mapSymbol ++ ( index + x)).asSymbol;
-				})
-			} {
-				mapSymbol = (mapSymbol ++ index).asSymbol;
-			}
-		}
-	}
-}
-
-+SequenceableCollection {
 	asEnv {
 		var val = this.value.deepCopy;
 		var first;
@@ -1004,7 +1072,22 @@ XEnvelopeView : EnvelopeView {
 		curves.debug("curves");
 		^Env(levels, times, curves, releaseNode, loopNode)
 	}
+}
 
++Bus {
+	asMap {
+		^mapSymbol ?? {
+			if(index.isNil) { MethodError("bus not allocated.", this).throw };
+			mapSymbol = if(rate == \control) { "c" } { "a" };
+			if(this.numChannels > 1) {
+				mapSymbol = numChannels.collect({ arg x;
+					(mapSymbol ++ ( index + x)).asSymbol;
+				})
+			} {
+				mapSymbol = (mapSymbol ++ index).asSymbol;
+			}
+		}
+	}
 }
 
 +Env {
