@@ -121,7 +121,7 @@ Param {
 	mapSlider { arg slider, action;
 		var controller;
 		var param = this;
-		controller = slider.getHalo(\simpleController, controller);
+		controller = slider.getHalo(\simpleController);
 		controller.debug("11");
 		if(controller.notNil) {
 			slider.addHalo(\simpleController, nil);
@@ -151,10 +151,10 @@ Param {
 		}
 	}
 
-	makeSimpleController { arg slider, action, updateAction, customAction;
+	makeSimpleController { arg slider, action, updateAction, initAction, customAction;
 		var controller;
 		var param = this;
-		controller = slider.getHalo(\simpleController, controller);
+		controller = slider.getHalo(\simpleController);
 		controller.debug("11");
 		if(controller.notNil) {
 			slider.addHalo(\simpleController, nil);
@@ -171,43 +171,68 @@ Param {
 				self.value = param.normGet.debug("controolll")
 			}
 		};
+		if(initAction.isNil) {
+			initAction = updateAction;
+		};
 		if(param.notNil) {
 			param = param.asParam;
 			slider.action = { arg self;
-				action.value(self);
-				customAction.value(self);
-				param.normSet(self.value);
+				action.value(self, this);
+				customAction.value(self, this);
 				debug("action!");
 			};
 			controller = SimpleController(param.target);
 			slider.addHalo(\simpleController, controller);
 			controller.put(\set, { arg ...args; updateAction.(slider, param) });
-			updateAction.(slider, param);
+			initAction.(slider, param);
 			slider.onClose = slider.onClose.addFunc({ controller.remove; debug("remove simpleController!!"); });
 		}
 	}
 
-	mapStaticTextValue { arg view, action, precision=6;
-		this.makeSimpleController(view, nil, { arg view, param;
-			view.value = param.get.asFloat.asStringPrec(precision);
-		}, action)
+	mapStaticText { arg view, precision=6;
+		this.makeSimpleController(view, {}, { arg view, param;
+			view.string = param.get.asFloat.asStringPrec(precision);
+		}, nil, nil)
 	}
 
-	mapStaticTextLabel { arg view, action, precision=6;
-		this.makeSimpleController(view, nil, { arg view, param;
-			view.value = param.asLabel;
-		}, action)
+	mapStaticTextLabel { arg view;
+		this.makeSimpleController(view, {}, {}, { arg view, param;
+			view.string = param.asLabel;
+		}, nil)
 	}
 
+	mapTextField { arg view, action;
+		this.makeSimpleController(view, { arg view, param;
+			param.set(view.value.asFloat.debug("set tfif"));
+		}, { arg view, param;
+			view.value = param.get;
+		}, nil, action)
+	}
 
-	*unmapSlider { arg slider;
+	mapButton { arg view, action;
+		this.makeSimpleController(view, { arg view, param;
+			var size;
+			size = view.states.size;
+			param.normSet(view.value.linlin(0,size-1,0,1));
+		}, { arg view, param;
+			var size;
+			size = view.states.size;
+			view.value = param.normGet.linlin(0,1,0,size-1);
+		}, nil, action)
+	}
+
+	*unmapView { arg view;
 		var controller;
-		controller = slider.getHalo(\simpleController);
-		slider.action = nil;
+		controller = view.getHalo(\simpleController);
+		view.action = nil;
 		if(controller.notNil) {
-			slider.addHalo(\simpleController, nil);
+			view.addHalo(\simpleController, nil);
 			controller.remove;
 		};
+	}
+
+	*unmapSlider { arg slider;
+		Param.unmapView(slider)
 	}
 
 	asSlider {
@@ -220,6 +245,14 @@ Param {
 
 	asMultiSlider {
 		^MultiSliderView.new.elasticMode_(1).size_(this.numChannels).mapParam(this);
+	}
+
+	asStaticText {
+		^StaticText.new.mapParam(this);
+	}
+
+	asStaticTextLabel {
+		^StaticText.new.mapParamLabel(this);
 	}
 
 	asEnvelopeView {
@@ -590,33 +623,95 @@ PdefEnvParam : PdefParam {
 
 ////////////////////////////////////////
 
-ParamGroup : List {
-	*new { arg anArray;
-		^super.new.setCollection( anArray.collect(_.asParam) )
-	}
-}
 
 
 MIDIMap {
 	classvar responders;
+	classvar responders_param;
+	classvar <mapped_views; // debug: added getter
 	classvar midivalues;
+	classvar <controls;
+	classvar <>permanent = true;
+
+	// path type: [srcID, msgType, chan, msgNum]
 	
 	*initClass {
 		responders = MultiLevelIdentityDictionary.new;
+		responders_param = MultiLevelIdentityDictionary.new;
+		mapped_views = MultiLevelIdentityDictionary.new;
 		midivalues = MultiLevelIdentityDictionary.new;
+		controls = IdentityDictionary.new;
 		//params = Dictionary.new;
 	}
 
-	*new { arg param, msgNum=nil, chan=nil, msgType=\control, srcID=nil, blockmode;
+	*define { arg channel, defs;
+		var source_uid = nil;
+		if(channel.isSequenceableCollection) {
+			source_uid = channel[1];
+			channel = channel[0]
+		};
+		defs.pairsDo { arg key, val;
+			var kind=\control, keychannel;
+			if(val.class == Association) {
+				kind = val.key;
+				val = val.value;
+			};
+			if(val.isSequenceableCollection) {
+				keychannel = val[1];
+				val = val[0]
+			} {
+				keychannel = channel;
+			};
+			key.debug("kkKKey");
+			val.debug("kkKKeyVVVVVVVVVVVVV");
+			kind.debug("kkKKeykinddddddddddd");
+			//controls[key].changed(\free_map);
+			if(kind == \note) {
+				kind = \noteOn
+			};
+			controls[key] = [val, channel, kind, source_uid];
+		};
+	}
+
+	*keyToPath { arg key;
+		if(key.class == Symbol) {
+			var path = controls[key];
+			if(path.isNil) {
+				"Error: no key named % in MIDIMap".format(key).postln;
+				^nil
+			} {
+				^this.normalizePath(path)
+			}
+		} {
+			^this.normalizePath(key)
+		}
+	}
+
+	*normalizePath { arg path;
+		path = path.extend(4,nil);
+		if(path[2] == nil or: {path[2] == \all}) { // default msgType is \control
+			path[2] = \control;
+		};
+		path = path.collect({ arg x; if(x.isNil) { \all } { x } });
+		^path;
+	}
+
+	*new { arg key, param, blockmode;
 		var func;
-		var path;
-		path = [srcID, msgType, chan, msgNum];
-		path = path.collect({ arg x; if(x.isNil) { \all } { x } }); // can't have nil has dict key
+		var path = this.keyToPath(key);
+		var nilpath;
+		nilpath = path.collect({ arg x; if(x == \all) { nil } { x } }); // can't have nil has dict key
+		[key, path, nilpath, param].debug("key, path, nilpath, param");
 
 		func = { arg val, num, chan, src;
+			[key, path, nilpath, param].debug("key, path, nilpath, param");
 			val = val/127;
+			[val, num, chan, src].debug("key, path, nilpath, param");
 			if(blockmode.isNil) {
-				param.normSet(val);
+				Task({
+					param.normSet(val);
+					nil;
+				}).play(AppClock);
 				midivalues.put(*path++[val]);
 			};
 		};
@@ -625,34 +720,233 @@ MIDIMap {
 			responders.at(*path).free
 		};
 		responders.put(*path ++ [
-			MIDIFunc(func, msgNum, chan, msgType, srcID).permanent_(true)
+			MIDIFunc(func, nilpath[0], nilpath[1], nilpath[2], nilpath[3]).permanent_(permanent)
 			//params[param] =	params[param].add( path );
 		]);
+		responders_param.put(*path ++ [ param ]);
+		this.changed(\midimap, path, param);
+		this.updateViews(path, param);
 	}
-
 
 	*unmap { arg param;
 		// TODO
 		//params[param]
 	}
 	
-	*free { arg msgNum, chan, msgType=\control, srcID;
-		var path = [srcID, msgType, chan, msgNum];
-		path = path.collect({ arg x; if(x.isNil) { \all } { x } });
-		responders.at(*path).free
+	*free { arg key;
+		var path = this.keyToPath(key);
+		responders.at(*path).free;
+		responders_param.put(*path ++ [nil]);
+		this.changed(\midimap, path, nil);
+		this.updateViews(path);
 	}
 
-	*get { arg msgNum, chan, msgType=\control, srcID;
-		var path = [srcID, msgType, chan, msgNum];
-		path = path.collect({ arg x; if(x.isNil) { \all } { x } });
+	*get { arg key;
+		var path = this.keyToPath(key);
 		responders.at(*path)
 	}
 	
 	*freeAll {
+		// FIXME: must loop on paths and use *free
 		responders.do { arg resp;
 			resp.free;
 		};
 		responders = MultiLevelIdentityDictionary.new;
+	}
+
+	*learn {
+		arg key, param, blockmode;
+	}
+
+	*updateViews { arg path, param;
+		var to_remove = List.new;
+		mapped_views.at(*path).do { arg view, x;
+			var kind = view[1];
+			view = view[0];
+			if(view.isClosed) {
+				to_remove.add(x)
+			} {
+				if(param.notNil) {
+					if(kind == \label) {
+						view.mapParamLabel(param)
+					} {
+						view.mapParam(param)
+					}
+				} {
+					view.unmapParam;
+				}
+			}
+		};
+		to_remove.reverse.do { arg x;
+			mapped_views.at(*path).removeAt(x)
+		};
+	}
+
+	*mapView { arg key, view;
+		var path = this.keyToPath(key);
+		if(mapped_views.at(*path).isNil) {
+			mapped_views.put(*path ++ [ List.new ])
+		};
+		mapped_views.at(*path).add([view]);
+		this.updateViews(path, responders_param.at(*path));
+	}
+
+	*mapSlider { arg key, slider;
+		^mapView(key, slider);
+	}
+
+	*mapStaticTextLabel { arg key, view;
+		var path = this.keyToPath(key);
+		if(mapped_views.at(*path).isNil) {
+			mapped_views.put(*path ++ [ List.new ])
+		};
+		mapped_views.at(*path).add([view, \label]);
+		this.updateViews(path, responders_param.at(*path));
+	}
+
+	*unmapView { arg key, view;
+		// TODO: add code to handle key=nil: search in all paths
+		var list;
+		var path = this.keyToPath(key);
+		if(mapped_views.at(*path).isNil) {
+			mapped_views.put(*path ++ [ List.new ])
+		};
+		list = mapped_views.at(*path);
+		list.reverse.do { arg vi, x;
+			vi = vi[0]; // [1] is view type
+			if(view === vi) {
+				list.removeAt(list.size - 1 - x)
+			}
+		}
+	}
+
+}
+
+////////////////////////////////////////
+
+//ParamPreset {
+//	var paramgroup;
+//	var dict;
+//	*new { arg group;
+//		^super.new.init(group);
+//	}
+//
+//	init { arg group;
+//		paramgroup = ParamGroup(group);
+//		dict = Dictionary.new;
+//	}
+//
+//	save { arg key; 
+//		dict[key] = List.newClear(param)
+//		paramgroup.do { arg param;
+//			dict[key] = param.get;
+//		}
+//	}
+//
+//	load { arg key; 
+//		paramgroup.do { arg param;
+//			param.set(dict[key])
+//		}
+//	}
+//}
+
+ParamGroup : List {
+	var <>presets;
+	*new { arg anArray;
+		var inst;
+		inst = super.new.setCollection( anArray.collect(_.asParam) );
+		inst.initParamGroup;
+		^inst;
+	}
+
+	initParamGroup {
+		presets = IdentityDictionary.new;
+	}
+
+	save { arg key=\default; 
+		presets[key] = super.array.collect { arg param;
+			param.get;
+		}
+	}
+
+	erase { arg key=\default;
+		presets[key] = nil;
+	}
+
+	load { arg key=\default; 
+		if(presets[key].notNil) {
+			presets[key].do { arg val, x;
+				super.array[x].set(val)
+			}
+		}
+	}
+}
+
+ParamPreset {
+	classvar <lib;
+	var <libkey;
+	var <group;
+
+	*initClass {
+		lib = IdentityDictionary.new
+	}
+
+	*new { arg defkey, group;
+		var inst;
+		if(group.isNil) {
+			^lib[defkey]
+		} {
+			if(lib[defkey].isNil) {
+				inst = super.new.init(defkey, group);
+				lib[defkey] = inst;
+				^inst
+			} {
+				"Warning: already defined, use .clear before redefine it".postln;
+				^lib[defkey]
+			}
+		}
+	}
+
+	init { arg defkey, xgroup;
+		xgroup.debug("hhhhhhhhhh");
+		libkey = defkey;
+		group = ParamGroup(xgroup);
+		if(Archive.global.at(\ParamPreset, libkey).isNil) {
+			Archive.global.put(\ParamPreset, libkey, group.presets);
+		} {
+			group.presets = Archive.global.at(\ParamPreset, libkey);
+		};
+	}
+
+	clear {
+		lib[libkey] = nil
+	}
+
+	save { arg key;
+		group.save(key);
+		Archive.global.put(\ParamPreset, libkey, group.presets);
+	}
+
+	load { arg key;
+		group.presets[key] = Archive.global.at(\ParamPreset, libkey)[key];
+		group.load(key);
+	}
+
+	erase { arg key;
+		group.erase(key);
+		Archive.global.put(\ParamPreset, libkey, group.presets);
+	}
+
+	do { arg fun;
+		group.do(fun)
+	}
+
+	collect { arg fun;
+		^group.collect(fun)
+	}
+
+	at { arg x;
+		^group[x]
 	}
 
 }
@@ -813,6 +1107,38 @@ XStaticText : QStaticText {
 	value_ { arg val;
 		this.string = val
 	}
+}
+
+XSimpleButton : QButton {
+	var <color, <label, <background, myValue;
+
+	color_ { arg val;
+		color = val;
+		this.updateStates;
+	}
+
+	background_ { arg val;
+		background = val;
+		this.updateStates;
+	}
+
+	label_ { arg val;
+		label = val;
+		this.updateStates;
+	}
+
+	value_ { arg val;
+		myValue = val;
+	}
+
+	value { arg val;
+		^myValue;
+	}
+
+	updateStates {
+		this.states = [[label, color, background]];
+	}
+
 }
 
 //////////////////////////////////
@@ -1000,6 +1326,41 @@ XStaticText : QStaticText {
 	}
 }
 
++StaticText {
+	unmapParam {
+		Param.unmapSlider(this);
+		this.string = "-";
+	}
+
+	mapParam { arg param;
+		param.mapStaticText(this);
+	}
+
+	mapParamLabel { arg param;
+		param.mapStaticTextLabel(this);
+	}
+}
+
++TextField {
+	unmapParam {
+		Param.unmapSlider(this);
+	}
+
+	mapParam { arg param;
+		param.mapTextField(this);
+	}
+}
+
++Button {
+	unmapParam {
+		Param.unmapView(this);
+	}
+
+	mapParam { arg param;
+		param.mapButton(this);
+	}
+}
+
 /////////////////////////// 3.6.6
 +QKnob {
 	unmapParam {
@@ -1030,6 +1391,55 @@ XStaticText : QStaticText {
 		param.mapSlider(this);
 	}
 }
+
++QStaticText {
+	unmapParam {
+		Param.unmapSlider(this);
+		this.string = "-";
+	}
+
+	mapParam { arg param;
+		param.mapStaticText(this);
+	}
+
+	mapParamLabel { arg param;
+		param.mapStaticTextLabel(this);
+	}
+}
+
++QTextField {
+	unmapParam {
+		Param.unmapSlider(this);
+		this.value = "";
+	}
+
+	mapParam { arg param;
+		param.mapTextField(this);
+	}
+}
+
++QButton {
+	unmapParam {
+		Param.unmapView(this);
+	}
+
+	mapParam { arg param;
+		param.mapButton(this);
+	}
+}
+
+//XGridLayout : QGridLayout {
+//	var <myStretch;
+//
+//	*rows { arg ...rows ;
+//
+//	}
+//
+//	stretch_ { arg val;
+//		myStretch = val;
+//	}
+//}
+
 /////////////////////////// END 3.6.6
 
 
