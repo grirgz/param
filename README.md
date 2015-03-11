@@ -4,6 +4,7 @@ Param Quark for SuperCollider
 
 The goal of this quark is to ease the controlling of sounds objects parameters (Ndef, Pdef, etc) using GUI, MIDI, and OSC.
 
+```
 (
 Ndef(\ndef_scalar, { arg freq=200, pan=0, amp=0.1;
 	var sig;
@@ -29,6 +30,7 @@ MIDIMap([16], ~p);
 	[Ndef(\echo), \shift1],
 	[Ndef(\echo), \shift2],
 ] )
+```
 
 The benefit is that is the same API for controlling Ndef, Pdef, Synth, Bus, ... and you can easily control arrays and enveloppes in the same way. Setting .action and updating of GUI, and freeing resources like MIDIFunc and buses are done for you in the background.
 
