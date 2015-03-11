@@ -951,6 +951,13 @@ ParamPreset {
 
 }
 
+ParamMorpher : Param {
+	new { arg group, presets;
+
+	}
+
+}
+
 ////////////////////////////////////////
 
 CachedBus : Bus {
