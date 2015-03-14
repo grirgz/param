@@ -896,7 +896,7 @@ ParamPreset {
 	}
 
 	saveArchive {
-		var archive;
+		var archive = IdentityDictionary.new;
 		archive[\presets] = group.presets;
 		archive[\morphers] = group.morphers;
 		Archive.global.put(\ParamPreset, libkey, archive);
