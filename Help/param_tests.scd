@@ -54,7 +54,6 @@ Ndef(\ndef_array, { arg pan=0, amp=0.1;
 ~p.normGet;
 ~p.normSet([0.5,0.2,0.4]);
 ~p.normSet([0.5,0.2,0.4]); 
-//Ndef(\ndef_scalar).spawn
 
 ~makegui.({ ~p.asView; });
 

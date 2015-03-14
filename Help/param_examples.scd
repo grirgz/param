@@ -194,7 +194,7 @@ Ndef(\echo).play;
 
 ////////////////////////////////////////////////////////////
 /// Exemple 4
-/// View midi mapped params for selected midi controllers
+/// Each slider in the view match a slider on your midi controller and show the current mapped param
 
 (
 ~makegui = { arg list;
@@ -244,10 +244,10 @@ MIDIdef.cc(\arf).free;
 
 
 // map some midi control to params 
-MIDIMap([16], Param([Pdef(\plop), \freq]));
+MIDIMap([16], Param(Pdef(\plop), \freq));
 MIDIMap.free([16]); // unmap it
-MIDIMap([17], Param([Pdef(\plop), \lpfreq]));
-MIDIMap([16], Param([Ndef(\echo), \shift1])); // replace param
+MIDIMap([17], Param(Pdef(\plop), \lpfreq));
+MIDIMap([16], Param(Ndef(\echo), \shift1)); // replace param with another
 
 
 (
@@ -278,3 +278,10 @@ MIDIMap(\k1, Param([Pdef(\plop), \freq])); // now mapping can be done by name
 MIDIMap.free(\k1);
 
 ////////////////////////////////////////////////////////////
+
+~a = MultiLevelIdentityDictionary.new;
+~a.put(\bla, \rah,\niar, 4)
+~a.put(\bla, \xxx,\niar, 3)
+~a.put(\bla, \xxx,\niar, nil)
+
+~a.leafDo({ arg ... args; args.debug("leaf") });

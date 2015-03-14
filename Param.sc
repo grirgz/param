@@ -6,19 +6,6 @@ Param {
 		^super.new.init(args)
 	}
 
-	== { arg param;
-		( this.wrapper.property == param.wrapper.property)
-		and: { this.wrapper.target == param.wrapper.target } 
-	}
-
-	asParam {
-		^this
-	}
-
-	asLabel {
-		^wrapper.asLabel;
-	}
-
 	init { arg args;
 		if (args.size > 1) {
 			this.newWrapper(args)
@@ -26,35 +13,6 @@ Param {
 			this.newWrapper(args[0])
 		};
 	}
-
-	setBusMode { arg enable=true, free=true;
-		wrapper.setBusMode(enable, free);
-	}
-
-	numChannels {
-		^this.spec.numChannels;
-	}
-
-	key {
-		^wrapper.key;
-	}
-
-	target {
-		^wrapper.target;
-	}
-
-	property {
-		^wrapper.property;
-	}
-
-	spec {
-		^wrapper.spec;
-	}
-
-	at { arg idx;
-		^wrapper.at(idx);
-	}
-
 
 	newWrapper { arg args;
 		var target = args[0];
@@ -92,6 +50,47 @@ Param {
 			//},
 		);
 		^wrapper;
+	}
+
+	== { arg param;
+		( this.wrapper.property == param.wrapper.property)
+		and: { this.wrapper.target == param.wrapper.target } 
+	}
+
+	asParam {
+		^this
+	}
+
+	asLabel {
+		^wrapper.asLabel;
+	}
+
+	setBusMode { arg enable=true, free=true;
+		wrapper.setBusMode(enable, free);
+	}
+
+	numChannels {
+		^this.spec.numChannels;
+	}
+
+	key {
+		^wrapper.key;
+	}
+
+	target {
+		^wrapper.target;
+	}
+
+	property {
+		^wrapper.property;
+	}
+
+	spec {
+		^wrapper.spec;
+	}
+
+	at { arg idx;
+		^wrapper.at(idx);
 	}
 
 	get {
@@ -747,11 +746,9 @@ MIDIMap {
 	}
 	
 	*freeAll {
-		// FIXME: must loop on paths and use *free
-		responders.do { arg resp;
-			resp.free;
+		responders.leafDo { arg path, resp;
+			this.free(path);
 		};
-		responders = MultiLevelIdentityDictionary.new;
 	}
 
 	*learn {
@@ -824,34 +821,14 @@ MIDIMap {
 
 ////////////////////////////////////////
 
-//ParamPreset {
-//	var paramgroup;
-//	var dict;
-//	*new { arg group;
-//		^super.new.init(group);
-//	}
-//
-//	init { arg group;
-//		paramgroup = ParamGroup(group);
-//		dict = Dictionary.new;
-//	}
-//
-//	save { arg key; 
-//		dict[key] = List.newClear(param)
-//		paramgroup.do { arg param;
-//			dict[key] = param.get;
-//		}
-//	}
-//
-//	load { arg key; 
-//		paramgroup.do { arg param;
-//			param.set(dict[key])
-//		}
-//	}
-//}
-
 ParamGroup : List {
 	var <>presets;
+	var <>morphers;
+
+	// morphers format : Dict[ \name -> (val: 0.5, presets:[\preset1, \preset2]) ]
+	// - morphTo(\name, 0.3)
+	// - addMorphing(\name)
+	// - morphTo([\preset1, \preset2], 0.4)
 	*new { arg anArray;
 		var inst;
 		inst = super.new.setCollection( anArray.collect(_.asParam) );
@@ -908,33 +885,53 @@ ParamPreset {
 	}
 
 	init { arg defkey, xgroup;
-		xgroup.debug("hhhhhhhhhh");
+		//xgroup.debug("hhhhhhhhhh");
 		libkey = defkey;
 		group = ParamGroup(xgroup);
 		if(Archive.global.at(\ParamPreset, libkey).isNil) {
-			Archive.global.put(\ParamPreset, libkey, group.presets);
+			this.saveArchive;
 		} {
-			group.presets = Archive.global.at(\ParamPreset, libkey);
+			this.loadArchive;
 		};
 	}
 
+	saveArchive {
+		var archive;
+		archive[\presets] = group.presets;
+		archive[\morphers] = group.morphers;
+		Archive.global.put(\ParamPreset, libkey, archive);
+	}
+
+	loadArchive {
+		var archive;
+		archive = this.getArchive;
+		group.presets = archive[\presets];
+		group.morphers = archive[\presets];
+	}
+
+	getArchive {
+		^Archive.global.at(\ParamPreset, libkey);
+	}
+
+
 	clear {
-		lib[libkey] = nil
+		Archive.global.put(\ParamPreset, libkey, nil);
+		lib[libkey] = nil;
 	}
 
 	save { arg key;
 		group.save(key);
-		Archive.global.put(\ParamPreset, libkey, group.presets);
+		this.saveArchive;
 	}
 
 	load { arg key;
-		group.presets[key] = Archive.global.at(\ParamPreset, libkey)[key];
+		group.presets[key] = this.getArchive[\presets][key];
 		group.load(key);
 	}
 
 	erase { arg key;
 		group.erase(key);
-		Archive.global.put(\ParamPreset, libkey, group.presets);
+		this.saveArchive;
 	}
 
 	do { arg fun;
@@ -952,7 +949,16 @@ ParamPreset {
 }
 
 ParamMorpher : Param {
-	new { arg group, presets;
+	*new { arg group, presets;
+		^Object.new.init(group, presets)
+	}
+
+	init {
+
+	}
+
+	get {
+
 
 	}
 
