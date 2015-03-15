@@ -6,6 +6,10 @@ Param {
 		^super.new.init(args)
 	}
 
+	*newWrapper { arg wrap;
+		^super.new.newWrapper([wrap])
+	}
+
 	init { arg args;
 		if (args.size > 1) {
 			this.newWrapper(args)
@@ -44,7 +48,9 @@ Param {
 						);
 					}
 				)
-			},
+			}, {
+				wrapper = target;
+			}
 			//Volume, {
 			//	wrapper = VolumefParam(args);
 			//},
@@ -63,6 +69,14 @@ Param {
 
 	asLabel {
 		^wrapper.asLabel;
+	}
+
+	type {
+		^switch(this.spec.class,
+			XEnvSpec, \env,
+			XArraySpec, \array,
+			\scalar,
+		)
 	}
 
 	setBusMode { arg enable=true, free=true;
@@ -190,7 +204,17 @@ Param {
 
 	mapStaticText { arg view, precision=6;
 		this.makeSimpleController(view, {}, { arg view, param;
-			view.string = param.get.asFloat.asStringPrec(precision);
+			switch(param.type,
+				\scalar, {
+					view.string = param.get.asFloat.asStringPrec(precision);
+				},
+				\array, {
+					view.string = param.get.collect({ arg x; x.asFloat.asStringPrec(precision) });
+				},
+				\env, {
+					view.string = param.get.asCompileString;
+				}
+			);
 		}, nil, nil)
 	}
 
@@ -288,10 +312,23 @@ Param {
 
 	edit {
 		var win;
-		var widget;
+		var label, widget, val;
 		win = Window.new;
+
+		label = this.asStaticTextLabel;
+		label.align = \center;
+
 		widget = this.asView;
-		win.layout = HLayout.new(widget);
+
+		val = this.asStaticText;
+		//val.background = Color.red;
+		val.align = \center;
+
+		win.layout = VLayout.new(
+			label, 
+			widget, 
+			val
+		);
 		win.alwaysOnTop = true;
 		win.front;
 	}
@@ -846,6 +883,16 @@ ParamGroup : List {
 		}
 	}
 
+	getPreset { arg key=\default;
+		^presets[key]
+	}
+
+	valueList {
+		^this.collect { arg param;
+			param.get;
+		}
+	}
+
 	erase { arg key=\default;
 		presets[key] = nil;
 	}
@@ -857,6 +904,7 @@ ParamGroup : List {
 			}
 		}
 	}
+
 }
 
 ParamPreset {
@@ -895,8 +943,16 @@ ParamPreset {
 		};
 	}
 
+	getPreset { arg key=\default;
+		^group.getPreset(key);
+	}
+
+	valueList {
+		^group.valueList;
+	}
+
 	saveArchive {
-		var archive;
+		var archive = IdentityDictionary.new;
 		archive[\presets] = group.presets;
 		archive[\morphers] = group.morphers;
 		Archive.global.put(\ParamPreset, libkey, archive);
@@ -948,20 +1004,64 @@ ParamPreset {
 
 }
 
-ParamMorpher : Param {
-	*new { arg group, presets;
-		^Object.new.init(group, presets)
+ParamValue {
+	var <>value;
+	var <>spec, property=\value, target;
+
+	*new { arg spec;
+		^super.new.init(spec);
 	}
 
-	init {
-
+	init { arg spec;
+		target = this;
+		property = \value;
+		spec = spec;
 	}
 
 	get {
-
-
+		^value;
 	}
 
+	set { arg val;
+		value = val;
+	}
+}
+
+ParamMorpher : Param {
+	var group, preset;
+	var <>key;
+	*new { arg group, presets;
+		^super.newWrapper(ParamValue.new, presets)
+	}
+
+	init { arg group, presets;
+		group = group;
+		presets = presets;
+	}
+}
+
+ParamMorpherDef : ParamMorpher {
+	classvar lib;
+	*new { arg defkey, group, presets;
+		var inst;
+		if(group.isNil) {
+			^lib[defkey]
+		} {
+			if(lib[defkey].isNil) {
+				inst = super.new.init(group, presets);
+				inst.key = defkey;
+				lib[defkey] = inst;
+				^inst
+			} {
+				"Warning: already defined, use .clear before redefine it".postln;
+				^lib[defkey]
+			}
+		}
+	}
+
+	clear {
+		lib[this.key] = nil
+	}
 }
 
 ////////////////////////////////////////

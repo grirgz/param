@@ -33,6 +33,8 @@ Platform.userExtensionDir
 ~p.normGet;
 ~p.normSet(0.4);
 
+~p.edit
+
 ~makegui.({ ~p.asView; });
 
 // array
@@ -54,6 +56,8 @@ Ndef(\ndef_array, { arg pan=0, amp=0.1;
 ~p.normGet;
 ~p.normSet([0.5,0.2,0.4]);
 ~p.normSet([0.5,0.2,0.4]); 
+
+~p.edit
 
 ~makegui.({ ~p.asView; });
 

@@ -87,9 +87,9 @@ Ndef(\echo).play;
 		param = param.asParam;
 		lay = VLayout(
 			// create a label, a knob and a value label from the param
-			[param.asStaticTextLabel, align:\center],
+			param.asStaticTextLabel.align_(\center),
 			param.asKnob,
-			[param.asStaticText.minWidth_(80), align:\center],
+			param.asStaticText.minWidth_(80).align_(\center),
 		); 
 		[lay, \stretch:1];
 	});
