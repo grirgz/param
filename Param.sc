@@ -48,14 +48,14 @@ Param {
 						);
 					}
 				)
-			}, {
-				wrapper = target;
-			}
 			//Volume, {
 			//	wrapper = VolumefParam(args);
 			//},
+			}, {
+				// ParamValue goes here
+				wrapper = target;
+			}
 		);
-		^wrapper;
 	}
 
 	== { arg param;
@@ -905,6 +905,35 @@ ParamGroup : List {
 		}
 	}
 
+	edit {
+		var win;
+		var hlayout = HLayout.new;
+		win = Window.new;
+
+		this.collect({ arg param;
+			var label, widget, val;
+
+			label = param.asStaticTextLabel;
+			label.align = \center;
+
+			widget = param.asView;
+
+			val = param.asStaticText;
+			//val.background = Color.red;
+			val.align = \center;
+
+			hlayout.add(VLayout.new(
+				label, 
+				widget, 
+				val
+			), stretch:1);
+		});
+
+		win.layout = hlayout;
+		win.alwaysOnTop = true;
+		win.front;
+	}
+
 }
 
 ParamPreset {
@@ -1002,11 +1031,16 @@ ParamPreset {
 		^group[x]
 	}
 
+	edit {
+		group.edit;
+	}
+
 }
 
+// act also as a Param wrapper
 ParamValue {
-	var <>value;
-	var <>spec, property=\value, target;
+	var <>value=0;
+	var <>spec, <property=\value, <target;
 
 	*new { arg spec;
 		^super.new.init(spec);
@@ -1025,18 +1059,63 @@ ParamValue {
 	set { arg val;
 		value = val;
 	}
-}
 
-ParamMorpher : Param {
-	var group, preset;
-	var <>key;
-	*new { arg group, presets;
-		^super.newWrapper(ParamValue.new, presets)
+	normGet {
+		^spec.unmap(this.get)
 	}
 
-	init { arg group, presets;
-		group = group;
-		presets = presets;
+	normSet { arg val;
+		this.set(spec.map(val))
+	}
+}
+
+// act also as a Param
+ParamMorpher : Param {
+	var group, presets;
+	var <>key;
+	*new { arg group, presets;
+		var pval = ParamValue.new;
+		var inst;
+		pval.spec = ControlSpec(0,presets.size-1,\lin,0,0);
+		inst = super.newWrapper(pval, presets);
+		inst.initParamMorpher(group, presets);
+		^inst;
+	}
+
+	initParamMorpher { arg arggroup, argpresets;
+		group = arggroup;
+		presets = argpresets;
+		[group, presets].debug("initParamMorpher");
+	}
+
+	morph { arg list, morph;
+		^list.blendAt(morph)
+	}
+
+	asLabel {
+		// TODO
+		"morph"
+	}
+
+	set { arg val;
+		var presets_vals;
+		val.debug("ParamMorpher: set");
+		this.wrapper.set(val);
+		presets_vals = presets.collect({ arg x; 
+			group.getPreset(x)
+		});
+		[presets_vals, presets].debug("presets");
+		presets_vals = presets_vals.flop;
+		group.do({ arg param, x;
+			var resval;
+			resval = this.morph(presets_vals[x], val);
+			[param.asLabel, val].debug("ParamMorpher: param set");
+			param.set(resval);
+		})
+	}
+
+	get {
+		^this.wrapper.get;
 	}
 }
 
