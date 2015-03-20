@@ -1,6 +1,7 @@
 
 Param {
 	var <wrapper;
+	var init_args;
 
 	*new  { arg ...args;
 		^super.new.init(args)
@@ -22,40 +23,119 @@ Param {
 		var target = args[0];
 		var property = args[1];
 		var spec = args[2];
+		var envdict;
+
+		envdict = (
+			adsr: (
+				attack: \times -> 0,
+				decay: \times -> 1,
+				sustain: \levels -> 2,
+				peak: \levels -> 1,
+				release: \times -> 2,
+			),
+			asr: (
+				attack: \times -> 0,
+				sustain: \levels -> 1,
+				release: \times -> 1,
+			),
+		);
+
+
+		if(args.size == 2) {
+			// no spec given, normalize args size to 3
+			args.add(nil)
+		};
+		"1".debug;
+		init_args = args;
+		"2".debug;
 		switch(target.class,
 			Ndef, {
-				wrapper = NdefParam(*args);
+				switch(property.class,
+					Association, {
+						switch(property.key.class,
+							Association, {
+								var subpro = property.key.value;
+								var idx = property.value;
+								args[1] = property.key.key;
+								(args++[subpro, idx]).debug("NdefParamEnvSlot args");
+								wrapper = NdefParamEnvSlot(*args++[subpro, idx]);
+							},
+							// an env segment name
+							Symbol {
+								// need to get spec, but spec is determined after wrapper creation :(
+
+
+							}
+							// else: an index
+							{
+								var idx;
+								args[1] = property.key;
+								idx = property.value;
+								(args++[idx]).debug("NdefParamSlot args");
+								wrapper = NdefParamSlot(*args++[idx]);
+							}
+						);
+					},
+					Symbol, {
+						wrapper = NdefParam(*args);
+					}
+				);
 			},
 			Pdef, {
 				switch(property.class,
 					Association, {
-						var idx;
-						var asso = property;
-						args[1] = asso.key;
-						idx = asso.value;
-						wrapper = PdefParamSlot(*args++[idx]);
-					},
-					Symbol, {
-						switch(PdefParam.toSpec(spec, target, property).class.debug("deja, WTF, spec"),
-							XEnvSpec, {
-								//wrapper = PdefEnvParam(*args);
-								wrapper = PdefParam(*args);
-							}, 
-							// else
+						switch(property.key.class,
+							Association, {
+								var subpro = property.key.value;
+								var idx = property.value;
+								args[1] = property.key.key;
+								(args++[subpro, idx]).debug("PdefParamEnvSlot args");
+								wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
+							},
+							// else: an index
 							{
-								wrapper = PdefParam(*args);
+								var idx;
+								args[1] = property.key;
+								idx = property.value;
+								(args++[idx]).debug("PdefParamSlot args");
+								wrapper = PdefParamSlot(*args++[idx]);
 							}
 						);
+					},
+					Symbol, {
+						wrapper = PdefParam(*args);
 					}
-				)
+				);
+			}, 
 			//Volume, {
 			//	wrapper = VolumefParam(args);
 			//},
-			}, {
+			// else
+			{
 				// ParamValue goes here
 				wrapper = target;
 			}
 		);
+		"3".debug;
+	}
+
+	// why Post << Param doesnt use this method ?
+	storeOn { arg stream;
+		stream << ("Param.new(\"" ++ this.asLabel ++ "\")");
+	}
+
+	asString {
+		^this.asLabel
+	}
+
+	//storeArgs { arg stream;
+	//	//^init_args
+	//	stream << ("Param.new(" ++ init_args.asCompileString ++ ")");
+	//}
+	
+
+	asCompileString {
+		^( "Param.new(" ++ init_args.asCompileString ++ ")" );
 	}
 
 	== { arg param;
@@ -123,6 +203,8 @@ Param {
 		wrapper.normSet(val);
 	}
 
+	//////// MIDI mapping
+
 	map { arg msgNum, chan, msgType=\control, srcID, blockmode;
 		MIDIMap(this, msgNum, chan, msgType, srcID, blockmode);
 	}
@@ -130,6 +212,8 @@ Param {
 	unmap { arg msgNum, chan, msgType, srcID, blockmode;
 		MIDIMap.free(msgNum, chan, msgType, srcID, blockmode);
 	}
+
+	//////// GUI mapping
 
 	mapSlider { arg slider, action;
 		var controller;
@@ -204,11 +288,17 @@ Param {
 
 	mapStaticText { arg view, precision=6;
 		this.makeSimpleController(view, {}, { arg view, param;
+					param.asLabel.debug("mapStaticText param");
+					param.asCompileString.debug("mapStaticText param");
+					param.type.debug("mapStaticText type");
+					param.get.debug("param get");
 			switch(param.type,
 				\scalar, {
 					view.string = param.get.asFloat.asStringPrec(precision);
 				},
 				\array, {
+					param.debug("mapStaticText param");
+					param.get.debug("param get");
 					view.string = param.get.collect({ arg x; x.asFloat.asStringPrec(precision) });
 				},
 				\env, {
@@ -257,6 +347,8 @@ Param {
 	*unmapSlider { arg slider;
 		Param.unmapView(slider)
 	}
+
+	//////// GUI shortcuts
 
 	asSlider {
 		^Slider.new.mapParam(this);
@@ -332,6 +424,8 @@ Param {
 		win.alwaysOnTop = true;
 		win.front;
 	}
+
+	/////////// Spec
 
 	*toSpec { arg spec, argName, default_spec=\widefreq;
 		if(spec.isNil, {
@@ -449,6 +543,119 @@ NdefParam : BaseParam {
 	}
 }
 
+NdefParamSlot : NdefParam {
+	var <index;
+
+	*new { arg obj, meth, sp, index;
+		var inst;
+		obj.debug("obj");
+		inst = super.new(obj, meth, sp);
+		inst.ndefParamSlotInit(index);
+		^inst;
+	}
+
+	asLabel {
+		^"Ndef % % %".format(target.key, this.property, index)
+	}
+
+	ndefParamSlotInit { arg idx;
+		index = idx;
+	}
+
+	spec {
+		spec.at(index);
+	}
+
+	set { arg val;
+		var vals = super.get;
+		vals[index] = val;
+		super.set(vals);
+	}
+
+	get {
+		var vals = super.get;
+		^vals[index];
+	}
+}
+
+NdefParamEnvSlot : NdefParam {
+	var <index;
+	var <subproperty;
+
+	*new { arg obj, meth, sp, subproperty, index;
+		var inst;
+		obj.debug("obj");
+		inst = super.new(obj, meth, sp);
+		inst.ndefParamEnvSlotInit(subproperty, index);
+		^inst;
+	}
+
+	asLabel {
+		^"Ndef % % %%".format(target.key, this.property, subproperty[0], index)
+	}
+
+	ndefParamEnvSlotInit { arg subpro, idx;
+		index = idx;
+		subproperty = subpro;
+	}
+
+	spec {
+		spec.perform(subproperty).at(index);
+	}
+
+	set { arg val;
+		var vals = super.get;
+		var lvals = vals.perform(subproperty);
+		lvals[index] = val;
+		vals.perform(subproperty.asSetter, lvals);
+		super.set(vals);
+	}
+
+	get {
+		var vals = super.get;
+		^vals.perform(subproperty)[index];
+	}
+}
+
+PdefParamEnvSlot : PdefParam {
+	var <index;
+	var <subproperty;
+
+	*new { arg obj, meth, sp, subproperty, index;
+		var inst;
+		obj.debug("obj");
+		inst = super.new(obj, meth, sp);
+		inst.pdefParamEnvSlotInit(subproperty, index);
+		^inst;
+	}
+
+	asLabel {
+		^"Pdef % % %%".format(target.key, this.property, subproperty.asString[0], index)
+	}
+
+	pdefParamEnvSlotInit { arg subpro, idx;
+		index = idx;
+		subproperty = subpro;
+	}
+
+	spec {
+		spec.perform(subproperty).at(index);
+	}
+
+	set { arg val;
+		var vals = super.get;
+		var lvals = vals.perform(subproperty);
+		lvals[index] = val;
+		vals.perform(subproperty.asSetter, lvals);
+		super.set(vals);
+	}
+
+	get {
+		var vals = super.get;
+		^vals.perform(subproperty)[index];
+	}
+}
+
 PdefParam : BaseParam {
 	var <target, <property, <spec, <key;
 	var <multiParam = false;
@@ -475,19 +682,23 @@ PdefParam : BaseParam {
 		val = target.getHalo(\instrument) ?? { 
 			var inval = target.source;
 			if(inval.notNil) {
-				inval = inval.patternpairs.clump(2).detect { arg pair;
-					pair[0] == \instrument
-				};
-				if(inval.notNil) {
-					inval = inval[1];
-					if(inval.class == Symbol) {
-						inval;
+				if(inval.class == Pbind) {
+					inval = inval.patternpairs.clump(2).detect { arg pair;
+						pair[0] == \instrument
+					};
+					if(inval.notNil) {
+						inval = inval[1];
+						if(inval.class == Symbol) {
+							inval;
+						} {
+							nil
+						}
 					} {
 						nil
 					}
 				} {
 					nil
-				}
+				};
 			} {
 				nil
 			};
@@ -579,82 +790,15 @@ PdefParamSlot : PdefParam {
 	}
 
 	set { arg val;
-		var vals = target.getVal(property);
+		var vals = super.get;
 		vals[index] = val;
-		target.setVal(property, vals);
+		super.set(vals);
 	}
 
 	get {
-		var vals = target.getVal(property);
+		var vals = super.get;
 		^vals[index];
 	}
-}
-
-PdefEnvParam : PdefParam {
-	// not used currently
-	var <target, <property, <spec, <key;
-	var <multiParam = false;
-	*new { arg obj, meth, sp;
-		^super.new(obj, meth, sp).pdefEnvParamInit(obj, meth, sp);
-	}
-
-	pdefEnvParamInit { arg obj, meth, sp;
-		target = obj;
-		property = meth;
-		spec = this.toSpec(sp);
-		key = obj.key;
-		multiParam = true;
-	}
-
-	// retrieve default spec if no default spec given
-	toSpec { arg spec;
-		var instr = target.getHalo(\instrument);
-		spec = Param.toSynthDefSpec(spec, property, instr);
-		^spec.asSpec;
-	}
-
-	*toSpec { arg xspec, xtarget, xproperty;
-		var instr = xtarget.getHalo(\instrument);
-		xspec = Param.toSynthDefSpec(xspec, xproperty, instr);
-		^xspec.asSpec;
-	}
-	
-	at { arg idx;
-		^Param(target, property -> idx, spec)
-	}
-
-	setBusMode { arg enable=true, free=true;
-		target.setBusMode(property, enable, free);
-	}
-
-	inBusMode {
-		^target.inBusMode(property)
-	}
-
-	get {
-		^target.getVal(property)
-	}
-
-	getRaw {
-		^target.get(property)
-	}
-
-	set { arg val;
-		target.setVal(property, val);
-	}
-
-	setRaw { arg val;
-		target.set(property, val);
-	}
-
-	normGet {
-		^spec.unmap(this.get)
-	}
-
-	normSet { arg val;
-		this.set(spec.map(val))
-	}
-
 }
 
 ////////////////////////////////////////
@@ -938,7 +1082,7 @@ ParamGroup : List {
 
 ParamPreset {
 	classvar <lib;
-	var <libkey;
+	var <key;
 	var <group;
 
 	*initClass {
@@ -963,17 +1107,17 @@ ParamPreset {
 
 	init { arg defkey, xgroup;
 		//xgroup.debug("hhhhhhhhhh");
-		libkey = defkey;
+		key = defkey;
 		group = ParamGroup(xgroup);
-		if(Archive.global.at(\ParamPreset, libkey).isNil) {
+		if(Archive.global.at(\ParamPreset, key).isNil) {
 			this.saveArchive;
 		} {
 			this.loadArchive;
 		};
 	}
 
-	getPreset { arg key=\default;
-		^group.getPreset(key);
+	getPreset { arg name=\default;
+		^group.getPreset(name);
 	}
 
 	valueList {
@@ -984,7 +1128,7 @@ ParamPreset {
 		var archive = IdentityDictionary.new;
 		archive[\presets] = group.presets;
 		archive[\morphers] = group.morphers;
-		Archive.global.put(\ParamPreset, libkey, archive);
+		Archive.global.put(\ParamPreset, key, archive);
 	}
 
 	loadArchive {
@@ -995,27 +1139,27 @@ ParamPreset {
 	}
 
 	getArchive {
-		^Archive.global.at(\ParamPreset, libkey);
+		^Archive.global.at(\ParamPreset, key);
 	}
 
 
 	clear {
-		Archive.global.put(\ParamPreset, libkey, nil);
-		lib[libkey] = nil;
+		Archive.global.put(\ParamPreset, key, nil);
+		lib[key] = nil;
 	}
 
-	save { arg key;
-		group.save(key);
+	save { arg name;
+		group.save(name);
 		this.saveArchive;
 	}
 
-	load { arg key;
-		group.presets[key] = this.getArchive[\presets][key];
-		group.load(key);
+	load { arg name;
+		group.presets[name] = this.getArchive[\presets][name];
+		group.load(name);
 	}
 
-	erase { arg key;
-		group.erase(key);
+	erase { arg name;
+		group.erase(name);
 		this.saveArchive;
 	}
 
@@ -1058,8 +1202,10 @@ ParamValue {
 
 	set { arg val;
 		value = val;
+		this.changed(\set, [\value, val]);
 	}
 
+	// normGet and normSet are not used by morpher because of additional code on setter/getter
 	normGet {
 		^spec.unmap(this.get)
 	}
@@ -1094,7 +1240,7 @@ ParamMorpher : Param {
 
 	asLabel {
 		// TODO
-		"morph"
+		^(key ? group.key ? presets.asString)
 	}
 
 	set { arg val;
@@ -1116,6 +1262,14 @@ ParamMorpher : Param {
 
 	get {
 		^this.wrapper.get;
+	}
+
+	normGet {
+		^this.spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(this.spec.map(val))
 	}
 }
 
@@ -1190,6 +1344,7 @@ XEnvelopeView : QEnvelopeView {
 	var rawGrid;
 	var autoTimeScale = true;
 	var <totalDur = 8;
+	var <loopNode, <releaseNode;
 
 	curves {
 		^curves
@@ -1243,6 +1398,8 @@ XEnvelopeView : QEnvelopeView {
 		var times = [0] ++ env.times.integrate;
 		this.valueXY = [times, env.levels];
 		this.curves = env.curves;
+		loopNode = env.loopNode;
+		releaseNode = env.releaseNode;
 	}
 
 	grid_ { arg val;
@@ -1272,7 +1429,7 @@ XEnvelopeView : QEnvelopeView {
 		times = times.differentiate;
 		levels = val[1];
 		curves = this.curves;
-		env = Env.new(levels, times, curves);
+		env = Env.new(levels, times, curves, releaseNode, loopNode);
 		^env
 	}
 
@@ -1283,6 +1440,7 @@ XEnvelopeView : QEnvelopeView {
 	mapParam { arg param;
 		param.mapSlider(this, { arg self;
 			var val = self.valueXY;
+			// prevent the first node from moving
 			if( val[0][0] != 0) {
 				val[0][0] = 0;
 				self.valueXY = val;
@@ -1478,7 +1636,8 @@ XSimpleButton : QButton {
 					bus.setn(val);
 				} {
 					bus.set(val);
-				}
+				};
+				this.changed(\set, [key, val]);
 			} {
 				this.set(key, this.nestOn(val))
 			};

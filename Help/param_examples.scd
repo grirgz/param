@@ -21,7 +21,7 @@ Pdef(\plop, Pbind(
 	\out, BusDef(\fx1),
 	\legato, 0.1,
 	\dur, 1,
-	\amp, 0.1
+	\amp, 0.6
 ));
 
 Ndef(\echo, { arg freq=200, pan=0, amp=0.1;

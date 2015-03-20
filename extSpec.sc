@@ -86,6 +86,7 @@ XEnvSpec : Spec {
 	var <default;
 	var <size;
 	var <isMonoSpec;
+	var <type=\default;
 
 	*new { arg levels, times, curves, default;
 		var size;
@@ -132,6 +133,41 @@ XEnvSpec : Spec {
 		};
 
 		^super.newCopyArgs(levels, times, curves, default, size, isMonoSpec)
+	}
+
+	*adsr { arg attack, decay, sustain, release;
+		var inst;
+		var zerospec = ControlSpec(0,0,\lin);
+		inst = this.new([ zerospec, peak, sustain, zerospec], [attack, decay, release]);
+		^inst
+	}
+
+	*dadsr { arg delay, attack, decay, sustain, release;
+
+	}
+
+	*asr {
+
+	}
+
+	*perc {
+
+	}
+
+	*triangle {
+
+	}
+
+	*sine {
+
+	}
+
+	*linen {
+
+	}
+
+	*cutoff {
+
 	}
 
 	map { arg val, ignoreCurves=true;
@@ -231,6 +267,41 @@ XEnvSpec : Spec {
 	
 }
 
+XGateSpec : Spec {
+	*new {
+		^super.new(0,1,\lin,1,0);
+	}
+}
+
+XTrigSpec : Spec {
+	*new {
+		^super.new(0,1,\lin,1,0);
+	}
+}
+
+XBufferSpec : Spec {
+
+}
+
+XSampleSpec : XBusSpec {
+
+}
+
+XWavetableSpec : XBusSpec {
+
+}
+
+XBusSpec : Spec {
+
+}
+
+XInBusSpec : Spec {
+
+}
+
+XOutBusSpec : Spec {
+
+}
 
 
 // ~a = XArraySpec( \freq.asSpec ! 15  ) // array of size 15
