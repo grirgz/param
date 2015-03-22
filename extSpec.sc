@@ -135,7 +135,7 @@ XEnvSpec : Spec {
 		^super.newCopyArgs(levels, times, curves, default, size, isMonoSpec)
 	}
 
-	*adsr { arg attack, decay, sustain, release;
+	*adsr { arg attack, decay, sustain, release, peak;
 		var inst;
 		var zerospec = ControlSpec(0,0,\lin);
 		inst = this.new([ zerospec, peak, sustain, zerospec], [attack, decay, release]);

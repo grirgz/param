@@ -57,6 +57,10 @@ Ndef(\ndef_array, { arg pan=0, amp=0.1;
 ~p.normSet([0.5,0.2,0.4]);
 ~p.normSet([0.5,0.2,0.4]); 
 
+~mp = Param(Ndef(\ndef_array), \freq -> 1, \freq);
+~mp.edit
+~mp = Param(Ndef(\ndef_array), \freq -> 1, XArraySpec(\freq!3)); // don't work
+
 ~p.edit
 
 ~makegui.({ ~p.asView; });
@@ -84,6 +88,12 @@ Ndef(\ndef_env, { arg pan=0, amp=0.1;
 ~p.normGet;
 ~p.normGet.asCompileString
 ~p.normSet(Env([0.4,0.200,0.7,0.5],[0.2,0.4,0.6]));
+
+~mp = Param(Ndef(\ndef_env), \freqenv -> \levels -> 1, \freq);
+~mp = Param(Ndef(\ndef_env), \freqenv -> \times -> 1, ControlSpec(0,2,\lin));
+~mp.edit
+
+~p.edit
 
 ~makegui.({ ~p.asView; });
 

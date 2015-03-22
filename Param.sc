@@ -2,6 +2,11 @@
 Param {
 	var <wrapper;
 	var init_args;
+	classvar <>defaultSpec;
+
+	*initClass {
+		defaultSpec = \widefreq.asSpec;
+	}
 
 	*new  { arg ...args;
 		^super.new.init(args)
@@ -52,31 +57,38 @@ Param {
 			Ndef, {
 				switch(property.class,
 					Association, {
+						"Ndef: an asso".debug;
 						switch(property.key.class,
-							Association, {
+							Association, { // index of ((\adsr -> \levels) -> 0)
 								var subpro = property.key.value;
 								var idx = property.value;
+								"Ndef: a double asso".debug;
 								args[1] = property.key.key;
 								(args++[subpro, idx]).debug("NdefParamEnvSlot args");
 								wrapper = NdefParamEnvSlot(*args++[subpro, idx]);
 							},
-							// an env segment name
-							Symbol {
-								// need to get spec, but spec is determined after wrapper creation :(
-
-
-							}
-							// else: an index
 							{
-								var idx;
-								args[1] = property.key;
-								idx = property.value;
-								(args++[idx]).debug("NdefParamSlot args");
-								wrapper = NdefParamSlot(*args++[idx]);
+								"Ndef: a simple asso".debug;
+								switch(property.value, 
+									Symbol, { // env named segment: (\adsr -> \sustain) 
+										// need to get spec, but spec is determined after wrapper creation :(
+										"Ndef: env named segment".debug;
+									},
+									// else: an index into an array: (\delaytab -> 0)
+									{ 
+										var idx;
+										"Ndef: an index into an array".debug;
+										args[1] = property.key;
+										idx = property.value;
+										(args++[idx]).debug("NdefParamSlot args");
+										wrapper = NdefParamSlot(*args++[idx]);
+									}
+
+								)
 							}
 						);
 					},
-					Symbol, {
+					Symbol, { // a simple param : \freq
 						wrapper = NdefParam(*args);
 					}
 				);
@@ -438,6 +450,33 @@ Param {
 		^spec
 	}
 
+	*toNdefSpec { arg spec, argName, default_spec=\widefreq;
+		if(spec.isNil, {
+			if( argName.asSpec.notNil, {
+				spec = argName.asSpec;
+			}, {
+				spec = default_spec.asSpec;
+			});
+		});
+		^spec
+	}
+
+	*getSynthDefSpec { arg argName, defname=nil;
+		var val;
+		var rval;
+		val = SynthDescLib.global.synthDescs[defname];
+		if(val.notNil) {
+			val = val.metadata;
+			if(val.notNil) {
+				val = val.specs;
+				if(val.notNil) {
+					rval = val[argName];
+				}
+			}
+		};
+		^rval;
+	}
+
 	*toSynthDefSpec { arg spec, argName, defname=nil, default_spec=\widefreq;
 		if(spec.isNil) {
 			var val;
@@ -510,13 +549,35 @@ NdefParam : BaseParam {
 		key = obj.key;
 	}
 
+	valueToSpec { arg val, default_spec=\widefreq;
+		if(val.isSequenceableCollection) {
+			XArraySpec.new(default_spec.asSpec)
+		} {
+			default_spec.asSpec
+		}
+	}
+
 	// retrieve default spec if no default spec given
 	toSpec { arg sp;
 		sp.debug("sp2");
-		sp = sp ? target.getSpec(property);
-		sp.debug("sp3");
-		sp = Param.toSpec(sp, property);
-		sp.debug("sp4");
+		sp = 
+			// param arg
+			sp ?? {
+				// halo
+				target.getSpec(property) ?? {
+					// arg name in Spec
+					property.asSpec ?? {
+						// default value
+						var defval = target.get(property);
+						if(defval.notNil) {
+							this.valueToSpec(defval, Param.defaultSpec)
+						} {
+							// default spec
+							Param.defaultSpec
+						}
+					};
+				};
+			};
 		^sp.asSpec;
 	}
 
@@ -563,7 +624,11 @@ NdefParamSlot : NdefParam {
 	}
 
 	spec {
-		spec.at(index);
+		if(spec.class == XArraySpec) {
+			^spec.at(index);
+		} {
+			^spec
+		}
 	}
 
 	set { arg val;
@@ -591,7 +656,7 @@ NdefParamEnvSlot : NdefParam {
 	}
 
 	asLabel {
-		^"Ndef % % %%".format(target.key, this.property, subproperty[0], index)
+		^"Ndef % % %%".format(target.key, this.property, subproperty.asString[0], index)
 	}
 
 	ndefParamEnvSlotInit { arg subpro, idx;
@@ -600,11 +665,15 @@ NdefParamEnvSlot : NdefParam {
 	}
 
 	spec {
-		spec.perform(subproperty).at(index);
+		if(spec.class == XEnvSpec) {
+			^spec.perform(subproperty).at(index);
+		} {
+			^spec
+		}
 	}
 
 	set { arg val;
-		var vals = super.get;
+		var vals = super.get.asEnv;
 		var lvals = vals.perform(subproperty);
 		lvals[index] = val;
 		vals.perform(subproperty.asSetter, lvals);
@@ -612,7 +681,7 @@ NdefParamEnvSlot : NdefParam {
 	}
 
 	get {
-		var vals = super.get;
+		var vals = super.get.asEnv;
 		^vals.perform(subproperty)[index];
 	}
 }
@@ -643,7 +712,7 @@ PdefParamEnvSlot : PdefParam {
 	}
 
 	set { arg val;
-		var vals = super.get;
+		var vals = super.get.asEnv;
 		var lvals = vals.perform(subproperty);
 		lvals[index] = val;
 		vals.perform(subproperty.asSetter, lvals);
@@ -652,7 +721,7 @@ PdefParamEnvSlot : PdefParam {
 
 	get {
 		var vals = super.get;
-		^vals.perform(subproperty)[index];
+		^vals.asEnv.perform(subproperty)[index];
 	}
 }
 
@@ -712,9 +781,45 @@ PdefParam : BaseParam {
 
 	// retrieve default spec if no default spec given
 	*toSpec { arg xspec, xtarget, xproperty;
-		var instr = PdefParam.instrument(xtarget);
-		xspec = Param.toSynthDefSpec(xspec, xproperty, instr);
-		^xspec.asSpec;
+		var instr;
+		var sp;
+		sp =
+			// Param arg
+			xspec ?? {
+				// halo
+				xtarget.getSpec(xproperty) ?? {
+					var mysp;
+					// instrument metadata spec
+					instr = PdefParam.instrument(xtarget);
+					if(instr.notNil) {
+						mysp = Param.getSynthDefSpec(xproperty, instr);
+						// arg name in Spec
+						mysp ?? {
+							// arg name in Spec
+							xproperty.asSpec ?? {
+								// default value in SynthDef
+								Param.getSynthDefDefaultValue(xproperty, instr) ?? {
+									Param.defaultSpec
+								}
+							}
+						}
+					} {
+						// arg name in Spec
+						xproperty.asSpec ?? {
+							// default value in Pdef
+							var myval = xtarget.getVal(xproperty);
+							if(myval.notNil) {
+								Param.valueToSpec(myval);
+							} {
+								// default spec
+								Param.defaultSpec
+							}
+						}
+					}
+				}
+
+			};
+		^sp.asSpec;
 	}
 
 	toSpec { arg spec;
@@ -735,6 +840,7 @@ PdefParam : BaseParam {
 
 	get {
 		var val = target.getVal(property);
+		// FIXME: why this seems redondant with toSpec ?
 		if(val.isNil) {
 			var instr = this.instrument;
 			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec.default };
