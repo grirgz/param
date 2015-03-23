@@ -37,6 +37,10 @@ XArraySpec : Spec {
 		^size
 	}
 
+	storeArgs {
+		^[array, default]
+	}
+
 	at { arg idx;
 		^array[idx];
 	}
@@ -133,6 +137,10 @@ XEnvSpec : Spec {
 		};
 
 		^super.newCopyArgs(levels, times, curves, default, size, isMonoSpec)
+	}
+
+	storeArgs {
+		^[levels, times, curves, default]
 	}
 
 	*adsr { arg attack, decay, sustain, release, peak;

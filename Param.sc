@@ -439,6 +439,15 @@ Param {
 
 	/////////// Spec
 
+	*valueToSpec { arg val, default_spec;
+		default_spec = default_spec ? defaultSpec;
+		if(val.isSequenceableCollection) {
+			^XArraySpec.new(default_spec.asSpec!val.size)
+		} {
+			^default_spec.asSpec
+		}
+	}
+
 	*toSpec { arg spec, argName, default_spec=\widefreq;
 		if(spec.isNil, {
 			if( argName.asSpec.notNil, {
@@ -549,14 +558,6 @@ NdefParam : BaseParam {
 		key = obj.key;
 	}
 
-	valueToSpec { arg val, default_spec=\widefreq;
-		if(val.isSequenceableCollection) {
-			XArraySpec.new(default_spec.asSpec)
-		} {
-			default_spec.asSpec
-		}
-	}
-
 	// retrieve default spec if no default spec given
 	toSpec { arg sp;
 		sp.debug("sp2");
@@ -570,7 +571,7 @@ NdefParam : BaseParam {
 						// default value
 						var defval = target.get(property);
 						if(defval.notNil) {
-							this.valueToSpec(defval, Param.defaultSpec)
+							Param.valueToSpec(defval, Param.defaultSpec)
 						} {
 							// default spec
 							Param.defaultSpec
@@ -683,45 +684,6 @@ NdefParamEnvSlot : NdefParam {
 	get {
 		var vals = super.get.asEnv;
 		^vals.perform(subproperty)[index];
-	}
-}
-
-PdefParamEnvSlot : PdefParam {
-	var <index;
-	var <subproperty;
-
-	*new { arg obj, meth, sp, subproperty, index;
-		var inst;
-		obj.debug("obj");
-		inst = super.new(obj, meth, sp);
-		inst.pdefParamEnvSlotInit(subproperty, index);
-		^inst;
-	}
-
-	asLabel {
-		^"Pdef % % %%".format(target.key, this.property, subproperty.asString[0], index)
-	}
-
-	pdefParamEnvSlotInit { arg subpro, idx;
-		index = idx;
-		subproperty = subpro;
-	}
-
-	spec {
-		spec.perform(subproperty).at(index);
-	}
-
-	set { arg val;
-		var vals = super.get.asEnv;
-		var lvals = vals.perform(subproperty);
-		lvals[index] = val;
-		vals.perform(subproperty.asSetter, lvals);
-		super.set(vals);
-	}
-
-	get {
-		var vals = super.get;
-		^vals.asEnv.perform(subproperty)[index];
 	}
 }
 
@@ -892,7 +854,11 @@ PdefParamSlot : PdefParam {
 	}
 
 	spec {
-		spec.at(index);
+		if(spec.class == XArraySpec) {
+			^spec.at(index);
+		} {
+			^spec
+		}
 	}
 
 	set { arg val;
@@ -906,6 +872,50 @@ PdefParamSlot : PdefParam {
 		^vals[index];
 	}
 }
+
+PdefParamEnvSlot : PdefParam {
+	var <index;
+	var <subproperty;
+
+	*new { arg obj, meth, sp, subproperty, index;
+		var inst;
+		obj.debug("obj");
+		inst = super.new(obj, meth, sp);
+		inst.pdefParamEnvSlotInit(subproperty, index);
+		^inst;
+	}
+
+	asLabel {
+		^"Pdef % % %%".format(target.key, this.property, subproperty.asString[0], index)
+	}
+
+	pdefParamEnvSlotInit { arg subpro, idx;
+		index = idx;
+		subproperty = subpro;
+	}
+
+	spec {
+		if(spec.class == XEnvSpec) {
+			^spec.perform(subproperty).at(index);
+		} {
+			^spec
+		}
+	}
+
+	set { arg val;
+		var vals = super.get.asEnv;
+		var lvals = vals.perform(subproperty);
+		lvals[index] = val;
+		vals.perform(subproperty.asSetter, lvals);
+		super.set(vals);
+	}
+
+	get {
+		var vals = super.get;
+		^vals.asEnv.perform(subproperty)[index];
+	}
+}
+
 
 ////////////////////////////////////////
 
