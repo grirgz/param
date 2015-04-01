@@ -1759,6 +1759,21 @@ XSimpleButton : QButton {
 			};
 		}
 	}
+
+	asParamGroup { arg instrument, notes=true;
+		// TODO: get synthdef parameters and generate a ParamGroup with all parameters
+		// the second parameter (find a better name) is for adding \dur and \legato
+	
+	}
+}
+
++Ndef {
+	asParamGroup { arg instrument, notes=true;
+		// TODO: get Ndef parameters and generate a ParamGroup with all parameters
+		// the second parameter (find a better name) is for adding volume
+	
+	}
+
 }
 
 /////////////////////////// 3.6.7
