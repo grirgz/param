@@ -1,0 +1,41 @@
+TITLE:: Param
+summary:: Control sound objects parameters with GUI and MIDI
+categories:: Control, GUI, MIDI
+related:: Classes/ParamMorpher, Classes/ParamGroup, Classes/ParamGroupDef, Classes/ParamMorpherDef, Tutorial/Param tutorial
+
+DESCRIPTION::
+Param is an abstraction to a sound object parameter (Ndef, Pdef, ...) which can easily be mapped to a GUI object and MIDI control. 
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new Param instance
+
+ARGUMENT:: object
+An object to control
+
+ARGUMENT:: property
+The parameter name to control. eg: \freq.
+If the parameter is an array, you can specify the slot index to control using code::\freqarray -> index::
+If the parameter is an envelope, you can specify the level or time index to control using code::\freqenv -> \levels -> index:: and code::\freqenv -> \times -> index::
+
+ARGUMENT:: spec
+An optional spec used to map the value from MIDI or GUI to the range of the parameter. If ommited, the spec is retrieved from the controlled object
+
+returns:: A Param instance
+
+examples::
+
+code::
+(
+Ndef(\ndef_scalar, { arg freq=200, pan=0, amp=0.1;
+	var sig;
+	sig = SinOsc.ar(freq);
+	sig = Pan2.ar(sig, pan, amp);
+}).play;
+);
+
+~p = Param(Ndef(\ndef_scalar), \freq, \freq.asSpec); 
+
+~p.set(300);
+::

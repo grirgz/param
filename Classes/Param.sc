@@ -939,6 +939,7 @@ MIDIMap {
 	// path type: [msgNum, chan, msgType, srcID]
 	
 	*initClass {
+		MultiLevelIdentityDictionary.initClass;
 		responders = MultiLevelIdentityDictionary.new;
 		responders_param = MultiLevelIdentityDictionary.new;
 		mapped_views = MultiLevelIdentityDictionary.new;
@@ -1217,6 +1218,7 @@ ParamPreset {
 	var <group;
 
 	*initClass {
+		IdentityDictionary.initClass;
 		lib = IdentityDictionary.new
 	}
 
@@ -1434,6 +1436,7 @@ CachedBus : Bus {
 	classvar cache;
 
 	*initClass {
+		IdentityDictionary.initClass;
 		cache = IdentityDictionary.new;
 		cache[\audio] = IdentityDictionary.new;
 		cache[\control] = IdentityDictionary.new;
