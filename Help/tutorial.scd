@@ -1,0 +1,538 @@
+Param Quark for SuperCollider
+
+summary:
+- create a param 
+- control with GUI
+- control with MIDI
+- param group
+
+
+The goal of this quark is to ease the controlling of sounds objects parameters (Ndef, Pdef, etc) using GUI, MIDI, and OSC.
+
+For example, you want to control the freq argument of the following Ndef, you can use Ndef(\ndef_scalar).set(\freq, 300). Now if you want to control it with a midi controller :
+
+```
+(
+Ndef(\ndef_scalar, { arg freq=200, pan=0, amp=0.1;
+	var sig;
+	sig = SinOsc.ar(freq);
+	sig = Pan2.ar(sig, pan, amp);
+}).play;
+);
+
+Param is an object which point to a parameter of a Ndef, Pdef, bus or several other objects.
+The first argument is the object to be controlled and the second is the name of the argument you want to control
+The third argument is a spec, it's optional and if you don't give a spec, Param will search the spec in the controlled object.
+The spec is used to convert the values from the midi controller which goes from 0 to 127 to the specified range, here with freq, 20 to 20000.
+
+/////////// create a Param : a reference to a Ndef parameter
+
+~p = Param(Ndef(\ndef_scalar), \freq, \freq.asSpec);
+
+now ~p can be used as a wrapper to set the \freq argument of the Ndef:
+~p.set(300); // Equivalent of Ndef(\ndef_scalar).set(\freq, 300)
+
+you can also set the normalized value, which is from 0 to 1, this value will be mapped to the real value using the spec
+
+~p.normSet(0.3)
+
+to see what is the current value, use .get:
+
+~p.get;
+~p.normGet; // exists also in normalized form
+
+Note that Param is stateless since the value is stored in the pointed object, you are not required to hold it in a variable, you can always recreate it when needed:
+
+Param(Ndef(\ndef_scalar), \freq, \freq).set(400);
+Param(Ndef(\ndef_scalar), \freq, \freq).get; // the value is 400, even if we recreated the Param object
+
+/////////// controlling with a GUI
+
+Now, you want to control this parameter using a GUI slider, you can use the method mapParam to map a Param into a GUI object. This will automatically add an action to the slider which set the parameter when you move the slider, and a SimpleController which watch when the parameter change and update the slider.
+
+~p = Param(Ndef(\ndef_scalar), \freq, \freq.asSpec);
+
+(
+	var slider, win;
+	win = Window.new;
+	slider = Slider.new;
+	win.layout = HLayout(slider);
+	slider.mapParam(~p); // map the param ~p to the slider
+	win.front;
+)
+
+There are some convenient methods for creating the GUI object for you:
+
+(
+	var slider, win;
+	win = Window.new;
+	slider = ~p.asSlider; // create and map the slider for you
+	win.layout = HLayout(slider);
+	win.front;
+)
+
+see also ".asKnob" for a Knob, or ".asView" which choose the GUI object for you automatically (because the Param may be an array or an enveloppe)
+
+There is also a default GUI for quickly editing a Param:
+
+~p.edit;
+
+
+If you call mapParam on a StaticText, it will show the value of the parameter. There is also ~p.asStaticText.
+If you call mapParamLabel on a StaticText, it will show the name of the parameter. There is also ~p.asStaticTextLabel.
+
+(
+	var slider, win;
+	win = Window.new;
+	win.layout = VLayout(
+		~p.asStaticTextLabel,
+		~p.asKnob,
+		~p.asStaticText,
+		~p.asTextField,
+	);
+	win.front;
+)
+
+///////////// controlling with MIDI
+
+If you want to control the parameter using a MIDI controller, you can use the class MIDIMap. this will create automatically a MIDI responder which update the parameter when receiving MIDI messages.
+
+MIDIMap([13], ~p); // map the param to the MIDI CC number 13 
+
+The format of the array is : [msgNum, chan, msgType, srcID], this is the same arguments than MIDIFunc or MIDIdef, if you don't provide value for chan or srcID or set it to nil, the responder will listen to all channel or srcID. The default msgType is \control (cc);
+
+if you run the same code with another Param, the old MIDI responder is freed and the new take its place.
+MIDIMap([13], Param(Ndef(\ndef_scalar), \pan));
+
+It's more convenient to use symbol instead of typing the MIDI number everytime. You can define them once in your startup file:
+
+MIDIMap.define(0, // 0 is the channel, you can also use [channel, device_id]
+	\k1, 13, // now the \k1 mean the cc number 13, channel 0
+	\k2, 14, // knob2
+	\n1, \note -> 41 // for message of type \noteOn with number 41
+);
+
+You can then use it like this:
+
+MIDIMap(\k1, Param(Ndef(\ndef_scalar), \pan));
+
+MIDIMap can also take a function in argument to run arbitrary code. If \n1 is some button on your controller, you can use it to remap your knobs
+
+MIDIMap(\n1, {
+	MIDIMap(\k1, ~p); // pushing the MIDI \n1 button will map the Param in variable ~p to the first MIDI knob
+})
+
+Remove a MIDI mapping:
+
+MIDIMap.free(\k1)
+
+/////////////////////////// ParamGroup
+
+ParamGroup is just a list of Param's
+
+(
+~pg = ParamGroup([
+	Param(Ndef(\ndef_scalar), \freq),
+	[Ndef(\ndef_scalar), \pan], // if you put an array, it's converted to a Param automatically
+	[Ndef(\ndef_scalar), \amp],
+]);
+)
+
+There is some useful methods defined for ParamGroup. You can edit them, ParamGroup build automatically a GUI for you:
+
+~pg.edit;
+
+You can save presets
+
+~pg.save(\mypreset1);
+
+And load them:
+
+~pg.load(\mypreset1);
+
+/////////// ParamGroupDef
+
+The presets are saved inside the ParamGroup object, so if you lose the reference to the ParamGroup, you lose your presets.
+
+You can avoid that by defining a key to access your group with ParamGroupDef:
+
+
+(
+ParamGroupDef(\mygroup, [
+	[Ndef(\ndef_scalar), \freq],
+	[Ndef(\ndef_scalar), \pan], 
+	[Ndef(\ndef_scalar), \amp],
+]);
+)
+
+Now you can retrieve your group with:
+
+ParamGroupDef(\mygroup)
+
+
+There is an additional benefit: when saving a preset, it's automatically saved on your hard drive using Archive. So you can reload a preset even after restarting Supercollider
+
+ParamGroupDef(\mygroup).save(\mypreset1)
+
+
+/////////// morphing
+
+You can morph your presets using ParamMorpher, it take a ParamGroup and a list of preset to morph from
+
+~pg = ParamGroup([
+	[Ndef(\ndef_scalar), \freq],
+	[Ndef(\ndef_scalar), \pan], 
+	[Ndef(\ndef_scalar), \amp],
+]);
+
+// first lets define some presets 
+~pg.edit // change the values before saving each new preset else morphing is useless
+~pg.save(\preset1);
+~pg.edit // change the values before saving each new preset else morphing is useless
+~pg.save(\preset2);
+~pg.edit // change the values before saving each new preset else morphing is useless
+~pg.save(\preset3);
+
+~m = ParamMorpher( ~pg,
+	[
+		\mypreset1,
+		\mypreset2,
+		\mypreset3,
+	]
+);
+
+There is 3 presets, so the value to set range from 0 to 2, 0 is the first preset (\mypreset1), 1 the second and 2 the third. 0.5 is the morphing between preset 0 and preset 1
+
+~m.set(1); 
+~m.set(1.5); 
+~m.edit; // morph between presets using the default GUI
+
+~m.normSet(0.3) // or just use normSet to set the value ranging from 0 to 1, whatever the number of preset is in the ParamMorpher
+
+~m is like a Param, you can control it in your GUI or MIDI controller
+
+(
+	var slider, win;
+	win = Window.new;
+	slider = Slider.new;
+	win.layout = HLayout(slider);
+	slider.mapParam(~m); // map the morpher ~m to the slider
+	win.front;
+)
+
+MIDIMap(\k1, ~m);
+
+If your group is a ParamGroupDef, you can just use its name
+
+(
+ParamGroupDef(\mygroup, [
+	[Ndef(\ndef_scalar), \freq],
+	[Ndef(\ndef_scalar), \pan], 
+	[Ndef(\ndef_scalar), \amp],
+]);
+
+~m = ParamMorpher(\mygroup,
+	[
+		\mypreset1,
+		\mypreset2,
+		\mypreset3,
+	]
+);
+)
+
+
+Just like ParamGroupDef, there is a ParamMorpherDef:
+
+ParamMorpherDef(\mymorpher, \mygroup, [
+		\mypreset1,
+		\mypreset2,
+		\mypreset3,
+]);
+
+ParamMorpherDef(\mymorpher).normSet(0.3);
+ParamMorpherDef(\mymorpher).edit;
+
+///////////////////// working with patterns
+
+First define some synthdef and a Pdef controlling it
+
+(
+SynthDef(\synthdef_scalar, { arg out=0, amp=0.1, gate=1, pan=0, freq=200;
+	var sig;
+	sig = SinOsc.ar(freq);
+	sig = sig * EnvGen.ar(Env.adsr(0.01,0.1,0.8,0.1),gate,doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}).add;
+
+Pdef(\pdef_scalar, Pbind(
+	\instrument, \synthdef_scalar,
+	\degree, Pseq([0],inf),
+	\dur, 1,
+	\amp, 0.1
+)).play;
+);
+
+Working with Pdef is the same than working with Ndef, the method explained above are still accessible
+
+~p = Param(Pdef(\pdef_scalar), \freq, \freq); // define a Param pointing to a Pdef parameter
+
+~p.set(300); // work like any Param
+
+Internally, this is the equivalent of running
+
+Pdef(\pdef_scalar).set(\freq, 300)
+
+////////////// Pattern and Pdef pitfals
+
+There is two thing to know when using Pdef, which are not related to Param
+
+///// overriding
+
+If the key is already defined in the pattern, in this example \amp, then it will override any value you set manually
+
+Pdef(\pdef_scalar).set(\amp, 0.4); // do nothing because amp is already defined to 0.1 in your pattern
+
+The correct way is using an empty Pdef and chaining it to your pattern:
+
+Pdef(\my_pattern,
+	Pdef(\pdef_scalar, Pbind()) // don't forget to initialize it to and empty Pbind or else the pattern will stop immediatly
+	<>  // chaining
+	Pbind( // now you can provide your custom pattern
+		\instrument, \synthdef_scalar,
+		\degree, Pseq([0],inf),
+		\dur, 1,
+		\amp, 0.1
+	)
+).play;
+
+Pdef(\pdef_scalar).set(\amp, 0.4); // now this work
+Param(Pdef(\pdef_scalar), \amp).set(0.4) // Param equivalent
+
+Pdef(\pdef_scalar).unset(\amp); // go back to defined amp in your pattern: 0.1
+
+///////// static parameters
+
+You should have noticed that when you set an argument of the Pdef, the value change is not heard directly on running synth nodes, instead, when a a new note is played, it pick the current value of the parameter and remains fixed for the duration of the node.
+
+~p.edit; // change value when playing
+
+If you want to change to be immediate, you can put a Bus in your Pdef parameter, then set the bus to the desired value.
+
+Param try to ease this by providing a method to switch between desired behavior:
+
+Pdef(\pdef_scalar).setBusMode(\freq); // now freq is in bus mode
+
+~p.set(250); // now the change is immediate
+
+Pdef(\pdef_scalar).get(\freq); // you can see that \freq is a bus now
+
+~p.get; // but Param handle it transparently
+
+Pdef(\pdef_scalar).setBusMode(\freq, false); // disable bus mode
+
+~p.set(350); // change wait the next node
+
+/////////////////////////// Other parameters types
+
+Working with scalar values in SC is relatively easy even without Param, but using arrays or envelopes is more complicated. First there is no Spec equivalent for arrays or envelopes, so I created two new spec classes: XArraySpec and XEnvSpec
+
+Then you must know than when setting Pdef arrays or envelopes, contrary to Ndef, you must enclose it in bracket or else, Pbind will multi-channel-expand it to multple synth nodes. Param handle it transparently for you.
+
+Finally the EnvelopeView is not really suited for setting an enveloppe because there is .setEnv but no .getEnv and .setEnv always scale the envelope to fit the view. I created XEnvelopeView to overcome theses problems
+
+////////////// Working with arrays
+
+To define an array argument in a SynthDef or Ndef, you must use the syntax \argname.kr( default_value ) where default_value is an array. Note that the array is fixed size, don't try to set a bigger array or there will be undefined behavior
+
+(
+Ndef(\ndef_array, { arg pan=0, amp=0.1;
+	var sig;
+	sig = SinOsc.ar(\freqtab.kr(100!3));  // 100!3 is equivalent of [100,100,100], so an array of three values
+	sig = Pan2.ar(sig, pan, amp).mean;
+}).play;
+);
+
+To specify the spec of the argument, use XArraySpec. XArraySpec take an array of specs as argument, here, three \freq.asSpec (asSpec is called automatically).
+
+~p = Param(Ndef(\ndef_array), \freqtab, XArraySpec(\freq!3)); // define a Param pointing to the array
+
+~p.set([120,150,780]); // set the values of the array
+~p.get;
+~p.normSet([0.6,0.7,0.4]); // same methods as other Param
+
+The .edit method or .asView method create a MultiSliderView instead of a Knob because it's an array
+
+~p.edit;
+
+//////////// accessing individual values of the array
+
+On your MIDI controller, you just have knobs or sliders, so there must be a way to specify you want to control this particular slot of the array with this particular MIDI knob. You can do this using the syntax : argument_name -> array_index
+
+
+~mp = Param(Ndef(\ndef_array), \freqtab -> 1, \freq); // control the second slot of the array
+~mp.set(500);
+~mp.edit
+
+MIDIMap(\k1, ~mp); // map the knob \k1 to the second slot of the array;
+
+////////////// Working with envelopes
+
+Internally, an envelope is just an array with a special format, the syntax is the same as for array, but with an envelope in the default value instead of an array
+
+(
+Ndef(\ndef_env, { arg pan=0, amp=0.1;
+	var sig;
+	sig = SinOsc.ar( 
+		EnvGen.ar( 
+			\freqenv.kr(Env([150,550,250,1000],[0.1,0.8,0.3])), // here is the env argument with default envelope
+			Impulse.kr(1/2),
+			doneAction:0
+		)
+	);
+	sig = Pan2.ar(sig, pan, amp);
+}).play;
+);
+
+Ndef(\ndef_env).get(\freqenv); // here you see that this is just an array
+
+I've added a conveniant method for converting it back to an envelope:
+
+Ndef(\ndef_env).get(\freqenv).asEnv;
+Ndef(\ndef_env).get(\freqenv).asEnv.asCompileString; // use asCompileString to see the content of the envelope
+
+Now let's define a Param pointing to this Ndef envelope argument. We specify the spec using XEnvSpec, the arguments are:
+
+XEnvSpec( array_of_levels_specs, array_of_times_specs)
+
+It's important to tell XEnvSpec the size of the envelope, because, as arrays, the size is fixed in SynthDef. the second argument of XEnvSpec is not required to be an array, if not, XEnvSpec will expand it automatically to match the size of the levels array. The curve argument is not provided because it's not mapped like levels or times
+
+It's also important to define the spec of the envelope argument, else, Param has no way to know it's an envelope and not a regular array since they are the same internally.
+
+~p = Param(Ndef(\ndef_env), \freqenv, XEnvSpec(\freq!4, ControlSpec(0,2,\lin,0,0.1)));
+
+Same methods as always:
+
+~p.get; // asEnv is called transparently unlike Ndef.get
+~p.get.asCompileString; // see content of the env
+
+~p.set( Env([1000,200,501,3200],[0.2,0.4,0.6]) );
+~p.normSet(Env([0.4,0.2,0.7,0.5],[0.2,0.4,0.6]));
+
+~p.edit; // default GUI
+
+/////////////////// Accessing individual values of the envelope
+
+To access individual values of the envelope, the syntax is:
+
+argument_name -> levels_or_times -> index
+
+~mp = Param(Ndef(\ndef_env), \freqenv -> \levels -> 1, \freq); // level of the second envelope point
+~mp = Param(Ndef(\ndef_env), \freqenv -> \times -> 1, ControlSpec(0,2,\lin)); // duration of the second envelope segment
+
+~mp.set(0.3); // it's a Param, same methods apply
+
+// you can see the envelope change in real time if you open the two GUI on your screen
+~mp.edit;
+~p.edit;
+
+
+/////////////////////////// default specs
+
+If you don't provide a spec in the third argument when creating a Param, it will try to get it from the Ndef of SynthDef, if not found, it will look up in the Spec using argument name, if not found it will use a default Spec. It will also use the default value to guess if it's a scalar spec or an Array spec (but there is no way to know if it's an envelope spec, so you must always specify it somewhere in this case)
+
+Setting specs in a Ndef:
+
+Ndef(\ndef_scalar).addSpec(\freq, ControlSpec(300,7000,\exp));
+Ndef(\ndef_scalar).addSpec(\pan, ControlSpec(-1,1,\lin));
+
+Setting specs in a SynthDef:
+
+SynthDef(\synthdef_scalar, { arg out=0, amp=0.1, gate=1, pan=0, freq=200;
+	var sig;
+	sig = SinOsc.ar(freq);
+	sig = sig * EnvGen.ar(Env.adsr(0.01,0.1,0.8,0.1),gate,doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	freq: ControlSpec(300,7000,\exp),
+	pan: ControlSpec(-1,1,\lin),
+))).add;
+
+For Param to find the SynthDef specs, it must know the SynthDef name. It will first look for the \instrument key if it's a Pbind but you can always tell it what it is with:
+
+Pdef(\pdef_scalar).addHalo(\instrument, \synthdef_scalar);
+
+Setting specs in a Pdef, this will override specs defined in the SynthDef:
+
+Pdef(\pdef_scalar).addSpec(\freq, ControlSpec(300,7000,\exp));
+Pdef(\pdef_scalar).addSpec(\pan, ControlSpec(-1,1,\lin));
+
+Setting specs with the Spec dictionary: if the spec is not found and the argument name is found in Spec, it will use it
+
+Spec.add(\myargument, ControlSpec(0,3,\lin)); // add to the Spec library
+
+Param(Ndef(\myndef), \myargument); // Param will use ControlSpec(0,3,\lin) as the spec
+
+Setting the default Param spec when every other method fails:
+
+Param.defaultSpec; // by default, it's \widefreq.asSpec
+Param.defaultSpec = ControlSpec(10,10000,\exp);
+
+
+///////////////////////////
+
+
+There is a shortcut method for showing a basic GUI:
+
+~p.edit; // create a basic GUI for this parameter
+
+This is useful for quickly control a parameter, but generally, you want to build a bigger GUI controlling multiples parameters. You can use the method ~p.asKnob to create a knob or a slider controlling the GUI.
+
+Here we create three knobs for controlling the three parameters of the Ndef
+
+(
+	w = Window.new;
+	w.layout = HLayout(
+		Param(Ndef(\ndef_scalar), \freq).asKnob,
+		Param(Ndef(\ndef_scalar), \pan).asKnob,
+		Param(Ndef(\ndef_scalar), \amp).asKnob,
+	);
+	w.front;
+)
+
+You can also use .asSlider to get a slider, or .asView as a general method. When you use .asView, if the parameter is a scalar (a simple value, not an array), it will create a Knob, if the parameter is an array, it will create a MultiSliderView
+
+(
+	w = Window.new;
+	w.layout = HLayout(
+		Param(Ndef(\ndef_scalar), \freq).asView,
+		Param(Ndef(\ndef_scalar), \pan).asSlider,
+		Param(Ndef(\ndef_scalar), \amp).asSlider.orientation_(\horizontal),
+	);
+	w.front;
+)
+
+Since theses methods return a GUI object, you can then manipulate it, "orientation" is a method of Slider.
+
+Sometime, you want to create the GUI objects yourself, for example when 
+
+// now the slider control the Ndef parameter \freq
+Slider.new.mapParam(~p);
+
+// now the midi control number 16 controls the Ndef parameter \freq
+MIDIMap([16], ~p); 
+
+// if you have a GUI with 8 sliders, you can simply send it the list of parameters you want to control:
+~mygui.set_params( [
+	[Pdef(\plop), \freq],
+	[Pdef(\plop), \lpfreq],
+	[Pdef(\plop), \rq],
+	[Ndef(\echo), \shift1],
+	[Ndef(\echo), \shift2],
+] )
+```
+
+The benefit is that is the same API for controlling Ndef, Pdef, Synth, Bus, ... and you can easily control arrays and enveloppes in the same way. Setting .action and updating of GUI, and freeing resources like MIDIFunc and buses are done for you in the background.
+
+This is the core idead of this quark, but it (will) have some other nices features, like presets and preset morphing.

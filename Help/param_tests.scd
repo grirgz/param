@@ -292,3 +292,7 @@ Pdef(\pdef_env, Pbind(
 ~p.spec
 
 
+//////////////// MIDI mapping functions
+
+
+MIDIMap(\record, {"hello".postln})

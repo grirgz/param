@@ -5,6 +5,8 @@ Param {
 	classvar <>defaultSpec;
 
 	*initClass {
+		Spec.initClass;
+		ControlSpec.initClass;
 		defaultSpec = \widefreq.asSpec;
 	}
 
@@ -380,6 +382,10 @@ Param {
 
 	asStaticTextLabel {
 		^StaticText.new.mapParamLabel(this);
+	}
+
+	asTextField {
+		^TextField.new.mapParam(this);
 	}
 
 	asEnvelopeView {
@@ -929,7 +935,8 @@ MIDIMap {
 	classvar <controls;
 	classvar <>permanent = true;
 
-	// path type: [srcID, msgType, chan, msgNum]
+	// NO THIS IS FALSE: path type: [srcID, msgType, chan, msgNum]
+	// path type: [msgNum, chan, msgType, srcID]
 	
 	*initClass {
 		responders = MultiLevelIdentityDictionary.new;
@@ -938,6 +945,45 @@ MIDIMap {
 		midivalues = MultiLevelIdentityDictionary.new;
 		controls = IdentityDictionary.new;
 		//params = Dictionary.new;
+	}
+
+	*new { arg key, param, blockmode;
+		var func;
+		var path = this.keyToPath(key);
+		var nilpath;
+		if(param.class != Function) {
+			param = param.asParam;
+		};
+		nilpath = path.collect({ arg x; if(x == \all) { nil } { x } }); // can't have nil has dict key
+		[key, path, nilpath, param].debug("key, path, nilpath, param");
+
+		func = { arg val, num, chan, src;
+			[key, path, nilpath, param].debug("key, path, nilpath, param");
+			val = val/127;
+			[val, num, chan, src].debug("key, path, nilpath, param");
+			if(blockmode.isNil) {
+				if(param.class == Function) {
+					param.value;
+				} {
+					Task({
+						param.normSet(val);
+						nil;
+					}).play(AppClock);
+					midivalues.put(*path++[val]);
+				}
+			};
+		};
+
+		if(responders.at(*path).notNil) {
+			responders.at(*path).free
+		};
+		responders.put(*path ++ [
+			MIDIFunc(func, nilpath[0], nilpath[1], nilpath[2], nilpath[3]).permanent_(permanent)
+			//params[param] =	params[param].add( path );
+		]);
+		responders_param.put(*path ++ [ param ]);
+		this.changed(\midimap, path, param);
+		this.updateViews(path, param);
 	}
 
 	*define { arg channel, defs;
@@ -992,37 +1038,6 @@ MIDIMap {
 		^path;
 	}
 
-	*new { arg key, param, blockmode;
-		var func;
-		var path = this.keyToPath(key);
-		var nilpath;
-		nilpath = path.collect({ arg x; if(x == \all) { nil } { x } }); // can't have nil has dict key
-		[key, path, nilpath, param].debug("key, path, nilpath, param");
-
-		func = { arg val, num, chan, src;
-			[key, path, nilpath, param].debug("key, path, nilpath, param");
-			val = val/127;
-			[val, num, chan, src].debug("key, path, nilpath, param");
-			if(blockmode.isNil) {
-				Task({
-					param.normSet(val);
-					nil;
-				}).play(AppClock);
-				midivalues.put(*path++[val]);
-			};
-		};
-
-		if(responders.at(*path).notNil) {
-			responders.at(*path).free
-		};
-		responders.put(*path ++ [
-			MIDIFunc(func, nilpath[0], nilpath[1], nilpath[2], nilpath[3]).permanent_(permanent)
-			//params[param] =	params[param].add( path );
-		]);
-		responders_param.put(*path ++ [ param ]);
-		this.changed(\midimap, path, param);
-		this.updateViews(path, param);
-	}
 
 	*unmap { arg param;
 		// TODO
