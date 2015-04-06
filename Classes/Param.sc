@@ -1212,7 +1212,7 @@ ParamGroup : List {
 
 }
 
-ParamPreset {
+ParamGroupDef {
 	classvar <lib;
 	var <key;
 	var <group;
@@ -1242,7 +1242,7 @@ ParamPreset {
 		//xgroup.debug("hhhhhhhhhh");
 		key = defkey;
 		group = ParamGroup(xgroup);
-		if(Archive.global.at(\ParamPreset, key).isNil) {
+		if(Archive.global.at(\ParamGroupDef, key).isNil) {
 			this.saveArchive;
 		} {
 			this.loadArchive;
@@ -1261,7 +1261,7 @@ ParamPreset {
 		var archive = IdentityDictionary.new;
 		archive[\presets] = group.presets;
 		archive[\morphers] = group.morphers;
-		Archive.global.put(\ParamPreset, key, archive);
+		Archive.global.put(\ParamGroupDef, key, archive);
 	}
 
 	loadArchive {
@@ -1272,12 +1272,12 @@ ParamPreset {
 	}
 
 	getArchive {
-		^Archive.global.at(\ParamPreset, key);
+		^Archive.global.at(\ParamGroupDef, key);
 	}
 
 
 	clear {
-		Archive.global.put(\ParamPreset, key, nil);
+		Archive.global.put(\ParamGroupDef, key, nil);
 		lib[key] = nil;
 	}
 

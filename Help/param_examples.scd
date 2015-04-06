@@ -112,8 +112,8 @@ Ndef(\echo).play;
 	win.front;
 	
 };
-ParamPreset(\mypreset, ~list);
-~makegui.(ParamPreset(\mypreset));
+ParamGroupDef(\mypreset, ~list);
+~makegui.(ParamGroupDef(\mypreset));
 Pdef(\plop).play;
 Ndef(\echo).play;
 
