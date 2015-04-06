@@ -130,13 +130,22 @@ The format of the array is : [msgNum, chan, msgType, srcID], this is the same ar
 if you run the same code with another Param, the old MIDI responder is freed and the new take its place.
 MIDIMap([13], Param(Ndef(\ndef_scalar), \pan));
 
+You can free it with:
+
+code::
+MIDIMap.free([13])
+::
+
 It's more convenient to use symbol instead of typing the MIDI number everytime. You can define them once in your startup file:
 
 code::
 MIDIMap.define(0, // 0 is the channel, you can also use [channel, device_id]
-	\k1, 13, // now the \k1 mean the cc number 13, channel 0
-	\k2, 14, // knob2
-	\n1, \note -> 41 // for message of type \noteOn with number 41
+	[
+		\k1, 13, // now the \k1 mean the cc number 13, channel 0
+		\k2, 14, // knob2
+		\b1, \note -> 41 // for message of type \noteOn with number 41
+		\b2, \note -> 42 // for message of type \noteOn with number 42
+	]
 );
 ::
 
@@ -146,13 +155,21 @@ code::
 MIDIMap(\k1, Param(Ndef(\ndef_scalar), \pan));
 ::
 
-MIDIMap can also take a function in argument to run arbitrary code. If \n1 is some button on your controller, you can use it to remap your knobs
+MIDIMap can also take a function in argument to run arbitrary code. If \b1 is some button on your controller, you can use it to remap your knobs. Here pushing first button map \freq and \pan on the two knobs, pushing second button map \amp and \detune on the two knobs.
 
 code::
-MIDIMap(\n1, {
-	MIDIMap(\k1, ~p); // pushing the MIDI \n1 button will map the Param in variable ~p to the first MIDI knob
-})
+MIDIMap(\b1, {
+	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \freq));
+	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \pan));
+});
+MIDIMap(\b2, {
+	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \amp));
+	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \detune));
+});
 ::
+
+You can also use it to show a GUI for your 
+
 
 Remove a MIDI mapping:
 
@@ -162,7 +179,7 @@ MIDIMap.free(\k1)
 
 section:: Grouping Params: ParamGroup
 
-ParamGroup is just a list of Param's
+ParamGroup is just a list of Param's, the main interest is saving and loading presets.
 
 code::
 (
@@ -192,6 +209,30 @@ code::
 ~pg.load(\mypreset1);
 ::
 
+A preset is just a list of values, you can see it with:
+
+code::
+~pg.getPreset(\mypreset1)
+::
+
+Or see the whole list of presets (which is just a dictionnary)
+
+code::
+~pg.presets
+::
+
+You can also erase a preset:
+
+code::
+~pg.erase(\mypreset1);
+::
+
+Or get the values of the current Param's in the group (this are the values saved when you call .save(\presetname))
+
+code::
+~pg.valuesList;
+::
+
 section:: ParamGroupDef
 
 The presets are saved inside the ParamGroup object, so if you lose the reference to the ParamGroup, you lose your presets.
@@ -218,7 +259,8 @@ ParamGroupDef(\mygroup)
 There is an additional benefit: when saving a preset, it's automatically saved on your hard drive using Archive. So you can reload a preset even after restarting Supercollider
 
 code::
-ParamGroupDef(\mygroup).save(\mypreset1)
+ParamGroupDef(\mygroup).save(\mypreset1); // save it
+ParamGroupDef(\mygroup).load(\mypreset1); // load it later
 ::
 
 
@@ -243,9 +285,9 @@ code::
 
 ~m = ParamMorpher( ~pg,
 	[
-		\mypreset1,
-		\mypreset2,
-		\mypreset3,
+		\preset1,
+		\preset2,
+		\preset3,
 	]
 );
 ::
@@ -279,7 +321,7 @@ If your group is a ParamGroupDef, you can just use its name
 
 code::
 (
-ParamGroupDef(\mygroup, [
+~pgd = ParamGroupDef(\mygroup, [
 	[Ndef(\ndef_scalar), \freq],
 	[Ndef(\ndef_scalar), \pan], 
 	[Ndef(\ndef_scalar), \amp],
@@ -287,23 +329,31 @@ ParamGroupDef(\mygroup, [
 
 ~m = ParamMorpher(\mygroup,
 	[
-		\mypreset1,
-		\mypreset2,
-		\mypreset3,
+		\preset1,
+		\preset2,
+		\preset3,
 	]
 );
 )
+
+// you must redefine the presets because this is another ParamGroup, but for simplicity, let's just copy the presets of the previous group
+ParamGroupDef(\mygroup).presets = ~pg.presets;
+
+ParamGroupDef(\mygroup).edit; // same as ~pgd.edit
+~m.edit;
 ::
 
 
 Just like ParamGroupDef, there is a ParamMorpherDef:
 
 code::
+(
 ParamMorpherDef(\mymorpher, \mygroup, [
-		\mypreset1,
-		\mypreset2,
-		\mypreset3,
+		\preset1,
+		\preset2,
+		\preset3,
 ]);
+)
 
 ParamMorpherDef(\mymorpher).normSet(0.3);
 ParamMorpherDef(\mymorpher).edit;

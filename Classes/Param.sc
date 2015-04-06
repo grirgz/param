@@ -1135,7 +1135,7 @@ MIDIMap {
 ////////////////////////////////////////
 
 ParamGroup : List {
-	var <>presets;
+	var <presets;
 	var <>morphers;
 
 	// morphers format : Dict[ \name -> (val: 0.5, presets:[\preset1, \preset2]) ]
@@ -1157,6 +1157,10 @@ ParamGroup : List {
 		presets[key] = super.array.collect { arg param;
 			param.get;
 		}
+	}
+
+	presets_ { arg val;
+		presets = val.deepCopy;
 	}
 
 	getPreset { arg key=\default;
@@ -1247,6 +1251,14 @@ ParamGroupDef {
 		} {
 			this.loadArchive;
 		};
+	}
+
+	presets {
+		^group.presets
+	}
+
+	presets_ { arg val;
+		group.presets = val.deepCopy;
 	}
 
 	getPreset { arg name=\default;
@@ -1362,7 +1374,11 @@ ParamMorpher : Param {
 	}
 
 	initParamMorpher { arg arggroup, argpresets;
-		group = arggroup;
+		if(arggroup.class == Symbol) {
+			group = ParamGroupDef(arggroup)
+		} {
+			group = arggroup;
+		};
 		presets = argpresets;
 		[group, presets].debug("initParamMorpher");
 	}
@@ -1373,7 +1389,13 @@ ParamMorpher : Param {
 
 	asLabel {
 		// TODO
-		^(key ? group.key ? presets.asString)
+		^(key ?? {
+			if(group.class == ParamGroupDef) {
+				group.key
+			} {
+				nil
+			}
+		} ?? {presets.asString})
 	}
 
 	set { arg val;
@@ -1408,13 +1430,19 @@ ParamMorpher : Param {
 
 ParamMorpherDef : ParamMorpher {
 	classvar lib;
+
+	*initClass {
+		IdentityDictionary.initClass;
+		lib = IdentityDictionary.new;
+	}
+
 	*new { arg defkey, group, presets;
 		var inst;
 		if(group.isNil) {
 			^lib[defkey]
 		} {
 			if(lib[defkey].isNil) {
-				inst = super.new.init(group, presets);
+				inst = super.new(group, presets);
 				inst.key = defkey;
 				lib[defkey] = inst;
 				^inst
