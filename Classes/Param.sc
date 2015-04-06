@@ -1262,6 +1262,7 @@ ParamGroupDef {
 
 	presets_ { arg val;
 		group.presets = val.deepCopy;
+		this.saveArchive;
 	}
 
 	getPreset { arg name=\default;
