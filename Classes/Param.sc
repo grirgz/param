@@ -52,37 +52,38 @@ Param {
 			// no spec given, normalize args size to 3
 			args.add(nil)
 		};
-		"1".debug;
+		//"1".debug;
 		init_args = args;
-		"2".debug;
+		//"2".debug;
 		switch(target.class,
 			Ndef, {
 				switch(property.class,
 					Association, {
-						"Ndef: an asso".debug;
+						//"Ndef: an asso".debug;
 						switch(property.key.class,
 							Association, { // index of ((\adsr -> \levels) -> 0)
 								var subpro = property.key.value;
 								var idx = property.value;
-								"Ndef: a double asso".debug;
+								//"Ndef: a double asso".debug;
 								args[1] = property.key.key;
-								(args++[subpro, idx]).debug("NdefParamEnvSlot args");
+								//(args++[subpro, idx]).debug("NdefParamEnvSlot args");
 								wrapper = NdefParamEnvSlot(*args++[subpro, idx]);
 							},
 							{
-								"Ndef: a simple asso".debug;
+								//"Ndef: a simple asso".debug;
 								switch(property.value, 
 									Symbol, { // env named segment: (\adsr -> \sustain) 
 										// need to get spec, but spec is determined after wrapper creation :(
 										"Ndef: env named segment".debug;
+										"NOT IMPLEMENTED YET!".debug;
 									},
 									// else: an index into an array: (\delaytab -> 0)
 									{ 
 										var idx;
-										"Ndef: an index into an array".debug;
+										//"Ndef: an index into an array".debug;
 										args[1] = property.key;
 										idx = property.value;
-										(args++[idx]).debug("NdefParamSlot args");
+										//(args++[idx]).debug("NdefParamSlot args");
 										wrapper = NdefParamSlot(*args++[idx]);
 									}
 
@@ -103,7 +104,7 @@ Param {
 								var subpro = property.key.value;
 								var idx = property.value;
 								args[1] = property.key.key;
-								(args++[subpro, idx]).debug("PdefParamEnvSlot args");
+								//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
 								wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
 							},
 							// else: an index
@@ -111,7 +112,7 @@ Param {
 								var idx;
 								args[1] = property.key;
 								idx = property.value;
-								(args++[idx]).debug("PdefParamSlot args");
+								//(args++[idx]).debug("PdefParamSlot args");
 								wrapper = PdefParamSlot(*args++[idx]);
 							}
 						);
@@ -130,7 +131,7 @@ Param {
 				wrapper = target;
 			}
 		);
-		"3".debug;
+		//"3".debug;
 	}
 
 	// why Post << Param doesnt use this method ?
@@ -233,32 +234,34 @@ Param {
 		var controller;
 		var param = this;
 		controller = slider.getHalo(\simpleController);
-		controller.debug("11");
+		//controller.debug("11");
 		if(controller.notNil) {
 			slider.addHalo(\simpleController, nil);
-			debug("notnil:remove simpleController!!");
+			//debug("notnil:remove simpleController!!");
 			controller.remove;
 		};
-		debug("11");
+		//debug("11");
 		if(param.notNil) {
-			debug("11x");
+			//debug("11x");
 			param = param.asParam;
-			debug("11x");
+			//debug("11x");
 			slider.action = { arg self;
 				action.value(self);
 				param.normSet(self.value);
-				debug("action!");
+				//debug("action!");
 			};
-			debug("11x ========== CREATING!!!!!!!!!!!!");
+			//debug("11x ========== CREATING!!!!!!!!!!!!");
 			controller = SimpleController(param.target);
-			controller.debug("11x");
+			//controller.debug("11x");
 			slider.addHalo(\simpleController, controller);
-			controller.debug("11x");
-			controller.put(\set, { arg ...args; slider.value = param.normGet.debug("controolll"); args.debug("args"); });
+			//controller.debug("11x");
+			//controller.put(\set, { arg ...args; slider.value = param.normGet.debug("controolll"); args.debug("args"); });
+			controller.put(\set, { arg ...args; slider.value = param.normGet; });
 			slider.value = param.normGet;
-			controller.debug("11x");
-			slider.onClose = slider.onClose.addFunc({ controller.remove; debug("remove simpleController!!"); });
-			controller.debug("11x");
+			//controller.debug("11x");
+			//slider.onClose = slider.onClose.addFunc({ controller.remove; debug("remove simpleController!!"); });
+			slider.onClose = slider.onClose.addFunc({ controller.remove; });
+			//controller.debug("11x");
 		}
 	}
 
@@ -266,10 +269,10 @@ Param {
 		var controller;
 		var param = this;
 		controller = slider.getHalo(\simpleController);
-		controller.debug("11");
+		//controller.debug("11");
 		if(controller.notNil) {
 			slider.addHalo(\simpleController, nil);
-			debug("notnil:remove simpleController!!");
+			//debug("notnil:remove simpleController!!");
 			controller.remove;
 		};
 		if(action.isNil) {
@@ -279,7 +282,7 @@ Param {
 		};
 		if(updateAction.isNil) {
 			updateAction = { arg self;
-				self.value = param.normGet.debug("controolll")
+				self.value = param.normGet;
 			}
 		};
 		if(initAction.isNil) {
@@ -290,29 +293,29 @@ Param {
 			slider.action = { arg self;
 				action.value(self, this);
 				customAction.value(self, this);
-				debug("action!");
+				//debug("action!");
 			};
 			controller = SimpleController(param.target);
 			slider.addHalo(\simpleController, controller);
 			controller.put(\set, { arg ...args; updateAction.(slider, param) });
 			initAction.(slider, param);
-			slider.onClose = slider.onClose.addFunc({ controller.remove; debug("remove simpleController!!"); });
+			slider.onClose = slider.onClose.addFunc({ controller.remove;  });
 		}
 	}
 
 	mapStaticText { arg view, precision=6;
 		this.makeSimpleController(view, {}, { arg view, param;
-					param.asLabel.debug("mapStaticText param");
-					param.asCompileString.debug("mapStaticText param");
-					param.type.debug("mapStaticText type");
-					param.get.debug("param get");
+					//param.asLabel.debug("mapStaticText param");
+					//param.asCompileString.debug("mapStaticText param");
+					//param.type.debug("mapStaticText type");
+					//param.get.debug("param get");
 			switch(param.type,
 				\scalar, {
 					view.string = param.get.asFloat.asStringPrec(precision);
 				},
 				\array, {
-					param.debug("mapStaticText param");
-					param.get.debug("param get");
+					//param.debug("mapStaticText param");
+					//param.get.debug("param get");
 					view.string = param.get.collect({ arg x; x.asFloat.asStringPrec(precision) });
 				},
 				\env, {
@@ -330,7 +333,7 @@ Param {
 
 	mapTextField { arg view, action;
 		this.makeSimpleController(view, { arg view, param;
-			param.set(view.value.asFloat.debug("set tfif"));
+			param.set(view.value.asFloat);
 		}, { arg view, param;
 			view.value = param.get;
 		}, nil, action)
@@ -525,14 +528,14 @@ Param {
 	*getSynthDefDefaultValue { arg argName, defname;
 		var desc;
 		var val;
-		"getSynthDefDefaultValue 1".debug;
+		//"getSynthDefDefaultValue 1".debug;
 		desc = SynthDescLib.global.synthDescs[defname];
-		desc.debug("getSynthDefDefaultValue 2");
+		//desc.debug("getSynthDefDefaultValue 2");
 		val = if(desc.notNil) {
 			var con = desc.controlDict[argName];
-		con.debug("getSynthDefDefaultValue 4");
+		//con.debug("getSynthDefDefaultValue 4");
 			if(con.notNil) {
-		"getSynthDefDefaultValue 5".debug;
+		//"getSynthDefDefaultValue 5".debug;
 				con.defaultValue;
 			}
 		};
@@ -559,14 +562,14 @@ NdefParam : BaseParam {
 	init { arg obj, meth, sp;
 		target = obj;
 		property = meth;
-		sp.debug("sp1");
+		//sp.debug("sp1");
 		spec = this.toSpec(sp);
 		key = obj.key;
 	}
 
 	// retrieve default spec if no default spec given
 	toSpec { arg sp;
-		sp.debug("sp2");
+		//sp.debug("sp2");
 		sp = 
 			// param arg
 			sp ?? {
@@ -616,7 +619,7 @@ NdefParamSlot : NdefParam {
 
 	*new { arg obj, meth, sp, index;
 		var inst;
-		obj.debug("obj");
+		//obj.debug("obj");
 		inst = super.new(obj, meth, sp);
 		inst.ndefParamSlotInit(index);
 		^inst;
@@ -656,7 +659,7 @@ NdefParamEnvSlot : NdefParam {
 
 	*new { arg obj, meth, sp, subproperty, index;
 		var inst;
-		obj.debug("obj");
+		//obj.debug("obj");
 		inst = super.new(obj, meth, sp);
 		inst.ndefParamEnvSlotInit(subproperty, index);
 		^inst;
@@ -845,7 +848,7 @@ PdefParamSlot : PdefParam {
 
 	*new { arg obj, meth, sp, index;
 		var inst;
-		obj.debug("obj");
+		//obj.debug("obj");
 		inst = super.new(obj, meth, sp);
 		inst.pdefParamSlotInit(index);
 		^inst;
@@ -885,7 +888,7 @@ PdefParamEnvSlot : PdefParam {
 
 	*new { arg obj, meth, sp, subproperty, index;
 		var inst;
-		obj.debug("obj");
+		//obj.debug("obj");
 		inst = super.new(obj, meth, sp);
 		inst.pdefParamEnvSlotInit(subproperty, index);
 		^inst;
@@ -956,12 +959,12 @@ MIDIMap {
 			param = param.asParam;
 		};
 		nilpath = path.collect({ arg x; if(x == \all) { nil } { x } }); // can't have nil has dict key
-		[key, path, nilpath, param].debug("key, path, nilpath, param");
+		//[key, path, nilpath, param].debug("key, path, nilpath, param");
 
 		func = { arg val, num, chan, src;
-			[key, path, nilpath, param].debug("key, path, nilpath, param");
+			//[key, path, nilpath, param].debug("key, path, nilpath, param");
 			val = val/127;
-			[val, num, chan, src].debug("key, path, nilpath, param");
+			//[val, num, chan, src].debug("key, path, nilpath, param");
 			if(blockmode.isNil) {
 				if(param.class == Function) {
 					param.value;
@@ -1005,9 +1008,9 @@ MIDIMap {
 			} {
 				keychannel = channel;
 			};
-			key.debug("kkKKey");
-			val.debug("kkKKeyVVVVVVVVVVVVV");
-			kind.debug("kkKKeykinddddddddddd");
+			//key.debug("kkKKey");
+			//val.debug("kkKKeyVVVVVVVVVVVVV");
+			//kind.debug("kkKKeykinddddddddddd");
 			//controls[key].changed(\free_map);
 			if(kind == \note) {
 				kind = \noteOn
@@ -1380,7 +1383,7 @@ ParamMorpher : Param {
 			group = arggroup;
 		};
 		presets = argpresets;
-		[group, presets].debug("initParamMorpher");
+		//[group, presets].debug("initParamMorpher");
 	}
 
 	morph { arg list, morph;
@@ -1400,17 +1403,17 @@ ParamMorpher : Param {
 
 	set { arg val;
 		var presets_vals;
-		val.debug("ParamMorpher: set");
+		//val.debug("ParamMorpher: set");
 		this.wrapper.set(val);
 		presets_vals = presets.collect({ arg x; 
 			group.getPreset(x)
 		});
-		[presets_vals, presets].debug("presets");
+		//[presets_vals, presets].debug("presets");
 		presets_vals = presets_vals.flop;
 		group.do({ arg param, x;
 			var resval;
 			resval = this.morph(presets_vals[x], val);
-			[param.asLabel, val].debug("ParamMorpher: param set");
+			//[param.asLabel, val].debug("ParamMorpher: param set");
 			param.set(resval);
 		})
 	}
@@ -1513,7 +1516,7 @@ XEnvelopeView : QEnvelopeView {
 	}
 
 	curves_ { arg xcurves;
-		curves.debug("curves::");
+		//curves.debug("curves::");
 		curves = xcurves;
 		super.curves = xcurves;
 	}
@@ -1575,7 +1578,7 @@ XEnvelopeView : QEnvelopeView {
 
 	updateGrid {
 		rawGrid = rawGrid ? Point(1/8,1/8);
-		super.grid = Point( rawGrid.x / totalDur,rawGrid.y).debug("grid")
+		super.grid = Point( rawGrid.x / totalDur,rawGrid.y)
 	}
 
 	getEnv { arg val;
@@ -1670,7 +1673,7 @@ XSimpleButton : QButton {
 			$a, {
 				rate = \audio;
 			}, {
-				map.debug("get_bus_from_map: error, not a bus");
+				"get_bus_from_map: error, not a bus: %".format(map).postln;
 			}
 		);
 		index = map[1..].asInteger;
@@ -1708,34 +1711,34 @@ XSimpleButton : QButton {
 	}
 
 	setBusMode { arg key, enable=true, free=true;
-		"whatktktj".debug;
+		//"whatktktj".debug;
 		if(enable) {
-			"1whatktktj".debug;
+			//"1whatktktj".debug;
 			if(this.inBusMode(key)) {
 				// NOOP
-				"2whatktktj".debug;
+				//"2whatktktj".debug;
 			} {
 				var val = this.getVal(key);
 				var numChannels = 1;
 				var bus;
-				"3whatktktj".debug;
-				val.debug("setBusMode: val");
+				//"3whatktktj".debug;
+				//val.debug("setBusMode: val");
 				if(val.isSequenceableCollection) {
 					numChannels = val.size;
 				};
-				numChannels.debug("setBusMode: nc");
+				//numChannels.debug("setBusMode: nc");
 				bus = CachedBus.control(Server.default,numChannels );
 					// FIXME: hardcoded server
 					// hardcoded rate, but can't convert audio buffer to a number, so it's ok
-				bus.debug("setBusMode: bus");
+				//bus.debug("setBusMode: bus");
 				if(val.isSequenceableCollection) {
 					bus.setn(val);
 				} {
 					bus.set(val);
 				};
-				val.debug("setBusMode: val");
+				//val.debug("setBusMode: val");
 				this.set(key, this.nestOn(bus.asMap));
-				bus.asMap.debug("setBusMode: busmap");
+				//bus.asMap.debug("setBusMode: busmap");
 			}
 		} {
 			if(this.inBusMode(key).not) {
@@ -1989,15 +1992,15 @@ XSimpleButton : QButton {
 		var first;
 		var levels = List.new, times = List.new, curves = List.new;
 		var releaseNode, loopNode;
-		val.debug("val");
+		//val.debug("val");
 		val = val.clump(4);
-		val.debug("val");
+		//val.debug("val");
 		first = val.removeAt(0);
-		val.debug("val");
+		//val.debug("val");
 		levels.add(first[0]);
 		releaseNode = if(first[2] == -99) { nil } { first[2] };
 		loopNode = if(first[3] == -99) { nil } { first[3] };
-		levels.debug("levels");
+		//levels.debug("levels");
 		
 		val.do { arg point, x;
 			levels.add( point[0] );
@@ -2005,9 +2008,9 @@ XSimpleButton : QButton {
 			//FIXME: dont know how to do with shape names ???
 			curves.add( point[3] );
 		};
-		levels.debug("levels");
-		times.debug("times");
-		curves.debug("curves");
+		//levels.debug("levels");
+		//times.debug("times");
+		//curves.debug("curves");
 		^Env(levels, times, curves, releaseNode, loopNode)
 	}
 }

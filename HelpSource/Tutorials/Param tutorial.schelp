@@ -278,9 +278,7 @@ code::
 // first lets define some presets 
 ~pg.edit // change the values before saving each new preset else morphing is useless
 ~pg.save(\preset1);
-~pg.edit // change the values before saving each new preset else morphing is useless
 ~pg.save(\preset2);
-~pg.edit // change the values before saving each new preset else morphing is useless
 ~pg.save(\preset3);
 
 ~m = ParamMorpher( ~pg,
@@ -314,7 +312,7 @@ code::
 	win.front;
 )
 
-MIDIMap(\k1, ~m);
+MIDIMap(\k1, ~m); // map it to the MIDI knob \k1
 ::
 
 If your group is a ParamGroupDef, you can just use its name
