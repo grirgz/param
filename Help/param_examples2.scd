@@ -3,8 +3,8 @@ SynthDef(\plop, { arg out=0, amp=0.1, gate=1, pan=0, freq=200;
 	var sig;
 	sig = LFSaw.ar(freq);
 	sig = RLPF.ar(sig, \lpfreq.kr(100), \rq.kr(0.3));
-	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:2);
 	sig = Pan2.ar(sig, pan, amp);
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:2);
 	Out.ar(out, sig);
 }, metadata:(specs:(
 	rq: ControlSpec(0.001,4,\lin, 0, 1),
@@ -39,7 +39,7 @@ Ndef(\echo, { arg freq=200, pan=0, amp=0.1;
 Spec.add(\shift, ControlSpec(-800,800,\lin,0,1));
 Spec.add(\dur, ControlSpec(1/16,4,\lin,0,1));
 Spec.add(\legato, ControlSpec(0.01,4,\lin,0,1));
-Spec.add(\adsr, XEnvSpec(ControlSpec(0.03,3,\lin)!4));
+Spec.add(\adsr, XEnvSpec(ControlSpec(0.00,3,\lin)!4));
 Ndef(\echo).addSpec(\delaytab, XArraySpec(ControlSpec(0.01,2,\lin)!8));
 Ndef(\echo).addSpec(\delay, ControlSpec(0.0001,1,\exp,0,1));
 Ndef(\echo).addSpec(\decay, ControlSpec(0,8,\lin,0,1));
@@ -48,6 +48,7 @@ Pdef(\plop).addHalo(\instrument, \plop);
 
 // make list of params
 ~list = [
+	[Pdef(\macro), \amp],
 	[Pdef(\macro), \dur],
 	[Pdef(\plop), \legato],
 	[Pdef(\plop), \freq],
@@ -83,7 +84,8 @@ Ndef(\echo).play;
 			// create a label, a knob and a value label from the param
 			param.asStaticTextLabel.align_(\center),
 			param.asView,
-			param.asStaticText.minWidth_(80).align_(\center),
+			//param.asStaticText.minWidth_(80).align_(\center),
+			param.asStaticText.align_(\center),
 		); 
 		[lay, \stretch:1];
 	});
@@ -113,3 +115,36 @@ Pdef(\plop).play;
 Ndef(\echo).play;
 
 );
+
+
+
+///////////////////// Debug
+
+ParamGroupDef(\mypreset2).clear
+ParamGroupDef(\mypreset2).presets
+ParamGroupDef(\mypreset2).loadArchive
+
+
+	Param([Pdef(\plop), \freq]).get.asCompileString
+	ParamGroup(~list).edit
+	ParamGroup(~list).valueList
+	Pdef(\plop).get(\freq)
+	Pdef(\plop).getVal(\freq)
+	Pdef(\macro).set(\dur, 0.4)
+	Pdef(\plop).set(\legato, 0.4)
+	Pdef(\plop).envir.parent
+	Pdef(\plop).set(\degree, 4)
+	Pdef(\plop).envir.use({ Pdef(\plop).get(\freq).value })
+
+
+	(
+		~win = Window.new;
+		~win.layout = HLayout(* ~list.collect { arg p; Param(p).asSlider });
+		~win.front;
+
+	)
+
+Archive.read
+Archive.global
+~e = Env.adsr(0.01,0.1,0.8,0.1)
+~e.curves

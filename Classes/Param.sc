@@ -230,40 +230,40 @@ Param {
 
 	//////// GUI mapping
 
-	mapSlider { arg slider, action;
-		var controller;
-		var param = this;
-		controller = slider.getHalo(\simpleController);
-		//controller.debug("11");
-		if(controller.notNil) {
-			slider.addHalo(\simpleController, nil);
-			//debug("notnil:remove simpleController!!");
-			controller.remove;
-		};
-		//debug("11");
-		if(param.notNil) {
-			//debug("11x");
-			param = param.asParam;
-			//debug("11x");
-			slider.action = { arg self;
-				action.value(self);
-				param.normSet(self.value);
-				//debug("action!");
-			};
-			//debug("11x ========== CREATING!!!!!!!!!!!!");
-			controller = SimpleController(param.target);
-			//controller.debug("11x");
-			slider.addHalo(\simpleController, controller);
-			//controller.debug("11x");
-			//controller.put(\set, { arg ...args; slider.value = param.normGet.debug("controolll"); args.debug("args"); });
-			controller.put(\set, { arg ...args; slider.value = param.normGet; });
-			slider.value = param.normGet;
-			//controller.debug("11x");
-			//slider.onClose = slider.onClose.addFunc({ controller.remove; debug("remove simpleController!!"); });
-			slider.onClose = slider.onClose.addFunc({ controller.remove; });
-			//controller.debug("11x");
-		}
-	}
+	//mapSlider { arg slider, action;
+	//	var controller;
+	//	var param = this;
+	//	controller = slider.getHalo(\simpleController);
+	//	//controller.debug("11");
+	//	if(controller.notNil) {
+	//		slider.addHalo(\simpleController, nil);
+	//		//debug("notnil:remove simpleController!!");
+	//		controller.remove;
+	//	};
+	//	//debug("11");
+	//	if(param.notNil) {
+	//		//debug("11x");
+	//		param = param.asParam;
+	//		//debug("11x");
+	//		slider.action = { arg self;
+	//			action.value(self);
+	//			param.normSet(self.value);
+	//			//debug("action!");
+	//		};
+	//		//debug("11x ========== CREATING!!!!!!!!!!!!");
+	//		controller = SimpleController(param.target);
+	//		//controller.debug("11x");
+	//		slider.addHalo(\simpleController, controller);
+	//		//controller.debug("11x");
+	//		//controller.put(\set, { arg ...args; slider.value = param.normGet.debug("controolll"); args.debug("args"); });
+	//		controller.put(\set, { arg ...args; slider.value = param.normGet; });
+	//		slider.value = param.normGet;
+	//		//controller.debug("11x");
+	//		//slider.onClose = slider.onClose.addFunc({ controller.remove; debug("remove simpleController!!"); });
+	//		slider.onClose = slider.onClose.addFunc({ controller.remove; });
+	//		//controller.debug("11x");
+	//	}
+	//}
 
 	makeSimpleController { arg slider, action, updateAction, initAction, customAction;
 		var controller;
@@ -297,25 +297,40 @@ Param {
 			};
 			controller = SimpleController(param.target);
 			slider.addHalo(\simpleController, controller);
-			controller.put(\set, { arg ...args; updateAction.(slider, param) });
+			controller.put(\set, { arg ...args; 
+				// args: object, \set, keyval_list
+				args.debug("args");
+
+				// update only if concerned key is set
+				// FIXME: may break if property is an association :(
+				// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+				// TODO: this is linked to the way the target signals the change, maybe move it to wrapper class
+				if(args[2].any({ arg x; x == param.property })) {
+					updateAction.(slider, param);
+				}
+			});
 			initAction.(slider, param);
 			slider.onClose = slider.onClose.addFunc({ controller.remove;  });
 		}
 	}
 
+	mapSlider { arg slider, action;
+		this.makeSimpleController(slider, customAction:action);
+	}
+
 	mapStaticText { arg view, precision=6;
 		this.makeSimpleController(view, {}, { arg view, param;
-					//param.asLabel.debug("mapStaticText param");
-					//param.asCompileString.debug("mapStaticText param");
-					//param.type.debug("mapStaticText type");
-					//param.get.debug("param get");
+					param.asLabel.debug("mapStaticText param");
+					param.asCompileString.debug("mapStaticText param");
+					param.type.debug("mapStaticText type");
+					param.get.debug("param get");
 			switch(param.type,
 				\scalar, {
 					view.string = param.get.asFloat.asStringPrec(precision);
 				},
 				\array, {
-					//param.debug("mapStaticText param");
-					//param.get.debug("param get");
+					param.debug("mapStaticText param");
+					param.get.debug("param get");
 					view.string = param.get.collect({ arg x; x.asFloat.asStringPrec(precision) });
 				},
 				\env, {
@@ -931,7 +946,7 @@ PdefParamEnvSlot : PdefParam {
 
 
 MIDIMap {
-	classvar responders;
+	classvar <responders;
 	classvar responders_param;
 	classvar <mapped_views; // debug: added getter
 	classvar midivalues;
@@ -955,6 +970,9 @@ MIDIMap {
 		var func;
 		var path = this.keyToPath(key);
 		var nilpath;
+		if(path.isNil) {
+			^nil
+		};
 		if(param.class != Function) {
 			param = param.asParam;
 		};
@@ -1239,7 +1257,7 @@ ParamGroupDef {
 				lib[defkey] = inst;
 				^inst
 			} {
-				"Warning: already defined, use .clear before redefine it".postln;
+				"Warning: ParamGroupDef(%) already defined, use .clear before redefine it".format(defkey).postln;
 				^lib[defkey]
 			}
 		}
@@ -1322,6 +1340,10 @@ ParamGroupDef {
 
 	at { arg x;
 		^group[x]
+	}
+
+	size {
+		^group.size;
 	}
 
 	edit {
@@ -1407,12 +1429,22 @@ ParamMorpher : Param {
 		//val.debug("ParamMorpher: set");
 		this.wrapper.set(val);
 		presets_vals = presets.collect({ arg x; 
-			group.getPreset(x)
+			var res = group.getPreset(x);
+			if(res.isNil) {
+				"Error: preset % is not defined".format(x.asCompileString).postln;
+				^nil
+			};
+			res;
 		});
 		//[presets_vals, presets].debug("presets");
 		presets_vals = presets_vals.flop;
+		if(group.size != presets_vals.size) {
+			"Error: preset size (%) don't match group size (%)".format(presets_vals.size, group.size).postln;
+			^nil;
+		};
 		group.do({ arg param, x;
 			var resval;
+			//[x, presets_vals[x], val].debug("morph.set: groupdo");
 			resval = this.morph(presets_vals[x], val);
 			//[param.asLabel, val].debug("ParamMorpher: param set");
 			param.set(resval);
@@ -1778,12 +1810,16 @@ XSimpleButton : QButton {
 
 	getVal { arg key;
 		var curval;
+		if(this.envir.isNil) { this.envir = this.class.event };
 		curval = this.get(key);
 		curval = this.nestOff(curval);
 		if(this.inBusMode(key)) {
 			var bus = curval.asCachedBus;
 			^bus.getCached;
 		} {
+			if(curval.class == Function) {
+				curval = this.envir.use({ curval.value });
+			};
 			^curval;
 		};
 	}
