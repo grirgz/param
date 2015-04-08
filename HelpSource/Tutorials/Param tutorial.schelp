@@ -70,9 +70,11 @@ code::
 (
 	var slider, win;
 	win = Window.new;
+
 	slider = Slider.new;
-	win.layout = HLayout(slider);
 	slider.mapParam(~p); // map the param ~p to the slider
+
+	win.layout = HLayout(slider);
 	win.front;
 )
 ::
@@ -136,6 +138,8 @@ code::
 MIDIMap.free([13])
 ::
 
+Note: if you map [13] then map [13,0], MIDIMap don't know they point to the same knob so both mapping will exists at the same time which is probably not what you want.
+
 It's more convenient to use symbol instead of typing the MIDI number everytime. You can define them once in your startup file:
 
 code::
@@ -164,17 +168,48 @@ MIDIMap(\b1, {
 });
 MIDIMap(\b2, {
 	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \amp));
-	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \detune));
+	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \detune)); // \detune don't exists in the Ndef, it's just for the example 
 });
 ::
-
-You can also use it to show a GUI for your 
-
 
 Remove a MIDI mapping:
 
 code::
 MIDIMap.free(\k1)
+::
+
+subsection:: Mapping a MIDI control to a GUI object
+
+Sometime, you want to have a GUI representing each knob of your MIDI controller so you know which MIDI knob control which parameter and see their currrent value. You can do this using MIDIMap.mapView:
+
+code::
+(
+	var knob, val, label, win;
+	win = Window.new;
+
+	knob = Knob.new;
+	val = StaticText.new;
+	label = StaticText.new;
+	MIDIMap.mapStaticTextLabel(\k1, label);
+	MIDIMap.mapView(\k1, knob);
+	MIDIMap.mapView(\k1, val);
+
+	win.layout = VLayout(
+		label,
+		knob,
+		val,
+	);
+	win.alwaysOnTop = true;
+	win.front;
+)
+::
+
+Now if you map a Param to a this MIDI control, MIDIMap automatically update the GUI to reflect the currently mapped Param:
+
+code::
+MIDIMap(\k1, Param(Ndef(\ndef_scalar), \freq)); // first map \freq
+
+MIDIMap(\k1, Param(Ndef(\ndef_scalar), \pan)); // now change it to \pan
 ::
 
 section:: Grouping Params: ParamGroup
@@ -501,6 +536,13 @@ code::
 ~mp.edit
 
 MIDIMap(\k1, ~mp); // map the knob \k1 to the second slot of the array;
+::
+
+You can also get access to an array slot with "at" method:
+
+code::
+~p = Param(Ndef(\ndef_array), \freqtab, XArraySpec(\freq!3)); // define a Param pointing to the array
+~p.at(0); // this is the Param for the array slot 0, equivalent to Param(Ndef(\ndef_array), \freqtab -> 0, \freq);
 ::
 
 subsection:: Working with envelopes
