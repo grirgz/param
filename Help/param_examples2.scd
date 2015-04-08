@@ -124,6 +124,22 @@ ParamGroupDef(\mypreset2).clear
 ParamGroupDef(\mypreset2).presets
 ParamGroupDef(\mypreset2).loadArchive
 
+(
+Ndef(\plopx, { arg freq, bla, pan=0, amp=0.1;
+	var sig;
+	sig = SinOsc.ar(freq);
+	sig = Pan2.ar(sig, pan, amp);
+}).play;
+);
+
+	Param([Ndef(\plopx), \bla]).get
+	Param([Ndef(\plopx), \bla]).edit
+	Param([Ndef(\plopx2), \bla]).edit
+	Param([Ndef(\plopx2), \bla]).get
+
+	Param([Ndef(\echo), \delay]).edit
+	Param([Ndef(\echo), \delay]).get
+	Param([Ndef(\echo), \delay]).set(0.2)
 
 	Param([Pdef(\plop), \freq]).get.asCompileString
 	ParamGroup(~list).edit

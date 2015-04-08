@@ -299,7 +299,7 @@ Param {
 			slider.addHalo(\simpleController, controller);
 			controller.put(\set, { arg ...args; 
 				// args: object, \set, keyval_list
-				args.debug("args");
+				//args.debug("args");
 
 				// update only if concerned key is set
 				// FIXME: may break if property is an association :(
@@ -320,17 +320,17 @@ Param {
 
 	mapStaticText { arg view, precision=6;
 		this.makeSimpleController(view, {}, { arg view, param;
-					param.asLabel.debug("mapStaticText param");
-					param.asCompileString.debug("mapStaticText param");
-					param.type.debug("mapStaticText type");
-					param.get.debug("param get");
+					//param.asLabel.debug("mapStaticText param");
+					//param.asCompileString.debug("mapStaticText param");
+					//param.type.debug("mapStaticText type");
+					//param.get.debug("param get");
 			switch(param.type,
 				\scalar, {
 					view.string = param.get.asFloat.asStringPrec(precision);
 				},
 				\array, {
-					param.debug("mapStaticText param");
-					param.get.debug("param get");
+					//param.debug("mapStaticText param");
+					//param.get.debug("param get");
 					view.string = param.get.collect({ arg x; x.asFloat.asStringPrec(precision) });
 				},
 				\env, {
@@ -352,6 +352,33 @@ Param {
 		}, { arg view, param;
 			view.value = param.get;
 		}, nil, action)
+	}
+
+	mapNumberBox { arg view, action;
+		this.makeSimpleController(view, { arg view, param;
+			param.set(view.value.asFloat);
+		}, { arg view, param;
+			view.value = param.get;
+		}, nil, action)
+	}
+
+	mapEZKnob { arg view, mapLabel=true, action;
+		var param = this;
+		view.controlSpec = param.spec;
+		view.knobView.mapParam(param);
+		view.numberView.mapParam(param);
+		if(mapLabel == true) {
+			view.labelView.mapParamLabel(param);
+		}
+	}
+
+	*unmapEZKnob { arg view, mapLabel = true;
+		var param = this;
+		view.knobView.unmapParam;
+		view.numberView.unmapParam;
+		if(mapLabel == true) {
+			view.labelView.unmapParam;
+		}
 	}
 
 	mapButton { arg view, action;
@@ -609,6 +636,9 @@ NdefParam : BaseParam {
 	get {
 		var val;
 		val = target.get(property);
+		if(val.isNil) {
+			val = spec.default;
+		};
 		if(spec.class == XEnvSpec) {
 			val = val.asEnv;
 		};
@@ -1919,6 +1949,16 @@ XSimpleButton : QButton {
 	}
 }
 
++NumberBox {
+	unmapParam {
+		Param.unmapSlider(this);
+	}
+
+	mapParam { arg param;
+		param.mapNumberBox(this);
+	}
+}
+
 +Button {
 	unmapParam {
 		Param.unmapView(this);
@@ -1926,6 +1966,16 @@ XSimpleButton : QButton {
 
 	mapParam { arg param;
 		param.mapButton(this);
+	}
+}
+
++EZKnob {
+	unmapParam { arg mapLabel=true;
+		Param.unmapEZKnob(this, mapLabel);
+	}
+
+	mapParam { arg param, mapLabel=true;
+		param.mapEZKnob(this, mapLabel);
 	}
 }
 
