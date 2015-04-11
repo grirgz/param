@@ -99,7 +99,6 @@ code::
 ~p.edit;
 ::
 
-
 If you call mapParam on a StaticText, it will show the value of the parameter. There is also ~p.asStaticText.
 If you call mapParamLabel on a StaticText, it will show the name of the parameter. There is also ~p.asStaticTextLabel.
 

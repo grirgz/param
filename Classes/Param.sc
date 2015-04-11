@@ -3,11 +3,14 @@ Param {
 	var <wrapper;
 	var init_args;
 	classvar <>defaultSpec;
+	classvar <>simpleControllers;
 
 	*initClass {
+		List.initClass;
 		Spec.initClass;
 		ControlSpec.initClass;
 		defaultSpec = \widefreq.asSpec;
+		simpleControllers = List.new;
 	}
 
 	*new  { arg ...args;
@@ -268,12 +271,16 @@ Param {
 	makeSimpleController { arg slider, action, updateAction, initAction, customAction;
 		var controller;
 		var param = this;
+		var free_controller = {
+			controller.remove; 
+			simpleControllers.remove(controller) 
+		};
 		controller = slider.getHalo(\simpleController);
 		//controller.debug("11");
 		if(controller.notNil) {
 			slider.addHalo(\simpleController, nil);
 			//debug("notnil:remove simpleController!!");
-			controller.remove;
+			free_controller.();
 		};
 		if(action.isNil) {
 			action = { arg self;
@@ -296,7 +303,10 @@ Param {
 				//debug("action!");
 			};
 			controller = SimpleController(param.target);
+			slider.onClose = slider.onClose.addFunc( free_controller );
 			slider.addHalo(\simpleController, controller);
+			simpleControllers.add(controller);
+
 			controller.put(\set, { arg ...args; 
 				// args: object, \set, keyval_list
 				//args.debug("args");
@@ -310,8 +320,15 @@ Param {
 				}
 			});
 			initAction.(slider, param);
-			slider.onClose = slider.onClose.addFunc({ controller.remove;  });
 		}
+	}
+
+	*freeAllSimpleControllers {
+		// used to free all controllers when something break in the GUI and you can't access it to remove the controller
+		simpleControllers.do { arg con;
+			con.remove
+		};
+		simpleControllers = List.new;
 	}
 
 	mapSlider { arg slider, action;
@@ -320,23 +337,30 @@ Param {
 
 	mapStaticText { arg view, precision=6;
 		this.makeSimpleController(view, {}, { arg view, param;
+			var val;
 					//param.asLabel.debug("mapStaticText param");
 					//param.asCompileString.debug("mapStaticText param");
 					//param.type.debug("mapStaticText type");
 					//param.get.debug("param get");
-			switch(param.type,
-				\scalar, {
-					view.string = param.get.asFloat.asStringPrec(precision);
-				},
-				\array, {
-					//param.debug("mapStaticText param");
-					//param.get.debug("param get");
-					view.string = param.get.collect({ arg x; x.asFloat.asStringPrec(precision) });
-				},
-				\env, {
-					view.string = param.get.asCompileString;
-				}
-			);
+			val = param.get;
+			if(val.class == Ndef or: {val.class == Symbol or: {val.class == String}}) {
+				// the parameter is mapped to a Ndef
+				view.string = val;
+			} {
+				switch(param.type,
+					\scalar, {
+						view.string = val.asFloat.asStringPrec(precision);
+					},
+					\array, {
+						//param.debug("mapStaticText param");
+						//param.get.debug("param get");
+						view.string = val.collect({ arg x; x.asFloat.asStringPrec(precision) });
+					},
+					\env, {
+						view.string = val.asCompileString;
+					}
+				);
+			};
 		}, nil, nil)
 	}
 
@@ -395,11 +419,15 @@ Param {
 
 	*unmapView { arg view;
 		var controller;
+		var free_controller = {
+			controller.remove; 
+			simpleControllers.remove(controller) 
+		};
 		controller = view.getHalo(\simpleController);
 		view.action = nil;
 		if(controller.notNil) {
 			view.addHalo(\simpleController, nil);
-			controller.remove;
+			free_controller.();
 		};
 	}
 
@@ -639,6 +667,10 @@ NdefParam : BaseParam {
 		if(val.isNil) {
 			val = spec.default;
 		};
+		//if(val.class == Ndef) {
+		//	// mapped to a Ndef
+		//	val = 0
+		//};
 		if(spec.class == XEnvSpec) {
 			val = val.asEnv;
 		};
@@ -651,7 +683,13 @@ NdefParam : BaseParam {
 	}
 
 	normGet {
-		^spec.unmap(this.get)
+		var val = this.get;
+		if(val.class == String) {
+			// workaround when a Bus ("c0") is mapped to the parameter
+			^0
+		} {
+			^spec.unmap(this.get)
+		}
 	}
 
 	normSet { arg val;
@@ -1145,6 +1183,9 @@ MIDIMap {
 
 	*mapView { arg key, view;
 		var path = this.keyToPath(key);
+		if(path.isNil) {
+			^nil
+		};
 		if(mapped_views.at(*path).isNil) {
 			mapped_views.put(*path ++ [ List.new ])
 		};
@@ -1158,6 +1199,9 @@ MIDIMap {
 
 	*mapStaticTextLabel { arg key, view;
 		var path = this.keyToPath(key);
+		if(path.isNil) {
+			^nil
+		};
 		if(mapped_views.at(*path).isNil) {
 			mapped_views.put(*path ++ [ List.new ])
 		};
@@ -1169,6 +1213,9 @@ MIDIMap {
 		// TODO: add code to handle key=nil: search in all paths
 		var list;
 		var path = this.keyToPath(key);
+		if(path.isNil) {
+			^nil
+		};
 		if(mapped_views.at(*path).isNil) {
 			mapped_views.put(*path ++ [ List.new ])
 		};
@@ -1890,6 +1937,18 @@ XSimpleButton : QButton {
 	
 	}
 
+	isNaN {
+		// used to avoid NumberBox and EZ* GUI to throwing an error
+		^true
+	}
+
+}
+
++String {
+	isNaN {
+		// used to avoid NumberBox and EZ* GUI to throwing an error
+		^true
+	}
 }
 
 /////////////////////////// 3.6.7
