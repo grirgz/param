@@ -23,7 +23,7 @@ Slider.new.mapParam(~p);
 MIDIMap([16], ~p); 
 ```
 
-The benefit is you have the same API for controlling Ndef, Pdef, Synth, Bus, ... and you can easily control arrays and enveloppes in the same way. Setting .action and updating of GUI, and freeing resources like MIDIFunc and buses are done for you in the background.
+The benefit is you have the same API for controlling Ndef, Pdef, Synth, Bus, ... and you can easily control arrays and envelopes in the same way. Setting .action and updating of GUI, and freeing resources like MIDIFunc and buses are done for you in the background.
 
 Using this library, you can quickly write custom GUI, but more importantly, you can build complex GUI which are completely independent of the sounds objects you control, just pass to your GUI a list a Param you want to control. Mapping any of theses parameters with MIDI is easy too.
 
@@ -45,10 +45,10 @@ Current features:
 - save and load presets, persistent across SC reboot
 - morph between selected presets
 - switch quickly between normal mode and bus mode in patterns (bus mode is the way to continuously control a parameter)
+- block the MIDI until the MIDI value match the Param value to avoid sudden value jump
 
 
 Planned features:
-- block the MIDI until the MIDI value match the Param value to avoid sudden value jump
 - control others objects:
 	- Bus
 	- Synth

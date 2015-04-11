@@ -289,7 +289,9 @@ Param {
 		};
 		if(updateAction.isNil) {
 			updateAction = { arg self;
-				self.value = param.normGet;
+				{
+					self.value = param.normGet;
+				}.defer;
 			}
 		};
 		if(initAction.isNil) {
@@ -345,19 +347,27 @@ Param {
 			val = param.get;
 			if(val.class == Ndef or: {val.class == Symbol or: {val.class == String}}) {
 				// the parameter is mapped to a Ndef
-				view.string = val;
+				{
+					view.string = val;
+				}.defer;
 			} {
 				switch(param.type,
 					\scalar, {
-						view.string = val.asFloat.asStringPrec(precision);
+						{
+							view.string = val.asFloat.asStringPrec(precision);
+						}.defer;
 					},
 					\array, {
 						//param.debug("mapStaticText param");
 						//param.get.debug("param get");
-						view.string = val.collect({ arg x; x.asFloat.asStringPrec(precision) });
+						{
+							view.string = val.collect({ arg x; x.asFloat.asStringPrec(precision) });
+						}.defer;
 					},
 					\env, {
-						view.string = val.asCompileString;
+						{
+							view.string = val.asCompileString;
+						}.defer;
 					}
 				);
 			};
@@ -366,7 +376,9 @@ Param {
 
 	mapStaticTextLabel { arg view;
 		this.makeSimpleController(view, {}, {}, { arg view, param;
-			view.string = param.asLabel;
+			{
+				view.string = param.asLabel;
+			}.defer;
 		}, nil)
 	}
 
@@ -374,7 +386,9 @@ Param {
 		this.makeSimpleController(view, { arg view, param;
 			param.set(view.value.asFloat);
 		}, { arg view, param;
-			view.value = param.get;
+			{
+				view.value = param.get;
+			}.defer;
 		}, nil, action)
 	}
 
@@ -382,7 +396,9 @@ Param {
 		this.makeSimpleController(view, { arg view, param;
 			param.set(view.value.asFloat);
 		}, { arg view, param;
-			view.value = param.get;
+			{
+				view.value = param.get;
+			}.defer;
 		}, nil, action)
 	}
 
@@ -413,7 +429,9 @@ Param {
 		}, { arg view, param;
 			var size;
 			size = view.states.size;
-			view.value = param.normGet.linlin(0,1,0,size-1);
+			{
+				view.value = param.normGet.linlin(0,1,0,size-1);
+			}.defer
 		}, nil, action)
 	}
 
@@ -1020,6 +1038,7 @@ MIDIMap {
 	classvar midivalues;
 	classvar <controls;
 	classvar <>permanent = true;
+	classvar <>defaultBlockmode = false;
 
 	// NO THIS IS FALSE: path type: [srcID, msgType, chan, msgNum]
 	// path type: [msgNum, chan, msgType, srcID]
@@ -1048,20 +1067,51 @@ MIDIMap {
 		//[key, path, nilpath, param].debug("key, path, nilpath, param");
 
 		func = { arg val, num, chan, src;
+			var setfun = {
+				//Task({
+					param.normSet(val);
+				//	nil;
+				//}).play(AppClock);
+			};
 			//[key, path, nilpath, param].debug("key, path, nilpath, param");
 			val = val/127;
 			//[val, num, chan, src].debug("key, path, nilpath, param");
-			if(blockmode.isNil) {
-				if(param.class == Function) {
-					param.value;
+			if(param.class == Function) {
+				param.value;
+			} {
+				var myblockmode = if(blockmode.isNil) {
+					defaultBlockmode;
 				} {
-					Task({
-						param.normSet(val);
-						nil;
-					}).play(AppClock);
+					blockmode
+				};
+				myblockmode.debug("BLOCKMODE");
+				if(myblockmode != true) {
+					setfun.();
 					midivalues.put(*path++[val]);
-				}
-			};
+				} {
+					var midival = midivalues.at(*path) ? 0;
+					var normval = param.normGet;
+					if(normval.class == BinaryOpFunction) {
+						setfun.();
+					} {
+						//[midival, normval, val, (normval - midival).abs, (normval - midival).abs < ( 1/126 ), ( normval - midival ).abs < ( 1/110 ) ].debug("- midi, norm, val");
+						if((normval - midival).abs < ( 1/126 )) {
+							//"NOT BLOCKED".debug;
+							setfun.();
+						} {
+							if(( normval - midival ).abs < ( 1/110 ) ) {
+								//"UNBLOCK".debug;
+								setfun.();
+							} {
+								// do nothing because it's blocked
+								//"BLOCKED".debug;
+							}
+						};
+					};
+					midivalues.put(*path++[val]);
+					//midivalues.at(*path).debug("new stored midival at the end");
+				};
+			}
 		};
 
 		if(responders.at(*path).notNil) {
@@ -1133,7 +1183,7 @@ MIDIMap {
 		// TODO
 		//params[param]
 	}
-	
+
 	*free { arg key;
 		var path = this.keyToPath(key);
 		responders.at(*path).free;
@@ -1146,7 +1196,7 @@ MIDIMap {
 		var path = this.keyToPath(key);
 		responders.at(*path)
 	}
-	
+
 	*freeAll {
 		responders.leafDo { arg path, resp;
 			this.free(path);
@@ -1377,9 +1427,26 @@ ParamGroupDef {
 
 	loadArchive {
 		var archive;
+		var presets;
+		"load Archive".debug;
 		archive = this.getArchive;
-		group.presets = archive[\presets];
+		presets = archive[\presets];
+		presets.keysValuesDo { arg k,v;
+			// this loop is to workaround a bug in Ndef/Archive which load the Ndef with a nil server
+			v = v.collect { arg val;
+				val.class.debug("val class");
+				if(val.class == Ndef) {
+					"val is a Ndef".debug;
+					val.server = Server.default;
+					val = val.asCompileString.interpret;
+				};
+				val;
+			};
+			presets[k] = v;
+		};
+		group.presets = presets;
 		group.morphers = archive[\presets];
+		"end load Archive".debug;
 	}
 
 	getArchive {

@@ -177,6 +177,32 @@ code::
 MIDIMap.free(\k1)
 ::
 
+subsection:: Block mode
+
+If your MIDI knob position doesn't match the current value of your parameter (because you changed it by the GUI for example), there will be a sudden jump to the new value when you move your MIDI knob. To avoid this problem, there is a special mode which will block MIDI messages if they are not close to the current value. To activate it, set defaultBlockmode to \block.
+
+code::
+MIDIMap.defaultBlockmode = true;
+::
+
+Disable:
+
+code::
+MIDIMap.defaultBlockmode = false;
+::
+
+You can also set it when creating a MIDI mapping with the third argument:
+
+code::
+MIDIMap(\k1, Param(Ndef(\ndef_scalar), \pan), true);
+::
+
+Return to default mode:
+
+code::
+MIDIMap(\k1, Param(Ndef(\ndef_scalar), \pan));
+::
+
 subsection:: Mapping a MIDI control to a GUI object
 
 Sometime, you want to have a GUI representing each knob of your MIDI controller so you know which MIDI knob control which parameter and see their currrent value. You can do this using MIDIMap.mapView:
