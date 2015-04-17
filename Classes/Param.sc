@@ -407,7 +407,7 @@ Param {
 		view.controlSpec = param.spec;
 		view.knobView.mapParam(param);
 		view.numberView.mapParam(param);
-		if(mapLabel == true) {
+		if(view.labelView.notNil and: {mapLabel == true}) {
 			view.labelView.mapParamLabel(param);
 		}
 	}
@@ -416,17 +416,19 @@ Param {
 		var param = this;
 		view.knobView.unmapParam;
 		view.numberView.unmapParam;
-		if(mapLabel == true) {
+		if(view.labelView.notNil and: {mapLabel == true}) {
 			view.labelView.unmapParam;
 		}
 	}
 
-	mapEZSlider {arg view, mapLabel=true, action;
+	mapEZSlider { arg view, mapLabel=true, action;
 		var param = this;
+		view.debug("wTF");
 		view.controlSpec = param.spec;
 		view.sliderView.mapParam(param);
 		view.numberView.mapParam(param);
-		if(mapLabel == true) {
+		view.debug("wTF");
+		if(view.labelView.notNil and: {mapLabel == true}) {
 			view.labelView.mapParamLabel(param);
 		}
 	}
@@ -435,7 +437,7 @@ Param {
 		var param = this;
 		view.sliderView.unmapParam;
 		view.numberView.unmapParam;
-		if(mapLabel == true) {
+		if(view.labelView.notNil and: {mapLabel == true}) {
 			view.labelView.unmapParam;
 		}
 	}
