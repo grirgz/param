@@ -421,6 +421,25 @@ Param {
 		}
 	}
 
+	mapEZSlider {arg view, mapLabel=true, action;
+		var param = this;
+		view.controlSpec = param.spec;
+		view.sliderView.mapParam(param);
+		view.numberView.mapParam(param);
+		if(mapLabel == true) {
+			view.labelView.mapParamLabel(param);
+		}
+	}
+
+	*unmapEZSlider {arg view, mapLabel = true;
+		var param = this;
+		view.sliderView.unmapParam;
+		view.numberView.unmapParam;
+		if(mapLabel == true) {
+			view.labelView.unmapParam;
+		}
+	}
+
 	mapButton { arg view, action;
 		this.makeSimpleController(view, { arg view, param;
 			var size;
@@ -2102,6 +2121,16 @@ XSimpleButton : QButton {
 
 	mapParam { arg param, mapLabel=true;
 		param.mapEZKnob(this, mapLabel);
+	}
+}
+
++EZSlider {
+	unmapParam { arg mapLabel=true;
+		Param.unmapEZSlider(this, mapLabel);
+	}
+
+	mapParam { arg param, mapLabel=true;
+		param.mapEZSlider(this, mapLabel);
 	}
 }
 
