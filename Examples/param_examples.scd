@@ -242,6 +242,13 @@ MIDIdef.cc(\arf).free;
 ]);
 )
 
+(
+// put the midi cc here
+~makegui.(
+	[\k, \s].collect { arg pre; 9.collect{ arg x; ( pre++(x+1) ).asSymbol }}.flat
+);
+)
+
 
 // map some midi control to params 
 MIDIMap([16], Param(Pdef(\plop), \freq));

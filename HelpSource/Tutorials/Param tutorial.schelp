@@ -698,3 +698,16 @@ Param.defaultSpec = ControlSpec(10,10000,\exp);
 ::
 
 
+section:: Other controlled objects
+
+subsection:: Volume
+
+You may want to control the master volume of the server as a generic parameter.
+
+code::
+s.volume.volume = -0.2; // set volume the normal way (in db)
+
+~p = Param(s.volume, \amp); // currently, you need to provide a second argument, but it's not used
+~p = Param(s.volume, \amp, ControlSpec(-10,1,\lin)); // set your spec
+~p.edit;
+::

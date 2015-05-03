@@ -4,6 +4,8 @@ Param {
 	var init_args;
 	classvar <>defaultSpec;
 	classvar <>simpleControllers;
+	classvar <>defaultUpdateMode = \dependants;
+	classvar <>defaultPollRate = 0.2;
 
 	*initClass {
 		List.initClass;
@@ -22,6 +24,7 @@ Param {
 	}
 
 	init { arg args;
+		// FIXME: why this test on size ? if ommit parameters, this break! like Param(s.volume)
 		if (args.size > 1) {
 			this.newWrapper(args)
 		} {
@@ -30,10 +33,13 @@ Param {
 	}
 
 	newWrapper { arg args;
-		var target = args[0];
-		var property = args[1];
-		var spec = args[2];
-		var envdict;
+		var target, property, spec, envdict;
+		//"iiiwhattt".debug;
+		target = args[0];
+		property = args[1];
+		spec = args[2];
+		envdict;
+		//"whattt".debug;
 
 		envdict = (
 			adsr: (
@@ -62,7 +68,7 @@ Param {
 			Ndef, {
 				switch(property.class,
 					Association, {
-						//"Ndef: an asso".debug;
+						"Ndef: an asso".debug;
 						switch(property.key.class,
 							Association, { // index of ((\adsr -> \levels) -> 0)
 								var subpro = property.key.value;
@@ -95,7 +101,18 @@ Param {
 						);
 					},
 					Symbol, { // a simple param : \freq
+						"Param.newWrapper: Ndef: a symbol".debug;
 						wrapper = NdefParam(*args);
+					},
+					String, { // volume of the Ndef (Ndef(\x).vol)
+						"Param.newWrapper: Ndef: a string".debug;
+						if(property == "vol" or: { property == "volume" }) {
+							wrapper = NdefVolParam(*args);
+						} {
+							"Error: don't know what to do with string property (%) of Ndef, did you mean to use a symbol ?"
+								.format(property).postln;
+							^nil
+						}
 					}
 				);
 			},
@@ -125,9 +142,14 @@ Param {
 					}
 				);
 			}, 
-			//Volume, {
-			//	wrapper = VolumefParam(args);
-			//},
+			Volume, {
+				//"wrapper: VolumeParam".debug;
+				wrapper = VolumeParam(*args);
+			},
+			TempoClock, {
+				//"wrapper: VolumeParam".debug;
+				wrapper = TempoClockParam(*args);
+			},
 			// else
 			{
 				// ParamValue goes here
@@ -221,7 +243,7 @@ Param {
 		wrapper.normSet(val);
 	}
 
-	//////// MIDI mapping
+	/////////////////// MIDI mapping
 
 	map { arg msgNum, chan, msgType=\control, srcID, blockmode;
 		MIDIMap(this, msgNum, chan, msgType, srcID, blockmode);
@@ -231,57 +253,11 @@ Param {
 		MIDIMap.free(msgNum, chan, msgType, srcID, blockmode);
 	}
 
-	//////// GUI mapping
-
-	//mapSlider { arg slider, action;
-	//	var controller;
-	//	var param = this;
-	//	controller = slider.getHalo(\simpleController);
-	//	//controller.debug("11");
-	//	if(controller.notNil) {
-	//		slider.addHalo(\simpleController, nil);
-	//		//debug("notnil:remove simpleController!!");
-	//		controller.remove;
-	//	};
-	//	//debug("11");
-	//	if(param.notNil) {
-	//		//debug("11x");
-	//		param = param.asParam;
-	//		//debug("11x");
-	//		slider.action = { arg self;
-	//			action.value(self);
-	//			param.normSet(self.value);
-	//			//debug("action!");
-	//		};
-	//		//debug("11x ========== CREATING!!!!!!!!!!!!");
-	//		controller = SimpleController(param.target);
-	//		//controller.debug("11x");
-	//		slider.addHalo(\simpleController, controller);
-	//		//controller.debug("11x");
-	//		//controller.put(\set, { arg ...args; slider.value = param.normGet.debug("controolll"); args.debug("args"); });
-	//		controller.put(\set, { arg ...args; slider.value = param.normGet; });
-	//		slider.value = param.normGet;
-	//		//controller.debug("11x");
-	//		//slider.onClose = slider.onClose.addFunc({ controller.remove; debug("remove simpleController!!"); });
-	//		slider.onClose = slider.onClose.addFunc({ controller.remove; });
-	//		//controller.debug("11x");
-	//	}
-	//}
+	/////////////////// GUI mapping
 
 	makeSimpleController { arg slider, action, updateAction, initAction, customAction;
-		var controller;
 		var param = this;
-		var free_controller = {
-			controller.remove; 
-			simpleControllers.remove(controller) 
-		};
-		controller = slider.getHalo(\simpleController);
-		//controller.debug("11");
-		if(controller.notNil) {
-			slider.addHalo(\simpleController, nil);
-			//debug("notnil:remove simpleController!!");
-			free_controller.();
-		};
+
 		if(action.isNil) {
 			action = { arg self;
 				param.normSet(self.value);
@@ -297,32 +273,67 @@ Param {
 		if(initAction.isNil) {
 			initAction = updateAction;
 		};
+
 		if(param.notNil) {
 			param = param.asParam;
-			slider.action = { arg self;
-				action.value(self, this);
-				customAction.value(self, this);
-				//debug("action!");
-			};
+
+			this.class.freeUpdater(slider);
+
+			{
+				// is it garenteed that the erasing of action in a defer in freeUpdater below execute before this defer ?
+				slider.action = { arg self;
+					action.value(self, this);
+					customAction.value(self, this);
+					//debug("action!");
+				};
+			}.defer;
+
+			this.makeUpdater(slider, updateAction);
+
+			initAction.(slider, param);
+		};
+	}
+
+	makeUpdater { arg view, action, updateMode;
+		var param = this;
+		updateMode = updateMode ? defaultUpdateMode;
+
+
+		if(updateMode == \dependants) {
+			// dependants mode
+			var controller;
 			controller = SimpleController(param.target);
-			slider.onClose = slider.onClose.addFunc( free_controller );
-			slider.addHalo(\simpleController, controller);
+			{
+				view.onClose = view.onClose.addFunc( { this.class.freeUpdater(view) } );
+			}.defer;
+			view.addHalo(\simpleController, controller);
 			simpleControllers.add(controller);
 
-			controller.put(\set, { arg ...args; 
-				// args: object, \set, keyval_list
-				//args.debug("args");
-
-				// update only if concerned key is set
-				// FIXME: may break if property is an association :(
-				// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
-				// TODO: this is linked to the way the target signals the change, maybe move it to wrapper class
-				if(args[2].any({ arg x; x == param.property })) {
-					updateAction.(slider, param);
+			this.putListener(view, controller, action);
+		} {
+			// polling mode
+			var skipjack;
+			var pollRate = defaultPollRate + (defaultPollRate/1.7).rand;
+			skipjack = SkipJack({
+				//param.debug("skipjack:action");
+				action.(view, param);
+				//debug("skipjack:action: done");
+			}, pollRate, { 
+				// isClosed always exists ?
+				if(view.isClosed) {
+					// is it ok to remove thing on a closed view ? is even necessary if the view is already closed ?
+	 				//this.class.freeUpdater(view);
+					true;
+				} {
+					false;
 				}
 			});
-			initAction.(slider, param);
+			view.addHalo(\skipJack, skipjack);
 		}
+	}
+
+	putListener { arg view, controller, action;
+		this.wrapper.putListener(this, view, controller, action);
 	}
 
 	*freeAllSimpleControllers {
@@ -333,44 +344,50 @@ Param {
 		simpleControllers = List.new;
 	}
 
+	stringGet { arg precision=6;
+		var val;
+		val = this.get;
+		if(val.class == Ndef or: {val.class == Symbol or: {val.class == String}}) {
+			// the parameter is mapped to a Ndef
+			^val.asCompileString;
+		} {
+			switch(this.type,
+				\scalar, {
+					^val.asFloat.asStringPrec(precision);
+				},
+				\array, {
+					//param.debug("mapStaticText param");
+					//param.get.debug("param get");
+					^val.collect({ arg x; x.asFloat.asStringPrec(precision) });
+				},
+				\env, {
+					^val.asCompileString;
+				}
+			);
+		};
+	}
+
+	////// widgets
+
 	mapSlider { arg slider, action;
-		this.makeSimpleController(slider, customAction:action);
+		this.makeSimpleController(slider, 
+			updateAction: { arg self;
+				var val = this.normGet;
+				if(val.isKindOf(Number)) {
+					{
+						self.value = val;
+					}.defer;
+				}
+			},
+			customAction:action
+		);
 	}
 
 	mapStaticText { arg view, precision=6;
 		this.makeSimpleController(view, {}, { arg view, param;
-			var val;
-					//param.asLabel.debug("mapStaticText param");
-					//param.asCompileString.debug("mapStaticText param");
-					//param.type.debug("mapStaticText type");
-					//param.get.debug("param get");
-			val = param.get;
-			if(val.class == Ndef or: {val.class == Symbol or: {val.class == String}}) {
-				// the parameter is mapped to a Ndef
-				{
-					view.string = val;
-				}.defer;
-			} {
-				switch(param.type,
-					\scalar, {
-						{
-							view.string = val.asFloat.asStringPrec(precision);
-						}.defer;
-					},
-					\array, {
-						//param.debug("mapStaticText param");
-						//param.get.debug("param get");
-						{
-							view.string = val.collect({ arg x; x.asFloat.asStringPrec(precision) });
-						}.defer;
-					},
-					\env, {
-						{
-							view.string = val.asCompileString;
-						}.defer;
-					}
-				);
-			};
+			{
+				view.string = param.stringGet(precision);
+			}.defer;
 		}, nil, nil)
 	}
 
@@ -382,14 +399,26 @@ Param {
 		}, nil)
 	}
 
-	mapTextField { arg view, action;
-		this.makeSimpleController(view, { arg view, param;
-			param.set(view.value.asFloat);
-		}, { arg view, param;
-			{
-				view.value = param.get;
-			}.defer;
-		}, nil, action)
+	mapTextField { arg view, precision=6, action;
+		this.makeSimpleController(view, 
+			action: { arg view, param;
+				param.set(view.value.interpret);
+				//"done".debug;
+			}, 
+			updateAction: { arg view, param;
+				// refresh action
+				{
+					//[param, param.stringGet(precision)].debug("Param.mapTextField:get");
+					//[param, view.hasFocus].debug("Param.mapTextField: hasfocus");
+					if(view.hasFocus.not) {
+						view.value = param.stringGet(precision);
+					};
+					//"done".debug;
+				}.defer;
+			},
+			initAction: nil,
+			customAction: action
+		)
 	}
 
 	mapNumberBox { arg view, action;
@@ -456,18 +485,33 @@ Param {
 		}, nil, action)
 	}
 
-	*unmapView { arg view;
+	*freeUpdater { arg view;
 		var controller;
+		var skipjack;
 		var free_controller = {
 			controller.remove; 
 			simpleControllers.remove(controller) 
 		};
+		var free_skipjack = {
+			skipjack.stop;
+		};
 		controller = view.getHalo(\simpleController);
-		view.action = nil;
+		skipjack = view.getHalo(\skipJack);
+		{
+			view.action = nil;
+		}.defer;
 		if(controller.notNil) {
 			view.addHalo(\simpleController, nil);
 			free_controller.();
 		};
+		if(skipjack.notNil) {
+			view.addHalo(\skipJack, nil);
+			free_skipjack.();
+		};
+	}
+
+	*unmapView { arg view;
+		this.freeUpdater(view);
 	}
 
 	*unmapSlider { arg slider;
@@ -658,6 +702,8 @@ BaseParam {
 
 }
 
+////////////////// Ndef
+
 NdefParam : BaseParam {
 	var <target, <property, <spec, <key;
 	*new { arg obj, meth, sp;
@@ -665,7 +711,7 @@ NdefParam : BaseParam {
 	}
 
 	asLabel {
-		^"Ndef % %".format(target.key, property)
+		^"N % %".format(target.key, property)
 	}
 
 	init { arg obj, meth, sp;
@@ -734,6 +780,20 @@ NdefParam : BaseParam {
 	normSet { arg val;
 		this.set(spec.map(val))
 	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\set, { arg ...args; 
+			// args: object, \set, keyval_list
+			//args.debug("args");
+
+			// update only if concerned key is set
+			// FIXME: may break if property is an association :(
+			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+			if(args[2].any({ arg x; x == param.property })) {
+				action.(view, param);
+			}
+		});
+	}
 }
 
 NdefParamSlot : NdefParam {
@@ -748,7 +808,7 @@ NdefParamSlot : NdefParam {
 	}
 
 	asLabel {
-		^"Ndef % % %".format(target.key, this.property, index)
+		^"N % % %".format(target.key, this.property, index)
 	}
 
 	ndefParamSlotInit { arg idx;
@@ -788,7 +848,7 @@ NdefParamEnvSlot : NdefParam {
 	}
 
 	asLabel {
-		^"Ndef % % %%".format(target.key, this.property, subproperty.asString[0], index)
+		^"N % % %%".format(target.key, this.property, subproperty.asString[0], index)
 	}
 
 	ndefParamEnvSlotInit { arg subpro, idx;
@@ -818,6 +878,8 @@ NdefParamEnvSlot : NdefParam {
 	}
 }
 
+////////////////// Pdef
+
 PdefParam : BaseParam {
 	var <target, <property, <spec, <key;
 	var <multiParam = false;
@@ -836,7 +898,7 @@ PdefParam : BaseParam {
 	}
 
 	asLabel {
-		^"Pdef % %".format(target.key, property)
+		^"P % %".format(target.key, property)
 	}
 
 	*instrument { arg target;
@@ -963,6 +1025,20 @@ PdefParam : BaseParam {
 	normSet { arg val;
 		this.set(spec.map(val))
 	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\set, { arg ...args; 
+			// args: object, \set, keyval_list
+			//args.debug("args");
+
+			// update only if concerned key is set
+			// FIXME: may break if property is an association :(
+			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+			if(args[2].any({ arg x; x == param.property })) {
+				action.(view, param);
+			}
+		});
+	}
 }
 
 PdefParamSlot : PdefParam {
@@ -977,7 +1053,7 @@ PdefParamSlot : PdefParam {
 	}
 
 	asLabel {
-		^"Pdef % % %".format(target.key, this.property, index)
+		^"P % % %".format(target.key, this.property, index)
 	}
 
 	pdefParamSlotInit { arg idx;
@@ -1017,7 +1093,7 @@ PdefParamEnvSlot : PdefParam {
 	}
 
 	asLabel {
-		^"Pdef % % %%".format(target.key, this.property, subproperty.asString[0], index)
+		^"P % % %%".format(target.key, this.property, subproperty.asString[0], index)
 	}
 
 	pdefParamEnvSlotInit { arg subpro, idx;
@@ -1047,6 +1123,183 @@ PdefParamEnvSlot : PdefParam {
 	}
 }
 
+////////////////// Ndef vol
+
+
+NdefVolParam : NdefParam {
+	var <target, <property, <spec, <key;
+	*new { arg obj, meth, sp;
+		^super.new(obj, meth, sp);
+	}
+
+	//init { arg obj, meth, sp;
+	//	target = obj;
+	//	property = meth;
+	//	//sp.debug("sp1");
+	//	spec = this.toSpec(sp);
+	//	key = obj.key;
+	//}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg sp;
+		// FIXME: maybe add a way to .addSpec for Ndef:vol
+		//ControlSpec(0,1,\lin)
+		if(sp.isNil) {
+			^\amp.asSpec
+		} {
+			^sp;
+		}
+	}
+
+	get {
+		var val;
+		val = target.vol;
+		^val;
+	}
+
+	set { arg val;
+		target.vol = val;
+	}
+
+	normGet {
+		^spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(spec.map(val))
+	}
+
+	//putListener { arg param, view, controller, action;
+	//	controller.put(\vol, { arg obj, name, volume; 
+	//		// args: object, \amp, volume
+	//		//args.debug("args");
+	//		action.(view, param);
+	//	});
+	//}
+}
+
+////////////////// Volume
+
+
+VolumeParam : BaseParam {
+	var <target, <property, <spec, <key;
+	*new { arg obj, meth, sp;
+		^super.new.init(obj, meth, sp);
+	}
+
+	asLabel {
+		if(key == \volume or: { key == \amp }) {
+			^"Vol";
+		} {
+			^"Vol %".format(key)
+		}
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		//sp.debug("sp1");
+		spec = this.toSpec(sp);
+		key = meth ? \volume;
+	}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg sp;
+		//ControlSpec(0,1,\lin)
+		if(sp.isNil) {
+			^\db.asSpec
+		} {
+			^sp;
+		}
+	}
+
+	get {
+		var val;
+		val = target.volume;
+		^val;
+	}
+
+	set { arg val;
+		target.volume = val;
+	}
+
+	normGet {
+		^spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\amp, { arg obj, name, volume; 
+			// args: object, \amp, volume
+			//args.debug("args");
+			action.(view, param);
+		});
+	}
+}
+
+////////////////// TempoClock
+
+
+TempoClockParam : BaseParam {
+	var <target, <property, <spec, <key;
+	*new { arg obj, meth, sp;
+		^super.new.init(obj, meth, sp);
+	}
+
+	asLabel {
+		if(key == \tempo ) {
+			^"Tempo";
+		} {
+			^"Tempo %".format(key)
+		}
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		//sp.debug("sp1");
+		spec = this.toSpec(sp);
+		key = meth ? \tempo;
+	}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg sp;
+		if(sp.isNil) {
+			^ControlSpec(10/60,300/60,\lin,0,1)
+		} {
+			^sp;
+		}
+	}
+
+	get {
+		var val;
+		val = target.tempo;
+		^val;
+	}
+
+	set { arg val;
+		target.tempo = val;
+	}
+
+	normGet {
+		^spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\tempo, { arg obj, name, volume; 
+			// args: object, \amp, volume
+			//args.debug("args");
+			action.(view, param);
+		});
+	}
+}
 
 ////////////////////////////////////////
 
@@ -1105,7 +1358,7 @@ MIDIMap {
 				} {
 					blockmode
 				};
-				myblockmode.debug("BLOCKMODE");
+				//myblockmode.debug("BLOCKMODE");
 				if(myblockmode != true) {
 					setfun.();
 					midivalues.put(*path++[val]);
@@ -1116,7 +1369,8 @@ MIDIMap {
 						setfun.();
 					} {
 						//[midival, normval, val, (normval - midival).abs, (normval - midival).abs < ( 1/126 ), ( normval - midival ).abs < ( 1/110 ) ].debug("- midi, norm, val");
-						if((normval - midival).abs < ( 1/126 )) {
+						//if((normval - midival).abs < ( 1/126 )) {
+						if((normval - midival).abs < ( (param.spec.unmap(param.spec.step)) + ( 1/126 ) )) {
 							//"NOT BLOCKED".debug;
 							setfun.();
 						} {
@@ -1172,7 +1426,7 @@ MIDIMap {
 			if(kind == \note) {
 				kind = \noteOn
 			};
-			controls[key] = [val, channel, kind, source_uid];
+			controls[key] = [val, keychannel, kind, source_uid];
 		};
 	}
 
@@ -1273,6 +1527,10 @@ MIDIMap {
 		if(path.isNil) {
 			^nil
 		};
+		if(view.isNil) {
+			"MIDIMap.mapStaticTextLabel: Error: view is nil".postln;
+			^nil
+		};
 		if(mapped_views.at(*path).isNil) {
 			mapped_views.put(*path ++ [ List.new ])
 		};
@@ -1334,6 +1592,11 @@ ParamGroup : List {
 
 	getPreset { arg key=\default;
 		^presets[key]
+	}
+
+	getPresetCompileString { arg key=\default;
+		// TODO: write asPresetCompileStringNdef and Pdef and each other Param type
+
 	}
 
 	valueList {
@@ -1455,7 +1718,7 @@ ParamGroupDef {
 		presets.keysValuesDo { arg k,v;
 			// this loop is to workaround a bug in Ndef/Archive which load the Ndef with a nil server
 			v = v.collect { arg val;
-				val.class.debug("val class");
+				//val.class.debug("val class");
 				if(val.class == Ndef) {
 					"val is a Ndef".debug;
 					val.server = Server.default;
@@ -1549,12 +1812,27 @@ ParamValue {
 	normSet { arg val;
 		this.set(spec.map(val))
 	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\set, { arg ...args; 
+			// args: object, \set, keyval_list
+			//args.debug("args");
+
+			// update only if concerned key is set
+			// FIXME: may break if property is an association :(
+			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+			if(args[2].any({ arg x; x == param.property })) {
+				action.(view, param);
+			}
+		});
+	}
 }
 
 // act also as a Param
 ParamMorpher : Param {
-	var group, presets;
+	var <group, <>presets;
 	var <>key;
+	var <>optimizedPresets;
 	*new { arg group, presets;
 		var pval = ParamValue.new;
 		var inst;
@@ -1589,8 +1867,34 @@ ParamMorpher : Param {
 		} ?? {presets.asString})
 	}
 
+	optimizeMorphing {
+		var first;
+		var presetgrid;
+		if(presets.size > 0) {
+			// a group preset contains a snapshot of the value of each param of the group
+			// a param preset contains each value a param can take in presets
+			optimizedPresets = List.new;
+			first = group.getPreset(presets[0]);
+			presetgrid = presets.collect{ arg x; group.getPreset(x) }; // list of group presets
+			presetgrid.flop.do { arg parampreset, x; // list of param presets
+				if(parampreset.any({ arg x; x != parampreset[0] })) {
+					// different values, so do the morphing
+					optimizedPresets.add(x)
+				} {
+					// same values, dont add it for morphing
+				};
+			};
+		}
+
+	}
+
+	disableOptimize {
+		optimizedPresets = nil;
+	}
+
 	set { arg val;
 		var presets_vals;
+		var iter;
 		//val.debug("ParamMorpher: set");
 		this.wrapper.set(val);
 		presets_vals = presets.collect({ arg x; 
@@ -1607,8 +1911,15 @@ ParamMorpher : Param {
 			"Error: preset size (%) don't match group size (%)".format(presets_vals.size, group.size).postln;
 			^nil;
 		};
-		group.do({ arg param, x;
+
+		if(optimizedPresets.notNil) {
+			iter = optimizedPresets;
+		} {
+			iter = group.size;
+		};
+		iter.do({ arg x;
 			var resval;
+			var param = group.at(x);
 			//[x, presets_vals[x], val].debug("morph.set: groupdo");
 			resval = this.morph(presets_vals[x], val);
 			//[param.asLabel, val].debug("ParamMorpher: param set");
@@ -1656,6 +1967,118 @@ ParamMorpherDef : ParamMorpher {
 
 	clear {
 		lib[this.key] = nil
+	}
+}
+
+PresetListMorpher : ParamMorpher {
+	var <disabledPresets;
+	var size;
+	*new { arg group, size, prefix=\preset;
+		var pval = ParamValue.new;
+		var inst;
+		pval.spec = ControlSpec(0,size,\lin,0,0);
+		inst = super.newWrapper(pval);
+		inst.initPresetListMorpher(group, size, prefix);
+		^inst;
+	}
+
+	initPresetListMorpher { arg group, xsize, prefix;
+		var prelist;
+		size = xsize;
+		disabledPresets = Set.new;
+		prelist = size.collect { arg x; ( prefix++x ).asSymbol };
+		this.initParamMorpher(group, prelist);
+	}
+
+	set { arg val;
+		var presets_vals;
+		var xsize;
+		var iter;
+		//val.debug("ParamMorpher: set");
+		this.wrapper.set(val);
+		presets_vals = presets.collect({ arg x; 
+			var res = group.getPreset(x);
+			res;
+		});
+		presets_vals = presets_vals.reject({ arg x; x.isNil }).reject(disabledPresets.includes(_));
+		xsize = presets_vals.size;
+		//[presets_vals, presets].debug("presets");
+		if(xsize == 0) {
+			"PresetListMorpher.set: WARNING: not preset in final list, do nothing".postln;
+		} {
+			val = val.linlin(0, size-1, 0, xsize-1 );
+			presets_vals = presets_vals.flop;
+			if(group.size != presets_vals.size) {
+				"Error: preset size (%) don't match group size (%)".format(presets_vals.size, group.size).postln;
+				^nil;
+			};
+			if(optimizedPresets.notNil) {
+				iter = optimizedPresets;
+			} {
+				iter = group.size;
+			};
+			iter.do({ arg x;
+				var resval;
+				var param = group.at(x);
+				//[x, presets_vals[x], val].debug("morph.set: groupdo");
+				resval = this.morph(presets_vals[x], val);
+				//[param.asLabel, val].debug("ParamMorpher: param set");
+				param.set(resval);
+			})
+		};
+	}
+
+	getPreset { arg preset_index;
+		^group.getPreset(presets[preset_index]);
+	}
+
+	save { arg preset_index;
+		group.save(presets[preset_index]);
+		//this.updateOptimizer;
+	}
+
+	load { arg preset_index;
+		group.load(presets[preset_index]);
+	}
+
+	erase { arg preset_index;
+		group.erase(presets[preset_index]);
+	}
+
+	enablePreset { arg preset_index;
+		disabledPresets = disabledPresets.remove(presets[preset_index]);
+	}
+
+	isEnabled { arg preset_index; 
+		^disabledPresets.includes(presets[preset_index]).not;
+	}
+
+	disablePreset { arg preset_index;
+		disabledPresets = disabledPresets.add(presets[preset_index]);
+	}
+}
+
+PresetListMorpherDef : PresetListMorpher {
+	classvar <>all;
+	*initClass {
+		IdentityDictionary.initClass;
+		all = IdentityDictionary.new;
+	}
+
+	*new { arg key, group, size, prefix=\preset;
+		var inst;
+		if(all[key].isNil) {
+			inst = super.new(group, size, prefix);
+			inst.key = key;
+		} {
+			inst = all[key];
+		};
+		^inst
+	}
+
+	clear {
+		all[key] = nil;
+		^nil
 	}
 }
 
@@ -1854,6 +2277,36 @@ XSimpleButton : QButton {
 
 }
 
+//SimpleParamView {
+	//
+	//			new {
+	//				var font;
+	//				self = self.deepCopy;
+	//			
+	//				font = Font.default;
+	//				font.size = 11;
+	//				self.layout = VLayout.new;
+	//				//self.label = StaticText.new.font_(font).minWidth_(150);
+	//				self.label = StaticText.new.font_(font);
+	//				self.knob = Knob.new;
+	//				//self.val = TextField.new.font_(font).minWidth_(150);
+	//				self.val = TextField.new.font_(font);
+	//				self.layout.add(self.label, stretch:1);
+	//				self.layout.add(self.knob);
+	//				self.layout.add(self.val);
+	//				self.layout.margins = 1;
+	//				self.layout.spacing = 10;
+	//			
+	//				self;
+	//			}
+	//
+	//			mapMidi { arg key;
+	//				MIDIMap.mapStaticTextLabel(key, self.label);
+	//				MIDIMap.mapView(key, self.knob);
+	//				MIDIMap.mapView(key, self.val);
+	//			}
+//}
+
 //////////////////////////////////
 
 +Symbol {
@@ -2019,14 +2472,17 @@ XSimpleButton : QButton {
 }
 
 +Ndef {
-	asParamGroup { arg instrument, notes=true;
-		// TODO: get Ndef parameters and generate a ParamGroup with all parameters
-		// the second parameter (find a better name) is for adding volume
-	
+	asParamGroup { 
+		// TODO: add method argument (find a better name) for adding volume
+		^ParamGroup(
+			this.controlNames.collect{ arg con;
+				Param(this, con.name)
+			}
+		)
 	}
 
 	isNaN {
-		// used to avoid NumberBox and EZ* GUI to throwing an error
+		// used to avoid NumberBox and EZ* GUI to throw an error
 		^true
 	}
 
@@ -2034,7 +2490,7 @@ XSimpleButton : QButton {
 
 +String {
 	isNaN {
-		// used to avoid NumberBox and EZ* GUI to throwing an error
+		// used to avoid NumberBox and EZ* GUI to throw an error
 		^true
 	}
 }
@@ -2074,7 +2530,9 @@ XSimpleButton : QButton {
 +StaticText {
 	unmapParam {
 		Param.unmapSlider(this);
-		this.string = "-";
+		{
+			this.string = "-";
+		}.defer;
 	}
 
 	mapParam { arg param;
@@ -2170,7 +2628,9 @@ XSimpleButton : QButton {
 +QStaticText {
 	unmapParam {
 		Param.unmapSlider(this);
-		this.string = "-";
+		{
+			this.string = "-";
+		}.defer;
 	}
 
 	mapParam { arg param;
@@ -2185,7 +2645,9 @@ XSimpleButton : QButton {
 +QTextField {
 	unmapParam {
 		Param.unmapSlider(this);
-		this.value = "";
+		{
+			this.value = "";
+		}.defer;
 	}
 
 	mapParam { arg param;
@@ -2260,6 +2722,7 @@ XSimpleButton : QButton {
 }
 
 +Bus {
+	// now a multi-channel bus can be mapped as an array of symbol like patterns expect it
 	asMap {
 		^mapSymbol ?? {
 			if(index.isNil) { MethodError("bus not allocated.", this).throw };
@@ -2280,3 +2743,4 @@ XSimpleButton : QButton {
 		^this
 	}
 }
+
