@@ -223,9 +223,25 @@ Param {
 		^wrapper.spec;
 	}
 
+	///////// list behavior
+
 	at { arg idx;
 		^wrapper.at(idx);
 	}
+
+	asParamList {
+		^wrapper.asParamList;
+	}
+
+	do { arg fun;
+		wrapper.do(fun);
+	}
+
+	collect { arg fun;
+		^wrapper.collect(fun);
+	}
+
+	///////////
 
 	get {
 		^wrapper.get;
@@ -368,6 +384,20 @@ Param {
 	}
 
 	////// widgets
+
+	mapMultiSlider { arg slider, action;
+		this.makeSimpleController(slider, 
+			updateAction: { arg self;
+				var val = this.normGet;
+				if(val.isKindOf(SequenceableCollection) and: { val[0].isKindOf(Number) }) {
+					{
+						self.value = val;
+					}.defer;
+				}
+			},
+			customAction:action
+		);
+	}
 
 	mapSlider { arg slider, action;
 		this.makeSimpleController(slider, 
@@ -527,6 +557,10 @@ Param {
 	asKnob {
 		^Knob.new.mapParam(this);
 	}
+
+	//asEZKnob {
+	//	^EZKnob.new.mapParam(this);
+	//}
 
 	asMultiSlider {
 		^MultiSliderView.new.elasticMode_(1).size_(this.numChannels).mapParam(this);
@@ -700,6 +734,29 @@ Param {
 
 BaseParam {
 
+	at { arg idx;
+		^Param(this.target, this.property -> idx, this.spec)
+	}
+
+	asParamList {
+		^this.spec.size.collect { arg x;
+			this.at(x)
+		}
+	}
+
+	do { arg fun;
+		this.spec.size.do { arg x;
+			fun.(this.at(x))
+		}
+	}
+
+	collect { arg fun;
+		^this.spec.size.collect { arg x;
+			fun.(this.at(x))
+		}
+	}
+
+
 }
 
 ////////////////// Ndef
@@ -773,12 +830,16 @@ NdefParam : BaseParam {
 			// workaround when a Bus ("c0") is mapped to the parameter
 			^0
 		} {
-			^spec.unmap(this.get)
+			^this.spec.unmap(this.get)
 		}
 	}
 
 	normSet { arg val;
-		this.set(spec.map(val))
+		this.set(this.spec.map(val))
+	}
+
+	at { arg idx;
+		^Param(target, property -> idx, spec)
 	}
 
 	putListener { arg param, view, controller, action;
@@ -833,6 +894,20 @@ NdefParamSlot : NdefParam {
 		var vals = super.get;
 		^vals[index];
 	}
+
+	//normGet {
+	//	var val = this.get;
+	//	if(val.class == String) {
+	//		// workaround when a Bus ("c0") is mapped to the parameter
+	//		^0
+	//	} {
+	//		^this.spec.unmap(this.get)
+	//	}
+	//}
+
+	//normSet { arg val;
+	//	this.set(this.spec.map(val))
+	//}
 }
 
 NdefParamEnvSlot : NdefParam {
@@ -981,10 +1056,6 @@ PdefParam : BaseParam {
 		^this.class.toSpec(spec, target, property)
 	}
 	
-	at { arg idx;
-		^Param(target, property -> idx, spec)
-	}
-
 	setBusMode { arg enable=true, free=true;
 		target.setBusMode(property, enable, free);
 	}
@@ -2070,7 +2141,12 @@ PresetListMorpherDef : PresetListMorpher {
 		if(all[key].isNil) {
 			inst = super.new(group, size, prefix);
 			inst.key = key;
+			all[key] = inst;
 		} {
+			if(group.notNil) {
+				// TODO: provide a way to disable this message, and put key name in message
+				"Warning: PresetListMorpherDef: already defined, use .clear before redefine it".postln;
+			};
 			inst = all[key];
 		};
 		^inst
@@ -2523,7 +2599,7 @@ XSimpleButton : QButton {
 	}
 
 	mapParam { arg param;
-		param.mapSlider(this);
+		param.mapMultiSlider(this);
 	}
 }
 
@@ -2621,7 +2697,7 @@ XSimpleButton : QButton {
 	}
 
 	mapParam { arg param;
-		param.mapSlider(this);
+		param.mapMultiSlider(this);
 	}
 }
 
