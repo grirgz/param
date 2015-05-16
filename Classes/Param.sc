@@ -6,11 +6,12 @@ Param {
 	classvar <>simpleControllers;
 	classvar <>defaultUpdateMode = \dependants;
 	classvar <>defaultPollRate = 0.2;
+	classvar <>editFunction;
 
 	*initClass {
-		List.initClass;
-		Spec.initClass;
-		ControlSpec.initClass;
+		Class.initClassTree(List);
+		Class.initClassTree(Spec);
+		Class.initClassTree(ControlSpec);
 		defaultSpec = \widefreq.asSpec;
 		simpleControllers = List.new;
 	}
@@ -159,23 +160,13 @@ Param {
 		//"3".debug;
 	}
 
-	// why Post << Param doesnt use this method ?
-	storeOn { arg stream;
-		stream << ("Param.new(\"" ++ this.asLabel ++ "\")");
+	printOn { arg stream;
+		this.storeOn(stream); // storeOn call storeArgs
 	}
 
-	asString {
-		^this.asLabel
-	}
-
-	//storeArgs { arg stream;
-	//	//^init_args
-	//	stream << ("Param.new(" ++ init_args.asCompileString ++ ")");
-	//}
-	
-
-	asCompileString {
-		^( "Param.new(" ++ init_args.asCompileString ++ ")" );
+	storeArgs { arg stream;
+		^init_args
+		//stream << ("Param.new(" ++ init_args.asCompileString ++ ")");
 	}
 
 	== { arg param;
@@ -377,7 +368,7 @@ Param {
 					^val.collect({ arg x; x.asFloat.asStringPrec(precision) });
 				},
 				\env, {
-					^val.asCompileString;
+					^val.asStringPrec(precision);
 				}
 			);
 		};
@@ -389,7 +380,23 @@ Param {
 		this.makeSimpleController(slider, 
 			updateAction: { arg self;
 				var val = this.normGet;
+				//[ val.class, val ].debug("mapMultiSlider: updateAction");
 				if(val.isKindOf(SequenceableCollection) and: { val[0].isKindOf(Number) }) {
+					{
+						self.value = val;
+					}.defer;
+				}
+			},
+			customAction:action
+		);
+	}
+
+	mapEnvelopeView { arg slider, action;
+		this.makeSimpleController(slider, 
+			updateAction: { arg self;
+				var val = this.normGet;
+				[ val.class, val, val.asCompileString ].debug("mapMultiSlider: updateAction");
+				if((val.isKindOf(Env) or: {val.isKindOf(SequenceableCollection)}) and: { val[0].isKindOf(Number) }) {
 					{
 						self.value = val;
 					}.defer;
@@ -563,7 +570,14 @@ Param {
 	//}
 
 	asMultiSlider {
-		^MultiSliderView.new.elasticMode_(1).size_(this.numChannels).mapParam(this);
+		^MultiSliderView.new
+			.elasticMode_(1)
+			.indexThumbSize_(100)
+			.isFilled_(true)
+			.fillColor_(Color.gray)
+			.strokeColor_(Color.black)
+			.size_(this.numChannels)
+			.mapParam(this);
 	}
 
 	asStaticText {
@@ -576,6 +590,10 @@ Param {
 
 	asTextField {
 		^TextField.new.mapParam(this);
+	}
+
+	asNumberBox {
+		^NumberBox.new.mapParam(this);
 	}
 
 	asEnvelopeView {
@@ -611,26 +629,29 @@ Param {
 	}
 
 	edit {
-		var win;
-		var label, widget, val;
-		win = Window.new;
+		var fun = editFunction ? { arg param;
+			var win;
+			var label, widget, val;
+			win = Window.new;
 
-		label = this.asStaticTextLabel;
-		label.align = \center;
+			label = param.asStaticTextLabel;
+			label.align = \center;
 
-		widget = this.asView;
+			widget = param.asView;
 
-		val = this.asStaticText;
-		//val.background = Color.red;
-		val.align = \center;
+			val = param.asStaticText;
+			//val.background = Color.red;
+			val.align = \center;
 
-		win.layout = VLayout.new(
-			label, 
-			widget, 
-			val
-		);
-		win.alwaysOnTop = true;
-		win.front;
+			win.layout = VLayout.new(
+				label, 
+				widget, 
+				val
+			);
+			win.alwaysOnTop = true;
+			win.front;
+		};
+		fun.(this);
 	}
 
 	/////////// Spec
@@ -677,6 +698,20 @@ Param {
 				if(val.notNil) {
 					rval = val[argName];
 				}
+			}
+		};
+		^rval;
+	}
+
+	*specFromDefaultValue { arg argname, defname, default_spec;
+		var def = Param.getSynthDefDefaultValue(argname, defname);
+		var rval;
+		default_spec = default_spec ? Param.defaultSpec;
+		if(def.class == Float) {
+			rval = default_spec;
+		} {
+			if(def.class.isSequenceableCollection) {
+				rval = XArraySpec(default_spec!def.size);
 			}
 		};
 		^rval;
@@ -1017,18 +1052,23 @@ PdefParam : BaseParam {
 			// Param arg
 			xspec ?? {
 				// halo
+				debug("1");
 				xtarget.getSpec(xproperty) ?? {
 					var mysp;
+				debug("2");
 					// instrument metadata spec
 					instr = PdefParam.instrument(xtarget);
 					if(instr.notNil) {
+				debug("3");
 						mysp = Param.getSynthDefSpec(xproperty, instr);
 						// arg name in Spec
 						mysp ?? {
+				debug("4");
 							// arg name in Spec
 							xproperty.asSpec ?? {
+				debug("5");
 								// default value in SynthDef
-								Param.getSynthDefDefaultValue(xproperty, instr) ?? {
+								Param.specFromDefaultValue(xproperty, instr) ?? {
 									Param.defaultSpec
 								}
 							}
@@ -1038,10 +1078,13 @@ PdefParam : BaseParam {
 						xproperty.asSpec ?? {
 							// default value in Pdef
 							var myval = xtarget.getVal(xproperty);
+				debug("6");
 							if(myval.notNil) {
+				debug("7");
 								Param.valueToSpec(myval);
 							} {
 								// default spec
+				debug("8");
 								Param.defaultSpec
 							}
 						}
@@ -1389,7 +1432,7 @@ MIDIMap {
 	// path type: [msgNum, chan, msgType, srcID]
 	
 	*initClass {
-		MultiLevelIdentityDictionary.initClass;
+		Class.initClassTree(MultiLevelIdentityDictionary);
 		responders = MultiLevelIdentityDictionary.new;
 		responders_param = MultiLevelIdentityDictionary.new;
 		mapped_views = MultiLevelIdentityDictionary.new;
@@ -1635,6 +1678,7 @@ MIDIMap {
 ParamGroup : List {
 	var <presets;
 	var <>morphers;
+	classvar <>editFunction;
 
 	// morphers format : Dict[ \name -> (val: 0.5, presets:[\preset1, \preset2]) ]
 	// - morphTo(\name, 0.3)
@@ -1689,32 +1733,58 @@ ParamGroup : List {
 	}
 
 	edit {
-		var win;
-		var hlayout = HLayout.new;
-		win = Window.new;
+		var fun = editFunction ? { arg pg;
+			var win = Window.new;
+			var layout;
+			var gridlayout;
+			var biglayout;
+			var scalarlist, biglist;
+			var layout_type;
 
-		this.collect({ arg param;
-			var label, widget, val;
+			scalarlist = pg.select({ arg param; 
+				param.type == \scalar;
+			});
+			biglist = pg.select({ arg param;
+				param.type != \scalar;
+			});
 
-			label = param.asStaticTextLabel;
-			label.align = \center;
+			gridlayout = GridLayout.rows(*
+				scalarlist.collect({ arg param;
+					[
+						param.asStaticTextLabel,
+						param.asSlider.orientation_(\horizontal),
+						param.asTextField,
+					]
+				})
+			);
+			gridlayout.setColumnStretch(1,1);
 
-			widget = param.asView;
+			// chipotage
+			if(biglist.size < 5 and: { scalarlist.size < 6 } ) {
+				layout_type = VLayout;
+			} {
+				layout_type = HLayout;
+			};
 
-			val = param.asStaticText;
-			//val.background = Color.red;
-			val.align = \center;
+			biglayout = VLayout(*
+				biglist.collect({ arg param;
+					VLayout(
+						param.asStaticTextLabel,
+						param.asView,
+						param.asTextField,
+					)
+				})
+			);
 
-			hlayout.add(VLayout.new(
-				label, 
-				widget, 
-				val
-			), stretch:1);
-		});
-
-		win.layout = hlayout;
-		win.alwaysOnTop = true;
-		win.front;
+			layout = layout_type.new(
+				gridlayout,
+				biglayout
+			);
+			win.layout = layout;
+			win.alwaysOnTop = true;
+			win.front;
+		};
+		fun.(this);
 	}
 
 }
@@ -1725,7 +1795,7 @@ ParamGroupDef {
 	var <group;
 
 	*initClass {
-		IdentityDictionary.initClass;
+		Class.initClassTree(IdentityDictionary);
 		lib = IdentityDictionary.new
 	}
 
@@ -2015,7 +2085,7 @@ ParamMorpherDef : ParamMorpher {
 	classvar lib;
 
 	*initClass {
-		IdentityDictionary.initClass;
+		Class.initClassTree(IdentityDictionary);
 		lib = IdentityDictionary.new;
 	}
 
@@ -2132,7 +2202,7 @@ PresetListMorpher : ParamMorpher {
 PresetListMorpherDef : PresetListMorpher {
 	classvar <>all;
 	*initClass {
-		IdentityDictionary.initClass;
+		Class.initClassTree(IdentityDictionary);
 		all = IdentityDictionary.new;
 	}
 
@@ -2164,7 +2234,7 @@ CachedBus : Bus {
 	classvar cache;
 
 	*initClass {
-		IdentityDictionary.initClass;
+		Class.initClassTree(IdentityDictionary);
 		cache = IdentityDictionary.new;
 		cache[\audio] = IdentityDictionary.new;
 		cache[\control] = IdentityDictionary.new;
@@ -2300,7 +2370,7 @@ XEnvelopeView : QEnvelopeView {
 	}
 
 	mapParam { arg param;
-		param.mapSlider(this, { arg self;
+		param.mapEnvelopeView(this, { arg self;
 			var val = self.valueXY;
 			// prevent the first node from moving
 			if( val[0][0] != 0) {
@@ -2540,10 +2610,47 @@ XSimpleButton : QButton {
 		}
 	}
 
-	asParamGroup { arg instrument, notes=true;
-		// TODO: get synthdef parameters and generate a ParamGroup with all parameters
-		// the second parameter (find a better name) is for adding \dur and \legato
-	
+	asParamGroup { arg instrument, notes=true, exclude;
+		// TODO: find a better name for 'notes' argument (this is for adding \dur and \legato)
+		var list;
+
+		instrument = instrument ?? { this.getHalo(\instrument) };
+		if(instrument.isNil) {
+			"ERROR: Pdef:asParamGroup: Can't create paramGroup: no instrument is defined".postln;
+			^nil
+		} {
+			exclude = exclude ? [\out, \gate, \doneAction, \bufnum];
+
+			list = SynthDescLib.global.synthDescs[instrument].controls.reject({ arg con; 
+				con.name == '?' or: {
+					exclude.includes(con.name)
+				}
+			}).collect({ arg con;
+				Param( this, con.name );
+			});
+
+			if(notes) {
+				list = [
+					Param(this, \dur),
+					Param(this, \legato),
+				] ++ list;
+			};
+			^ParamGroup(list)
+		}
+	}
+
+	asEnvirCompileString {
+		^this.envir.collect({ arg x; x.asCompileString })
+	}
+
+	asPatternCompileString {
+		var res;
+		res = "Pbind(\n".format(this.key);
+		this.envir.keysValuesDo({ arg k,v;
+			res = res ++ "\t%, %,\n".format(k.asCompileString, v.asCompileString);
+		});
+		res = res ++ ");\n";
+		^res;
 	}
 }
 
@@ -2793,7 +2900,7 @@ XSimpleButton : QButton {
 		//levels.debug("levels");
 		//times.debug("times");
 		//curves.debug("curves");
-		^Env(levels, times, curves, releaseNode, loopNode)
+		^Env(levels.asArray, times.asArray, curves.asArray, releaseNode, loopNode)
 	}
 }
 
@@ -2818,5 +2925,24 @@ XSimpleButton : QButton {
 	asEnv {
 		^this
 	}
+
+	asStringPrec { arg prec;
+		var args;
+		args = this.storeArgs;
+		args = args.collect({ arg seq; 
+			if(seq.isSequenceableCollection) {
+				seq.collect({ arg val; val.asFloat.asStringPrec(prec) }) 
+			} {
+				if(seq.notNil) {
+					seq.asFloat.asStringPrec(prec)
+				} {
+					seq;
+				}
+			}
+		});
+		^"%(%)".format(this.class.name, args.join(", "));
+	}
+
 }
+
 

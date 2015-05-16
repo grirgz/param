@@ -145,7 +145,12 @@ XEnvSpec : Spec {
 
 	*adsr { arg attack, decay, sustain, release, peak;
 		var inst;
-		var zerospec = ControlSpec(0,0,\lin);
+		var zerospec = ControlSpec(0,0.000000001,\lin);
+		attack = attack ? ControlSpec(0,2,\lin,0,0.1);
+		decay = decay ? attack;
+		sustain = sustain ? attack;
+		release = release ? attack;
+		peak = peak ? sustain;
 		inst = this.new([ zerospec, peak, sustain, zerospec], [attack, decay, release]);
 		^inst
 	}

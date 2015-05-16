@@ -38,6 +38,9 @@ Using this library, you can quickly write custom GUI, but more importantly, you 
 ] )
 ```
 
+Dependencies : please install the following quark before trying Param:
+- JITLibExtensions
+
 Current features:
 - map any Ndef of Pdef parameter to a GUI object, including arrays and envelopes parameters
 - map any Ndef of Pdef parameter to a MIDI control
@@ -47,17 +50,23 @@ Current features:
 - switch quickly between normal mode and bus mode in patterns (bus mode is the way to continuously control a parameter)
 - block the MIDI until the MIDI value match the Param value to avoid sudden value jump
 
+Controlled objects
+- Ndef
+- Pdef
+- Ndef volume
+- Volume (eg: s.volume)
+- TempoClock
+
 
 Planned features:
 - control others objects:
 	- Bus
 	- Synth
-	- s.volume
-	- Ndef volume
 	- Instr
-	- tempo
+	- list (to have an array of slider sequencing the sound in a pattern for example)
 - map Param to others GUI objects like PopupMenu
 - integration with Modality toolkit
 - easy step sequencer creation with visual feedback
 - OSC mapping
 - replace default GUI used by .edit
+

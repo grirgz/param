@@ -17,9 +17,9 @@ First, define a sound object you want to control:
 
 code::
 (
-Ndef(\ndef_scalar, { arg freq=200, pan=0, amp=0.1;
+Ndef(\ndef_scalar, { arg freq=200, pan=0, amp=0.1, detune = 0;
 	var sig;
-	sig = SinOsc.ar(freq);
+	sig = SinOsc.ar(freq + detune);
 	sig = Pan2.ar(sig, pan, amp);
 }).play;
 );
@@ -111,6 +111,7 @@ code::
 		~p.asKnob,
 		~p.asStaticText,
 		~p.asTextField,
+		~p.asNumberBox,
 	);
 	win.front;
 )
@@ -161,13 +162,13 @@ MIDIMap(\k1, Param(Ndef(\ndef_scalar), \pan));
 MIDIMap can also take a function in argument to run arbitrary code. If \b1 is some button on your controller, you can use it to remap your knobs. Here pushing first button map \freq and \pan on the two knobs, pushing second button map \amp and \detune on the two knobs.
 
 code::
-MIDIMap(\b1, {
-	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \freq));
-	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \pan));
+MIDIMap(\c1, {
+	MIDIMap(\k1, Param(Ndef(\ndef_scalar), \freq));
+	MIDIMap(\k2, Param(Ndef(\ndef_scalar), \pan));
 });
-MIDIMap(\b2, {
-	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \amp));
-	MIDIMap(\k1, Param(Ndef(\ndef_scalar, \detune)); // \detune don't exists in the Ndef, it's just for the example 
+MIDIMap(\c2, {
+	MIDIMap(\k1, Param(Ndef(\ndef_scalar), \amp));
+	MIDIMap(\k2, Param(Ndef(\ndef_scalar), \detune));
 });
 ::
 
@@ -290,7 +291,7 @@ code::
 Or get the values of the current Param's in the group (this are the values saved when you call .save(\presetname))
 
 code::
-~pg.valuesList;
+~pg.valueList;
 ::
 
 section:: ParamGroupDef
@@ -341,6 +342,7 @@ code::
 ~pg.save(\preset2);
 ~pg.save(\preset3);
 
+(
 ~m = ParamMorpher( ~pg,
 	[
 		\preset1,
@@ -348,6 +350,7 @@ code::
 		\preset3,
 	]
 );
+)
 ::
 
 There is 3 presets, so the value to set range from 0 to 2, 0 is the first preset (\mypreset1), 1 the second and 2 the third. 0.5 is the morphing between preset 0 and preset 1
@@ -469,8 +472,9 @@ Pdef(\pdef_scalar).set(\amp, 0.4); // do nothing because amp is already defined 
 The correct way is using an empty Pdef and chaining it to your pattern:
 
 code::
+(
 Pdef(\my_pattern,
-	Pdef(\pdef_scalar, Pbind()) // don't forget to initialize it to and empty Pbind or else the pattern will stop immediatly
+	Pdef(\pdef_scalar, Pbind()) // don't forget to initialize it to an empty Pbind else the pattern will be silent
 	<>  // chaining
 	Pbind( // now you can provide your custom pattern
 		\instrument, \synthdef_scalar,
@@ -479,9 +483,10 @@ Pdef(\my_pattern,
 		\amp, 0.1
 	)
 ).play;
+)
 
-Pdef(\pdef_scalar).set(\amp, 0.4); // now this work
-Param(Pdef(\pdef_scalar), \amp).set(0.4) // Param equivalent
+Pdef(\pdef_scalar).set(\amp, 0.2); // now this work
+Param(Pdef(\pdef_scalar), \amp).set(0.2) // Param equivalent
 
 Pdef(\pdef_scalar).unset(\amp); // go back to defined amp in your pattern: 0.1
 ::
@@ -509,7 +514,7 @@ Pdef(\pdef_scalar).get(\freq); // you can see that \freq is a bus now
 
 Pdef(\pdef_scalar).setBusMode(\freq, false); // disable bus mode
 
-~p.set(350); // change wait the next node
+~p.set(350); // change waits the next node
 ::
 
 section:: Other parameters types
@@ -687,7 +692,7 @@ Setting specs with the Spec dictionary: if the spec is not found and the argumen
 code::
 Spec.add(\myargument, ControlSpec(0,3,\lin)); // add to the Spec library
 
-Param(Ndef(\myndef), \myargument); // Param will use ControlSpec(0,3,\lin) as the spec
+Param(Ndef(\myndef), \myargument).spec; // Param will use ControlSpec(0,3,\lin) as the spec
 ::
 
 Setting the default Param spec when every other method fails:
