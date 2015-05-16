@@ -49,6 +49,8 @@ Current features:
 - morph between selected presets
 - switch quickly between normal mode and bus mode in patterns (bus mode is the way to continuously control a parameter)
 - block the MIDI until the MIDI value match the Param value to avoid sudden value jump
+- GUI can be updated in synchronous or polling mode
+- replace default GUI used by .edit
 
 Controlled objects
 - Ndef
@@ -68,5 +70,4 @@ Planned features:
 - integration with Modality toolkit
 - easy step sequencer creation with visual feedback
 - OSC mapping
-- replace default GUI used by .edit
 

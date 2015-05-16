@@ -243,9 +243,9 @@ MIDIdef.cc(\arf).free;
 )
 
 (
-// put the midi cc here
+// if you have 4 knobs (\k1, \k2, ..) and 4 sliders (\s1, \s2, ..) defined in MIDIMap
 ~makegui.(
-	[\k, \s].collect { arg pre; 9.collect{ arg x; ( pre++(x+1) ).asSymbol }}.flat
+	[\k, \s].collect { arg pre; 4.collect{ arg x; ( pre++(x+1) ).asSymbol }}.flat
 );
 )
 
@@ -286,9 +286,3 @@ MIDIMap.free(\k1);
 
 ////////////////////////////////////////////////////////////
 
-~a = MultiLevelIdentityDictionary.new;
-~a.put(\bla, \rah,\niar, 4)
-~a.put(\bla, \xxx,\niar, 3)
-~a.put(\bla, \xxx,\niar, nil)
-
-~a.leafDo({ arg ... args; args.debug("leaf") });

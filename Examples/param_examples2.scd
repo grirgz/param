@@ -29,8 +29,8 @@ Ndef(\echo, { arg freq=200, pan=0, amp=0.1;
 	var sig1, sig2, sig3, sig4, sig5, sig6, sig7, sig8;
 	var del = 0.2;
 	sig = InFeedback.ar(BusDef(\fx1),2);
-	sig = CombL.ar(sig!8, 1,( \delay.kr(0.01) * \delaytab.kr(1!8) ).lag(0.1),\decay.kr(1)) + sig;
-	sig = sig.sum;
+	sig = CombL.ar([sig], 1,( \delay.kr(0.01) * \delaytab.kr(1!8) ).lag(0.1),\decay.kr(1)) + sig;
+	sig = sig.mean;
 	//sig = EnvGen.ar(Env([1,2,1],[0.1,0.8]), Onsets.kr(),doneAction:2);
 	sig.debug("sig");
 	sig = sig.tanh;
@@ -74,26 +74,52 @@ Ndef(\echo).play;
 ~makegui = { arg list, presets;
 	var win, playout, mlayout;
 	var morpher;
+	var layout;
+	var gridlayout;
+	var biglayout;
+	var scalarlist, biglist;
+	var layout_type;
 	win = Window.new;
 	win.alwaysOnTop = true;
 
-	playout = HLayout(*list.collect { arg param;
-		var lay;
-		param = param.asParam;
-		lay = VLayout(
-			// create a label, a knob and a value label from the param
-			param.asStaticTextLabel.align_(\center),
-			param.asView,
-			//param.asStaticText.minWidth_(80).align_(\center),
-			param.asStaticText.align_(\center),
-		); 
-		[lay, \stretch:1];
+	// select is not implemented by ParamGroupDef, so you need to convert it to list first with .asList
+	scalarlist = list.asList.select({ arg param;  
+		param.type == \scalar;
 	});
+	biglist = list.asList.select({ arg param;
+		param.type != \scalar;
+	});
+
+	gridlayout = GridLayout.rows(*
+		scalarlist.collect({ arg param;
+			[
+				param.asStaticTextLabel,
+				param.asSlider.orientation_(\horizontal),
+				param.asTextField,
+			]
+		})
+	);
+	gridlayout.setColumnStretch(1,1);
+
+	biglayout = VLayout(*
+		biglist.collect({ arg param;
+			VLayout(
+				param.asStaticTextLabel,
+				param.asView,
+				param.asTextField,
+			)
+		})
+	);
+
+	layout = HLayout.new(
+		gridlayout,
+		biglayout
+	);
 
 	morpher = ParamMorpher(list, presets);
 
 	mlayout = VLayout(
-		[playout, stretch:1],
+		[layout, stretch:1],
 		HLayout(*
 			presets.collect({ arg preset, x;
 				VLayout(
@@ -106,6 +132,7 @@ Ndef(\echo).play;
 	);
 
 	win.layout = mlayout;
+	win.alwaysOnTop = true;
 	win.front;
 	
 };
@@ -115,6 +142,8 @@ Pdef(\plop).play;
 Ndef(\echo).play;
 
 );
+
+ParamGroupDef(\mypreset2).edit;
 
 
 

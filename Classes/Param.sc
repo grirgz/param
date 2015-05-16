@@ -69,7 +69,7 @@ Param {
 			Ndef, {
 				switch(property.class,
 					Association, {
-						"Ndef: an asso".debug;
+						//"Ndef: an asso".debug;
 						switch(property.key.class,
 							Association, { // index of ((\adsr -> \levels) -> 0)
 								var subpro = property.key.value;
@@ -102,11 +102,11 @@ Param {
 						);
 					},
 					Symbol, { // a simple param : \freq
-						"Param.newWrapper: Ndef: a symbol".debug;
+						//"Param.newWrapper: Ndef: a symbol".debug;
 						wrapper = NdefParam(*args);
 					},
 					String, { // volume of the Ndef (Ndef(\x).vol)
-						"Param.newWrapper: Ndef: a string".debug;
+						//"Param.newWrapper: Ndef: a string".debug;
 						if(property == "vol" or: { property == "volume" }) {
 							wrapper = NdefVolParam(*args);
 						} {
@@ -395,7 +395,7 @@ Param {
 		this.makeSimpleController(slider, 
 			updateAction: { arg self;
 				var val = this.normGet;
-				[ val.class, val, val.asCompileString ].debug("mapMultiSlider: updateAction");
+				//[ val.class, val, val.asCompileString ].debug("mapMultiSlider: updateAction");
 				if((val.isKindOf(Env) or: {val.isKindOf(SequenceableCollection)}) and: { val[0].isKindOf(Number) }) {
 					{
 						self.value = val;
@@ -489,11 +489,11 @@ Param {
 
 	mapEZSlider { arg view, mapLabel=true, action;
 		var param = this;
-		view.debug("wTF");
+		//view.debug("wTF");
 		view.controlSpec = param.spec;
 		view.sliderView.mapParam(param);
 		view.numberView.mapParam(param);
-		view.debug("wTF");
+		//view.debug("wTF");
 		if(view.labelView.notNil and: {mapLabel == true}) {
 			view.labelView.mapParamLabel(param);
 		}
@@ -1052,21 +1052,21 @@ PdefParam : BaseParam {
 			// Param arg
 			xspec ?? {
 				// halo
-				debug("1");
+				//debug("1");
 				xtarget.getSpec(xproperty) ?? {
 					var mysp;
-				debug("2");
+				//debug("2");
 					// instrument metadata spec
 					instr = PdefParam.instrument(xtarget);
 					if(instr.notNil) {
-				debug("3");
+				//debug("3");
 						mysp = Param.getSynthDefSpec(xproperty, instr);
 						// arg name in Spec
 						mysp ?? {
-				debug("4");
+				//debug("4");
 							// arg name in Spec
 							xproperty.asSpec ?? {
-				debug("5");
+				//debug("5");
 								// default value in SynthDef
 								Param.specFromDefaultValue(xproperty, instr) ?? {
 									Param.defaultSpec
@@ -1078,13 +1078,13 @@ PdefParam : BaseParam {
 						xproperty.asSpec ?? {
 							// default value in Pdef
 							var myval = xtarget.getVal(xproperty);
-				debug("6");
+				//debug("6");
 							if(myval.notNil) {
-				debug("7");
+				//debug("7");
 								Param.valueToSpec(myval);
 							} {
 								// default spec
-				debug("8");
+				//debug("8");
 								Param.defaultSpec
 							}
 						}
@@ -1917,6 +1917,10 @@ ParamGroupDef {
 
 	edit {
 		group.edit;
+	}
+
+	asList {
+		^group
 	}
 
 }
