@@ -151,6 +151,17 @@ Param {
 				//"wrapper: VolumeParam".debug;
 				wrapper = TempoClockParam(*args);
 			},
+			List, {
+				if(property.isKindOf(Integer)) {
+					wrapper = ListParamSlot(*args);
+				} {
+					wrapper = ListParam(*args);
+				}
+			},
+			Array, {
+				"ERROR: not implemented for Array, use List instead".postln;
+				^nil;
+			},
 			// else
 			{
 				// ParamValue goes here
@@ -614,6 +625,16 @@ Param {
 		^view;
 	}
 
+	asButton {
+		var but = Button.new
+			.states_([
+				[""],
+				["", Color.white, Color.black],
+			]);
+		but.mapParam(this);
+		^but;
+	}
+
 	asView {
 		case(
 			{ this.spec.class == XEnvSpec }, {
@@ -781,13 +802,13 @@ BaseParam {
 
 	do { arg fun;
 		this.spec.size.do { arg x;
-			fun.(this.at(x))
+			fun.(this.at(x), x)
 		}
 	}
 
 	collect { arg fun;
 		^this.spec.size.collect { arg x;
-			fun.(this.at(x))
+			fun.(this.at(x), x)
 		}
 	}
 
@@ -1414,6 +1435,162 @@ TempoClockParam : BaseParam {
 		});
 	}
 }
+
+////////////////// List
+
+ListParam : BaseParam {
+	var <target, <property, spec, <key;
+	*new { arg obj, meth, sp;
+		// meth/property is useless
+		^super.new.init(obj, meth, sp);
+	}
+
+	asLabel {
+		^"L % %".format(target.hash, property)
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		//sp.debug("sp1");
+		spec = this.toSpec(sp);
+		key = obj.hash;
+	}
+
+	spec {
+		^XArraySpec(spec ! target.size);
+	}
+
+	at { arg idx;
+		^Param(target, idx, spec) // not this.spec: spec is scalar 
+	}
+
+	collect { arg fun;
+		^target.collect({ arg val, x;
+			fun.(this.at(x), x)
+		});
+	}
+
+	do { arg fun;
+		target.do({ arg val, x;
+			fun.(this.at(x), x)
+		});
+	}
+
+
+	// retrieve default spec if no default spec given
+	toSpec { arg sp;
+		//sp.debug("sp2");
+		sp = 
+			// param arg
+			sp ?? {
+				// halo
+				target.getSpec(property) ?? {
+					Param.defaultSpec;
+				};
+			};
+		^sp.asSpec;
+	}
+
+	get {
+		var val;
+		^target;
+	}
+
+	set { arg val;
+		target.array = val;
+		target.changed(\set, property);
+	}
+
+	normGet {
+		var val = this.get;
+		^this.spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(this.spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\set, { arg ...args; 
+			action.(view, param);
+		});
+	}
+}
+
+ListParamSlot : BaseParam {
+	var <target, <property, <spec, <key;
+	*new { arg obj, meth, sp;
+		// meth/property is index
+		// spec should be scalar
+		^super.new.init(obj, meth, sp);
+	}
+
+	asLabel {
+		^"L % %".format(target.hash, property)
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		//sp.debug("sp1");
+		spec = this.toSpec(sp);
+		key = obj.hash;
+	}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg sp;
+		//sp.debug("sp2");
+		sp = 
+			// param arg
+			sp ?? {
+				// halo
+				target.getSpec(property) ?? {
+					Param.defaultSpec;
+				};
+			};
+		^sp.asSpec;
+	}
+
+	get {
+		var val;
+		val = target[property];
+		if(val.isNil) {
+			val = spec.default;
+		};
+		if(spec.class == XEnvSpec) {
+			val = val.asEnv;
+		};
+		^val;
+	}
+
+	set { arg val;
+		target[property] = val;
+		target.changed(\set, property);
+	}
+
+	normGet {
+		var val = this.get;
+		if(val.class == String) {
+			// workaround when a Bus ("c0") is mapped to the parameter
+			^0
+		} {
+			^this.spec.unmap(this.get)
+		}
+	}
+
+	normSet { arg val;
+		this.set(this.spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\set, { arg ...args; 
+			// TODO: update only the slot changed ?
+			action.(view, param);
+		});
+	}
+}
+
 
 ////////////////////////////////////////
 
@@ -2232,6 +2409,28 @@ PresetListMorpherDef : PresetListMorpher {
 	}
 }
 
+///////////////////////
+
+PseqCursor : Prout {
+	*new { arg list;
+		^super.new({
+			var previous;
+			list.size.do { arg x;
+				list.changed(\cursor, x, 0);
+			};
+			loop {
+				list.size.do { arg x;
+					list.changed(\cursor, previous, 0);
+					list.changed(\cursor, x, 1);
+					previous = x;
+					x.embedInStream;
+				};
+			}
+		})
+	}
+}
+
+
 ////////////////////////////////////////
 
 CachedBus : Bus {
@@ -2780,6 +2979,21 @@ XSimpleButton : QButton {
 		param.mapEZSlider(this, mapLabel);
 	}
 }
+
+/////////////
+
++ View {
+	onChange { arg model, key, fun;
+		var con = SimpleController.new(model).put(key, { arg ...args;
+			if(this.isClosed) {
+				con.remove;
+			} {
+				fun.(* [this] ++ args);
+			};
+		});
+	}
+}
+
 
 /////////////////////////// 3.6.6
 +QKnob {
