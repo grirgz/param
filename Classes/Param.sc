@@ -29,7 +29,14 @@ Param {
 		if (args.size > 1) {
 			this.newWrapper(args)
 		} {
-			this.newWrapper(args[0])
+			// TODO: test without this code to see if something break
+			if(args[0].isSequenceableCollection) {
+				// This is for support Param([Ndef(\plop), \freq, \freq])
+				this.newWrapper(args[0])
+			} {
+				// This is for support Param(ParamValue.new)
+				this.newWrapper(args)
+			}
 		};
 	}
 
@@ -41,6 +48,7 @@ Param {
 		spec = args[2];
 		envdict;
 		//"whattt".debug;
+		[target, property, spec].debug("newWrapper");
 
 		envdict = (
 			adsr: (
@@ -65,6 +73,7 @@ Param {
 		//"1".debug;
 		init_args = args;
 		//"2".debug;
+		target.class.debug("newWrapper: class");
 		switch(target.class,
 			Ndef, {
 				switch(property.class,
@@ -143,6 +152,32 @@ Param {
 					}
 				);
 			}, 
+			PbindSeqDef, {
+				switch(property.class,
+					Association, {
+						switch(property.key.class,
+							Association, {
+								var subpro = property.key.value;
+								var idx = property.value;
+								args[1] = property.key.key;
+								//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
+								wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
+							},
+							// else: an index
+							{
+								var idx;
+								args[1] = property.key;
+								idx = property.value;
+								//(args++[idx]).debug("PdefParamSlot args");
+								wrapper = PdefParamSlot(*args++[idx]);
+							}
+						);
+					},
+					Symbol, {
+						wrapper = PbindSeqDefParam(*args);
+					}
+				);
+			},
 			Volume, {
 				//"wrapper: VolumeParam".debug;
 				wrapper = VolumeParam(*args);
@@ -159,6 +194,7 @@ Param {
 				}
 			},
 			Array, {
+				target.class.debug("mais what ??");
 				"ERROR: not implemented for Array, use List instead".postln;
 				^nil;
 			},
@@ -194,11 +230,7 @@ Param {
 	}
 
 	type {
-		^switch(this.spec.class,
-			XEnvSpec, \env,
-			XArraySpec, \array,
-			\scalar,
-		)
+		^wrapper.type
 	}
 
 	setBusMode { arg enable=true, free=true;
@@ -262,6 +294,8 @@ Param {
 	}
 
 	/////////////////// MIDI mapping
+
+	// FIXME: ambigous name, maybe rename to midiMap. Also map mean something different for the wrapper class
 
 	map { arg msgNum, chan, msgType=\control, srcID, blockmode;
 		MIDIMap(this, msgNum, chan, msgType, srcID, blockmode);
@@ -389,6 +423,10 @@ Param {
 
 	mapMultiSlider { arg slider, action;
 		this.makeSimpleController(slider, 
+			action: { arg self;
+				// to be used in Pseq
+				this.normSetList( self.value );
+			},
 			updateAction: { arg self;
 				var val = this.normGet;
 				//[ val.class, val ].debug("mapMultiSlider: updateAction");
@@ -604,7 +642,11 @@ Param {
 	}
 
 	asNumberBox {
-		^NumberBox.new.mapParam(this);
+		^NumberBox.new
+			.clipLo_(this.spec.clipLo)
+			.clipHi_(this.spec.clipHi)
+			.step_(this.spec.step)
+			.mapParam(this);
 	}
 
 	asEnvelopeView {
@@ -785,6 +827,12 @@ Param {
 		^val;
 	}
 
+    doesNotUnderstand { arg selector...args;
+        if(wrapper.class.findRespondingMethodFor(selector).notNil) {
+			wrapper.perform(selector, * args);
+		};
+	}
+
 }
 
 
@@ -812,7 +860,37 @@ BaseParam {
 		}
 	}
 
+	setList { arg list;
+		// this method replace individuals values in the array
+		// to be used with Pseq because Pseq load the array only once
+		if(this.get.notNil) {
+			this.do { arg subparam, x;
+				subparam.set(list[x])
+			}
+		} {
+			this.set(list);
+		}
+	}
 
+	normSetList { arg list;
+		// this method replace individuals values in the array
+		// to be used with Pseq because Pseq load the array only once
+		if(this.get.notNil) {
+			this.do { arg subparam, x;
+				subparam.normSet(list[x])
+			}
+		} {
+			this.normSet(list);
+		}
+	}
+
+	type {
+		^switch(this.spec.class,
+			XEnvSpec, \env,
+			XArraySpec, \array,
+			\scalar,
+		)
+	}
 }
 
 ////////////////// Ndef
@@ -1154,11 +1232,11 @@ PdefParam : BaseParam {
 	}
 
 	normGet {
-		^spec.unmap(this.get)
+		^this.spec.unmap(this.get)
 	}
 
 	normSet { arg val;
-		this.set(spec.map(val))
+		this.set(this.spec.map(val))
 	}
 
 	putListener { arg param, view, controller, action;
@@ -1446,7 +1524,7 @@ ListParam : BaseParam {
 	}
 
 	asLabel {
-		^"L % %".format(target.hash, property)
+		^"L % %".format(target.identityHash, property)
 	}
 
 	init { arg obj, meth, sp;
@@ -1454,7 +1532,7 @@ ListParam : BaseParam {
 		property = meth;
 		//sp.debug("sp1");
 		spec = this.toSpec(sp);
-		key = obj.hash;
+		key = obj.identityHash.asSymbol;
 	}
 
 	spec {
@@ -1527,7 +1605,7 @@ ListParamSlot : BaseParam {
 	}
 
 	asLabel {
-		^"L % %".format(target.hash, property)
+		^"L % %".format(target.identityHash, property)
 	}
 
 	init { arg obj, meth, sp;
@@ -1535,7 +1613,7 @@ ListParamSlot : BaseParam {
 		property = meth;
 		//sp.debug("sp1");
 		spec = this.toSpec(sp);
-		key = obj.hash;
+		key = obj.identityHash.asSymbol;
 	}
 
 	// retrieve default spec if no default spec given
@@ -1589,6 +1667,25 @@ ListParamSlot : BaseParam {
 			action.(view, param);
 		});
 	}
+}
+
+PbindSeqDefParam : PdefParam {
+	spec {
+		var si = this.get.size;
+		if(si == 0) {
+			^spec;
+		} {
+			^XArraySpec(spec ! si);
+		}
+	}
+
+}
+
+PbindSeqDefParamSlot : PdefParamSlot {
+	//spec {
+	//	^XArraySpec(spec ! this.get.size);
+	//}
+
 }
 
 
@@ -1911,55 +2008,7 @@ ParamGroup : List {
 
 	edit {
 		var fun = editFunction ? { arg pg;
-			var win = Window.new;
-			var layout;
-			var gridlayout;
-			var biglayout;
-			var scalarlist, biglist;
-			var layout_type;
-
-			scalarlist = pg.select({ arg param; 
-				param.type == \scalar;
-			});
-			biglist = pg.select({ arg param;
-				param.type != \scalar;
-			});
-
-			gridlayout = GridLayout.rows(*
-				scalarlist.collect({ arg param;
-					[
-						param.asStaticTextLabel,
-						param.asSlider.orientation_(\horizontal),
-						param.asTextField,
-					]
-				})
-			);
-			gridlayout.setColumnStretch(1,1);
-
-			// chipotage
-			if(biglist.size < 5 and: { scalarlist.size < 6 } ) {
-				layout_type = VLayout;
-			} {
-				layout_type = HLayout;
-			};
-
-			biglayout = VLayout(*
-				biglist.collect({ arg param;
-					VLayout(
-						param.asStaticTextLabel,
-						param.asView,
-						param.asTextField,
-					)
-				})
-			);
-
-			layout = layout_type.new(
-				gridlayout,
-				biglayout
-			);
-			win.layout = layout;
-			win.alwaysOnTop = true;
-			win.front;
+			ParamGroupLayout.new;
 		};
 		fun.(this);
 	}
@@ -2103,27 +2152,45 @@ ParamGroupDef {
 }
 
 // act also as a Param wrapper
-ParamValue {
+ParamValue : BaseParam {
 	var <>value=0;
-	var <>spec, <property=\value, <target;
+	var <>spec, <>property=\value, <target;
+	var <>label;
 
 	*new { arg spec;
-		^super.new.init(spec);
+		^super.new.initParamValue(spec);
 	}
 
-	init { arg spec;
+	initParamValue { arg xspec;
 		target = this;
 		property = \value;
-		spec = spec;
+		label = "ParamValue";
+		spec = xspec.asSpec ? Param.defaultSpec;
 	}
 
 	get {
 		^value;
 	}
 
+	asParam {
+		^Param(this)
+	}
+
 	set { arg val;
 		value = val;
 		this.changed(\set, [\value, val]);
+	}
+
+	asLabel {
+		^label;
+	}
+
+	map { arg val;
+		^this.spec.map(val)
+	}
+
+	unmap { arg val;
+		^this.spec.unmap(val)
 	}
 
 	// normGet and normSet are not used by morpher because of additional code on setter/getter
@@ -2430,6 +2497,167 @@ PseqCursor : Prout {
 	}
 }
 
+PbindSeqDef : Pdef {
+	*new { arg key, repeat=1;
+		var ins;
+		var prout;
+		//[key, Pdef(key).source].debug("souu");
+		if(all[key].source.isNil or: { all[key].class == Pdef }) {
+			Pdef(key).clear;
+			all[key] = nil;
+		//if(false) {
+			ins = super.new(key);
+			if(ins.envir.isNil) { ins.envir = ins.class.event };
+			prout = Prout({
+				arg ev;
+				var ret;
+				var bind = List.new;
+				var str;
+				ins.envir.keysValuesDo { arg key, val;
+					[key, val].debug("kv PbindSeqDef");
+					if(val.isSequenceableCollection) {
+						//bind.add(Pseq(val[0].debug("what?")));
+						bind.add(key);
+						bind.add(Pseq(val[0],repeat));
+					} {
+						//bind.add(Pseq([val],1));
+					}
+				};
+				//ev.debug("ev");
+				//bind.debug("bind");
+				//str = Pbind(*bind).asStream;
+
+				//while({ev.notNil}) {
+				//	ev = str.next(ev);
+				//	ev.yield;
+				//};
+				ev = Pbind(*bind).embedInStream(ev)
+			});
+			ins.source = prout;
+			//Pdef(key).source.debug("souu2");
+			//ins.source.debug("souu3");
+			//ins.class.debug("class");
+			all[key] = ins;
+			^ins;
+		} {
+			"kk".debug;
+			^super.new(key)
+			//Pdef(key)
+		};
+	}
+
+}
+
+What : Pdef {
+	*new { arg key;
+		^super.new(key)
+	}
+}
+
+ParamCombinator {
+	var <ranges, <inputs, <base;
+	var <baseParam, <rangeParam, <inputParam, <targetParam;
+	var <controllers; 
+	var <rangeSize;
+
+	*new { arg param, size=3;
+		^super.new.init(param, size);
+	}
+
+	init { arg param, size=3;
+
+		rangeSize = size;
+		ranges = List.newFrom( 0!size );
+		inputs = List.newFrom( 0!size );
+		targetParam = param;
+		base = ParamValue(param.spec).set(param.get);
+		baseParam = base.asParam;
+
+		rangeParam = Param(ranges, \list, \bipolar);
+		inputParam = Param(inputs, \list, \unipolar);
+
+		controllers = [
+			SimpleController(ranges).put(\set, {
+				this.computeTargetValue;
+			}),
+
+			SimpleController(inputs).put(\set, {
+				this.computeTargetValue;
+			}),
+
+			SimpleController(base).put(\set, {
+				this.computeTargetValue;
+			}),
+
+		];
+
+	}
+
+	setBusMode { arg bool=true, name=\default;
+		var bus = BusDef(name, \control);
+		Ndef(name, {
+			var inputs, ranges;
+			var fval;
+			fval = \base.kr(0);
+			fval = targetParam.spec.unmap(fval);
+			inputs = \inputs.kr(0!rangeSize);
+			ranges = \ranges.kr(0!rangeSize);
+
+			inputs.do { arg in, x;
+				fval = fval + (in * ranges[x])
+			};
+			targetParam.spec.map(fval);
+		});
+		baseParam = Param(Ndef(name), \base, targetParam.target.spec);
+		targetParam.target.map(targetParam.property, Ndef(name));
+	}
+
+	computeTargetValue {
+		var fval;
+		fval = baseParam.normGet;
+		inputs.do { arg in, x;
+			fval = fval + (in * ranges[x])
+		};
+		targetParam.normSet(fval);
+	}
+
+	edit { arg self;
+		var window = Window.new;
+		var layout;
+		var modknob;
+		modknob = ModKnob.new(window)
+			.onChange(ranges, \set, { arg view;
+				ranges.do { arg val, x;
+					modknob.set_range(x, val);
+				};
+				modknob.refresh;
+			})
+			.onChange(base, \set, { arg view;
+				modknob.value = baseParam.normGet;
+			})
+			.onChange(targetParam.target, \set, { arg view;
+				modknob.midi_value = targetParam.normGet;
+				modknob.refresh;
+			})
+			.action_({
+				baseParam.normSet(modknob.value)
+			})
+			;
+		layout = HLayout(
+			modknob,
+			ParamGroupLayout.two_panes(ParamGroup([
+				baseParam,
+				rangeParam,
+				inputParam,
+				targetParam,
+			].flatten)),
+		);
+		window.layout = layout;
+		window.alwaysOnTop = true;
+		window.front;
+	}
+}
+
 
 ////////////////////////////////////////
 
@@ -2655,6 +2883,74 @@ XSimpleButton : QButton {
 	//				MIDIMap.mapView(key, self.val);
 	//			}
 //}
+
+ParamGroupLayout {
+	*new { arg group;
+		^this.windowize(this.two_panes(group));
+	}
+
+	*windowize { arg layout, alwaysOnTop=true;
+		var win = Window.new;
+		win.layout = layout;
+		win.alwaysOnTop = alwaysOnTop;
+		win.front;
+		^win;
+	}
+
+	*singleWindowize {
+		// TODO: the window close before recreating if open
+	}
+
+	*two_panes { arg pg;
+
+		var layout;
+		var gridlayout;
+		var biglayout;
+		var scalarlist, biglist;
+		var layout_type;
+
+		scalarlist = pg.select({ arg param; 
+			param.type == \scalar;
+		});
+		biglist = pg.select({ arg param;
+			param.type != \scalar;
+		});
+
+		gridlayout = GridLayout.rows(*
+			scalarlist.collect({ arg param;
+				[
+					param.asStaticTextLabel,
+					param.asSlider.orientation_(\horizontal),
+					param.asTextField,
+				]
+			})
+		);
+		gridlayout.setColumnStretch(1,1);
+
+		// chipotage
+		if(biglist.size < 5 and: { scalarlist.size < 6 } ) {
+			layout_type = VLayout;
+		} {
+			layout_type = HLayout;
+		};
+
+		biglayout = VLayout(*
+			biglist.collect({ arg param;
+				VLayout(
+					param.asStaticTextLabel,
+					param.asView,
+					param.asTextField,
+				)
+			})
+		);
+
+		layout = layout_type.new(
+			gridlayout,
+			biglayout
+		);
+		^layout;
+	}
+}
 
 //////////////////////////////////
 
