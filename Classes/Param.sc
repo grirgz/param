@@ -48,7 +48,7 @@ Param {
 		spec = args[2];
 		envdict;
 		//"whattt".debug;
-		[target, property, spec].debug("newWrapper");
+		//[target, property, spec].debug("newWrapper");
 
 		envdict = (
 			adsr: (
@@ -73,7 +73,7 @@ Param {
 		//"1".debug;
 		init_args = args;
 		//"2".debug;
-		target.class.debug("newWrapper: class");
+		//target.class.debug("newWrapper: class");
 		switch(target.class,
 			Ndef, {
 				switch(property.class,
@@ -2008,7 +2008,7 @@ ParamGroup : List {
 
 	edit {
 		var fun = editFunction ? { arg pg;
-			ParamGroupLayout.new;
+			ParamGroupLayout.new(pg);
 		};
 		fun.(this);
 	}
@@ -2498,7 +2498,8 @@ PseqCursor : Prout {
 }
 
 PbindSeqDef : Pdef {
-	*new { arg key, repeat=1;
+	var <>repeat;
+	*new { arg key, xrepeat;
 		var ins;
 		var prout;
 		//[key, Pdef(key).source].debug("souu");
@@ -2507,18 +2508,22 @@ PbindSeqDef : Pdef {
 			all[key] = nil;
 		//if(false) {
 			ins = super.new(key);
+			ins.repeat = (xrepeat ? 1);
+			ins.repeat.debug("repeat!!");
 			if(ins.envir.isNil) { ins.envir = ins.class.event };
+			ins.repeat.debug("repeoat!!");
 			prout = Prout({
 				arg ev;
 				var ret;
 				var bind = List.new;
 				var str;
+			ins.repeat.debug("repeiat!!");
 				ins.envir.keysValuesDo { arg key, val;
 					[key, val].debug("kv PbindSeqDef");
 					if(val.isSequenceableCollection) {
 						//bind.add(Pseq(val[0].debug("what?")));
 						bind.add(key);
-						bind.add(Pseq(val[0],repeat));
+						bind.add(Pseq(val[0],ins.repeat.debug("reeeppet")));
 					} {
 						//bind.add(Pseq([val],1));
 					}
@@ -2541,7 +2546,11 @@ PbindSeqDef : Pdef {
 			^ins;
 		} {
 			"kk".debug;
-			^super.new(key)
+			ins = super.new(key);
+			if(xrepeat.notNil) {
+				ins.repeat = xrepeat.debug("reeeprprperp");
+			};
+			^ins;
 			//Pdef(key)
 		};
 	}
