@@ -42,6 +42,7 @@ Param {
 
 	newWrapper { arg args;
 		var target, property, spec, envdict;
+		var class_dispatcher;
 		//"iiiwhattt".debug;
 		target = args[0];
 		property = args[1];
@@ -65,17 +66,10 @@ Param {
 			),
 		);
 
+		//class_dispatcher = IdentityDictionary.new;
 
-		if(args.size == 2) {
-			// no spec given, normalize args size to 3
-			args.add(nil)
-		};
-		//"1".debug;
-		init_args = args;
-		//"2".debug;
-		//target.class.debug("newWrapper: class");
-		switch(target.class,
-			Ndef, {
+		class_dispatcher = (
+			Ndef: {
 				switch(property.class,
 					Association, {
 						//"Ndef: an asso".debug;
@@ -126,7 +120,7 @@ Param {
 					}
 				);
 			},
-			Pdef, {
+			Pdef: {
 				switch(property.class,
 					Association, {
 						switch(property.key.class,
@@ -152,7 +146,7 @@ Param {
 					}
 				);
 			}, 
-			PbindSeqDef, {
+			PbindSeqDef: {
 				switch(property.class,
 					Association, {
 						switch(property.key.class,
@@ -178,33 +172,45 @@ Param {
 					}
 				);
 			},
-			Volume, {
+			Volume: {
 				//"wrapper: VolumeParam".debug;
 				wrapper = VolumeParam(*args);
 			},
-			TempoClock, {
+			TempoClock: {
 				//"wrapper: VolumeParam".debug;
 				wrapper = TempoClockParam(*args);
 			},
-			List, {
+			List: {
 				if(property.isKindOf(Integer)) {
 					wrapper = ListParamSlot(*args);
 				} {
 					wrapper = ListParam(*args);
 				}
 			},
-			Array, {
+			Array: {
 				target.class.debug("mais what ??");
 				"ERROR: not implemented for Array, use List instead".postln;
 				^nil;
 			},
-			// else
-			{
-				// ParamValue goes here
-				wrapper = target;
-			}
 		);
-		//"3".debug;
+		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
+
+
+		if(args.size == 2) {
+			// no spec given, normalize args size to 3
+			args.add(nil)
+		};
+		//"1".debug;
+		init_args = args;
+		//"2".debug;
+		//target.class.debug("newWrapper: class");
+
+		if(class_dispatcher[target.class.asSymbol].notNil) {
+			class_dispatcher[target.class.asSymbol].value;
+		} {
+			// ParamValue goes here
+			wrapper = target;
+		}
 	}
 
 	printOn { arg stream;
@@ -1702,8 +1708,8 @@ MIDIMap {
 	classvar <>permanent = true;
 	classvar <>defaultBlockmode = false;
 
-	// NO THIS IS FALSE: path type: [srcID, msgType, chan, msgNum]
-	// path type: [msgNum, chan, msgType, srcID]
+	// old path type: [srcID, msgType, chan, msgNum]
+	// current path type: [msgNum, chan, msgType, srcID]
 	
 	*initClass {
 		Class.initClassTree(MultiLevelIdentityDictionary);
@@ -1960,6 +1966,7 @@ ParamGroup : List {
 	// - morphTo([\preset1, \preset2], 0.4)
 	*new { arg anArray;
 		var inst;
+		Class.initClassTree(ParamGroupLayout);
 		inst = super.new.setCollection( anArray.collect(_.asParam) );
 		inst.initParamGroup;
 		^inst;
@@ -2478,90 +2485,6 @@ PresetListMorpherDef : PresetListMorpher {
 
 ///////////////////////
 
-PseqCursor : Prout {
-	*new { arg list;
-		^super.new({
-			var previous;
-			list.size.do { arg x;
-				list.changed(\cursor, x, 0);
-			};
-			loop {
-				list.size.do { arg x;
-					list.changed(\cursor, previous, 0);
-					list.changed(\cursor, x, 1);
-					previous = x;
-					x.embedInStream;
-				};
-			}
-		})
-	}
-}
-
-PbindSeqDef : Pdef {
-	var <>repeat;
-	*new { arg key, xrepeat;
-		var ins;
-		var prout;
-		//[key, Pdef(key).source].debug("souu");
-		if(all[key].source.isNil or: { all[key].class == Pdef }) {
-			Pdef(key).clear;
-			all[key] = nil;
-		//if(false) {
-			ins = super.new(key);
-			ins.repeat = (xrepeat ? 1);
-			ins.repeat.debug("repeat!!");
-			if(ins.envir.isNil) { ins.envir = ins.class.event };
-			ins.repeat.debug("repeoat!!");
-			prout = Prout({
-				arg ev;
-				var ret;
-				var bind = List.new;
-				var str;
-			ins.repeat.debug("repeiat!!");
-				ins.envir.keysValuesDo { arg key, val;
-					[key, val].debug("kv PbindSeqDef");
-					if(val.isSequenceableCollection) {
-						//bind.add(Pseq(val[0].debug("what?")));
-						bind.add(key);
-						bind.add(Pseq(val[0],ins.repeat.debug("reeeppet")));
-					} {
-						//bind.add(Pseq([val],1));
-					}
-				};
-				//ev.debug("ev");
-				//bind.debug("bind");
-				//str = Pbind(*bind).asStream;
-
-				//while({ev.notNil}) {
-				//	ev = str.next(ev);
-				//	ev.yield;
-				//};
-				ev = Pbind(*bind).embedInStream(ev)
-			});
-			ins.source = prout;
-			//Pdef(key).source.debug("souu2");
-			//ins.source.debug("souu3");
-			//ins.class.debug("class");
-			all[key] = ins;
-			^ins;
-		} {
-			"kk".debug;
-			ins = super.new(key);
-			if(xrepeat.notNil) {
-				ins.repeat = xrepeat.debug("reeeprprperp");
-			};
-			^ins;
-			//Pdef(key)
-		};
-	}
-
-}
-
-What : Pdef {
-	*new { arg key;
-		^super.new(key)
-	}
-}
 
 ParamCombinator {
 	var <ranges, <inputs, <base;
@@ -2570,6 +2493,7 @@ ParamCombinator {
 	var <rangeSize;
 
 	*new { arg param, size=3;
+		Class.initClassTree(ParamGroupLayout);
 		^super.new.init(param, size);
 	}
 
@@ -2893,73 +2817,6 @@ XSimpleButton : QButton {
 	//			}
 //}
 
-ParamGroupLayout {
-	*new { arg group;
-		^this.windowize(this.two_panes(group));
-	}
-
-	*windowize { arg layout, alwaysOnTop=true;
-		var win = Window.new;
-		win.layout = layout;
-		win.alwaysOnTop = alwaysOnTop;
-		win.front;
-		^win;
-	}
-
-	*singleWindowize {
-		// TODO: the window close before recreating if open
-	}
-
-	*two_panes { arg pg;
-
-		var layout;
-		var gridlayout;
-		var biglayout;
-		var scalarlist, biglist;
-		var layout_type;
-
-		scalarlist = pg.select({ arg param; 
-			param.type == \scalar;
-		});
-		biglist = pg.select({ arg param;
-			param.type != \scalar;
-		});
-
-		gridlayout = GridLayout.rows(*
-			scalarlist.collect({ arg param;
-				[
-					param.asStaticTextLabel,
-					param.asSlider.orientation_(\horizontal),
-					param.asTextField,
-				]
-			})
-		);
-		gridlayout.setColumnStretch(1,1);
-
-		// chipotage
-		if(biglist.size < 5 and: { scalarlist.size < 6 } ) {
-			layout_type = VLayout;
-		} {
-			layout_type = HLayout;
-		};
-
-		biglayout = VLayout(*
-			biglist.collect({ arg param;
-				VLayout(
-					param.asStaticTextLabel,
-					param.asView,
-					param.asTextField,
-				)
-			})
-		);
-
-		layout = layout_type.new(
-			gridlayout,
-			biglayout
-		);
-		^layout;
-	}
-}
 
 //////////////////////////////////
 
