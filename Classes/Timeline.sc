@@ -3,10 +3,19 @@ TimelineRulerView : SCViewHolder {
 	var canvas;
 	var <>viewport, <>areasize;
 	var <>mygrid; // debug
+	var timeline_controller;
 
 	*new { arg w, bounds; 
 		^super.new.initTimelineRulerView(w, bounds);
 	}
+
+	mimicTimeline { arg timeline;
+		if(timeline_controller.notNil) {timeline_controller.remove};
+		timeline_controller = SimpleController(timeline).put(\viewport, {
+			viewport = timeline.viewport;
+		});
+	}
+
 
 	//*newFromEventList { arg eventlist, w, bounds;
 	//	^super.new.initParaSpace(w, bounds).mapEventList(eventlist);
@@ -60,6 +69,16 @@ TimelineRulerView : SCViewHolder {
 }
 
 TimelineLocatorBarView : TimelineView {
+
+	specialInit {
+		"SPECIAL INIT".debug;
+		this.view.focusLostAction = {
+			"FOCUS LOST".debug;
+			this.deselectAllNodes;
+			this.refresh;
+		}
+	}
+
 	nodeClass {
 		^TimelineViewLocatorNode
 	}
@@ -95,6 +114,19 @@ TimelineLocatorBarView : TimelineView {
 		)
 	}
 
+	keyDownActionBase { |me, key, modifiers, unicode, keycode |
+
+		key.debug("TimelineLocatorBarView: keyDownActionBase");
+		// edit
+		if(key == $e) {
+			if(chosennode.notNil){
+				TimelineLocatorPropertiesView.new(chosennode.model);
+			}
+		};
+
+		super.keyDownActionBase(me, key, modifiers, unicode, keycode);
+	}
+
 	drawFunc {
 		//var bounds = this.view.bounds;
 		var pen = Pen;
@@ -125,7 +157,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		spritenum = nodeidx;
 		model = event;
 
-		[spritenum, model].debug("CREATE EVENT NODE !");
+		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
 			[model, origin].debug("node action before");
@@ -137,11 +169,12 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		refresh = {
 			origin = Point(model[timeKey], 0);
 			color = Color.black;
-			outlineColor = Color.green;
 			label = model[labelKey] ? (model[\type] ? "unnamed");
 			extent = parent.pixelPointToGridPoint(Point(width,height)); //FIXME: why /2 ???
+			extent.debug("---------extent");
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
-			[spritenum, origin, extent, color].debug("refresh");
+			parent.model.changed(\redraw);
+			[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
 
 		this.makeUpdater;
@@ -186,26 +219,31 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		Pen.fill;
 
 		box.();
-		Pen.color = Color.black;
+		Pen.color = outlineColor;
 		Pen.stroke;
 		Pen.stringAtPoint(" "+label, Point(point.x+len,point.y+1),Font('sans', 7));
 
 		// debug collision rect
-		Pen.color = Color.red;
-		Pen.fillRect(parent.gridRectToPixelRect(this.rect));
+		//Pen.color = Color.red;
+		//Pen.fillRect(parent.gridRectToPixelRect(this.rect));
 
 	}
 
 	rect {
 		var rect;
 		var point = this.origin;
-		extent = parent.pixelPointToGridPoint(Point(width,height)); 
+		extent = parent.pixelExtentToGridExtent(Point(width,height)); 
 		rect = Rect(point.x-(extent.x/2), 0, extent.x, extent.y*4);
 		^rect;
 	}
 
+	selectNode {
+		this.refloc = this.nodeloc;
+		outlineColor = Color.red;
+	}
+
 	deselectNode {
-		outlineColor = Color.green;
+		outlineColor = Color.black;
 	}
 
 }
@@ -213,6 +251,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 // TODO: replace hardcoded line with node
 // FIXME: how to be never selected by findNode ?
 TimelineViewLocatorLineNode : TimelineViewEventNode {
+	var <>alpha = 0.5;
 
 	init { arg xparent, nodeidx, event;
 		parent = xparent;
@@ -221,7 +260,7 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 
 		color = Color.red;
 
-		[spritenum, model].debug("CREATE EVENT NODE !");
+		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
 			[model, origin].debug("node action before");
@@ -231,7 +270,8 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 
 		refresh = {
 			origin = Point(model[timeKey], 0);
-			[spritenum, origin, extent, color].debug("refresh");
+			extent = Point(1,1);
+			[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
 
 		this.makeUpdater;
@@ -241,13 +281,16 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 
 	draw {
 		var point;
-		Pen.color = Color.red;
+		Pen.color = Color.black;
+		Pen.alpha = alpha;
 		point = parent.gridPointToPixelPoint(this.origin);
 		Pen.line(Point(point.x, 0), Point(point.x, parent.bounds.height));
 		Pen.stroke;
+		Pen.alpha = 1;
 	}
 
 	selectNode {
+		this.refloc = this.nodeloc;
 		color = Color.red;
 	}
 
@@ -257,131 +300,172 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 
 }
 
-MidinoteTimelineRulerView : SCViewHolder {
-	var canvas;
-	var <>viewport, <>areasize;
+MidinoteTimelineRulerView : TimelineView {
 	var <>mygrid; // debug
-	var >virtualBounds;
+	//var >virtualBounds;
 
 	*new { arg w, bounds; 
-		^super.new.initTimelineRulerView(w, bounds);
+		^super.new.specialInit;
 	}
-
-	///////////////// coordinates conversion
-	// FIXME: move it to a common class instead of copying
-
-	normRectToPixelRect { arg rect;
-		var bounds = this.virtualBounds;
-		^Rect(
-			rect.origin.x * bounds.extent.x / viewport.extent.x - ( viewport.origin.x * bounds.extent.x ) + bounds.origin.x, 
-			( 1-rect.origin.y ) * bounds.extent.y / viewport.extent.y - ( viewport.origin.y * bounds.extent.y ) + bounds.origin.y,
-			rect.width * bounds.extent.x/ viewport.extent.x,
-			(0 - (rect.height * bounds.extent.y) ) / viewport.extent.y,
-		);
-	}
-
-	pixelRectToNormRect { arg rect;
-		var bounds = this.virtualBounds;
-		^Rect(
-			rect.origin.x + ( viewport.origin.x * bounds.extent.x ) - bounds.origin.x / bounds.extent.x * viewport.extent.x,
-			1-(rect.origin.y + ( viewport.origin.y * bounds.extent.y ) - bounds.origin.y / bounds.extent.y * viewport.extent.y),
-			rect.width / bounds.extent.x * viewport.extent.x,
-			rect.height / bounds.extent.y * viewport.extent.y,
-		);
-	}
-
-	gridRectToNormRect { arg rect;
-		^Rect.fromPoints(
-			this.gridPointToNormPoint(rect.origin),
-			this.gridPointToNormPoint(rect.rightBottom),
-		);
-	}
-
-	normRectToGridRect { arg rect;
-		^Rect.fromPoints(
-			this.normPointToGridPoint(rect.origin),
-			this.normPointToGridPoint(rect.rightBottom),
-		);
-	}
-
-	gridRectToPixelRect { arg rect;
-		^this.normRectToPixelRect(this.gridRectToNormRect(rect));
-	}
-
-	pixelRectToGridRect { arg rect;
-		^this.normRectToGridRect(this.pixelRectToNormRect(rect));
-	}
-
-	normPointToPixelPoint { arg point;
-		^this.normRectToPixelRect(Rect.fromPoints(point, point+Point(0,0))).origin;
-	}
-
-	pixelPointToNormPoint { arg point;
-		^this.pixelRectToNormRect(Rect.fromPoints(point, point+Point(0,0))).origin;
-	}
-
-	gridPointToNormPoint { arg point;
-		^(point / areasize)
-	}
-
-	normPointToGridPoint { arg point;
-		^(point * areasize)
-	}
-
-	pixelPointToGridPoint { arg point;
-		^this.normPointToGridPoint(this.pixelPointToNormPoint(point))
-	}
-
-	gridPointToPixelPoint { arg point;
-		^this.normPointToPixelPoint(this.gridPointToNormPoint(point))
-	}
-
-	virtualBounds {
-		^(virtualBounds ? Rect(0,0,this.bounds.width, this.bounds.height));
-	}
-
-	////////////////////////////////////////////////////////////////
-
 
 	//*newFromEventList { arg eventlist, w, bounds;
 	//	^super.new.initParaSpace(w, bounds).mapEventList(eventlist);
 	//}
 
-	initTimelineRulerView { arg w, argbounds;
-		var a, b, rect, relX, relY, pen;
-		//bounds = argbounds ? Rect(20, 20, 400, 200);
-		//bounds = Rect(bounds.left + 0.5, bounds.top + 0.5, bounds.width, bounds.height);
-
-		//if((win= w).isNil, {
-		//	win = GUI.window.new("ParaSpace",
-		//		Rect(10, 250, bounds.left + bounds.width + 40, bounds.top + bounds.height+30));
-		//	win.front;
-		//});
-		viewport = viewport ?? Rect(0,0,1,1);
-		areasize = areasize ?? Point(2,128);
-		canvas = UserView.new;
-		this.view = canvas;
-		
- 		//bounds = mouseTracker.bounds; // thanks ron!
- 		
-		this.view.background = Color.white(0.9);
-		//canvas.drawFunc = Message(this, \drawFunc);
-		canvas.drawFunc = { this.drawFunc };
+	specialInit { arg w, argbounds;
+		this.view.drawFunc = { TimelineDrawer.draw_piano_bar(this, 2/3) };
 	}
 
-	bounds {
-		^this.view.bounds;
-	}
+	//bounds {
+	//	^this.view.bounds;
+	//}
 
-	drawFunc {
+	drawFuncSimple {
 		var grid;
 		var bounds = this.bounds;
-		Pen.alpha = 0.2;
+		Pen.alpha = 0.5;
+		Pen.color = Color.black;
 
+		areasize.debug("drawFunc: areasize");
 		areasize.y.do { arg py;
+			//[this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py))].debug("line");
 			Pen.line(this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py)));
 		};
+		Pen.stroke;
+	}
+
+	drawFuncPiano {
+		var grid;
+		var bounds = this.bounds;
+		var piano_pattern = [0,1,0,1,0, 0,1,0,1,0,1,0];
+		Pen.alpha = 0.5;
+		Pen.color = Color.black;
+
+
+		areasize.debug("drawFunc: areasize");
+		areasize.y.do { arg py;
+			var start;
+			var next;
+			//[this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py))].debug("line");
+			start = this.gridPointToPixelPoint(Point(0,py));
+			next = this.gridPointToPixelPoint(Point(0,py+1));
+			Pen.line(start,this.gridPointToPixelPoint(Point(areasize.x/4, py)));
+			Pen.fillRect( Rect(start.x, start.y, areasize.x/4, next.y-start.y  ) )
+		};
+		Pen.stroke;
 	}
 
 }
 
+
+TimelineLocatorPropertiesView {
+	
+	*initClass {
+		Class.initClassTree(TextField)
+	}
+
+	*new { arg model;
+		super.new.init(model);
+	}
+
+	init { arg model;
+		var window = Window.new("Locator edit", Rect(550,550,200,60));
+		var layout;
+		layout = VLayout(
+			TextField.new
+			.string_(model[\label] ? "unnamed")
+			.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
+				[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+
+				if(key == $\r) {
+					// defering because Enter trigger action after keyDownAction so view is already closed
+					{
+						window.close;
+					}.defer(0.1)
+				};
+				
+			})
+			.action_({ arg view;
+				model[\label] = view.value;
+				model.changed(\refresh);
+			})
+		);
+		window.layout = layout;
+		//window.alwaysOnTop = true;
+		window.front;
+	}
+	
+}
+
+
+TimelineDrawer {
+	
+	*draw_piano_bar { arg timeline, roll_start_x_fac=(2/3), alpha=0.7;
+		var grid;
+		var bounds = timeline.bounds;
+		var piano_pattern = Pseq([0,1,0,1,0, 0,1,0,1,0,1,0],inf).asStream;
+		var areasize = timeline.areasize;
+		var roll_start_x = timeline.bounds.width * roll_start_x_fac;
+		var labels;
+		Pen.alpha = alpha;
+		Pen.color = Color.black;
+
+
+		areasize.debug("drawFunc: areasize");
+		areasize.y.do { arg py;
+			var start;
+			var smallstart;
+			var next;
+			var end;
+			var pkey;
+			//[timelines.gridPointToPixelPoint(Point(0,py)),timelines.gridPointToPixelPoint(Point(areasize.x, py))].debug("line");
+			start = timeline.gridPointToPixelPoint(Point(0,py));
+			start = Point(0, start.y);
+			smallstart = timeline.gridPointToPixelPoint(Point(0,py));
+			smallstart = Point(roll_start_x, start.y);
+			end = timeline.gridPointToPixelPoint(Point(0, py));
+			end = Point(timeline.bounds.width, end.y);
+			next = timeline.gridPointToPixelPoint(Point(0,py+1));
+			next = Point(0, next.y);
+			pkey = Rect(roll_start_x, start.y,  timeline.bounds.width, next.y-start.y  ).flipY;
+
+
+			Pen.color = if(piano_pattern.next == 0) {
+				Color.white;
+			} {
+				Color.black
+			};
+			Pen.fillRect( pkey );
+
+
+			if((py+1)%12==0) {
+				var font;
+				Pen.color = Color.black;
+				font = Font('sans', 8);
+
+				Pen.stringInRect("C" ++ (py/12).trunc ++" "++py, Rect(next.x+5, next.y-10, timeline.bounds.width, 10), font);
+				Pen.line( start, end );
+				Pen.stroke;
+			} {
+				Pen.line(smallstart, end);
+				Pen.color = Color.black;
+				Pen.stroke;
+			};
+			//[start, end, pkey].debug("pianooooooooooooo");
+			//Pen.fill;
+		};
+		Pen.color = Color.black;
+		Pen.line(Point(roll_start_x, 0), Point(roll_start_x, timeline.bounds.height));
+		//Pen.line(Point(20, 0), Point(20, timeline.bounds.height));
+		Pen.stroke;
+		Pen.alpha = 1;
+	}
+
+}
+
+MidinoteTimelineView : TimelineView {
+	drawGridY {
+		TimelineDrawer.draw_piano_bar(this, 0, 0.2);
+	}
+	
+}
