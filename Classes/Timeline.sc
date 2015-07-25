@@ -1,51 +1,36 @@
 
-TimelineRulerView : SCViewHolder {
-	var canvas;
-	var <>viewport, <>areasize;
+TimelineRulerView : TimelineView {
+	// this is X ruler actually
 	var <>mygrid; // debug
-	var timeline_controller;
 
-	*new { arg w, bounds; 
-		^super.new.initTimelineRulerView(w, bounds);
-	}
+	//*new { arg w, bounds; 
+	//	^super.new.initTimelineRulerView(w, bounds);
+	//}
 
-	mimicTimeline { arg timeline;
-		if(timeline_controller.notNil) {timeline_controller.remove};
-		timeline_controller = SimpleController(timeline).put(\viewport, {
-			viewport = timeline.viewport;
-		});
-	}
+	//mimicTimeline { arg timeline;
+	//	if(timeline_controller.notNil) {timeline_controller.remove};
+	//	timeline_controller = SimpleController(timeline).put(\viewport, {
+	//		viewport = timeline.viewport;
+	//		this.view.refresh;
+	//	});
+	//}
 
 
 	//*newFromEventList { arg eventlist, w, bounds;
 	//	^super.new.initParaSpace(w, bounds).mapEventList(eventlist);
 	//}
 
-	initTimelineRulerView { arg w, argbounds;
-		var a, b, rect, relX, relY, pen;
-		//bounds = argbounds ? Rect(20, 20, 400, 200);
-		//bounds = Rect(bounds.left + 0.5, bounds.top + 0.5, bounds.width, bounds.height);
 
-		//if((win= w).isNil, {
-		//	win = GUI.window.new("ParaSpace",
-		//		Rect(10, 250, bounds.left + bounds.width + 40, bounds.top + bounds.height+30));
-		//	win.front;
-		//});
-		viewport = viewport ?? Rect(0,0,1,1);
-		areasize = areasize ?? Point(2,128);
-		canvas = UserView.new;
-		this.view = canvas;
-		
- 		//bounds = mouseTracker.bounds; // thanks ron!
- 		
-		this.view.background = Color.white(0.9);
-		//canvas.drawFunc = Message(this, \drawFunc);
-		canvas.drawFunc = { this.drawFunc };
+	specialInit { 
+		this.view.mouseDownAction = nil;
+		this.view.mouseMoveAction = nil;
+		this.view.mouseUpAction = nil;
+		this.view.drawFunc = { this.drawFunc };
 	}
 
-	bounds {
-		^this.view.bounds;
-	}
+	//bounds {
+	//	^this.view.bounds;
+	//}
 
 	drawFunc {
 		var grid;
@@ -54,7 +39,10 @@ TimelineRulerView : SCViewHolder {
 			mygrid.(this)
 		} {
 			DrawGrid(
-				Rect(0 - (viewport.origin.x * bounds.width),0 - (viewport.origin.y * bounds.height), bounds.width / viewport.width, bounds.height / viewport.height),
+				//Rect(0 - (viewport.origin.x * bounds.width / viewport.width),0 - (viewport.origin.y * bounds.height / viewport.height), bounds.width / viewport.width, bounds.height / viewport.height),
+
+				// x only
+				Rect(0 - (viewport.origin.x * bounds.width / viewport.width),0, bounds.width / viewport.width, bounds.height),
 				DenseGridLines(ControlSpec(
 						0,
 						areasize.x,
@@ -253,11 +241,13 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 TimelineViewLocatorLineNode : TimelineViewEventNode {
 	var <>alpha = 0.5;
 
+
 	init { arg xparent, nodeidx, event;
 		parent = xparent;
 		spritenum = nodeidx;
 		model = event;
 
+		selectable = false;
 		color = Color.red;
 
 		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));

@@ -1,7 +1,6 @@
 PseqCursor : Prout {
 	*new { arg list;
 		^super.new({
-			var previous;
 			list.size.do { arg x;
 				list.changed(\cursor, x, 0);
 			};
@@ -73,6 +72,60 @@ PbindSeqDef : Pdef {
 			^ins;
 			//Pdef(key)
 		};
+	}
+
+}
+
+StepList : List {
+
+	embedInStream { arg ev;
+		^Prout({ arg ev;
+			var i = 0;
+			block { arg break;
+				loop {
+					if( this[i].notNil ) {
+						this[i].yield;
+					} {
+						i = 0;
+						break.value;
+					};
+					i = i + 1;
+				};
+			}
+		}).embedInStream(ev);
+	}
+
+	asPattern {
+		^Pn(this,1)
+	}
+
+	edit {
+		Param(this, \list).edit
+	}
+
+	prest {
+		^this.asPattern.coin.not
+	}
+}
+
+StepListDef {
+	*new { arg key; 
+		Pdefn(key, StepList.new)
+
+	}
+}
+
+EventSeq : Event {
+
+	embedInStream { arg ev;
+
+		this.keysValuesDo {
+			Pbind(
+
+			)
+
+		}
+
 	}
 
 }

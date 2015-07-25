@@ -11,8 +11,8 @@ TimelineView : SCViewHolder {
 
 	var <>mygrid; // debug;
 
-	var <viewport;
-	var <>areasize;
+	var <viewport; // zero is topLeft, all is normalised between 0 and 1
+	var <areasize;
 	var <>createNodeHook;
 	var <>deleteNodeHook;
 	var <>paraNodes, connections; 
@@ -134,10 +134,11 @@ TimelineView : SCViewHolder {
 
 				npos = this.pixelPointToNormPoint(Point(px,py));
 				gpos = this.pixelPointToGridPoint(Point(px,py));
-				mouseDownAction.(me, px, py, mod, buttonNumber, clickCount);
-				[px, py, npos].debug("mouseDownAction_ npos");
+				[px, py, npos, gpos].debug("mouseDownAction_ px,py, npos, gpos");
 				chosennode = this.findNode(gpos.x, gpos.y);
 				[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
+				[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
+				mouseDownAction.(me, px, py, mod, buttonNumber, clickCount);
 
 				case
 					{ mod.isCtrl and: { buttonNumber == 1 } } {
@@ -438,7 +439,12 @@ TimelineView : SCViewHolder {
 		grid = grid ? 
 		
 				DrawGrid(
-					Rect(0 - (viewport.origin.x * bounds.width),0 - (viewport.origin.y * bounds.height), bounds.width / viewport.width, bounds.height / viewport.height),
+					Rect(
+						0 - (viewport.origin.x * bounds.width / viewport.width),
+						0 - (viewport.origin.y * bounds.height / viewport.height), 
+						bounds.width / viewport.width, 
+						bounds.height / viewport.height
+					),
 					
 					DenseGridLines(ControlSpec(
 							0,areasize.x,
@@ -514,11 +520,11 @@ TimelineView : SCViewHolder {
 
 	drawNodes {
 
-		debug("start drawing nodes");
-		[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
+		//debug("start drawing nodes");
+		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
 
 		paraNodes.do({arg node;
-			[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
+			//[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
 			node.draw;
 		});
 
@@ -572,12 +578,23 @@ TimelineView : SCViewHolder {
 
 	mimicTimeline { arg timeline;
 		if(timeline_controller.notNil) {timeline_controller.remove};
-		timeline_controller = SimpleController(timeline).put(\viewport, {
-			//TODO: remove controller
-			[this].debug("refresh viewport because mimicTimeline!!");
-			viewport = timeline.viewport;
-			this.refresh;
-		});
+		timeline_controller = SimpleController(timeline)
+			.put(\viewport, {
+				//TODO: remove controller
+				[this].debug("refresh viewport because mimicTimeline!!");
+				viewport = timeline.viewport;
+				this.refresh;
+			})
+			.put(\areasize, {
+				[this].debug("refresh viewport because mimicTimeline!!");
+				areasize = timeline.areasize;
+				this.refresh;
+			});
+	}
+
+	areasize_ { arg val;
+		areasize = val;
+		this.changed(\areasize);
 	}
 
 	viewport_ { arg val;
@@ -587,7 +604,8 @@ TimelineView : SCViewHolder {
 
 	///////////////// coordinates conversion
 
-	normRectToPixelRect { arg rect;
+	normRectToPixelRect_old { arg rect;
+		// 
 		var bounds = this.virtualBounds;
 		^Rect(
 			rect.origin.x * bounds.extent.x / viewport.extent.x - ( viewport.origin.x * bounds.extent.x ) + bounds.origin.x, 
@@ -597,7 +615,7 @@ TimelineView : SCViewHolder {
 		);
 	}
 
-	pixelRectToNormRect { arg rect;
+	pixelRectToNormRect_old { arg rect; //////////// OLD
 		var bounds = this.virtualBounds;
 		^Rect(
 			rect.origin.x + ( viewport.origin.x * bounds.extent.x ) - bounds.origin.x / bounds.extent.x * viewport.extent.x,
@@ -606,6 +624,82 @@ TimelineView : SCViewHolder {
 			rect.height / bounds.extent.y * viewport.extent.y,
 		);
 	}
+	////////////
+
+	normRectToPixelRect { arg rect;
+		// 
+		var bounds = this.virtualBounds;
+		var x_norm_to_pixel;
+		var y_norm_to_pixel;
+		x_norm_to_pixel = 
+			(rect.origin.x - viewport.origin.x)  	// if viewport.left = 0.15, a point at nx=0.15 would appear at the left border (px=0)
+			* (bounds.width / viewport.width) // smaller the viewport width (zoom), bigger the interval between left border and the point
+			+ bounds.origin.x;						// shifting for displaying the timeline as a block in a bigger timeline
+
+		y_norm_to_pixel = 
+			(rect.origin.y - viewport.origin.y)  	// if viewport.left = 0.15, a point at nx=0.15 would appear at the left border (px=0)
+			* (bounds.height / viewport.height) // smaller the viewport width (zoom), bigger the interval between left border and the point
+			+ bounds.origin.y;						// shifting for displaying the timeline as a block in a bigger timeline
+			
+		y_norm_to_pixel = bounds.height - y_norm_to_pixel; // flipping Y because we want our canvas origin on the bottom
+
+
+		^Rect(
+			x_norm_to_pixel,
+			y_norm_to_pixel,
+			rect.width * bounds.width / viewport.width,
+			(0 - (rect.height * bounds.height) ) / viewport.height, // flipping Y (needed or it's because node.rect return negative extent ?)
+			//((rect.height * bounds.height) ) / viewport.height,
+		);
+	}
+
+
+	pixelRectToNormRect { arg rect;
+		var bounds = this.virtualBounds;
+		var x_pixel_to_norm = 
+			(rect.origin.x - bounds.origin.x)
+			/ (bounds.width / viewport.width)
+			+ viewport.origin.x;
+
+		var y_pixel_to_norm;
+		y_pixel_to_norm = bounds.height - rect.origin.y; // flipping Y
+		y_pixel_to_norm = 
+			(y_pixel_to_norm - bounds.origin.y)
+			/ (bounds.height / viewport.height)
+			+ viewport.origin.y;
+
+		//y_pixel_to_norm = 1-y_pixel_to_norm; // flipping Y
+
+		// proof: reversing normRectToPixelRect function
+		//
+		// y_norm_to_pixel = 
+		//	(rect.origin.y - viewport.origin.y)  
+		//	* (bounds.height / viewport.height) 
+		//	+ bounds.origin.y;				
+		//
+		// y_norm_to_pixel - bounds.origin.y / (bounds.height / viewport.height) + viewport.origin.y = rect.origin.y
+		//
+
+		^Rect(
+			x_pixel_to_norm,
+			y_pixel_to_norm,
+			rect.width / bounds.extent.x * viewport.extent.x,
+			rect.height / bounds.extent.y * viewport.extent.y, // FIXME: why no Y flipping here ???
+		).flipY; // finally added flipping
+	}
+
+	gridPointToNormPoint { arg point;
+		^(point / areasize)
+	}
+
+	normPointToGridPoint { arg point;
+		^(point * areasize)
+	}
+
+	pixelExtentToGridExtent { arg point;
+		^(point / this.bounds.extent * areasize * viewport.extent);
+	}
+
 
 	gridRectToNormRect { arg rect;
 		^Rect.fromPoints(
@@ -637,20 +731,8 @@ TimelineView : SCViewHolder {
 		^this.pixelRectToNormRect(Rect.fromPoints(point, point+Point(0,0))).origin;
 	}
 
-	gridPointToNormPoint { arg point;
-		^(point / areasize)
-	}
-
-	normPointToGridPoint { arg point;
-		^(point * areasize)
-	}
-
 	pixelPointToGridPoint { arg point;
 		^this.normPointToGridPoint(this.pixelPointToNormPoint(point))
-	}
-
-	pixelExtentToGridExtent { arg point;
-		^(point / this.bounds.extent * areasize * viewport.extent);
 	}
 
 	gridPointToPixelPoint { arg point;
@@ -670,7 +752,7 @@ TimelineView : SCViewHolder {
 	}
 
 	deselectAllNodes { arg chosennode;
-		paraNodes.do({arg node; // deselect all nodes
+		paraNodes.do({arg node; 
 			if(node !== chosennode) {
 				this.deselectNode(node);
 			}
@@ -686,29 +768,6 @@ TimelineView : SCViewHolder {
 		connections = List.new;
 		nodeCount = 0;
 		this.refresh;
-	}
-
-	createNode {arg x, y, size, color, refresh=true;
-		var bounds = this.bounds;
-		size = this.gridPointToNormPoint(size);
-		this.createNode1(x/areasize.x, y/areasize.y, size, color, refresh);
-	}
-	
-	createNode1 {arg argX, argY, size, color, refresh=true;
-		var x, y;
-		var bounds = this.bounds;
-		var node;
-		var nodeidx;
-		x = argX;
-		y = argY;
-		[argX, argY, x,y, bounds].debug("createNode1");
-		fillcolor = color ? fillcolor;
-		nodeidx = nodeCount;
-		node = TimelineViewNode.new(x, y, fillcolor, bounds, nodeidx, size, nodeAlign);
-		nodeCount = nodeCount + 1;
-		paraNodes.add(node);
-		createNodeHook.(node, nodeidx);
-		if(refresh == true, {this.refresh});
 	}
 
 	nodeClass {
@@ -1027,7 +1086,7 @@ TimelineView : SCViewHolder {
 		paraNodes.reverse.do({arg node; 
 			node.spritenum.debug("spritnum");
 			[node.rect, point].debug("findNode");
-			if(node.rect.containsPoint(point), {
+			if(node.selectable and: {node.rect.containsPoint(point)}, {
 				[node.rect, point].debug("findNode: found!!");
 				^node;
 			});
@@ -1108,6 +1167,7 @@ TimelineViewNodeBase {
 	var action;
 	var refresh;
 	var controller;
+	var <>selectable = true; // to be or not ignored by findNode
 	*new {
 		^super.new
 	}
@@ -1599,16 +1659,16 @@ TimelineScroller : SCViewHolder {
 		this.view.action = { arg slider;
 			var range = slider.range.clip(0.01,1); // prevent division by 0
 			if(this.orientation == \horizontal) {
-				timeline.viewport.left = slider.lo / range;
+				timeline.viewport.left = slider.lo;
 				timeline.viewport.width = range;
 				timeline.changed(\viewport);
-				[timeline.viewport, slider.hi, slider.lo, slider.range].debug("vrange action");
+				[timeline.viewport, slider.hi, slider.lo, slider.range].debug("hrange action");
 				timeline.refresh;
 			} {
-				timeline.viewport.top = (1-slider.hi) / range;
+				timeline.viewport.top = slider.lo;
 				timeline.viewport.height = range;
 				timeline.changed(\viewport);
-				[timeline.viewport, slider.hi, slider.lo, slider.range].debug("hrange action");
+				[timeline.viewport, slider.hi, slider.lo, slider.range].debug("vrange action");
 				timeline.refresh;
 			}
 
@@ -1626,12 +1686,12 @@ TimelineScroller : SCViewHolder {
 		{
 			var slider = this;
 			if(this.orientation == \horizontal) {
-				slider.range = timeline.viewport.width;
-				slider.lo = timeline.viewport.left * slider.range;
+				slider.hi = timeline.viewport.left+timeline.viewport.width;
+				slider.lo = timeline.viewport.left;
 				[timeline, timeline.viewport, timeline.viewport.width, slider.range, slider.hi].debug("=====+++======= ScrollView.refresh: range, hi");
 			} {
-				slider.range = timeline.viewport.height;
-				slider.hi = 1-(timeline.viewport.top * slider.range);
+				slider.hi = timeline.viewport.top+timeline.viewport.height;
+				slider.lo = timeline.viewport.top;
 			}
 		}.defer;
 	}
