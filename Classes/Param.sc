@@ -43,6 +43,7 @@ Param {
 	newWrapper { arg args;
 		var target, property, spec, envdict;
 		var class_dispatcher;
+		var property_dispatcher;
 		//"iiiwhattt".debug;
 		target = args[0];
 		property = args[1];
@@ -68,41 +69,76 @@ Param {
 
 		//class_dispatcher = IdentityDictionary.new;
 
+		property_dispatcher = { arg property, arrayclass, envclass;
+			// handle Array and Env indexing
+			switch(property.key.class,
+				Association, { // index of ((\adsr -> \levels) -> 0)
+					var subpro = property.key.value;
+					var idx = property.value;
+					//"Ndef: a double asso".debug;
+					args[1] = property.key.key;
+					//(args++[subpro, idx]).debug("NdefParamEnvSlot args");
+					wrapper = envclass.new(*args++[subpro, idx]);
+				},
+				{
+					//"Ndef: a simple asso".debug;
+					switch(property.value, 
+						Symbol, { // env named segment: (\adsr -> \sustain) 
+							// need to get spec, but spec is determined after wrapper creation :(
+							"Ndef: env named segment".debug;
+							"NOT IMPLEMENTED YET!".debug;
+						},
+						// else: an index into an array: (\delaytab -> 0)
+						{ 
+							var idx;
+							//"Ndef: an index into an array".debug;
+							args[1] = property.key;
+							idx = property.value;
+							//(args++[idx]).debug("NdefParamSlot args");
+							wrapper = arrayclass.new(*args++[idx]);
+						}
+
+					)
+				}
+			);
+		};
+
 		class_dispatcher = (
 			Ndef: {
 				switch(property.class,
 					Association, {
 						//"Ndef: an asso".debug;
-						switch(property.key.class,
-							Association, { // index of ((\adsr -> \levels) -> 0)
-								var subpro = property.key.value;
-								var idx = property.value;
-								//"Ndef: a double asso".debug;
-								args[1] = property.key.key;
-								//(args++[subpro, idx]).debug("NdefParamEnvSlot args");
-								wrapper = NdefParamEnvSlot(*args++[subpro, idx]);
-							},
-							{
-								//"Ndef: a simple asso".debug;
-								switch(property.value, 
-									Symbol, { // env named segment: (\adsr -> \sustain) 
-										// need to get spec, but spec is determined after wrapper creation :(
-										"Ndef: env named segment".debug;
-										"NOT IMPLEMENTED YET!".debug;
-									},
-									// else: an index into an array: (\delaytab -> 0)
-									{ 
-										var idx;
-										//"Ndef: an index into an array".debug;
-										args[1] = property.key;
-										idx = property.value;
-										//(args++[idx]).debug("NdefParamSlot args");
-										wrapper = NdefParamSlot(*args++[idx]);
-									}
+						property_dispatcher.(property, NdefParamSlot, NdefParamEnvSlot);
+						//switch(property.key.class,
+						//	Association, { // index of ((\adsr -> \levels) -> 0)
+						//		var subpro = property.key.value;
+						//		var idx = property.value;
+						//		//"Ndef: a double asso".debug;
+						//		args[1] = property.key.key;
+						//		//(args++[subpro, idx]).debug("NdefParamEnvSlot args");
+						//		wrapper = NdefParamEnvSlot(*args++[subpro, idx]);
+						//	},
+						//	{
+						//		//"Ndef: a simple asso".debug;
+						//		switch(property.value, 
+						//			Symbol, { // env named segment: (\adsr -> \sustain) 
+						//				// need to get spec, but spec is determined after wrapper creation :(
+						//				"Ndef: env named segment".debug;
+						//				"NOT IMPLEMENTED YET!".debug;
+						//			},
+						//			// else: an index into an array: (\delaytab -> 0)
+						//			{ 
+						//				var idx;
+						//				//"Ndef: an index into an array".debug;
+						//				args[1] = property.key;
+						//				idx = property.value;
+						//				//(args++[idx]).debug("NdefParamSlot args");
+						//				wrapper = NdefParamSlot(*args++[idx]);
+						//			}
 
-								)
-							}
-						);
+						//		)
+						//	}
+						//);
 					},
 					Symbol, { // a simple param : \freq
 						//"Param.newWrapper: Ndef: a symbol".debug;
@@ -123,23 +159,24 @@ Param {
 			Pdef: {
 				switch(property.class,
 					Association, {
-						switch(property.key.class,
-							Association, {
-								var subpro = property.key.value;
-								var idx = property.value;
-								args[1] = property.key.key;
-								//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
-								wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
-							},
-							// else: an index
-							{
-								var idx;
-								args[1] = property.key;
-								idx = property.value;
-								//(args++[idx]).debug("PdefParamSlot args");
-								wrapper = PdefParamSlot(*args++[idx]);
-							}
-						);
+						property_dispatcher.(property, PdefParamSlot, PdefParamEnvSlot);
+						//switch(property.key.class,
+						//	Association, {
+						//		var subpro = property.key.value;
+						//		var idx = property.value;
+						//		args[1] = property.key.key;
+						//		//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
+						//		wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
+						//	},
+						//	// else: an index
+						//	{
+						//		var idx;
+						//		args[1] = property.key;
+						//		idx = property.value;
+						//		//(args++[idx]).debug("PdefParamSlot args");
+						//		wrapper = PdefParamSlot(*args++[idx]);
+						//	}
+						//);
 					},
 					Symbol, {
 						wrapper = PdefParam(*args);
@@ -149,23 +186,25 @@ Param {
 			PbindSeqDef: {
 				switch(property.class,
 					Association, {
-						switch(property.key.class,
-							Association, {
-								var subpro = property.key.value;
-								var idx = property.value;
-								args[1] = property.key.key;
-								//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
-								wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
-							},
-							// else: an index
-							{
-								var idx;
-								args[1] = property.key;
-								idx = property.value;
-								//(args++[idx]).debug("PdefParamSlot args");
-								wrapper = PdefParamSlot(*args++[idx]);
-							}
-						);
+						property_dispatcher.(property, PdefParamSlot, PdefParamEnvSlot);
+
+						//switch(property.key.class,
+						//	Association, {
+						//		var subpro = property.key.value;
+						//		var idx = property.value;
+						//		args[1] = property.key.key;
+						//		//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
+						//		wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
+						//	},
+						//	// else: an index
+						//	{
+						//		var idx;
+						//		args[1] = property.key;
+						//		idx = property.value;
+						//		//(args++[idx]).debug("PdefParamSlot args");
+						//		wrapper = PdefParamSlot(*args++[idx]);
+						//	}
+						//);
 					},
 					Symbol, {
 						wrapper = PbindSeqDefParam(*args);
@@ -187,6 +226,34 @@ Param {
 					wrapper = ListParam(*args);
 				}
 			},
+			Dictionary: {
+				switch(property.class,
+					Association, {
+						property_dispatcher.(property, DictionaryParamSlot, DictionaryParamEnvSlot);
+
+						//switch(property.key.class,
+						//	Association, {
+						//		var subpro = property.key.value;
+						//		var idx = property.value;
+						//		args[1] = property.key.key;
+						//		//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
+						//		wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
+						//	},
+						//	// else: an index
+						//	{
+						//		var idx;
+						//		args[1] = property.key;
+						//		idx = property.value;
+						//		//(args++[idx]).debug("PdefParamSlot args");
+						//		wrapper = PdefParamSlot(*args++[idx]);
+						//	}
+						//);
+					},
+					Symbol, {
+						wrapper = DictionaryParam(*args);
+					}
+				);
+			},
 			Array: {
 				target.class.debug("mais what ??");
 				"ERROR: not implemented for Array, use List instead".postln;
@@ -195,6 +262,9 @@ Param {
 		);
 		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
 		class_dispatcher['StepList'] = class_dispatcher['List'];
+		class_dispatcher['Event'] = class_dispatcher['Dictionary'];
+		class_dispatcher['IdentityDictionary'] = class_dispatcher['Dictionary'];
+		class_dispatcher['Environment'] = class_dispatcher['Dictionary'];
 
 
 		if(args.size == 2) {
@@ -1282,6 +1352,7 @@ PdefParamSlot : PdefParam {
 
 	spec {
 		if(spec.class == XArraySpec) {
+			// FIXME: fail if imbricated XArraySpec, but it's not supported anyway
 			^spec.at(index);
 		} {
 			^spec
@@ -1367,7 +1438,7 @@ NdefVolParam : NdefParam {
 		if(sp.isNil) {
 			^\amp.asSpec
 		} {
-			^sp;
+			^sp.asSpec;
 		}
 	}
 
@@ -1429,7 +1500,7 @@ VolumeParam : BaseParam {
 		if(sp.isNil) {
 			^\db.asSpec
 		} {
-			^sp;
+			^sp.asSpec;
 		}
 	}
 
@@ -1490,7 +1561,7 @@ TempoClockParam : BaseParam {
 		if(sp.isNil) {
 			^ControlSpec(10/60,300/60,\lin,0,1)
 		} {
-			^sp;
+			^sp.asSpec;
 		}
 	}
 
@@ -1584,7 +1655,7 @@ ListParam : BaseParam {
 
 	set { arg val;
 		target.array = val;
-		target.changed(\set, property);
+		target.changed(\set, property, val);
 	}
 
 	normGet {
@@ -1694,6 +1765,151 @@ PbindSeqDefParamSlot : PdefParamSlot {
 	//}
 
 }
+
+
+////////////////// Dictionary
+
+DictionaryParam : BaseParam {
+	
+	var <target, <property, <spec, <key;
+	*new { arg obj, meth, sp;
+		^super.new.init(obj, meth, sp);
+	}
+
+	asLabel {
+		^"D % %".format(target.identityHash, property)
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		//sp.debug("sp1");
+		spec = this.toSpec(sp);
+		key = meth ? \volume;
+	}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg sp;
+		//sp.debug("sp2");
+		sp = 
+			// param arg
+			sp ?? {
+				// halo
+				target.getSpec(property) ?? {
+					Param.defaultSpec;
+				};
+			};
+		^sp.asSpec;
+	}
+
+	get {
+		var val;
+		val = target[property];
+		^val;
+	}
+
+	set { arg val;
+		target[property] = val;
+		target.changed(\set, property, val);
+	}
+
+	at { arg idx;
+		^Param(target, property -> idx, spec)
+	}
+
+	normGet {
+		^spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\set, { arg ...args; 
+			action.(view, param);
+		});
+	}
+}
+
+DictionaryParamSlot : DictionaryParam {
+	var <target, <property, spec, <key, <index;
+	*new { arg obj, meth, sp, index;
+		// meth/property is index
+		// spec should be scalar
+		^super.new(obj, meth, sp).initDictionaryParamSlot(index);
+	}
+
+	initDictionaryParamSlot { arg idx;
+		index = idx;
+	}
+
+	asLabel {
+		^"D % %".format(target.identityHash, property)
+	}
+
+	spec {
+		if(spec.class == XArraySpec) {
+			// FIXME: fail if imbricated XArraySpec, but it's not supported anyway
+			^spec.at(index);
+		} {
+			^spec
+		}
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		//sp.debug("sp1");
+		spec = this.toSpec(sp);
+		key = obj.identityHash.asSymbol;
+	}
+
+	get {
+		var val;
+		val = super.get[index];
+		if(val.isNil) {
+			val = spec.default;
+		};
+		if(spec.class == XEnvSpec) {
+			val = val.asEnv;
+		};
+		^val;
+	}
+
+	set { arg val;
+		var prev = super.get;
+		prev[index] = val;
+		super.set(prev);
+	}
+
+	normGet {
+		var val = this.get;
+		if(val.class == String) {
+			// workaround when a Bus ("c0") is mapped to the parameter
+			^0
+		} {
+			^this.spec.unmap(this.get)
+		}
+	}
+
+	normSet { arg val;
+		this.set(this.spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\set, { arg ...args; 
+			// TODO: update only the slot changed ?
+			action.(view, param);
+		});
+	}
+}
+
+DictionaryParamEnvSlot : DictionaryParamSlot {
+	// TODO
+	
+}
+
 
 
 ////////////////////////////////////////

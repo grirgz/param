@@ -258,3 +258,110 @@ XSimpleButton : QButton {
 
 }
 
+ListParamLayout {
+
+	*new { arg param, makecell;
+		super.new.init(param, makecell)
+	}
+
+	*button { arg param;
+		^super.new.init(param, { arg param;
+			param.asButton;
+		});
+	}
+
+	*slider { arg param;
+		^super.new.init(param, { arg param;
+			param.asSlider;
+		});
+	}
+
+	*knob { arg param;
+		^super.new.init(param, { arg param;
+			param.asKnob;
+		});
+	}
+
+	init { arg param, makecell;
+		var viewlist;
+		^HLayout(*
+			viewlist = param.collect(makecell)
+		)
+		.add(nil)
+		.addUniqueMethod(\mapParam, { arg param;
+			viewlist.do { arg view, n; 
+				view.mapParam(param.at(n));
+			}
+		}).addUniqueMethod(\removeAll, { arg param;
+			viewlist.do { arg view, n; 
+				view.mapParam(param.at(n));
+			}
+		})
+	}
+}
+
+StepSeqView : SCViewHolder {
+	var stepseq;
+	*new { arg stepseq;
+		^super.new.init(stepseq);
+	}
+
+	init { arg seq;
+		this.view = View.new;
+		if(seq.notNil) {
+			this.mapStepSeq(seq);
+		}
+	}
+
+	mapStepSeq { arg seq, style;
+		stepseq = seq;
+		this.view.removeAll;
+		if(seq.notNil) {
+			style = style ?? { seq.getHalo(\seqstyle) ? \knob }; 
+
+			this.view.layout_(ListParamLayout.perform(style, stepseq.asParam));
+		}
+	}
+}
+
+EventSeqView : SCViewHolder {
+	var <viewlist;
+	var stepseqview;
+	var popupview;
+	var eventseq;
+
+	*new { arg seq;
+		^super.new.init(seq);
+	}
+
+	init { arg seq;
+		this.view = View.new;
+		stepseqview = StepSeqView.new;
+		this.view.layout = HLayout(
+			stepseqview.view,
+			popupview = PopUpMenu.new,
+		);
+		if(seq.notNil) {
+			this.mapEventSeq(seq);
+		}
+	}
+
+	mapEventSeq { arg seq;
+		eventseq = seq;
+		popupview.items = eventseq.keys.asArray.sort;
+		popupview.action = { arg view;
+			var stepseq = eventseq[view.items[view.value].asSymbol];
+			stepseqview.mapStepSeq(stepseq)
+		};
+		if(eventseq.size > 0) {
+			if(eventseq[\isRest].notNil) {
+				popupview.valueAction = popupview.items.detectIndex({ arg x; x == \isRest });
+			} {
+				popupview.valueAction = 0
+			};
+		} {
+			stepseqview.removeAll;
+		}
+	}
+	
+}

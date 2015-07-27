@@ -1,6 +1,8 @@
 PseqCursor : Prout {
+	// TODO: find a way to cleanup when stopped
 	*new { arg list;
 		^super.new({
+			var previous;
 			list.size.do { arg x;
 				list.changed(\cursor, x, 0);
 			};
@@ -84,7 +86,7 @@ StepList : List {
 			block { arg break;
 				loop {
 					if( this[i].notNil ) {
-						this[i].yield;
+						ev = this[i].yield(ev);
 					} {
 						i = 0;
 						break.value;
@@ -97,6 +99,10 @@ StepList : List {
 
 	asPattern {
 		^Pn(this,1)
+	}
+
+	asParam {
+		^Param(this, \list)
 	}
 
 	edit {
@@ -118,17 +124,31 @@ StepListDef {
 EventSeq : Event {
 
 	embedInStream { arg ev;
-
-		this.keysValuesDo {
-			Pbind(
-
-			)
-
-		}
-
+		var pairs = List.new;
+		this.keysValuesDo { arg key, val;
+			pairs.add(key);
+			if(key == \isRest) {
+				// FIXME: to much assumption on how rest are handled
+				// currently, if a key is isRest, it's a coin pattern with button style
+				// could be \amp == 0 too!
+				// maybe isRest could be a function looking if \step != 0 is defined and if \amp != 0
+				// need to add a filter on values, excluding functions in the view
+				// and not call asPattern on it
+				pairs.add(val.addHalo(\seqstyle, \button).prest);
+			} {
+				pairs.add(val.asPattern);
+			}
+		};
+		ev = Pbind(
+			*pairs.debug("pairs")
+			++ [\what, Pfunc({ arg ev; ev.debug("WTF!"); 1 })]
+		).embedInStream(ev)
+		^ev;
 	}
 
 }
+
+
 
 //What : Pdef {
 //	*new { arg key;
