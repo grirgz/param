@@ -32,6 +32,7 @@ Param {
 			// TODO: test without this code to see if something break
 			if(args[0].isSequenceableCollection) {
 				// This is for support Param([Ndef(\plop), \freq, \freq])
+				// this support is stupid, why not Param(*[Ndef(\plop), \freq, \freq]) ???
 				this.newWrapper(args[0])
 			} {
 				// This is for support Param(ParamValue.new)
@@ -259,9 +260,17 @@ Param {
 				"ERROR: not implemented for Array, use List instead".postln;
 				^nil;
 			},
+			Message: {
+				wrapper = MessageParam(*args);
+			},
+			Function: {
+				wrapper = FunctionParam(*args);
+			}
 		);
 		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
 		class_dispatcher['StepList'] = class_dispatcher['List'];
+		class_dispatcher['DictStepList'] = class_dispatcher['List'];
+		class_dispatcher['ParDictStepList'] = class_dispatcher['List'];
 		class_dispatcher['Event'] = class_dispatcher['Dictionary'];
 		class_dispatcher['IdentityDictionary'] = class_dispatcher['Dictionary'];
 		class_dispatcher['Environment'] = class_dispatcher['Dictionary'];
@@ -968,6 +977,32 @@ BaseParam {
 			\scalar,
 		)
 	}
+}
+
+StandardConstructorParam : BaseParam {
+	var <target, <property, <spec, <key;
+
+	*new { arg obj, meth, sp;
+		^super.new.init(obj, meth, sp);
+	}
+
+	asLabel {
+		^"% %".format(target.class, property)
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		spec = this.toSpec(sp);
+		key = obj.key;
+	}
+
+	toSpec { arg sp;
+		//if(sp.isNil)
+		//nil.asSpec
+		^sp.asSpec;
+	}
+
 }
 
 ////////////////// Ndef
@@ -1908,6 +1943,49 @@ DictionaryParamSlot : DictionaryParam {
 DictionaryParamEnvSlot : DictionaryParamSlot {
 	// TODO
 	
+}
+
+////////////////// Object property (message)
+MessageParam : StandardConstructorParam {
+
+	asLabel {
+		^"% %".format(target.class, property)
+	}
+
+	set { arg val;
+		target.receiver.perform((property++"_").asSymbol, val);	
+	}
+
+	get { 
+		^target.receiver.perform(property);	
+	}
+}
+
+FunctionParam : StandardConstructorParam {
+	var <getFunc, <setFunc;
+
+	asLabel {
+		^"F % %".format(target.identityHash)
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+
+		getFunc = obj;
+		setFunc = meth;
+
+		spec = this.toSpec(sp);
+		//key = obj.identityHash.asSymbol;
+	}
+
+	set { arg val;
+		setFunc.(val, this);
+	}
+
+	get { 
+		^getFunc.(this);
+	}
 }
 
 
@@ -3200,6 +3278,17 @@ CachedBus : Bus {
 
 	mapParam { arg param, mapLabel=true;
 		param.mapEZSlider(this, mapLabel);
+	}
+}
+
++PopUpMenu {
+	// map index of popupmenu to param 
+	mapParam { arg param;
+		this.mapIndexParam(param)
+	}
+
+	mapIndexParam { arg param;
+		param.mapPopUpMenu(this)
 	}
 }
 

@@ -64,6 +64,9 @@ ParamGroupLayout {
 		);
 		^layout;
 	}
+
+	*cursorRow { arg param;
+	}
 }
 
 WindowLayout {
@@ -277,9 +280,91 @@ ListParamLayout {
 	}
 
 	*knob { arg param;
-		^super.new.init(param, { arg param;
-			param.asKnob;
+		^super.new.init(param, { arg subparam;
+			subparam.asKnob;
 		});
+	}
+
+	*valuePopup { arg param, keys;
+		^super.new.init(param, { arg subparam;
+			var pm = PopUpMenu.new;
+			pm.items = keys;
+			pm.action = {
+				subparam.set(pm.value)
+			};
+			pm.onChange(subparam.target, \set, {
+				// TODO: do not change the whole row when just one value is updated!
+				var val;
+				//"there is change! my lord!".debug;
+				pm.value = pm.items.detectIndex({ arg x; x == subparam.get })
+			});
+			pm.value = pm.items.detectIndex({ arg x; x == subparam.get });
+			pm;
+		});
+	}
+
+	*indexPopup { arg param, keys;
+		^super.new.init(param, { arg subparam;
+			var pm = PopUpMenu.new;
+			pm.items = keys;
+			pm.action = {
+				subparam.set(pm.value)
+			};
+			pm.onChange(subparam.target, \set, {
+				pm.value = subparam.get;
+			});
+			pm;
+		});
+	}
+
+	*addCursor { arg x, view, param, on, off;
+		^view.onChange(param.target, \cursor, { arg view ...args;
+			[args[2], x].debug("bbb");
+			if(args[2] == x or: { args[2].isNil }) {
+				// AppClock doesnt have the same tempo of the pattern
+				//		but s.latency is in seconds and appclock has tempo 1, so this works!!!
+				// FIXME: how to specify another server ?
+				Task{
+					Server.default.latency.wait;
+					if(args[3] == 1) {
+						on.value(view, x, param, args[4]);
+					} {
+						off.value(view, x, param, args[4]);
+					};
+					nil
+				}.play(AppClock);
+			};
+			args.debug("cursor!!");
+		})
+	}
+
+	*cursor { arg param;
+		^super.new.init(param, { arg param, x;
+			Button.new
+			.enabled_(false)
+			.maxHeight_(10)
+			.onChange(param.target, \cursor, { arg view ...args;
+				[args[2], x].debug("bbb");
+				if(args[2] == x or: { args[2].isNil }) {
+					// FIXME: AppClock doesnt have the same tempo of the pattern :/
+					// FIXME: how to specify another server ?
+					Task{
+						Server.default.latency.wait;
+						if(args[3] == 1) {
+							view.value = 1;
+						} {
+							view.value = 0;
+						};
+						nil
+					}.play(AppClock);
+				};
+				args.debug("cursor!!");
+			})
+			.states_([
+				["", Color.black, Color.white],
+				["", Color.black, Color.yellow],
+			]);
+		})
 	}
 
 	init { arg param, makecell;
@@ -292,39 +377,75 @@ ListParamLayout {
 			viewlist.do { arg view, n; 
 				view.mapParam(param.at(n));
 			}
-		}).addUniqueMethod(\removeAll, { arg param;
-			viewlist.do { arg view, n; 
-				view.mapParam(param.at(n));
-			}
+		})
+		.addUniqueMethod(\viewlist, {
+			viewlist
 		})
 	}
 }
 
-StepSeqView : SCViewHolder {
-	var stepseq;
+StepListView : SCViewHolder {
+	var <>stepseq;
+	var <>controller;
 	*new { arg stepseq;
 		^super.new.init(stepseq);
+	}
+
+	viewlist { 
+		^this.view.layout.viewlist;
 	}
 
 	init { arg seq;
 		this.view = View.new;
 		if(seq.notNil) {
-			this.mapStepSeq(seq);
+			this.mapStepList(seq);
 		}
 	}
 
-	mapStepSeq { arg seq, style;
+	addCursor { arg select, deselect;
+		this.viewlist.do { arg view, x;
+			ListParamLayout.addCursor(x, view, stepseq.asParam.at(x), { 
+				var color = view.color;
+				color[0] = Color.yellow;
+				view.color = color;
+			}, {
+				var color = view.color;
+				color[0] = Color.white;
+				view.color = color;
+			}) 
+		}
+	}
+
+	makeLayout { arg seq, style;
+		^ListParamLayout.perform(style, stepseq.asParam)
+	}
+
+	makeUpdater {
+		if(controller.notNil) { controller.remove; };
+		controller = SimpleController.new(this.stepseq).put(\refresh, { arg ...args;
+			if(this.view.isClosed) { controller.remove };
+			this.mapStepList(this.stepseq); // refresh
+		});
+	}
+
+	mapStepList { arg seq, style;
 		stepseq = seq;
 		this.view.removeAll;
 		if(seq.notNil) {
+			this.makeUpdater;
 			style = style ?? { seq.getHalo(\seqstyle) ? \knob }; 
-
-			this.view.layout_(ListParamLayout.perform(style, stepseq.asParam));
+			this.view.layout_(this.makeLayout(seq, style));
 		}
 	}
 }
 
-EventSeqView : SCViewHolder {
+StepCursorView : StepListView {
+	makeLayout { arg seq, style;
+		^ListParamLayout.cursor(stepseq.asParam)
+	}
+}
+
+StepEventView : SCViewHolder {
 	var <viewlist;
 	var stepseqview;
 	var popupview;
@@ -336,22 +457,22 @@ EventSeqView : SCViewHolder {
 
 	init { arg seq;
 		this.view = View.new;
-		stepseqview = StepSeqView.new;
+		stepseqview = StepListView.new;
 		this.view.layout = HLayout(
 			stepseqview.view,
 			popupview = PopUpMenu.new,
 		);
 		if(seq.notNil) {
-			this.mapEventSeq(seq);
+			this.mapStepEvent(seq);
 		}
 	}
 
-	mapEventSeq { arg seq;
+	mapStepEvent { arg seq;
 		eventseq = seq;
 		popupview.items = eventseq.keys.asArray.sort;
 		popupview.action = { arg view;
 			var stepseq = eventseq[view.items[view.value].asSymbol];
-			stepseqview.mapStepSeq(stepseq)
+			stepseqview.mapStepList(stepseq)
 		};
 		if(eventseq.size > 0) {
 			if(eventseq[\isRest].notNil) {
@@ -363,5 +484,49 @@ EventSeqView : SCViewHolder {
 			stepseqview.removeAll;
 		}
 	}
-	
 }
+
+DictStepListView : StepListView {
+	*new { arg stepseq;
+		^super.new.init(stepseq);
+	}
+
+	init { arg seq;
+		this.view = View.new;
+		if(seq.notNil) {
+			this.mapStepList(seq);
+		}
+	}
+
+	makeLayout { arg seq, style;
+		^ListParamLayout.perform(style, stepseq.asParam, stepseq.dict.keys)
+	}
+
+	mapStepList { arg seq, style;
+		stepseq = seq;
+		this.view.removeAll;
+		if(seq.notNil) {
+			this.makeUpdater;
+			style = style ?? { seq.getHalo(\seqstyle) ? \valuePopup }; 
+			//[style, seq.dict].debug("mapDictStepList: style, dict");
+			this.view.layout_(this.makeLayout(seq, style));
+		}
+	}
+}
+
+ParDictStepListView : DictStepListView {
+	makeLayout { arg seq, style;
+		^ListParamLayout.perform(style, stepseq.asParam, stepseq.dicts[0].keys)
+	}
+}
+
+//BankListView : SCViewHolder {
+//
+//	*new { arg banklist;
+//		^super.new.init(banklist)
+//	}
+//
+//	init { arg banklist;
+//	
+//	}
+//}

@@ -80,12 +80,25 @@ PbindSeqDef : Pdef {
 
 StepList : List {
 
+	// TODO: send changed message when .put or other
+
 	embedInStream { arg ev;
+		^this.asPattern.embedInStream(ev);
+	}
+
+	asPattern {
 		^Prout({ arg ev;
 			var i = 0;
 			block { arg break;
+				this.changed(\cursor, nil, 0); // turn off all cells
 				loop {
+
+
 					if( this[i].notNil ) {
+						// cursor following 
+						this.changed(\cursor, (i-1).wrap(0,this.size-1), 0);
+						this.changed(\cursor, i, 1, this[i]);
+
 						ev = this[i].yield(ev);
 					} {
 						i = 0;
@@ -94,11 +107,7 @@ StepList : List {
 					i = i + 1;
 				};
 			}
-		}).embedInStream(ev);
-	}
-
-	asPattern {
-		^Pn(this,1)
+		})
 	}
 
 	asParam {
@@ -121,7 +130,7 @@ StepListDef {
 	}
 }
 
-EventSeq : Event {
+StepEvent : Event {
 
 	embedInStream { arg ev;
 		var pairs = List.new;
@@ -146,6 +155,73 @@ EventSeq : Event {
 		^ev;
 	}
 
+}
+
+BankList : List {
+	var <index=0;
+
+	index_ { arg val;
+		index = val;
+		this.changed(\index);
+	}
+
+	asPattern {
+		^Plazy({
+			this[index].asPattern;
+		})
+	}
+
+	current {
+		^this[this.index]
+	}
+
+	keys {
+		^(0..this.size-1)
+	}
+
+	embedInStream { arg ev;
+		^this.asPattern.embedInStream(ev);
+	}
+}
+
+DictStepList : StepList {
+	var >dict;
+
+	dict {
+		if(dict.isNil) {
+			dict = BankList.new;
+		};
+		^dict;
+	}
+
+	asPattern {
+		^Plazy({
+			Pdict(this.dict,super.asPattern);
+		})
+	}
+}
+
+ParDictStepList : StepList {
+	var >dicts;
+
+	dicts {
+		if(dicts.isNil) {
+			dicts = List[BankList.new];
+		};
+		^dicts;
+	}
+
+	asValuePattern {
+		^super.asPattern;
+	}
+
+	asPattern {
+		^this.dicts.collect { arg dict;
+			Plazy({
+				Pdict(dict,super.asPattern);
+			})
+		};
+	}
 }
 
 
