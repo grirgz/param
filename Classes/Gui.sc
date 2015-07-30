@@ -404,13 +404,23 @@ StepListView : SCViewHolder {
 
 	addCursor { arg select, deselect;
 		this.viewlist.do { arg view, x;
-			ListParamLayout.addCursor(x, view, stepseq.asParam.at(x), { 
+			ListParamLayout.addCursor(x, view, stepseq.asParam.at(x), select ? { 
 				var color = view.color;
-				color[0] = Color.yellow;
+				var newcolor = Color.yellow;
+				if(color.isSequenceableCollection) {
+					color[0] = newcolor;
+				} {
+					color = newcolor;
+				};
 				view.color = color;
-			}, {
+			}, deselect ? {
 				var color = view.color;
-				color[0] = Color.white;
+				var newcolor = Color.white;
+				if(color.isSequenceableCollection) {
+					color[0] = newcolor;
+				} {
+					color = newcolor;
+				};
 				view.color = color;
 			}) 
 		}

@@ -17,6 +17,7 @@ Param {
 	}
 
 	*new  { arg ...args;
+		"hehehe".debug;
 		^super.new.init(args)
 	}
 
@@ -25,6 +26,7 @@ Param {
 	}
 
 	init { arg args;
+		"init xxxxxxxxxxx".debug;
 		// FIXME: why this test on size ? if ommit parameters, this break! like Param(s.volume)
 		if (args.size > 1) {
 			this.newWrapper(args)
@@ -45,13 +47,13 @@ Param {
 		var target, property, spec, envdict;
 		var class_dispatcher;
 		var property_dispatcher;
-		//"iiiwhattt".debug;
+		"iiiwhattt".debug;
 		target = args[0];
 		property = args[1];
 		spec = args[2];
 		envdict;
 		//"whattt".debug;
-		//[target, property, spec].debug("newWrapper");
+		[target, property, spec].debug("newWrapper");
 
 		envdict = (
 			adsr: (
@@ -69,6 +71,7 @@ Param {
 		);
 
 		//class_dispatcher = IdentityDictionary.new;
+		"hello gangenr".debug;
 
 		property_dispatcher = { arg property, arrayclass, envclass;
 			// handle Array and Env indexing
@@ -103,6 +106,8 @@ Param {
 				}
 			);
 		};
+
+		"hello3 gangenr".debug;
 
 		class_dispatcher = (
 			Ndef: {
@@ -265,6 +270,10 @@ Param {
 			},
 			Function: {
 				wrapper = FunctionParam(*args);
+			},
+			Builder: {
+				Builder.debug("newWrapper");
+				wrapper = BuilderParam(*args);
 			}
 		);
 		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
@@ -643,6 +652,28 @@ Param {
 		}
 	}
 
+	mapPopUpMenu { arg view;
+		this.mapIndexPopUpMenu(view)
+	}
+
+	mapIndexPopUpMenu { arg view, keys;
+		var pm = view;
+		if(keys.notNil) {
+			pm.items = keys;
+		};
+		pm.action = {
+			this.set(pm.value)
+		};
+		pm.onChange(this.target, \set, { arg me;
+			me.value = this.get;
+		});
+	}
+
+	unmapPopUpMenu { arg view;
+		// FIXME: mapIndexPopUpMenu does not use updater
+		this.freeUpdater(view);
+	}
+
 	mapButton { arg view, action;
 		this.makeSimpleController(view, { arg view, param;
 			var size;
@@ -998,9 +1029,31 @@ StandardConstructorParam : BaseParam {
 	}
 
 	toSpec { arg sp;
-		//if(sp.isNil)
-		//nil.asSpec
+		sp = sp ?? { target.getSpec(property) ?? { Param.defaultSpec } };
 		^sp.asSpec;
+	}
+
+	normGet {
+		var val = this.get;
+		^this.spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(this.spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\set, { arg ...args; 
+			// args: object, \set, keyval_list
+			//args.debug("args");
+
+			// update only if concerned key is set
+			// FIXME: may break if property is an association :(
+			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+			if(args[2].any({ arg x; x == param.property })) {
+				action.(view, param);
+			}
+		});
 	}
 
 }
@@ -1985,6 +2038,28 @@ FunctionParam : StandardConstructorParam {
 
 	get { 
 		^getFunc.(this);
+	}
+}
+
+BuilderParam : StandardConstructorParam {
+
+	asLabel {
+		^"B % %".format(target.key ? "", property)
+	}
+
+	init { arg obj, meth, sp;
+		this.class.debug("init");
+		target = obj;
+		property = meth;
+		spec = this.toSpec(sp);
+	}
+
+	set { arg val;
+		target.set(property, val);
+	}
+
+	get { 
+		^target.get(property);
 	}
 }
 
@@ -3288,7 +3363,7 @@ CachedBus : Bus {
 	}
 
 	mapIndexParam { arg param;
-		param.mapPopUpMenu(this)
+		param.mapIndexPopUpMenu(this)
 	}
 }
 
