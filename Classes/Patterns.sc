@@ -397,3 +397,25 @@ Builder {
 	}
 	
 }
+
+
+
+
+PlayerWrapper  {
+	var <>target;
+	*new { arg target;
+		^super.new.init(target);
+	}
+
+	init { arg tar;
+		target = tar;
+	}
+
+	play {
+		target.play;
+	}
+
+	stop {
+		target.stop;
+	}
+}
