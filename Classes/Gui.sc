@@ -319,7 +319,7 @@ ListParamLayout {
 
 	*addCursor { arg x, view, param, on, off;
 		^view.onChange(param.target, \cursor, { arg view ...args;
-			[args[2], x].debug("bbb");
+			//[args[2], x].debug("bbb");
 			if(args[2] == x or: { args[2].isNil }) {
 				// AppClock doesnt have the same tempo of the pattern
 				//		but s.latency is in seconds and appclock has tempo 1, so this works!!!
@@ -334,7 +334,7 @@ ListParamLayout {
 					nil
 				}.play(AppClock);
 			};
-			args.debug("cursor!!");
+			//args.debug("cursor!!");
 		})
 	}
 
@@ -550,6 +550,10 @@ PlayerWrapperView : ObjectGui {
 		super.new(model);
 	}
 
+	// FIXME: this is dirty, a layout is not a view
+	// but require to remember if class is a layout or a view
+	view { ^this.layout }
+
 	layout { arg parent;
 		var lay = HLayout(
 			button = Button.new.action_({ arg view;
@@ -577,7 +581,7 @@ PlayerWrapperView : ObjectGui {
 		skipjack = SkipJack({
 			this.update;
 		}, pollRate + (pollRate/2).rand, { 
-			button.isClosed
+			button.isClosed.debug("SkipJack: button isClosed?")
 		});
 	}
 

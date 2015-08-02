@@ -78,6 +78,86 @@ PbindSeqDef : Pdef {
 
 }
 
+/////////////////////
+
+PstepSeq : ListPattern {
+	var <>offset;
+	*new { arg list, repeats=1, offset=0;
+		^super.new(list, repeats).offset_(offset)
+	}
+	embedInStream {  arg ev;
+		var item, offsetValue;
+		var i = 0;
+		block { arg break;
+			this.changed(\cursor, nil, 0); // turn off all cells
+			this.list.changed(\cursor, nil, 0); // turn off all cells
+			loop {
+
+
+				if( this.list[i].notNil ) {
+					// cursor following 
+					this.changed(\cursor, (i-1).wrap(0,this.list.size-1), 0);
+					this.list.changed(\cursor, (i-1).wrap(0,this.list.size-1), 0);
+					this.changed(\cursor, i, 1, this.list[i]);
+					this.list.changed(\cursor, i, 1, this.list[i]);
+
+					ev = this.list[i].yield(ev);
+				} {
+					i = 0;
+					this.changed(\cursor, nil, 0); // turn off all cells
+					this.list.changed(\cursor, nil, 0); // turn off all cells
+					break.value;
+				};
+				i = i + 1;
+			};
+		};
+	}
+	//storeArgs { ^[ list, repeats, offset ] }
+}
+
+//PstepSeq : Prout {
+//	var <>list;
+//	new { arg seq;
+//		var ins;
+//		ins = super.new({
+//			Prout({ arg ev;
+//				var i = 0;
+//				block { arg break;
+//					this.changed(\cursor, nil, 0); // turn off all cells
+//					this.list.changed(\cursor, nil, 0); // turn off all cells
+//					loop {
+//
+//
+//						if( this.list[i].notNil ) {
+//							// cursor following 
+//							this.changed(\cursor, (i-1).wrap(0,this.list.size-1), 0);
+//							this.list.changed(\cursor, (i-1).wrap(0,this.list.size-1), 0);
+//							this.changed(\cursor, i, 1, this.list[i]);
+//							this.list.changed(\cursor, i, 1, this.list[i]);
+//
+//							ev = this.list[i].yield(ev);
+//						} {
+//							i = 0;
+//							break.value;
+//						};
+//						i = i + 1;
+//					};
+//				}
+//			})
+//
+//		});
+//		ins.list = seq;
+//		^ins;
+//	}
+//
+//    doesNotUnderstand { arg selector...args;
+//        if(this.list.class.findRespondingMethodFor(selector).notNil) {
+//			^this.list.perform(selector, * args);
+//		};
+//	}
+//
+//}
+
 StepList : List {
 
 	// TODO: send changed message when .put or other
@@ -87,27 +167,7 @@ StepList : List {
 	}
 
 	asPattern {
-		^Prout({ arg ev;
-			var i = 0;
-			block { arg break;
-				this.changed(\cursor, nil, 0); // turn off all cells
-				loop {
-
-
-					if( this[i].notNil ) {
-						// cursor following 
-						this.changed(\cursor, (i-1).wrap(0,this.size-1), 0);
-						this.changed(\cursor, i, 1, this[i]);
-
-						ev = this[i].yield(ev);
-					} {
-						i = 0;
-						break.value;
-					};
-					i = i + 1;
-				};
-			}
-		})
+		^PstepSeq(this)
 	}
 
 	asParam {
@@ -124,6 +184,7 @@ StepList : List {
 }
 
 StepListDef {
+	// TODO
 	*new { arg key; 
 		Pdefn(key, StepList.new)
 
@@ -345,6 +406,9 @@ Builder {
 	}
 
 	source_ { arg fun;
+		if( fun.isNil ) {
+			fun = {}
+		};
 		source = fun;
 		this.class.functionArgsToEnvir(fun).keysValuesDo { arg k, v;
 			if( this.envir[k].isNil ) {
