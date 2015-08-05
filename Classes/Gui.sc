@@ -326,10 +326,12 @@ ListParamLayout {
 				// FIXME: how to specify another server ?
 				Task{
 					Server.default.latency.wait;
-					if(args[3] == 1) {
-						on.value(view, x, param, args[4]);
-					} {
-						off.value(view, x, param, args[4]);
+					if(view.isClosed.not) {
+						if(args[3] == 1) {
+							on.value(view, x, param, args[4]);
+						} {
+							off.value(view, x, param, args[4]);
+						};
 					};
 					nil
 				}.play(AppClock);
@@ -387,6 +389,9 @@ ListParamLayout {
 StepListView : SCViewHolder {
 	var <>stepseq;
 	var <>controller;
+	var <>selectAction;
+	var <>deselectAction;
+	var <>hasCursor = false;
 	*new { arg stepseq;
 		^super.new.init(stepseq);
 	}
@@ -402,26 +407,53 @@ StepListView : SCViewHolder {
 		}
 	}
 
+	setCursor { arg active=true, select, deselect;
+		deselectAction = deselect;
+		selectAction = select;
+		hasCursor = active;
+		this.addCursor;
+	}
+
 	addCursor { arg select, deselect;
+		select = select ? selectAction;
+		deselect = deselect ? deselectAction;
 		this.viewlist.do { arg view, x;
 			ListParamLayout.addCursor(x, view, stepseq.asParam.at(x), select ? { 
-				var color = view.color;
-				var newcolor = Color.yellow;
-				if(color.isSequenceableCollection) {
-					color[0] = newcolor;
+				if(view.isKindOf(Button)) {
+					var states, val;
+					states = view.states;
+					val = view.value;
+					states.do { arg x; x[0] = "O" };
+					view.states = states;
+					view.value = val;
 				} {
-					color = newcolor;
-				};
-				view.color = color;
+					var color = view.color;
+					var newcolor = Color.yellow;
+					if(color.isSequenceableCollection) {
+						color[0] = newcolor;
+					} {
+						color = newcolor;
+					};
+					view.color = color;
+				}
 			}, deselect ? {
-				var color = view.color;
-				var newcolor = Color.white;
-				if(color.isSequenceableCollection) {
-					color[0] = newcolor;
+				if(view.isKindOf(Button)) {
+					var states, val;
+					states = view.states;
+					val = view.value;
+					states.do { arg x; x[0] = " " };
+					view.states = states;
+					view.value = val;
 				} {
-					color = newcolor;
-				};
-				view.color = color;
+					var color = view.color;
+					var newcolor = Color.white;
+					if(color.isSequenceableCollection) {
+						color[0] = newcolor;
+					} {
+						color = newcolor;
+					};
+					view.color = color;
+				}
 			}) 
 		}
 	}
@@ -433,8 +465,9 @@ StepListView : SCViewHolder {
 	makeUpdater {
 		if(controller.notNil) { controller.remove; };
 		controller = SimpleController.new(this.stepseq).put(\refresh, { arg ...args;
-			if(this.view.isClosed) { controller.remove };
-			this.mapStepList(this.stepseq); // refresh
+			if(this.view.isNil or: {this.view.isClosed}) { controller.remove } {
+				this.mapStepList(this.stepseq); // refresh
+			};
 		});
 	}
 
@@ -445,6 +478,9 @@ StepListView : SCViewHolder {
 			this.makeUpdater;
 			style = style ?? { seq.getHalo(\seqstyle) ? \knob }; 
 			this.view.layout_(this.makeLayout(seq, style));
+			if(hasCursor) {
+				this.addCursor;
+			}
 		}
 	}
 }
@@ -457,9 +493,10 @@ StepCursorView : StepListView {
 
 StepEventView : SCViewHolder {
 	var <viewlist;
-	var stepseqview;
-	var popupview;
-	var eventseq;
+	var <>stepseqview;
+	var <>popupview;
+	var <>eventseq;
+	var <>controller;
 
 	*new { arg seq;
 		^super.new.init(seq);
@@ -477,8 +514,26 @@ StepEventView : SCViewHolder {
 		}
 	}
 
+	setCursor { arg active=true, select, deselect;
+		stepseqview.setCursor(active, select, deselect);
+	}
+
+	hasCursor {
+		^stepseqview.hasCursor;
+	}
+
+	makeUpdater {
+		if(controller.notNil) { controller.remove; };
+		controller = SimpleController.new(this.eventseq).put(\refresh, { arg ...args;
+			if(this.view.isNil or: {this.view.isClosed}) { controller.remove } {
+				this.mapStepEvent(this.eventseq); // refresh
+			};
+		});
+	}
+
 	mapStepEvent { arg seq;
 		eventseq = seq;
+		this.makeUpdater;
 		popupview.items = eventseq.keys.asArray.sort;
 		popupview.action = { arg view;
 			var stepseq = eventseq[view.items[view.value].asSymbol];
@@ -581,7 +636,8 @@ PlayerWrapperView : ObjectGui {
 		skipjack = SkipJack({
 			this.update;
 		}, pollRate + (pollRate/2).rand, { 
-			button.isClosed.debug("SkipJack: button isClosed?")
+			//button.isClosed.debug("SkipJack: button isClosed?")
+			button.isClosed;
 		});
 	}
 
@@ -595,11 +651,11 @@ PlayerWrapperView : ObjectGui {
 
 	update { arg changed, changer ... args;
 
-		[changed, changer, args].debug("changed, changer");
+		//[changed, changer, args].debug("changed, changer");
 
         if(changer !== this) {  
 			var label;
-			model.isPlaying.debug("isPlaying?");
+			//model.isPlaying.debug("isPlaying?");
 
 			if(model.class == PlayerWrapper) {
 				label = model.label;

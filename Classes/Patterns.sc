@@ -85,6 +85,7 @@ PstepSeq : ListPattern {
 	*new { arg list, repeats=1, offset=0;
 		^super.new(list, repeats).offset_(offset)
 	}
+
 	embedInStream {  arg ev;
 		var item, offsetValue;
 		var i = 0;
@@ -103,14 +104,14 @@ PstepSeq : ListPattern {
 
 					ev = this.list[i].yield(ev);
 				} {
-					i = 0;
-					this.changed(\cursor, nil, 0); // turn off all cells
-					this.list.changed(\cursor, nil, 0); // turn off all cells
 					break.value;
 				};
 				i = i + 1;
 			};
 		};
+		i = 0;
+		this.changed(\cursor, nil, 0); // turn off all cells
+		this.list.changed(\cursor, nil, 0); // turn off all cells
 	}
 	//storeArgs { ^[ list, repeats, offset ] }
 }
@@ -181,6 +182,18 @@ StepList : List {
 	prest {
 		^this.asPattern.coin.not
 	}
+
+	stepCount_ { arg val;
+		this.array = this.array.wrapExtend(val.asInteger);
+		this.changed(\refresh);
+	}
+
+	stepCount {
+		^this.size;
+	}
+
+	isNaN { ^true }
+
 }
 
 StepListDef {
@@ -195,6 +208,7 @@ StepEvent : Event {
 
 	embedInStream { arg ev;
 		var pairs = List.new;
+		var pbind;
 		this.keysValuesDo { arg key, val;
 			pairs.add(key);
 			if(key == \isRest) {
@@ -209,12 +223,42 @@ StepEvent : Event {
 				pairs.add(val.asPattern);
 			}
 		};
-		ev = Pbind(
+		pbind = Pbind(
 			*pairs.debug("pairs")
-			++ [\what, Pfunc({ arg ev; ev.debug("WTF!"); 1 })]
-		).embedInStream(ev)
+			//++ [\what, Pfunc({ arg ev; ev.debug("WTF!"); pairs.clump(2).do { arg x; 
+			//	x.debug("list") };
+			//	1
+			//})]
+		);
+		ev = pbind.embedInStream(ev);
+		ev.debug("ev: end");
 		^ev;
 	}
+
+	asPattern {
+		^Prout({ arg ev; this.embedInStream(ev) });
+	}
+
+
+	setSize { arg val;
+	}
+
+	stepCount_ { arg val;
+		this.keysValuesDo { arg k, v;
+			if(v.isKindOf(StepList)) {
+				v.stepCount = val;
+			}
+		};
+	}
+
+	stepCount {
+		this.keysValuesDo { arg k, v;
+			if(v.isKindOf(StepList)) {
+				^v.stepCount;
+			}
+		};
+	}
+
 
 }
 

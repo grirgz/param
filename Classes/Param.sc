@@ -1025,7 +1025,7 @@ StandardConstructorParam : BaseParam {
 		target = obj;
 		property = meth;
 		spec = this.toSpec(sp);
-		key = obj.key;
+		key = obj.tryPerform(\key);
 	}
 
 	toSpec { arg sp;
@@ -2897,6 +2897,7 @@ ParamCombinator {
 	}
 
 	setBusMode { arg bool=true, name=\default;
+		// TODO: disable, anyone ?
 		var bus = BusDef(name, \control);
 		Ndef(name, {
 			var inputs, ranges;
@@ -2909,10 +2910,14 @@ ParamCombinator {
 			inputs.do { arg in, x;
 				fval = fval + (in * ranges[x])
 			};
-			targetParam.spec.map(fval);
+			targetParam.spec.map(fval).poll;
 		});
-		baseParam = Param(Ndef(name), \base, targetParam.target.spec);
-		targetParam.target.map(targetParam.property, Ndef(name));
+		baseParam = Param(Ndef(name), \base, targetParam.spec);
+		targetParam.target.set(targetParam.property, Ndef(name).asMap);
+		rangeParam = Param(Ndef(name), \ranges, XArraySpec(\bipolar ! rangeSize));
+		rangeParam.set(ranges);
+		inputParam = Param(Ndef(name), \inputs, XArraySpec(\unipolar ! rangeSize));
+		inputParam.set(inputs);
 	}
 
 	computeTargetValue {
@@ -2924,11 +2929,45 @@ ParamCombinator {
 		targetParam.normSet(fval);
 	}
 
+	mapModKnob { arg modknob;
+		modknob
+			.onChange(rangeParam.target, \set, { arg view;
+				debug("ranges changz");
+				rangeParam.do { arg param, x;
+					modknob.set_range(x, param.get.debug("range change X"+x));
+				};
+				modknob.refresh;
+			})
+			.onChange(baseParam.target, \set, { arg view;
+				debug("base changz");
+				modknob.value = baseParam.normGet;
+			})
+			.onChange(targetParam.target, \set, { arg view;
+				var nval;
+				var gval;
+				debug("target changz");
+				gval = targetParam.get;
+				if(gval.isKindOf(Number)) {
+					modknob.midi_value = targetParam.normGet;
+					modknob.refresh;
+				}
+			})
+			.action_({
+				debug("action changz");
+				baseParam.normSet(modknob.value)
+			})
+		;
+		baseParam.target.changed(\set);
+		rangeParam.target.changed(\set);
+		targetParam.target.changed(\set);
+
+	}
+
 	edit { arg self;
 		var window = Window.new;
 		var layout;
 		var modknob;
-		modknob = ModKnob.new(window)
+		modknob = ModKnob.new
 			.onChange(ranges, \set, { arg view;
 				ranges.do { arg val, x;
 					modknob.set_range(x, val);
@@ -2946,8 +2985,9 @@ ParamCombinator {
 				baseParam.normSet(modknob.value)
 			})
 			;
+		modknob.view.minSize = 100@100;
 		layout = HLayout(
-			modknob,
+			modknob.view,
 			ParamGroupLayout.two_panes(ParamGroup([
 				baseParam,
 				rangeParam,
