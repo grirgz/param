@@ -1184,7 +1184,7 @@ NdefParamSlot : NdefParam {
 	}
 
 	set { arg val;
-		var vals = super.get;
+		var vals = super.get.copy;
 		vals[index] = val;
 		super.set(vals);
 	}
@@ -2896,9 +2896,14 @@ ParamCombinator {
 
 	}
 
+	freeAllSimpleControllers {
+		controllers.do { arg x; x.remove; };
+	}
+
 	setBusMode { arg bool=true, name=\default;
 		// TODO: disable, anyone ?
 		var bus = BusDef(name, \control);
+		Ndef(name).clear;
 		Ndef(name, {
 			var inputs, ranges;
 			var fval;
@@ -2912,12 +2917,13 @@ ParamCombinator {
 			};
 			targetParam.spec.map(fval).poll;
 		});
+		this.freeAllSimpleControllers;
 		baseParam = Param(Ndef(name), \base, targetParam.spec);
 		targetParam.target.set(targetParam.property, Ndef(name).asMap);
 		rangeParam = Param(Ndef(name), \ranges, XArraySpec(\bipolar ! rangeSize));
-		rangeParam.set(ranges);
+		rangeParam.set(ranges.asArray); // whyyyy list doesnt do anything ????
 		inputParam = Param(Ndef(name), \inputs, XArraySpec(\unipolar ! rangeSize));
-		inputParam.set(inputs);
+		inputParam.set(inputs.asArray);
 	}
 
 	computeTargetValue {
