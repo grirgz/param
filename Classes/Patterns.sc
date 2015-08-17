@@ -414,6 +414,88 @@ Ppredef : Pdef {
 	}
 }
 
+PdrumStep : Pattern {
+	var <dict, <>score, <>repeats, <>default, <>key, <>isRestFunction;
+	var streamDict;
+	var silentEvent;
+	*new { arg dict, score, repeats=inf, default, key=\midinote, isRestFun;
+		^super.newCopyArgs(dict, score, repeats, default, key).initPdrumStep(isRestFun);
+	}
+
+	initPdrumStep { arg isRestFun;
+		isRestFunction = isRestFun ? { arg x; x.class == Symbol };
+		silentEvent = (isRest:true, type: \rest, foudmagueul: \ouais);
+		streamDict = IdentityDictionary.new;
+	}
+
+	storeArgs { ^[dict,score,repeats,default, key ] }
+
+	dict_ { arg val;
+		dict = val;
+		streamDict = IdentityDictionary.new;
+	}
+
+	dictStream { arg idx;
+		if(streamDict[idx].isNil) {
+			var item = dict[idx];
+			if(item.notNil) {
+				if(item.class == Event) { // debug only
+					streamDict[idx] = item.as_stream;
+				} {
+					streamDict[idx] = item.asStream;
+				}
+			} {
+				// FIXME: if the score says it's not a rest, this will not be a rest :(
+				streamDict[idx] = ( default ?? {  silentEvent } ).asStream;
+			};
+		};
+		^streamDict[idx];
+	}
+
+	dictNext { arg idx, ev;
+		ev = ev ? ();
+		^this.dictStream(idx).next(ev)
+	}
+
+	embedInStream { arg inval;
+		var scoreStream, note;
+		var ev = inval; // i don't know what i'm doing..
+		repeats.value(inval).do({
+			scoreStream = score.asStream;
+			scoreStream.do( { arg scoreev;
+				var pat;
+				if(scoreev.isNil) { "RETRUN".debug; ^inval };
+				if(scoreev[key].notNil) {
+					if(isRestFunction.(scoreev[key])) {
+						ev = silentEvent.composeEvents(scoreev).debug("yieldrest").yield(ev);
+					} {
+						var padevs;
+						var xscoreev = scoreev.copy;
+						scoreev[key].debug("midinote");
+						xscoreev[key] = nil;
+						padevs = this.dictStream(scoreev[key]).next(inval);
+						padevs.debug("padevs");
+						if(padevs.isSequenceableCollection.not) {
+							padevs = [padevs]
+						};
+						padevs.collect{ arg padev, x;
+							if(x == ( padevs.size-1 )) {
+								ev = padev.composeEvents(xscoreev).debug("yield1").yield(ev);
+							} {
+								var sc = xscoreev.copy;
+								sc[\delta] = 0;
+								ev = padev.composeEvents(sc).debug("yield2").yield(ev);
+							};
+							ev;
+						};
+					}
+				}
+			}, inval);
+		});
+		^inval
+	}
+}
+
 
 
 ///////////////////////////// Builder - Not really a pattern..
@@ -527,3 +609,53 @@ PlayerWrapper  {
 		target.stop;
 	}
 }
+
+
+
+// not needed, just use Pdefn
+
+//+Pfindur {
+//	embedInStream { arg event;
+//		var item, delta, elapsed = 0.0, nextElapsed, inevent;
+//		var localdur = dur.value(event);
+//		var stream = pattern.asStream;
+//		var cleanup = EventStreamCleanup.new;
+//		loop {
+//
+//			inevent = stream.next(event);
+//			if(inevent.isSequenceableCollection) {
+//				var inevent0;
+//				inevent0 = inevent[0].asEvent ?? { ^event };
+//				cleanup.update(inevent);
+//				delta = inevent0.delta;
+//				nextElapsed = elapsed + delta;
+//				if (nextElapsed.roundUp(tolerance) >= localdur) {
+//					// must always copy an event before altering it.
+//					// fix delta time and yield to play the event.
+//					inevent = inevent.collect({ arg x; x.copy.put(\delta, localdur - elapsed) }).yield;
+//					^cleanup.exit(inevent);
+//				};
+//
+//				elapsed = nextElapsed;
+//				event = inevent.yield;
+//
+//			} {
+//				inevent = inevent.asEvent ?? { ^event };
+//				cleanup.update(inevent);
+//				delta = inevent.delta;
+//				nextElapsed = elapsed + delta;
+//				if (nextElapsed.roundUp(tolerance) >= localdur) {
+//					// must always copy an event before altering it.
+//					// fix delta time and yield to play the event.
+//					inevent = inevent.copy.put(\delta, localdur - elapsed).yield;
+//					^cleanup.exit(inevent);
+//				};
+//
+//				elapsed = nextElapsed;
+//				event = inevent.yield;
+//			}
+//
+//		}
+//	}
+//
+//}
