@@ -496,7 +496,133 @@ PdrumStep : Pattern {
 	}
 }
 
+Pkeyd : Pattern {
+	var	<>key, <>default;
+	var <>repeats;
+	*new { |key, default|
+		^super.newCopyArgs(key, default)
+	}
+	storeArgs { ^[key] }
+		// avoid creating a routine
+	asStream {
+		var	keystream = key.asStream;
+		var	defaultstream = default.asStream;
+		^FuncStream({ |inevent|
+			inevent !? { inevent[keystream.next(inevent)] ? default.next(inevent) }
+		});
+	}
+}
 
+////////////////////////////////////////
+
+PresetDictionary : IdentityDictionary {
+
+	save_preset { arg name, preset;
+		this[name] = preset;
+	}
+
+	lib { 
+		// this is for back compat with event prototype
+		^this
+	}
+
+	get_list { 
+		^this.keys.asArray.sort;
+	}
+
+}
+
+
+DrumRack {
+	// A drumrack proxy actually
+	var <>key;
+	var <drumrack;
+	var <>pattern;
+	var <>scoreproxy;
+	classvar <>lib_drumrack;
+	classvar <>lib_drumpad;
+	classvar <>lib_score;
+	classvar <>lib_instr;
+	classvar <>all;
+	//var <>lib_drumrack; // in ~drumrack instance directly, maybe add a redirection
+	//var <>lib_drumpad;
+	//var <>lib_score;
+	//var <>lib_instr;
+
+	*initClass {
+		all = IdentityDictionary.new;
+		// TODO: auto save/load presetdictionary
+		lib_drumrack = PresetDictionary.new;
+		lib_drumpad = PresetDictionary.new;
+		lib_score = PresetDictionary.new;
+		lib_instr = PresetDictionary.new;
+	}
+
+	*new { arg name, val;
+		var inst;
+		if(all[name].notNil) {
+			inst = all[name];
+		} {
+			inst = super.new.init(name);
+			all[name] = inst;
+		};
+		if(val.notNil) {
+			inst.source = val;
+		};
+		^inst;
+	}
+
+	source_ { arg val;
+		scoreproxy.source = val;
+	}
+
+	source {
+		^scoreproxy.source
+	}
+
+	drumrack_ { arg val;
+		drumrack = val;
+		pattern.dict = val.pads;
+	}
+
+	set_drumrack { arg val;
+		// this is for back compat with event prototype
+		this.drumrack = val;
+	}
+
+	*addInstr { arg name, params;
+		if(params.notNil) {
+			Pdef(name).addHalo(\params, params);
+		};
+		lib_instr[name] = Pdef(name);
+		//lib_drumpad[name] = DrumPad.new(name);
+	}
+
+	init { arg name;
+		key = name;
+		scoreproxy = PatternProxy.new;
+		pattern = PdrumStep([], scoreproxy);
+		if(this.class.lib_drumrack[\default].notNil) { // this use class lib, there is no ~drumrack yet !
+			// NOOP
+		} {
+			"/home/ggz/code/sc/seco/vlive/demo/param/lib/drumrack.scd".load;
+			this.class.lib_drumrack[\default] = ~class_drumrack.new;
+		};
+		this.drumrack = this.class.lib_drumrack[\default];
+	}
+
+	clear {
+		all[key] = nil;
+	}
+
+	embedInStream {
+		^pattern.embedInStream;
+	}
+
+	edit {
+		^~class_drumrack_view.new(this);
+	}
+}
 
 ///////////////////////////// Builder - Not really a pattern..
 
