@@ -26,7 +26,7 @@ Param {
 	}
 
 	init { arg args;
-		"init xxxxxxxxxxx".debug;
+		//"init xxxxxxxxxxx".debug;
 		// FIXME: why this test on size ? if ommit parameters, this break! like Param(s.volume)
 		if (args.size > 1) {
 			this.newWrapper(args)
@@ -47,13 +47,13 @@ Param {
 		var target, property, spec, envdict;
 		var class_dispatcher;
 		var property_dispatcher;
-		"iiiwhattt".debug;
+		//"iiiwhattt".debug;
 		target = args[0];
 		property = args[1];
 		spec = args[2];
 		envdict;
 		//"whattt".debug;
-		[target, property, spec].debug("newWrapper");
+		//[target, property, spec].debug("newWrapper");
 
 		envdict = (
 			adsr: (
@@ -71,7 +71,7 @@ Param {
 		);
 
 		//class_dispatcher = IdentityDictionary.new;
-		"hello gangenr".debug;
+		//"hello gangenr".debug;
 
 		property_dispatcher = { arg property, arrayclass, envclass;
 			// handle Array and Env indexing
@@ -107,7 +107,7 @@ Param {
 			);
 		};
 
-		"hello3 gangenr".debug;
+		//"hello3 gangenr".debug;
 
 		class_dispatcher = (
 			Ndef: {
@@ -261,7 +261,7 @@ Param {
 				);
 			},
 			Array: {
-				target.class.debug("mais what ??");
+				//target.class.debug("mais what ??");
 				"ERROR: not implemented for Array, use List instead".postln;
 				^nil;
 			},
@@ -943,6 +943,8 @@ Param {
 		};
 		^val;
 	}
+
+	//////////////////////
 
     doesNotUnderstand { arg selector...args;
         if(wrapper.class.findRespondingMethodFor(selector).notNil) {
@@ -3597,3 +3599,76 @@ CachedBus : Bus {
 }
 
 
+////////////////////////////////
+
+
++SynthDesc {
+	*new { arg name;
+		if(name.isNil) {
+			^super.new
+		} {
+			^SynthDescLib.global.at(name)
+		}
+	}
+
+	params { 
+		^this.controls.collect { arg control;
+			var ret;
+			var spec;
+			if(control.name == '?') {
+				ret = nil;
+			} {
+				spec = this.getSpec(control.name.asSymbol);
+				if(spec.isNil) {
+					ret = control.name.asSymbol;
+				} {
+					ret = [control.name.asSymbol, spec];
+				};
+			};
+			ret
+		}.select(_.notNil);
+	}
+
+	specs {
+		var val;
+		val = this.metadata;
+		if(val.notNil) {
+			val = val.specs;
+			if(val.notNil) {
+				^val.composeEvent(this.getHalo(\specs))
+			} {
+				^this.getHalo(\specs)
+			}
+		} {
+			^this.getHalo(\specs)
+		}
+	}
+
+	defaultValue { arg argname;
+		var val;
+		var con = this.controlDict[argname];
+		if(con.notNil) {
+			val = con.defaultValue;
+		}
+		^val;
+	}
+
+	getSpec { arg name;
+		var val;
+		var rval;
+		if(super.getSpec(name).notNil) {
+			rval = super.getSpec(name)
+		} {
+			val = this.metadata;
+			if(val.notNil) {
+				val = val.specs;
+				if(val.notNil) {
+					rval = val[name];
+				}
+			};
+
+		};
+		^rval;
+	}
+	
+}

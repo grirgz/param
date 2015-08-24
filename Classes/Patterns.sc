@@ -516,9 +516,117 @@ Pkeyd : Pattern {
 ////////////////////////////////////////
 
 PresetDictionary : IdentityDictionary {
+	classvar allInitialized = false; // temporary
+	classvar <>all;
+	var <>key;
+	classvar allIsLoading = false;
+	var isLoading = false;
+	var initialized = false;
+
+	//put { arg k, val;
+	//	super.put(k, val);
+	//	this.save;
+	//}
+
+	*initClass {
+		super.initClass;
+		all = IdentityDictionary.new;
+	}
+
+	*new { arg name;
+		if(name.isNil) {
+			^super.new;
+		} {
+			if(all[name].isNil) {
+				var inst = super.new.initPresetDictionary(name);
+				all[name] = inst;
+				^inst;
+			} {
+				^all[name];
+			}
+		}
+	}
+
+	initPresetDictionary { arg name;
+		key = name;
+		//this.load;
+	}
+
+	*loadIfNotInitialized { // temporary method to work with eventclass
+		if(allInitialized.not) {
+			allInitialized = true;
+			this.loadAll;
+		}
+	}
+
+	loadIfNotInitialized {
+		if(initialized.not) {
+			initialized = true;
+			this.load;
+		}
+	}
+	
+	*loadAll {
+		if(allIsLoading.not) {
+			//var keys_order;
+			allIsLoading = true;
+
+			"/home/ggz/code/sc/seco/vlive/demo/param/lib/drumrack.scd".load;
+			"================================== loadAll".debug;
+			Archive.global.at(\PresetDictionary).keys.debug("loadAll: archive keys");
+			//keys_order = Archive.global.at(\PresetDictionary).keys.asArray;
+			this.all.keys.debug("loadAll: all keys first");
+			Archive.global.at(\PresetDictionary).keys.do { arg pkey;
+				var inst;
+				pkey.debug("-------------- loadAll");
+				//[pkey, this.all.keys].debug("loadAll: all keys2");
+				inst = this.new(pkey);
+				//[pkey, this.all.keys].debug("loadAll: all keys3");
+				[pkey ,Archive.global.at(\PresetDictionary, pkey)].debug("Loading library ==");
+				if( Archive.global.at(\PresetDictionary, pkey).notNil ) {
+					//[pkey, this.all.keys].debug("loadAll: all keys4");
+					Archive.global.at(\PresetDictionary, pkey).keys.do { arg subkey, n;
+						var data;
+						[n, pkey, subkey, this.all.keys].debug("3x loadAll: in your PresetDictionary, loading its content");
+						data = Archive.global.at(\PresetDictionary, pkey)[subkey];
+						inst[subkey] = data.load;
+					};
+					[pkey, this.all.keys].debug("loadAll: all keys5");
+				}
+			};
+			this.all.keys.debug("loadAll: all end");
+		} {
+			"================================== loadAll: already loading, skipping".debug;
+		};
+		allIsLoading = false;
+	}
 
 	save_preset { arg name, preset;
 		this[name] = preset;
+		this.save;
+	}
+
+	save {
+		var data = this.collect({ arg x; x.asArchiveData });
+		[key, data.asCompileString].debug( "Saving library ===========================================" );
+		Archive.global.put(\PresetDictionary, key, data);
+		Archive.write; // workaround for a bug in scvim:SCLangRestart
+		^data;
+	}
+
+	load {
+		if(isLoading.not) {
+			isLoading = true;
+			[key ,Archive.global.at(\PresetDictionary, key).asCompileString].debug("Loading library ======================");
+			if( Archive.global.at(\PresetDictionary, key).notNil ) {
+				Archive.global.at(\PresetDictionary, key).keys.do { arg subkey, n;
+					var data;
+					data = Archive.global.at(\PresetDictionary, key)[subkey];
+					this[subkey] = data.load;
+				};
+			};
+			isLoading = false;
+		}
 	}
 
 	lib { 
@@ -532,13 +640,13 @@ PresetDictionary : IdentityDictionary {
 
 }
 
-
 DrumRack {
 	// A drumrack proxy actually
 	var <>key;
 	var <drumrack;
 	var <>pattern;
 	var <>scoreproxy;
+	var <>drumrackName;
 	classvar <>lib_drumrack;
 	classvar <>lib_drumpad;
 	classvar <>lib_score;
@@ -550,18 +658,24 @@ DrumRack {
 	//var <>lib_instr;
 
 	*initClass {
-		all = IdentityDictionary.new;
+		Class.initClassTree(IdentityDictionary);
+		Class.initClassTree(PresetDictionary);
+		all = PresetDictionary.new(\DrumRack);
 		// TODO: auto save/load presetdictionary
-		lib_drumrack = PresetDictionary.new;
-		lib_drumpad = PresetDictionary.new;
-		lib_score = PresetDictionary.new;
-		lib_instr = PresetDictionary.new;
+		lib_drumrack = PresetDictionary.new(\lib_drumrack);
+		lib_drumpad = PresetDictionary.new(\lib_drumpad);
+		lib_score = PresetDictionary.new(\lib_score);
+		lib_instr = IdentityDictionary.new; // storing Pdef only for the moment
 	}
 
 	*new { arg name, val;
 		var inst;
+		this.initForEventClass;
 		if(all[name].notNil) {
 			inst = all[name];
+			if(inst.drumrack.isNil and: { inst.drumrackName.notNil }) {
+				inst.loadDrumrack(inst.drumrackName);
+			}
 		} {
 			inst = super.new.init(name);
 			all[name] = inst;
@@ -571,6 +685,52 @@ DrumRack {
 		};
 		^inst;
 	}
+
+	//*newFromName { arg name, drumrack_name; // to be used in load but I don't know if it's a good idea
+	//	var inst;
+	//	inst = super.new.initFromName(name, drumrack_name);
+	//	all[name] = inst;
+	//	if(val.notNil) {
+	//		inst.source = val;
+	//	};
+	//	^inst;
+	//
+	//}
+
+	*initForEventClass { // temporary
+		//lib_instr.loadIfNotInitialized; 
+		EventPrototype.initPrototypes; // used by drumpad
+
+		lib_drumpad.loadIfNotInitialized;
+		lib_drumrack.loadIfNotInitialized;
+		lib_score.loadIfNotInitialized;
+		all.loadIfNotInitialized;
+	}
+
+	init { arg name;
+		key = name;
+		scoreproxy = PatternProxy.new;
+		pattern = PdrumStep([], scoreproxy);
+		if(this.class.lib_drumrack[\default].notNil) { // this use class lib, there is no ~drumrack yet !
+			// NOOP
+		} {
+			this.class.lib_drumrack[\default] = DrumRackManager.new;
+		};
+		this.loadDrumrack(\default);
+	}
+
+	//initFromName { arg name, drumrack_name;
+	//	key = name;
+	//	scoreproxy = PatternProxy.new;
+	//	pattern = PdrumStep([], scoreproxy);
+	//	this.initForEventClass;
+	//	if(this.class.lib_drumrack[\default].notNil) { // this use class lib, there is no ~drumrack yet !
+	//		// NOOP
+	//	} {
+	//		this.class.lib_drumrack[\default] = DrumRackManager.new;
+	//	};
+	//	this.loadDrumrack(\default);
+	//}
 
 	source_ { arg val;
 		scoreproxy.source = val;
@@ -585,30 +745,85 @@ DrumRack {
 		pattern.dict = val.pads;
 	}
 
-	set_drumrack { arg val;
-		// this is for back compat with event prototype
-		this.drumrack = val;
-	}
+	//drumrack {
+	//	this.class.lib_drumrack[drumrackName];
+	//}
 
-	*addInstr { arg name, params;
-		if(params.notNil) {
-			Pdef(name).addHalo(\params, params);
-		};
-		lib_instr[name] = Pdef(name);
-		//lib_drumpad[name] = DrumPad.new(name);
-	}
+	//set_drumrack { arg val;
+	//	// this is for back compat with event prototype
+	//	this.drumrack = val;
+	//}
 
-	init { arg name;
-		key = name;
-		scoreproxy = PatternProxy.new;
-		pattern = PdrumStep([], scoreproxy);
-		if(this.class.lib_drumrack[\default].notNil) { // this use class lib, there is no ~drumrack yet !
-			// NOOP
+	loadDrumrack { arg name;
+		var dr = this.class.lib_drumrack[name];
+		if(dr.isNil) {
+			[key, name].debug("loadDrumrack: drumrack is nil!");
 		} {
-			"/home/ggz/code/sc/seco/vlive/demo/param/lib/drumrack.scd".load;
-			this.class.lib_drumrack[\default] = ~class_drumrack.new;
-		};
-		this.drumrack = this.class.lib_drumrack[\default];
+			[key, name].debug("loadDrumrack: Ok");
+			this.drumrackName = name;
+			this.drumrack = dr;
+		}
+	}
+
+	*addInstr { arg instr, params;
+		var name;
+		switch(instr.class,
+			Pdef, {
+				name = instr.key;
+				lib_instr[name] = instr;
+				if(params.notNil) {
+					Pdef(name).addHalo(\params, params);
+				};
+				if(Pdef(name).getHalo(\params).isNil and: { Pdef(name).getHalo(\instrument).notNil }) {
+					var par = par ?? { 
+						var ins;
+						ins = Pdef(name).getHalo(\instrument);
+						if(ins.notNil) {
+							if(SynthDesc(ins).notNil) {
+								SynthDesc(ins).params
+							} 
+						}
+					};
+					Pdef(name).addHalo(\params, par);
+
+
+				};
+			},
+			SynthDesc, { // SynthDef
+				name = instr.name.asSymbol;
+				Pbindef(name, 
+					\instrument, name
+				)
+				.addHalo(\instrument, name)
+				.addHalo(\params, instr.params.select({ arg x; 
+					if(x.isSequenceableCollection) {
+						x = x[0];
+					};
+					[\out, \gate, \doneAction].includes(x).not
+				}));
+				lib_instr[name] = Pdef(name);
+			}
+		);
+		lib_drumpad[name] = ~class_presetgroup.new;  // DrumPad.new(name);
+		lib_drumpad[name].add_preset( ~class_preset.new(name) );  // DrumPad.new(name);
+	}
+
+
+	asArchiveData {
+		^(
+			load: { arg self; 
+				var inst;
+				"1".debug;
+				inst = DrumRack(self.name);
+				"2".debug;
+				inst.loadDrumrack(self.drumrack_name);
+				"3".debug;
+				inst;
+			},
+			name: key,
+			drumrack_name: drumrackName,
+
+		)
 	}
 
 	clear {
@@ -622,6 +837,146 @@ DrumRack {
 	edit {
 		^~class_drumrack_view.new(this);
 	}
+}
+
+EventPrototype {
+	classvar <>allPrototypes;
+	var <>prototypeInstance;
+	classvar <>initialized = false;
+
+	*initClass {
+		Class.initClassTree(Event);
+		Class.initClassTree(Environment);
+		Class.initClassTree(List);
+		allPrototypes = List.new;
+	}
+
+	*initPrototypes { arg force=false;
+		if(initialized.not or: force) {
+			allPrototypes.do { arg protodata;
+				protodata.file.load;
+			};
+			initialized = true;
+		}
+	}
+
+	*eventPrototypeInitClass { arg protodata;
+		allPrototypes.add(protodata);
+	}
+
+	*new { arg ... args;
+		this.initPrototypes;
+		^super.new;
+	}
+
+	init { arg instance;
+		prototypeInstance = instance;
+	}
+
+    doesNotUnderstand { arg selector...args;
+        if(prototypeInstance[selector].notNil) {
+			^prototypeInstance.perform(selector, * args);
+		};
+	}
+
+}
+
+StepSeqManager : EventPrototype {
+	*initClass {
+		this.eventPrototypeInitClass((
+			file: "/home/ggz/code/sc/seco/vlive/demo/param/lib/stepeditor.scd",
+			name: \class_score_manager,
+		));
+	}
+
+	*new { arg ... args;
+		^super.new.init(~class_score_manager.new(*args))
+	}
+}
+
+DrumRackManager : EventPrototype {
+	*initClass {
+		this.eventPrototypeInitClass((
+			file: "/home/ggz/code/sc/seco/vlive/demo/param/lib/drumrack.scd",
+			name: \class_drumrack,
+		));
+	}
+
+	*new { arg ... args;
+		^super.new.init(~class_drumrack.new(*args))
+	}
+}
+
+
+StepSeq {
+	classvar <>all;
+	var <>stepseq;
+	var <>key;
+
+	*initClass {
+		all = PresetDictionary.new(\StepSeq);
+	}
+
+	*new { arg name;
+		all.loadIfNotInitialized;
+		if(all[name].isNil) {
+			all[name] = super.new.init(name, StepSeqManager.new);
+		};
+		^all[name];
+	}
+
+	init { arg name, score;
+		key = name;
+		stepseq = score;
+	}
+
+	edit {
+		^stepseq.make_window;
+	}
+
+	getSpec { arg ... args;
+		^stepseq.getSpec(*args)
+	}
+
+	addSpec { arg ... args;
+		^stepseq.addSpec(*args)
+	}
+
+	setStepSpec { arg spec;
+		stepseq.setStepSpec(spec)
+	}
+
+	asArchiveData { arg x;
+		// return saved state
+		^(
+			load: { arg self; 
+				var inst = StepSeq.new(self.name);
+				inst.stepseq = self.stepseq.load;
+				inst;
+			},
+			name: key,
+			stepseq: stepseq.asArchiveData,
+		);
+	}
+
+	*save {
+		// save in Archive
+		all.save;
+	}
+
+	patterns { ^this.stepseq.as_pattern }
+
+	asCoinStep { arg ekey=\midinote, repeat=inf; // good name ?
+		^Ppar(
+			this.stepseq.as_pattern.collect({ arg pat, x;
+				Pbind(
+					\isRest, pat.coin.not,
+					ekey, x,
+				).loop;
+			})
+		).repeat(repeat);
+	}
+
 }
 
 ///////////////////////////// Builder - Not really a pattern..

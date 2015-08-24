@@ -1,6 +1,18 @@
 ////////////////////// Basic building blocks
 
 ParamView {
+
+	classvar <>color_dark;
+	classvar <>color_ligth;
+
+	*initClass {
+		//color_ligth = Color.newHex("63AFD0");
+		//color_dark = Color.newHex("0772A1");
+
+		color_ligth = Color.newHex("5CCCCC");
+		color_dark = Color.newHex("009999");
+	}
+
 	*label_knob { arg name;
 		var view;
 		var val, label, control;
@@ -13,6 +25,7 @@ ParamView {
 			control,
 			val,
 		);
+		view.layout.margins_(0);
 		view.addUniqueMethod(\mapParam, { arg view, param;
 			param.debug("ParamView.knob.mapParam");
 			control.mapParam(param);
@@ -159,8 +172,8 @@ ListParamLayout {
 				args.debug("cursor!!");
 			})
 			.states_([
-				["", Color.black, Color.white],
-				["", Color.black, Color.yellow],
+				["", Color.black, Color.clear],
+				["", Color.black, ParamView.color_ligth],
 			]);
 		})
 	}
@@ -469,7 +482,7 @@ StepListView : SCViewHolder {
 					view.value = val;
 				} {
 					var color = view.color;
-					var newcolor = Color.yellow;
+					var newcolor = ParamView.color_ligth;
 					if(color.isSequenceableCollection) {
 						color[0] = newcolor;
 					} {
@@ -693,7 +706,7 @@ PlayerWrapperView : ObjectGui {
 		);
 		button.states_([
 			[ "▶", Color.black, Color.white ],
-			[ "||", Color.black, Color.yellow ],
+			[ "||", Color.black, ParamView.color_ligth ],
 		]);
 		this.makeUpdater;
 		^lay;
@@ -733,7 +746,7 @@ PlayerWrapperView : ObjectGui {
 
 			button.states_([
 				[ label + "▶", Color.black, Color.white ],
-				[ label + "||", Color.black, Color.yellow ],
+				[ label + "||", Color.black, ParamView.color_ligth ],
 			]);
 			if(model.isPlaying) {
 				button.value = 1

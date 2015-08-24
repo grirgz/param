@@ -155,6 +155,8 @@ XEnvSpec : Spec {
 		^inst
 	}
 
+	// TODO: others env
+
 	*dadsr { arg delay, attack, decay, sustain, release;
 
 	}
@@ -296,11 +298,11 @@ XBufferSpec : Spec {
 
 }
 
-XSampleSpec : XBusSpec {
+XSampleSpec : XBufferSpec {
 
 }
 
-XWavetableSpec : XBusSpec {
+XWavetableSpec : XBufferSpec {
 
 }
 
@@ -308,11 +310,11 @@ XBusSpec : Spec {
 
 }
 
-XInBusSpec : Spec {
+XInBusSpec : XBusSpec {
 
 }
 
-XOutBusSpec : Spec {
+XOutBusSpec : XBusSpec {
 
 }
 
