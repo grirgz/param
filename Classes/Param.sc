@@ -449,7 +449,7 @@ Param {
 		if(updateMode == \dependants) {
 			// dependants mode
 			var controller;
-			controller = SimpleController(param.target);
+			controller = SimpleController(param.controllerTarget);
 			{
 				view.onClose = view.onClose.addFunc( { this.class.freeUpdater(view) } );
 			}.defer;
@@ -567,6 +567,7 @@ Param {
 	mapStaticText { arg view, precision=6;
 		this.makeSimpleController(view, {}, { arg view, param;
 			{
+				param.type.debug("mapStaticText: update!");
 				view.string = param.stringGet(precision);
 			}.defer;
 		}, nil, nil)
@@ -664,7 +665,7 @@ Param {
 		pm.action = {
 			this.set(pm.value)
 		};
-		pm.onChange(this.target, \set, { arg me;
+		pm.onChange(this.controllerTarget, \set, { arg me;
 			me.value = this.get;
 		});
 	}
@@ -801,6 +802,10 @@ Param {
 			},
 			{ this.spec.class == XArraySpec }, {
 				^this.asMultiSlider;
+			},
+			{ this.spec.isKindOf(XBufferSpec) }, {
+				var scv = SampleChooserView.new;
+				^scv.mapParam(this).view.addHalo(\ViewHolder, scv);
 			}, {
 				^this.asKnob;
 			}
@@ -948,7 +953,7 @@ Param {
 
     doesNotUnderstand { arg selector...args;
         if(wrapper.class.findRespondingMethodFor(selector).notNil) {
-			wrapper.perform(selector, * args);
+			^wrapper.perform(selector, * args);
 		};
 	}
 
@@ -1004,11 +1009,27 @@ BaseParam {
 	}
 
 	type {
-		^switch(this.spec.class,
-			XEnvSpec, \env,
-			XArraySpec, \array,
-			\scalar,
-		)
+		var res = [
+			[XEnvSpec, \env],
+			[XArraySpec, \array],
+			[ControlSpec, \scalar],
+		].detect({ arg x;
+			this.spec.isKindOf(x[0])
+		});
+		if(res.notNil) {
+			^res[1];
+		} {
+			^\other
+		};
+		//^switch(this.spec.class,
+		//	XEnvSpec, \env,
+		//	XArraySpec, \array,
+		//	\scalar,
+		//)
+	}
+
+	controllerTarget {
+		^this.target
 	}
 }
 
@@ -1052,7 +1073,11 @@ StandardConstructorParam : BaseParam {
 			// update only if concerned key is set
 			// FIXME: may break if property is an association :(
 			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
-			if(args[2].any({ arg x; x == param.property })) {
+			if(args[2].notNil) {
+				if(args[2].any({ arg x; x == param.property })) {
+					action.(view, param);
+				}
+			} {
 				action.(view, param);
 			}
 		});
@@ -1892,13 +1917,43 @@ DictionaryParam : BaseParam {
 		^sp.asSpec;
 	}
 
+	instrument {
+		^target[\instrument] ? target.getHalo(\instrument);
+	}
+
+	default {
+		var instr = this.instrument;
+		var val;
+		if(instr.notNil) {
+			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec.default };
+			if(spec.class == XEnvSpec) {
+				val = val.asEnv;
+			};
+		} {
+			val = spec.default
+		};
+		^val;
+	}
+
+	setDefaultIfNil {
+		if(target[property].isNil) {
+			this.set(this.default);
+		};
+	}
+
 	get {
 		var val;
-		val = target[property];
+		val = target[property] ?? { this.default };
+		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			val = Pdef.nestOff(val); 
+		};
 		^val;
 	}
 
 	set { arg val;
+		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			val = Pdef.nestOn(val); 
+		};
 		target[property] = val;
 		target.changed(\set, property, val);
 	}
@@ -2003,12 +2058,17 @@ DictionaryParamEnvSlot : DictionaryParamSlot {
 ////////////////// Object property (message)
 MessageParam : StandardConstructorParam {
 
+	controllerTarget {
+		^this.target.receiver;
+	}
+
 	asLabel {
-		^"% %".format(target.class, property)
+		^"% %".format(target.receiver.class, property)
 	}
 
 	set { arg val;
 		target.receiver.perform((property++"_").asSymbol, val);	
+		this.controllerTarget.changed(\set); // FIXME: may update two times when pointed object already send changed signal
 	}
 
 	get { 
@@ -2589,7 +2649,11 @@ ParamValue : BaseParam {
 			// update only if concerned key is set
 			// FIXME: may break if property is an association :(
 			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
-			if(args[2].any({ arg x; x == param.property })) {
+			if(args[2].notNil) {
+				if(args[2].any({ arg x; x == param.property })) {
+					action.(view, param);
+				}
+			} {
 				action.(view, param);
 			}
 		});
@@ -3111,7 +3175,7 @@ CachedBus : Bus {
 }
 
 +Pdef {
-	nestOn { arg val;
+	*nestOn { arg val;
 		// see also .bubble and .unbubble
 		if(val.isSequenceableCollection) {
 			if(val[0].isSequenceableCollection) {
@@ -3123,7 +3187,7 @@ CachedBus : Bus {
 		^val
 	}
 
-	nestOff { arg val;
+	*nestOff { arg val;
 		if(val.isSequenceableCollection) {
 			if(val[0].isSequenceableCollection) {
 				val = val[0];
@@ -3161,7 +3225,7 @@ CachedBus : Bus {
 					bus.set(val);
 				};
 				//val.debug("setBusMode: val");
-				this.set(key, this.nestOn(bus.asMap));
+				this.set(key, this.class.nestOn(bus.asMap));
 				//bus.asMap.debug("setBusMode: busmap");
 			}
 		} {
@@ -3172,9 +3236,9 @@ CachedBus : Bus {
 				var map = this.get(key);
 				var numChannels = 1;
 				var bus;
-				map = this.nestOff(map);
+				map = this.class.nestOff(map);
 				bus = map.asCachedBus;
-				this.set(key, this.nestOn(val));
+				this.set(key, this.class.nestOn(val));
 				if(free) {
 					bus.free;
 				};
@@ -3203,7 +3267,7 @@ CachedBus : Bus {
 		var curval;
 		if(this.envir.isNil) { this.envir = this.class.event };
 		curval = this.get(key);
-		curval = this.nestOff(curval);
+		curval = this.class.nestOff(curval);
 		if(this.inBusMode(key)) {
 			var bus = curval.asCachedBus;
 			^bus.getCached;
@@ -3217,13 +3281,13 @@ CachedBus : Bus {
 
 	setVal { arg key, val;
 		if(val.isKindOf(Env)) {
-			this.set(key, this.nestOn(val))
+			this.set(key, this.class.nestOn(val))
 		} {
 			if(this.inBusMode(key)) {
 				var bus;
 				var curval;
 				curval = this.get(key);
-				curval = this.nestOff(curval);
+				curval = this.class.nestOff(curval);
 				bus = curval.asCachedBus;
 				if(curval.isSequenceableCollection) {
 					bus.setn(val);
@@ -3232,7 +3296,7 @@ CachedBus : Bus {
 				};
 				this.changed(\set, [key, val]);
 			} {
-				this.set(key, this.nestOn(val))
+				this.set(key, this.class.nestOn(val))
 			};
 		}
 	}

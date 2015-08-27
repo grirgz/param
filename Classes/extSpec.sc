@@ -282,6 +282,11 @@ XEnvSpec : Spec {
 	
 }
 
+
+XNonFloatSpec { // maybe a parent for all others special spec to exclude them when making a gui ?
+
+}
+
 XGateSpec : Spec {
 	*new {
 		^super.new(0,1,\lin,1,0);
@@ -295,6 +300,13 @@ XTrigSpec : Spec {
 }
 
 XBufferSpec : Spec {
+	// arg: channel count
+
+	default { ^0 } // maybe return an empty buffer
+
+}
+
+XDoneActionSpec : Spec {
 
 }
 
@@ -307,6 +319,7 @@ XWavetableSpec : XBufferSpec {
 }
 
 XBusSpec : Spec {
+	// arg: channel count
 
 }
 

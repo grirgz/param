@@ -270,7 +270,13 @@ WindowLayout {
 	*new { arg fun;
 		var window = Window.new;
 		var layout;
-		layout = fun.value(window);
+		var val;
+		val = fun.value(window);
+		if(val.isKindOf(Layout)) {
+			layout = val;
+		} {
+			layout = HLayout(val)
+		};
 		window.layout = layout;
 		//window.alwaysOnTop = true;
 		window.front;
@@ -434,6 +440,99 @@ XSimpleButton : QButton {
 
 	updateStates {
 		this.states = [[label, color, background]];
+	}
+
+}
+
+///////////////////////// special control view
+
+SampleChooserView : SCViewHolder {
+	var <>controller;
+	var <>waveview, <>pathfield;
+	var <buffer;
+	var <>layout;
+
+	*new { arg buf;
+		^super.new.init(buf);
+	}
+
+	mapParam { arg param;
+		param.makeSimpleController(this.view, 
+			action: { arg view, param;
+				"this is action!!!!!!!".debug;
+				param.set(this.buffer);
+			}, 
+			updateAction: { arg view, param;
+				{
+					this.buffer = param.get;
+				}.defer;
+			},
+			initAction: nil,
+			//customAction: action
+		)
+
+	}
+
+	unmapParam {
+		this.getHalo(\simpleController).remove;
+	}
+
+	init { arg buf;
+		this.makeView;
+		if(buf.notNil) {
+			this.buffer = buf;
+		};
+	}
+
+	makeView { arg self;
+		this.view = View.new;
+		pathfield = TextField.new;
+		waveview = SoundFileView.new;
+		layout = VLayout(
+			waveview,
+			HLayout(
+				pathfield,
+				Button.new.action_( {
+					Dialog.openPanel({ arg path;
+						path.postln;
+						path.debug( "filedialog: set buf" );
+						this.buffer = BufferPool.get_stereo_sample(\param, path);
+						"bientot action".debug;
+						this.view.action.(this);
+					},{
+						"cancelled".postln; 
+					});
+				})
+			)
+		);
+		this.view.layout = layout;
+		this.view.addUniqueMethod(\action_, { arg view, val; val.debug("fuckset"); this.action = val; }); // compat with makeSimpleController
+		this.view.addUniqueMethod(\action, { arg view, val;"fuckget".debug; this.action });
+	}
+
+	buffer_ { arg buf;
+		buf.debug("set buffer");
+		if(buf.notNil and: { buf.isKindOf(Buffer) and: {buffer != buf} }) {
+			if(buf.path.notNil) {
+				var soundfile;
+				buffer = buf;
+				pathfield.string = buf.path;
+				soundfile = SoundFile(buf.path);
+				waveview.readFile(soundfile);
+				soundfile.close;
+			} {
+				// TODO
+				pathfield.string = buf.asCompileString
+			}
+		}
+	}
+
+	value_ { arg val;
+		this.buffer = val;
+	}
+
+	value {
+		^this.buffer;
 	}
 
 }
@@ -704,10 +803,7 @@ PlayerWrapperView : ObjectGui {
 				);
 			})
 		);
-		button.states_([
-			[ "▶", Color.black, Color.white ],
-			[ "||", Color.black, ParamView.color_ligth ],
-		]);
+		button.states = this.getStates;
 		this.makeUpdater;
 		^lay;
 	}
@@ -729,6 +825,13 @@ PlayerWrapperView : ObjectGui {
 		}
 	}
 
+	getStates { arg str="";
+		^[
+			[ str + "▶", Color.black, Color.white ],
+			[ str + "||", Color.black, ParamView.color_ligth ],
+		];
+	}
+
 	update { arg changed, changer ... args;
 
 		//[changed, changer, args].debug("changed, changer");
@@ -736,23 +839,24 @@ PlayerWrapperView : ObjectGui {
         if(changer !== this) {  
 			var label;
 			//model.isPlaying.debug("isPlaying?");
+			if(model.isKindOf(PlayerWrapper).not or: { model.target.notNil }) {
+				if(model.class == PlayerWrapper) {
+					label = model.label;
+				} {
+					label = model.tryPerform(\name) ? model.tryPerform(\label) ? model.tryPerform(\key);
+					label = model.class.asString[0].asString + label;
+				};
 
-			if(model.class == PlayerWrapper) {
-				label = model.label;
+				button.states = this.getStates(label);
+				if(model.isPlaying) {
+					button.value = 1
+				} {
+					button.value = 0
+				};
 			} {
-				label = model.tryPerform(\name) ? model.tryPerform(\label) ? model.tryPerform(\key);
-				label = model.class.asString[0].asString + label;
-			};
-
-			button.states_([
-				[ label + "▶", Color.black, Color.white ],
-				[ label + "||", Color.black, ParamView.color_ligth ],
-			]);
-			if(model.isPlaying) {
-				button.value = 1
-			} {
-				button.value = 0
-			};
+				button.states = this.getStates;
+				button.value = 0;
+			}
 		}
 	}
 }
@@ -834,5 +938,29 @@ MyModel {
 	guiClass { ^YourGuiClass }
 
 	init {
+	}
+}
+
+
+////////////////////////////////
+
++Window {
+	*keyDownActionTest {
+		var window = Window.new;
+		var layout;
+		var field = TextField.new;
+		window.view.keyDownAction = { arg me, key, modifiers, unicode, keycode;
+			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+			field.string = [me, key, modifiers, unicode, keycode].asCompileString;
+			true;
+		};
+		field.keyDownAction = window.view.keyDownAction;
+		layout = VLayout(
+			field
+		);
+		window.layout = layout;
+		window.alwaysOnTop = true;
+		window.front;
+
 	}
 }

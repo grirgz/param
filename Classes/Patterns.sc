@@ -179,7 +179,7 @@ StepList : List {
 		Param(this, \list).edit
 	}
 
-	prest {
+	prest { // TODO: find better name
 		^this.asPattern.coin.not
 	}
 
@@ -266,7 +266,7 @@ BankList : List {
 	var <index=0;
 
 	index_ { arg val;
-		index = val;
+		index = val.clip(0,this.size-1);
 		this.changed(\index);
 	}
 
@@ -278,6 +278,10 @@ BankList : List {
 
 	current {
 		^this[this.index]
+	}
+
+	current_ { arg val;
+		this[this.index] = val;
 	}
 
 	keys {
@@ -406,7 +410,7 @@ Ppredef : Pdef {
 	}
 
 	default {
-		if(initialPattern.class.isKindOf(Pbind)) {
+		if(initialPattern.isKindOf(Pbind)) {
 			^initialPattern.patternpairs.asDict
 		} {
 			^()
@@ -467,24 +471,27 @@ PdrumStep : Pattern {
 				if(scoreev.isNil) { "RETRUN".debug; ^inval };
 				if(scoreev[key].notNil) {
 					if(isRestFunction.(scoreev[key])) {
-						ev = silentEvent.composeEvents(scoreev).debug("yieldrest").yield(ev);
+						//ev = silentEvent.composeEvents(scoreev).debug("yieldrest").yield(ev);
+						ev = silentEvent.composeEvents(scoreev).yield(ev);
 					} {
 						var padevs;
 						var xscoreev = scoreev.copy;
-						scoreev[key].debug("midinote");
+						//scoreev[key].debug("midinote");
 						xscoreev[key] = nil;
 						padevs = this.dictStream(scoreev[key]).next(inval);
-						padevs.debug("padevs");
+						//padevs.debug("padevs");
 						if(padevs.isSequenceableCollection.not) {
 							padevs = [padevs]
 						};
 						padevs.collect{ arg padev, x;
 							if(x == ( padevs.size-1 )) {
-								ev = padev.composeEvents(xscoreev).debug("yield1").yield(ev);
+								//ev = padev.composeEvents(xscoreev).debug("yield1").yield(ev);
+								ev = padev.composeEvents(xscoreev).yield(ev);
 							} {
 								var sc = xscoreev.copy;
 								sc[\delta] = 0;
-								ev = padev.composeEvents(sc).debug("yield2").yield(ev);
+								//ev = padev.composeEvents(sc).debug("yield2").yield(ev);
+								ev = padev.composeEvents(sc).yield(ev);
 							};
 							ev;
 						};
@@ -660,12 +667,14 @@ DrumRack {
 	*initClass {
 		Class.initClassTree(IdentityDictionary);
 		Class.initClassTree(PresetDictionary);
+		Class.initClassTree(XSamplePlaceholder);
 		all = PresetDictionary.new(\DrumRack);
 		// TODO: auto save/load presetdictionary
 		lib_drumrack = PresetDictionary.new(\lib_drumrack);
 		lib_drumpad = PresetDictionary.new(\lib_drumpad);
 		lib_score = PresetDictionary.new(\lib_score);
 		lib_instr = IdentityDictionary.new; // storing Pdef only for the moment
+
 	}
 
 	*new { arg name, val;
@@ -709,7 +718,7 @@ DrumRack {
 
 	init { arg name;
 		key = name;
-		scoreproxy = PatternProxy.new;
+		scoreproxy = EventPatternProxy.new;
 		pattern = PdrumStep([], scoreproxy);
 		if(this.class.lib_drumrack[\default].notNil) { // this use class lib, there is no ~drumrack yet !
 			// NOOP
@@ -793,14 +802,18 @@ DrumRack {
 				name = instr.name.asSymbol;
 				Pbindef(name, 
 					\instrument, name
-				)
-				.addHalo(\instrument, name)
-				.addHalo(\params, instr.params.select({ arg x; 
-					if(x.isSequenceableCollection) {
-						x = x[0];
-					};
-					[\out, \gate, \doneAction].includes(x).not
-				}));
+				);
+				Pdef(name).addHalo(\instrument, name);
+				if(params.notNil) {
+					Pdef(name).addHalo(\params, params);
+				} {
+					Pdef(name).addHalo(\params, instr.params.select({ arg x; 
+						if(x.isSequenceableCollection) {
+							x = x[0];
+						};
+						[\out, \gate, \doneAction].includes(x).not; // should be filtered later with Specs
+					}));
+				};
 				lib_instr[name] = Pdef(name);
 			}
 		);
@@ -836,6 +849,19 @@ DrumRack {
 
 	edit {
 		^~class_drumrack_view.new(this);
+	}
+
+    doesNotUnderstand { arg selector...args;
+		if(this.drumrack.class == Event) {
+			if(this.drumrack[selector].notNil) {
+				^this.drumrack.perform(selector, * args);
+			}
+		} {
+			if(this.drumrack.respondsTo(selector)) {
+				^this.drumrack.perform(selector, * args);
+			}
+		};
+		DoesNotUnderstandError.new(this, selector, args).throw
 	}
 }
 
@@ -977,6 +1003,22 @@ StepSeq {
 		).repeat(repeat);
 	}
 
+    doesNotUnderstand { arg selector...args;
+		if(this.stepseq.notNil) {
+
+			if(this.stepseq.class == Event) {
+				if(this.stepseq[selector].notNil) {
+					^this.stepseq.perform(selector, * args);
+				}
+			} {
+				if(this.stepseq.respondsTo(selector)) {
+					^this.stepseq.perform(selector, * args);
+				}
+			};
+		};
+		DoesNotUnderstandError.new(this, selector, args).throw
+	}
+
 }
 
 ///////////////////////////// Builder - Not really a pattern..
@@ -1083,11 +1125,23 @@ PlayerWrapper  {
 	}
 
 	play {
-		target.play;
+		if(target.notNil) {
+			target.play;
+		}
 	}
 
 	stop {
-		target.stop;
+		if(target.notNil) {
+			target.stop;
+		}
+	}
+
+	edit {
+		^WindowLayout({ PlayerWrapperView.new(this).layout });
+	}
+
+	asView {
+		^PlayerWrapperView.new(this).layout;
 	}
 }
 
