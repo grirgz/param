@@ -496,7 +496,7 @@ SampleChooserView : SCViewHolder {
 					Dialog.openPanel({ arg path;
 						path.postln;
 						path.debug( "filedialog: set buf" );
-						this.buffer = BufferPool.get_stereo_sample(\param, path);
+						this.buffer = SampleProxy(path);
 						"bientot action".debug;
 						this.view.action.(this);
 					},{
@@ -512,7 +512,7 @@ SampleChooserView : SCViewHolder {
 
 	buffer_ { arg buf;
 		buf.debug("set buffer");
-		if(buf.notNil and: { buf.isKindOf(Buffer) and: {buffer != buf} }) {
+		if(buf.notNil and: { buf.respondsTo(\bufnum) and: {buffer != buf} }) {
 			if(buf.path.notNil) {
 				var soundfile;
 				buffer = buf;

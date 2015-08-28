@@ -277,6 +277,7 @@ Param {
 			}
 		);
 		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
+		class_dispatcher['Pbindef'] = class_dispatcher['Pdef'];
 		class_dispatcher['StepList'] = class_dispatcher['List'];
 		class_dispatcher['DictStepList'] = class_dispatcher['List'];
 		class_dispatcher['ParDictStepList'] = class_dispatcher['List'];
@@ -1407,6 +1408,7 @@ PdefParam : BaseParam {
 			if(spec.class == XEnvSpec) {
 				val = val.asEnv;
 			};
+			val = val.copy;
 		};
 		^val;
 	}
@@ -1932,7 +1934,7 @@ DictionaryParam : BaseParam {
 		} {
 			val = spec.default
 		};
-		^val;
+		^val.copy;
 	}
 
 	setDefaultIfNil {
