@@ -897,6 +897,87 @@ StepSeq {
 
 }
 
+
+
+PtimeGate : Pattern {
+	// output continuously values from a pattern
+	// independently of the chained pattern asking 10 or 100 values
+	// until the specified time end
+	var <>pattern, repeats;
+
+	*new { arg pattern, repeats = 1;
+		^super.newCopyArgs(pattern, repeats).init
+	}
+
+	init { 
+		
+	}
+
+	embedInStream { arg subval;
+		var stream, val,sustain;
+		var subpat;
+		var substr;
+		var restdur;
+		var dur;
+		thisThread.endBeat = thisThread.endBeat ? thisThread.beats;
+		// endBeat > beats only if Pfindur ended something early
+		thisThread.endBeat = thisThread.endBeat min: thisThread.beats;
+		[thisThread.endBeat, thisThread.beats].debug("beats");
+
+		repeats.value(subval).do { | i |
+			stream = pattern.asStream;
+			while (
+				{ val = stream.next(());
+					val.notNil;
+				},
+				{
+					//val.debug("val");
+					sustain = val.use { val.sustain } ? 1;
+					dur = val.use { val.dur } ? 1;
+					restdur = dur - sustain; // max: 0;
+					[subval, val, sustain, dur, restdur].debug("subval, val, sustain, dur, restdur");
+					thisThread.endBeat = thisThread.endBeat + sustain;
+					subpat = val.use { val.pattern ? (val.key !? { Pdef(val.key) }) };
+					substr = subpat.asStream;
+					while(
+						{ 
+							thisThread.endBeat > thisThread.beats and: {
+								subval = substr.next(subval);
+								subval.debug("while cond subval");
+								subval.notNil;
+							}
+						},
+						{ 
+							//subval = subval.yield;
+							subval = subval.debug("subval").yield;
+						}
+					);
+					thisThread.endBeat = thisThread.endBeat + restdur;
+					subpat = Event.silent(restdur).loop;
+					subpat = (isRest: true, dur:2).loop;
+					substr = subpat.asStream;
+					while(
+						{ 
+							thisThread.endBeat > thisThread.beats and: {
+								subval = substr.next(subval);
+								subval.notNil;
+							}
+						},
+						{ 
+							//subval = subval.yield;
+							subval = subval.debug("subval: rest").yield;
+						}
+					)
+				});
+		};
+		^subval;
+	}
+
+	storeArgs {
+		^[pattern, repeats]
+	}
+}
+
 ///////////////////////////// Builder - Not really a pattern..
 
 Builder {

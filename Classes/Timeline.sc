@@ -459,3 +459,8 @@ MidinoteTimelineView : TimelineView {
 	}
 	
 }
+
+PspawnTimelineView : TimelineView {
+
+}
+
