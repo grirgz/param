@@ -215,7 +215,8 @@ XEventList : EventList {
 					};
 				}
 			};
-			endtime = absTime + prev.use({ ~sustain.value(prev) });
+			//endtime = absTime + prev.use({ ~sustain.value(prev) }); // this is wrong
+			endtime = absTime;
 			ins.finish(endtime);
 			^ins
 		}

@@ -702,6 +702,7 @@ TimelineView : SCViewHolder {
 
 
 	gridRectToNormRect { arg rect;
+		rect.debug("gridRectToNormRect");
 		^Rect.fromPoints(
 			this.gridPointToNormPoint(rect.origin),
 			this.gridPointToNormPoint(rect.rightBottom),
@@ -1325,7 +1326,9 @@ TimelineViewEventListNode : TimelineViewEventNode {
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
 			label = model[\label] ? "unnamed";
-			preview.mapEventList(model[\eventlist]);
+			if(model[\eventlist].notNil) {
+				preview.mapEventList(model[\eventlist]);
+			};
 			[spritenum, origin, extent, color].debug("node refresh");
 		};
 

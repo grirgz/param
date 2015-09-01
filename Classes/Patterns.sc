@@ -978,6 +978,170 @@ PtimeGate : Pattern {
 	}
 }
 
+PtimeGatePunch : Pattern {
+	// output continuously values from a pattern
+	// independently of the chained pattern asking 10 or 100 values
+	// until the specified time end
+	// accept a punchIn and punchOut point
+	// TODO: punchOut
+	var <>pattern, punchIn, punchOut, repeats;
+
+	*new { arg pattern, punchIn, punchOut, repeats = 1;
+		^super.newCopyArgs(pattern, punchIn, punchOut, repeats).init
+	}
+
+	init { 
+		
+	}
+
+	embedInStream { arg subval;
+		var stream, val,sustain;
+		var subpat;
+		var substr;
+		var restdur;
+		var dur;
+		var drop_time;
+		thisThread.endBeat = thisThread.endBeat ? thisThread.beats;
+		// endBeat > beats only if Pfindur ended something early
+		thisThread.endBeat = thisThread.endBeat min: thisThread.beats;
+		[thisThread.endBeat, thisThread.beats].debug("beats");
+
+		repeats.value(subval).do { | i |
+			var current_offset = 0;
+			var previous_offset = 0;
+			stream = pattern.asStream;
+
+			if(punchIn.notNil) {
+
+				while (
+					{
+						val = stream.next(());
+						current_offset < punchIn and: {
+							val.notNil
+						}
+					},
+					{
+						previous_offset = current_offset;
+						current_offset = current_offset + val.use( { val.dur });
+					}
+				);
+
+				val.use {
+					if(val.notNil) {
+						if(val.dur == val.sustain) {
+							// we are on a border, do nothing;
+						} {
+							if( val.dur > val.sustain ) {
+								// we are on a rest
+								val[\dur] = val.dur + previous_offset - punchIn ;
+								val[\sustain] = val.sustain + previous_offset - punchIn;
+							} {
+								// we are on a note
+								val[\dur] = val.dur + previous_offset - punchIn ;
+								val[\sustain] = val.sustain + previous_offset - punchIn;
+								val[\PtimeGatePunch_drop] = punchIn - previous_offset;
+
+							};
+						}
+					};
+				};
+			};
+
+			while (
+				{ 
+					val.notNil;
+				},
+				{
+					//val.debug("val");
+					sustain = val.use { val.sustain } ? 1;
+					dur = val.use { val.dur } ? 1;
+					restdur = dur - sustain; // max: 0;
+					[subval, val, sustain, dur, restdur].debug("subval, val, sustain, dur, restdur");
+					thisThread.endBeat = thisThread.endBeat + sustain;
+					subpat = val.use { val.pattern ? (val.key !? { Pdef(val.key) }) };
+					substr = subpat.asStream;
+
+					current_offset = 0;
+					previous_offset = 0;
+					drop_time = val[\PtimeGatePunch_drop];
+
+					if(drop_time.notNil) {
+
+						while (
+							{
+								subval = substr.next(subval);
+								current_offset < drop_time and: {
+									subval.notNil
+								}
+							},
+							{
+								previous_offset = current_offset;
+								current_offset = current_offset + subval.use( { subval.dur });
+							}
+						);
+
+
+						subval.use {
+							if(subval.notNil) {
+								if(subval.dur == subval.sustain) {
+									// we are on a border: do nothing
+								} {
+									if( subval.dur > subval.sustain ) {
+										// we are on a rest: cut it in two
+										subval[\dur] = subval.dur + previous_offset - drop_time ;
+										subval[\sustain] = subval.sustain + previous_offset - drop_time;
+									} {
+										// we are on a note: transform it in rest
+										subval[\dur] = subval.dur + previous_offset - punchIn ;
+										subval[\sustain] = subval.sustain + previous_offset - drop_time;
+										subval[\isRest] = true
+
+									};
+								}
+							};
+						};
+					};
+
+					while(
+						{ 
+							thisThread.endBeat > thisThread.beats and: {
+								subval = substr.next(subval);
+								subval.debug("while cond subval");
+								subval.notNil;
+							}
+						},
+						{ 
+							//subval = subval.yield;
+							subval = subval.debug("subval").yield;
+						}
+					);
+					thisThread.endBeat = thisThread.endBeat + restdur;
+					subpat = Event.silent(restdur).loop;
+					subpat = (isRest: true, dur:2).loop;
+					substr = subpat.asStream;
+					while(
+						{ 
+							thisThread.endBeat > thisThread.beats and: {
+								subval = substr.next(subval);
+								subval.notNil;
+							}
+						},
+						{ 
+							//subval = subval.yield;
+							subval = subval.debug("subval: rest").yield;
+						}
+					);
+					val = stream.next(());
+				});
+		};
+		^subval;
+	}
+
+	storeArgs {
+		^[pattern, repeats]
+	}
+}
+
 ///////////////////////////// Builder - Not really a pattern..
 
 Builder {
