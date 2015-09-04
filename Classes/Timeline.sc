@@ -192,7 +192,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 			//Pen.lineTo(point + Point(0,0));
 		};
 
-		// FIXME: this calls are here because I need to freeze size and ypos
+		// FIXME: this lines are here because I need to freeze size and ypos
 		extent = parent.pixelPointToGridPoint(Point(width,height)); 
 		origin = Point(model[timeKey], 0);
 

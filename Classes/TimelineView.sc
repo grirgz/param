@@ -138,7 +138,7 @@ TimelineView : SCViewHolder {
 				chosennode = this.findNode(gpos.x, gpos.y);
 				[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
 				[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
-				mouseDownAction.(me, px, py, mod, buttonNumber, clickCount);
+				mouseDownAction.(me, px, py, mod, buttonNumber, clickCount, chosennode);
 
 				case
 					{ mod.isCtrl and: { buttonNumber == 1 } } {
@@ -1329,6 +1329,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 			if(model[\eventlist].notNil) {
 				preview.mapEventList(model[\eventlist]);
 			};
+			parent.refresh;
 			[spritenum, origin, extent, color].debug("node refresh");
 		};
 

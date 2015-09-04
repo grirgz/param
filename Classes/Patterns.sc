@@ -953,8 +953,8 @@ PtimeGate : Pattern {
 						}
 					);
 					thisThread.endBeat = thisThread.endBeat + restdur;
-					subpat = Event.silent(restdur).loop;
-					subpat = (isRest: true, dur:2).loop;
+					//subpat = Event.silent(restdur).loop;
+					subpat = (isRest: true, dur:restdur).loop;
 					substr = subpat.asStream;
 					while(
 						{ 
@@ -1009,42 +1009,50 @@ PtimeGatePunch : Pattern {
 		repeats.value(subval).do { | i |
 			var current_offset = 0;
 			var previous_offset = 0;
+			var previous_val = 
 			stream = pattern.asStream;
 
 			if(punchIn.notNil) {
 
 				while (
 					{
-						val = stream.next(());
-						current_offset < punchIn and: {
-							val.notNil
+						current_offset <= punchIn and: {
+							val = stream.next(());
+							val.notNil;
 						}
 					},
 					{
 						previous_offset = current_offset;
 						current_offset = current_offset + val.use( { val.dur });
+						[current_offset, previous_offset, val].debug("mangling");
 					}
 				);
 
 				val.use {
 					if(val.notNil) {
-						if(val.dur == val.sustain) {
+						var suboffset = punchIn - previous_offset;
+						if(suboffset == 0) {
 							// we are on a border, do nothing;
+							val.debug("we are on a border, do nothing; ");
 						} {
-							if( val.dur > val.sustain ) {
+							if( suboffset > val.sustain ) {
 								// we are on a rest
-								val[\dur] = val.dur + previous_offset - punchIn ;
-								val[\sustain] = val.sustain + previous_offset - punchIn;
+								val[\dur] = val.dur - suboffset;
+								val[\sustain] = val.sustain - suboffset;
+								val.debug("we are on a rest");
 							} {
 								// we are on a note
-								val[\dur] = val.dur + previous_offset - punchIn ;
-								val[\sustain] = val.sustain + previous_offset - punchIn;
-								val[\PtimeGatePunch_drop] = punchIn - previous_offset;
+								val[\dur] = val.dur - suboffset;
+								val[\sustain] = val.sustain + suboffset;
+								val[\PtimeGatePunch_drop] = suboffset;
+								val.debug("we are on a note");
 
 							};
 						}
 					};
 				};
+			} {
+				val = stream.next(());
 			};
 
 			while (
@@ -1052,88 +1060,107 @@ PtimeGatePunch : Pattern {
 					val.notNil;
 				},
 				{
-					//val.debug("val");
+					val.debug("============== first super val");
 					sustain = val.use { val.sustain } ? 1;
 					dur = val.use { val.dur } ? 1;
 					restdur = dur - sustain; // max: 0;
 					[subval, val, sustain, dur, restdur].debug("subval, val, sustain, dur, restdur");
+					thisThread.endBeat = thisThread.endBeat min: thisThread.beats;
+					[thisThread.endBeat, thisThread.beats].debug("start endbeat, beats");
 					thisThread.endBeat = thisThread.endBeat + sustain;
+					[thisThread.endBeat, thisThread.beats].debug("second endbeat, beats");
 					subpat = val.use { val.pattern ? (val.key !? { Pdef(val.key) }) };
-					substr = subpat.asStream;
+					if(subpat.notNil) {
 
-					current_offset = 0;
-					previous_offset = 0;
-					drop_time = val[\PtimeGatePunch_drop];
+						substr = subpat.asStream;
 
-					if(drop_time.notNil) {
+						current_offset = 0;
+						previous_offset = 0;
+						drop_time = val[\PtimeGatePunch_drop];
 
-						while (
-							{
-								subval = substr.next(subval);
-								current_offset < drop_time and: {
-									subval.notNil
+						if(drop_time.notNil) {
+
+							while (
+								{
+									current_offset <= drop_time and: {
+										subval = substr.next(subval);
+										subval.notNil
+									}
+								},
+								{
+									previous_offset = current_offset;
+									current_offset = current_offset + subval.use( { subval.dur });
+									[current_offset, previous_offset, subval].debug("sub mangling");
 								}
-							},
-							{
-								previous_offset = current_offset;
-								current_offset = current_offset + subval.use( { subval.dur });
-							}
-						);
+							);
 
 
-						subval.use {
-							if(subval.notNil) {
-								if(subval.dur == subval.sustain) {
-									// we are on a border: do nothing
-								} {
-									if( subval.dur > subval.sustain ) {
-										// we are on a rest: cut it in two
-										subval[\dur] = subval.dur + previous_offset - drop_time ;
-										subval[\sustain] = subval.sustain + previous_offset - drop_time;
+							subval.use {
+								if(subval.notNil) {
+									var suboffset = drop_time - previous_offset;
+									[drop_time, previous_offset, suboffset, subval.sustain].debug( "[drop_time, previous_offset, suboffset, subval.sustain]" );
+									if(suboffset == 0) {
+										// we are on a border: do nothing
+										subval.debug("sub we are on a border, do nothing; ");
 									} {
-										// we are on a note: transform it in rest
-										subval[\dur] = subval.dur + previous_offset - punchIn ;
-										subval[\sustain] = subval.sustain + previous_offset - drop_time;
-										subval[\isRest] = true
+										if( suboffset > subval.sustain ) {
+											// we are on a rest: cut it in two
+											subval[\dur] = subval.dur - suboffset;
+											subval[\sustain] = subval.sustain - suboffset;
+											subval[\isRest] = true; 
+											subval.debug("sub we are on a rest");
+										} {
+											// we are on a note: transform it in rest
+											subval[\dur] = subval.dur - suboffset;
+											subval[\sustain] = subval.sustain - suboffset;
+											subval.debug("sub we are on a note");
 
-									};
-								}
+										};
+									}
+								};
 							};
 						};
-					};
 
-					while(
-						{ 
-							thisThread.endBeat > thisThread.beats and: {
-								subval = substr.next(subval);
-								subval.debug("while cond subval");
-								subval.notNil;
+						while(
+							{ 
+								[thisThread.endBeat, thisThread.beats].debug("sub endbeat, beats");
+								thisThread.endBeat > thisThread.beats and: {
+									subval = substr.next(subval);
+									subval.debug("while cond subval");
+									subval.notNil;
+								}
+							},
+							{ 
+								//subval = subval.yield;
+								subval = subval.debug("subval").yield;
 							}
-						},
-						{ 
-							//subval = subval.yield;
-							subval = subval.debug("subval").yield;
-						}
-					);
-					thisThread.endBeat = thisThread.endBeat + restdur;
-					subpat = Event.silent(restdur).loop;
-					subpat = (isRest: true, dur:2).loop;
-					substr = subpat.asStream;
-					while(
-						{ 
-							thisThread.endBeat > thisThread.beats and: {
-								subval = substr.next(subval);
-								subval.notNil;
+						);
+						thisThread.endBeat = thisThread.endBeat + restdur;
+						//subpat = Event.silent(restdur).loop;
+						subpat = (isRest: true, dur:restdur).loop; // dur is replaced by chained pat
+						//subpat = (isRest: true).loop;
+						substr = subpat.asStream;
+						while(
+							{ 
+								[thisThread.endBeat, thisThread.beats].debug("sub rest endbeat, beats");
+								thisThread.endBeat > thisThread.beats and: {
+									subval = substr.next(subval);
+									subval.notNil;
+								}
+							},
+							{ 
+								//subval = subval.yield;
+								subval = subval.debug("subval: rest").yield;
 							}
-						},
-						{ 
-							//subval = subval.yield;
-							subval = subval.debug("subval: rest").yield;
-						}
-					);
+						);
+					} {
+						// not a subpattern, maybe a ndef event
+						val.yield;
+					};
 					val = stream.next(());
 				});
 		};
+		subval.debug("end subval");
 		^subval;
 	}
 

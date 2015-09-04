@@ -55,7 +55,7 @@ a.collect(_.type);
 
 */
 
-XEventList : EventList {
+XEventList : List {
 	var <totalDur = 0, <playingDur = 0;
 
 	print { |keys, postRest = true|
@@ -176,6 +176,7 @@ XEventList : EventList {
 		var seq = this.copy;
 		seq[0] = seq[0].copy;
 		seq[0][\type] = \rest;
+		//seq[0][\sustain] = 0;
 		in = in ? Event.default;
 		seq = seq.collect({ arg ev; ev[\dur] = ev[\playDur] });
 
@@ -239,7 +240,7 @@ XEventList : EventList {
 }
 
 
-XEventLoop : EventLoop {
+XEventLoop {
 
 	// for now, let all EventLoops live in one dict?
 	// subclasses can redirect to their own this.all
@@ -290,7 +291,7 @@ XEventLoop : EventLoop {
 
 	init { |argFunc|
 		func = func ?? { "defaultFunc!".postln; this.defaultFunc };
-		lists = EventList[];
+		lists = XEventList[];
 
 		this.initTask;
 		this.prepRec;
@@ -487,7 +488,7 @@ XEventLoop : EventLoop {
 
 	prepRec {
 		this.addList;
-		this.list_(EventList[]);
+		this.list_(XEventList[]);
 		then = recStartTime = nil;
 		this.resetLoop;
 	}
