@@ -464,3 +464,70 @@ PdefTimelineView : TimelineView {
 
 }
 
+
+CursorTimelineView : TimelineView {
+	var <>cursorPos = 0;
+	var <>playtask;
+	drawFunc {
+		var cpos;
+		cpos = this.gridPointToPixelPoint(Point(cursorPos, 0)).x;
+		Pen.line(Point(cpos,0), Point(cpos, this.virtualBounds.height));
+		Pen.stroke;
+	}
+
+	specialInit {
+		this.view.background = Color.clear;
+	}
+
+	makeUpdater {
+		if(controller.notNil) {controller.remove};
+		controller = SimpleController(model).put(\cursor, { arg obj, msg, arg1;
+			if(this.view.isNil) {
+				//"COOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOSLCLOCLOCLOSED".debug;
+				controller.remove;
+			} {
+				"CursorTimelineView get a refresh signal!".debug;
+				if(arg1 == \play) {
+					this.play;
+				} {
+					this.stop;
+				}
+
+			};
+		});
+		controller.put(\redraw, {
+			this.refresh;
+		});
+	}
+
+	play {
+		if(playtask.notNil) {
+			playtask.stop;
+		};
+
+		playtask = Task({
+			var start_beat = TempoClock.default.beats;
+			cursorPos =  this.model.startTime;
+			while({
+				cursorPos < this.model.totalDur;
+			}, {
+				cursorPos = TempoClock.default.beats - start_beat + this.model.startTime;
+				//cursorPos.debug("cursorPos");
+				{
+					this.view.refresh;
+				}.defer;
+				( 1/16 ).wait;
+				
+			});
+		});
+		playtask.play(TempoClock.default)
+	}
+
+	stop {
+		if(playtask.notNil) {
+			playtask.stop;
+		};
+		
+	}
+	
+}

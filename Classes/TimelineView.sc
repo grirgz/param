@@ -408,12 +408,12 @@ TimelineView : SCViewHolder {
 	}
 
 	eventFactory { arg pos;
+		var nodesize = Point(1,1);
+		nodesize = this.gridPointToNormPoint(nodesize);
 		if(eventFactory.isNil) {
-			var nodesize = Point(1,1);
-			nodesize = this.gridPointToNormPoint(nodesize);
 			^(absTime: pos.x, midinote: pos.y, sustain:nodesize.x);
 		} {
-			^eventFactory.(pos);
+			^eventFactory.(pos, nodesize.x);
 		}
 	}
 

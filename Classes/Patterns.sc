@@ -18,6 +18,26 @@ PseqCursor : Prout {
 	}
 }
 
+//PeventListCursor : Pattern {
+//	var <>pattern;
+//	var <>model;
+//
+//	*new { arg pattern, model;
+//		^super.new.pattern_(pattern).model_(model)
+//	}
+//
+//	embedInStream { | event |
+//
+//		model.changed(\cursor, \play); // FIXME: this will be called even if the pattern is not played, not really cool
+//		cleanup = EventStreamCleanup.new;
+//		cleanup.addFunction(event, { 
+//			model.changed(\cursor, \stop)
+//		});
+//		^event;
+//	}
+//
+//}
+
 PbindSeqDef : Pdef {
 	var <>repeat;
 	*new { arg key, xrepeat;
@@ -1323,7 +1343,7 @@ PtimeGatePunch : Pattern {
 						val = stream.next(());
 					}
 				);
-			}).embedInStream(ev)
+			}).embedInStream
 		};
 		subval.debug("end subval");
 		^subval;

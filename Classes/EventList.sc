@@ -85,6 +85,14 @@ XEventList : List {
 		this.add((absTime: absTime, type: \start, relDur: 0));
 	}
 
+	startTime {
+		if(this.size > 0) {
+			^this[0].absTime
+		} {
+			^0
+		};
+	}
+
 	addEvent { |ev|
 		if (array.size == 0) { this.start(ev[\absTime]) };
 		super.add(ev);
@@ -188,6 +196,7 @@ XEventList : List {
 
 	asPattern { arg in;
 		^Prout({ arg inpat;
+			this.changed(\cursor, \play);
 			inpat = this.embedInStream(inpat)
 		})
 	}
