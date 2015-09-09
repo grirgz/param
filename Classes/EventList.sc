@@ -1,5 +1,4 @@
 
-// place here some other classes related to EventList and EventLoop
 // edited version of EventList and EventLoop
 
 
@@ -55,8 +54,15 @@ a.collect(_.type);
 
 */
 
+// playDur is used by the playing task in EventLoop, used to quantize and restore back to value of relDur
+// in embedInStream, playDur is copied to dur
+// relDur is equal to dur and both are set by calcRelDurs by diff'ing absTime
+// totalDur is set by finish
+
+
 XEventList : List {
 	var <totalDur = 0, <playingDur = 0;
+	var >startTime, <>endTime;
 
 	print { |keys, postRest = true|
 		var postKeys;
@@ -86,11 +92,12 @@ XEventList : List {
 	}
 
 	startTime {
-		if(this.size > 0) {
-			^this[0].absTime
-		} {
-			^0
-		};
+		^startTime;
+		//if(this.size > 0) {
+		//	^this[0].absTime
+		//} {
+		//	^0
+		//};
 	}
 
 	addEvent { |ev|
@@ -110,10 +117,12 @@ XEventList : List {
 	}
 
 	finish { |absTime|
+		// FIXME: \start is not always the first event
 		this.addEvent((absTime: absTime, type: \end, relDur: 0));
 		totalDur = absTime - this.first[\absTime];
 		playingDur = totalDur;
 		this.setPlayDursToRelDur;
+		this.reorder;
 	}
 
 	setRelDurInPrev { |newEvent, newIndex|
@@ -161,19 +170,29 @@ XEventList : List {
 	reorder {
 		"eventlist reordering".debug;
 		this.sort({ arg a,b; 
-			switch(a[\type],
-				\start, {
-					true
-				},
-				// dont put end at the end because we maybe want to shorten the clip
-				//\end, {
-				//	false
-				//},
-				{
-					a[\absTime] < b[\absTime] 
-				}
-			)
+			//switch(a[\type],
+			//	// dont put start at the start because we maybe want to shorten the clip
+			//	//\start, {
+			//	//	true
+			//	//},
+			//	// dont put end at the end because we maybe want to shorten the clip
+			//	//\end, {
+			//	//	false
+			//	//},
+			//	{
+			//		a[\absTime] < b[\absTime] 
+			//	}
+			//)
+			a[\absTime] < b[\absTime] 
 		});
+		this.do { arg ev;
+			if(ev[\type] == \start) {
+				startTime = ev[\absTime];
+			};
+			if(ev[\type] == \end) {
+				endTime = ev[\absTime];
+			};
+		};
 		this.calcRelDurs;
 		this.setPlayDursToRelDur;
 		//this.changed(\refresh);
@@ -202,6 +221,7 @@ XEventList : List {
 	}
 
 	*newFrom { arg pat, size=20;
+		//startTime = 0;
 		if(pat.isKindOf(Pattern)) {
 			var ins = super.new;
 			var endtime;

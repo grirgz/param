@@ -57,6 +57,7 @@ TimelineRulerView : TimelineView {
 }
 
 TimelineLocatorBarView : TimelineView {
+	var <>cursor;
 
 	specialInit {
 		"SPECIAL INIT".debug;
@@ -64,6 +65,15 @@ TimelineLocatorBarView : TimelineView {
 			"FOCUS LOST".debug;
 			this.deselectAllNodes;
 			this.refresh;
+		};
+	}
+
+	mapCursor { arg curs;
+		cursor = curs;
+		mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
+			px.debug("TimelineLocatorBarView: mousedown set start");
+			//if(chosennode.isNil) 
+			cursor.startPosition_(this.pixelPointToGridPoint(Point(px, 0)).x.round(quant.value.x));
 		}
 	}
 
@@ -464,19 +474,61 @@ PdefTimelineView : TimelineView {
 
 }
 
+////////////////////////// cursor
 
 CursorTimelineView : TimelineView {
 	var <>cursorPos = 0;
 	var <>playtask;
+	var <>cursor;
+	var <>cursorController;
 	drawFunc {
 		var cpos;
+		var spos;
+		Pen.color = Color.red;
 		cpos = this.gridPointToPixelPoint(Point(cursorPos, 0)).x;
 		Pen.line(Point(cpos,0), Point(cpos, this.virtualBounds.height));
 		Pen.stroke;
+
+		if(cursor.notNil) {
+			Pen.color = Color.blue;
+			spos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
+			[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
+			Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+			Pen.stroke;
+
+			if(cursor.endPosition.notNil) {
+				Pen.color = Color.blue;
+				spos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
+				[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
+				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+				Pen.stroke;
+
+			};
+		} {
+			"cursorisnil:::!!!!".debug;
+		};
+
+	}
+
+	mapCursor { arg cur;
+		cursor = cur;
+		if(cursorController.notNil) {
+			cursorController.remove;
+		};
+		cursorController = SimpleController(cursor).put(\refresh, {
+			if(this.view.notNil) {
+				if(this.view.isClosed) {
+					cursorController.remove;
+				} {
+					this.view.refresh;
+				};
+			}
+		})
 	}
 
 	specialInit {
 		this.view.background = Color.clear;
+		this.view.acceptsMouse_(false);
 	}
 
 	makeUpdater {
@@ -507,14 +559,24 @@ CursorTimelineView : TimelineView {
 
 		playtask = Task({
 			var start_beat = TempoClock.default.beats;
-			cursorPos =  this.model.startTime;
+			var start_offset = this.model.startTime;
+			var endTime = this.model.endTime; // no real time modification of end time
+			cursorPos =  start_offset;
+			if(cursor.notNil and: { cursor.startPosition.notNil }) {
+				start_offset = start_offset max: cursor.startPosition;
+			};
 			while({
-				cursorPos < this.model.totalDur;
+				cursorPos < endTime;
+				//true;
 			}, {
-				cursorPos = TempoClock.default.beats - start_beat + this.model.startTime;
+				cursorPos = TempoClock.default.beats - start_beat + start_offset;
 				//cursorPos.debug("cursorPos");
 				{
-					this.view.refresh;
+					if(this.view.isNil or: { this.view.isClosed }) {
+						//this.stop;
+					} {
+						this.view.refresh;
+					};
 				}.defer;
 				( 1/16 ).wait;
 				
@@ -530,4 +592,20 @@ CursorTimelineView : TimelineView {
 		
 	}
 	
+}
+
+CursorTimeline {
+	var <startPosition;
+	var <endPosition;
+	startPosition_ { arg startPos;
+		startPosition = startPos;
+		this.changed(\startPosition, startPosition);
+		this.changed(\refresh);
+	}
+
+	endPosition_ { arg endPos;
+		endPosition = endPos;
+		this.changed(\endPosition, startPosition);
+		this.changed(\refresh);
+	}
 }

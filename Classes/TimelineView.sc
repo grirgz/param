@@ -120,6 +120,17 @@ TimelineView : SCViewHolder {
 			.focusColor_(Color.clear.alpha_(0.0))
 			//.relativeOrigin_(false)
 
+			.mouseWheelAction_({ arg view, x, y, modifiers, xDelta, yDelta;
+				var newport;
+				var oldport;
+				var top;
+				oldport = this.viewport;
+				top = ( oldport.top + ( yDelta/this.virtualBounds.height ) ).clip(0,oldport.height);
+				newport = Rect(oldport.left, top, oldport.width, oldport.height);
+				[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
+				this.viewport = newport;
+				this.refresh;
+			})
 			.mouseDownAction_({|me, px, py, mod, buttonNumber, clickCount|
 
 				// select clicked node, or unselect all node is none is clicked, add connection if c is pushed
@@ -127,7 +138,7 @@ TimelineView : SCViewHolder {
 				var bounds = this.bounds;
 				var npos;
 				var gpos;
-				var nquant = this.gridPointToNormPoint(quant);
+				var nquant = this.gridPointToNormPoint(quant.value);
 
 				mouseButtonNumber = buttonNumber;
 				mouseClickCount = clickCount;
@@ -156,7 +167,7 @@ TimelineView : SCViewHolder {
 						//nodesize = this.gridPointToNormPoint(nodesize);
 
 						if(enableQuant) {
-							newpos = gpos.trunc(quant); 
+							newpos = gpos.trunc(quant.value); 
 						} {
 							newpos = gpos; 
 						};
@@ -232,7 +243,7 @@ TimelineView : SCViewHolder {
 				var x,y;
 				var npos = this.pixelPointToNormPoint(Point(px,py));
 				var gpos = this.pixelPointToGridPoint(Point(px,py));
-				var nquant = this.gridPointToNormPoint(quant);
+				var nquant = this.gridPointToNormPoint(quant.value);
 				var newpos;
 				var buttonNumber = mouseButtonNumber;
 				var clickCount = mouseClickCount;
@@ -243,7 +254,7 @@ TimelineView : SCViewHolder {
 					var res;
 					res = node.refloc + (gpos - refPoint);
 					if ( enableQuant ) {
-						res = res.round(quant);
+						res = res.round(quant.value);
 					};
 					res;
 				};
@@ -259,8 +270,8 @@ TimelineView : SCViewHolder {
 							debug("---------mouseMoveAction: resize mode");
 							newwidth = refWidth + (gpos.x - refPoint.x);
 							if( enableQuant ) {
-								newwidth = newwidth.round(quant.x);
-								newwidth = newwidth.max(quant.x);
+								newwidth = newwidth.round(quant.value.x);
+								newwidth = newwidth.max(quant.value.x);
 							} {
 								newwidth = newwidth.max(0);
 							};
@@ -385,7 +396,7 @@ TimelineView : SCViewHolder {
 		// quantize
 
 		if(key == $q) {
-			var nquant = this.gridPointToNormPoint(quant);
+			var nquant = this.gridPointToNormPoint(quant.value);
 			selNodes.do { arg node;
 				node.setLoc = node.nodeloc.round(nquant);
 			}
@@ -1325,7 +1336,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 			color = Color.green;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
-			label = model[\label] ? "unnamed";
+			label = model.use {  model.label } ? "unnamed";
 			if(model[\eventlist].notNil) {
 				preview.mapEventList(model[\eventlist]);
 			};
@@ -1394,6 +1405,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	}
 }
 
+// FIXME: lot of common code
 TimelineViewEventLoopNode : TimelineViewEventListNode {
 
 	init { arg xparent, nodeidx, event;
