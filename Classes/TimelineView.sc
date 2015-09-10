@@ -1133,6 +1133,7 @@ TimelineViewNode {
 		var type;
 		type = event[\nodeType] ? event[\type];
 		[ parent.class, type.asCompileString ].debug("TimelineViewNode: new: nodeType/type");
+		[ event[\nodeType], event, event.parent ].debug("TimelineViewNode: nodeType");
 		^switch(type,
 			\start, {
 				var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
@@ -1386,6 +1387,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		//Pen.stringInRect(label, labelrect);
 		//Pen.string(label);
 		preview.virtualBounds = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-previewrect.height);
+		//preview.virtualBounds = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, previewrect.height);
 		Pen.use {
 			Pen.addRect(rect);
 			Pen.clip;

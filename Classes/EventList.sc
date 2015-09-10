@@ -220,7 +220,7 @@ XEventList : List {
 		})
 	}
 
-	*newFrom { arg pat, size=20;
+	*newFrom { arg pat, size=20, inval;
 		//startTime = 0;
 		if(pat.isKindOf(Pattern)) {
 			var ins = super.new;
@@ -230,10 +230,11 @@ XEventList : List {
 			var ev, prev;
 			str = pat.asStream;
 			ins.start(absTime);
+			inval = inval ? Event.default;
 			block { arg break;
 				size.do {
 					prev = ev;
-					ev = str.next(Event.default);
+					ev = str.next(inval);
 					if(ev.notNil) {
 						ev.debug("ev");
 						ev[\absTime] = absTime;
@@ -600,4 +601,14 @@ XEventLoop {
 		list = List.new;
 	}
 
+}
+
+
+Pev {
+	*new { arg event;
+		^Pevent(
+			Pbind(),
+			event
+		).keep(1)
+	}
 }
