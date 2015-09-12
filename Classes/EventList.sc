@@ -88,7 +88,7 @@ XEventList : List {
 	}
 
 	start { |absTime = 0|
-		this.add((absTime: absTime, type: \start, relDur: 0));
+		this.add((absTime: absTime, type: \start, relDur: 0, sustain:0));
 	}
 
 	startTime {
@@ -170,20 +170,20 @@ XEventList : List {
 	reorder {
 		"eventlist reordering".debug;
 		this.sort({ arg a,b; 
-			//switch(a[\type],
-			//	// dont put start at the start because we maybe want to shorten the clip
-			//	//\start, {
-			//	//	true
-			//	//},
-			//	// dont put end at the end because we maybe want to shorten the clip
-			//	//\end, {
-			//	//	false
-			//	//},
-			//	{
-			//		a[\absTime] < b[\absTime] 
-			//	}
-			//)
-			a[\absTime] < b[\absTime] 
+			switch(a[\type],
+				// if a note and start has equal absTime, \start come first
+				\start, {
+					( a[\absTime] == b[\absTime] ) or: { a[\absTime] < b[\absTime] }
+				},
+				// if a note and end has equal absTime, \end come last
+				\end, {
+					( a[\absTime] == b[\absTime] ).not and: { a[\absTime] < b[\absTime] }
+				},
+				{
+					a[\absTime] < b[\absTime] 
+				}
+			)
+			//a[\absTime] < b[\absTime] 
 		});
 		this.do { arg ev;
 			if(ev[\type] == \start) {
@@ -220,7 +220,7 @@ XEventList : List {
 		})
 	}
 
-	*newFrom { arg pat, size=20, inval;
+	*newFrom { arg pat, size=200, inval;
 		//startTime = 0;
 		if(pat.isKindOf(Pattern)) {
 			var ins = super.new;
@@ -612,3 +612,4 @@ Pev {
 		).keep(1)
 	}
 }
+

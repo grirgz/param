@@ -155,10 +155,10 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		spritenum = nodeidx;
 		model = event;
 
-		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
-			[model, origin].debug("node action before");
+			//[model, origin].debug("node action before");
 			model[timeKey] = origin.x;
 			model[labelKey] = label;
 			//model[lenKey] = extent.x;
@@ -169,10 +169,10 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 			color = Color.black;
 			label = model[labelKey] ? (model[\type] ? "unnamed");
 			extent = parent.pixelPointToGridPoint(Point(width,height)); //FIXME: why /2 ???
-			extent.debug("---------extent");
+			//extent.debug("---------extent");
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
 			parent.model.changed(\redraw);
-			[this.class, spritenum, origin, extent, color].debug("refresh");
+			//[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
 
 		this.makeUpdater;
@@ -260,10 +260,10 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 		selectable = false;
 		color = Color.red;
 
-		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
-			[model, origin].debug("node action before");
+			//[model, origin].debug("node action before");
 			model[timeKey] = origin.x;
 			//model[lenKey] = extent.x;
 		};
@@ -271,7 +271,7 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 		refresh = {
 			origin = Point(model[timeKey], 0);
 			extent = Point(1,1);
-			[this.class, spritenum, origin, extent, color].debug("refresh");
+			//[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
 
 		this.makeUpdater;
@@ -281,12 +281,20 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 
 	draw {
 		var point;
-		Pen.color = Color.black;
-		Pen.alpha = alpha;
-		point = parent.gridPointToPixelPoint(this.origin);
-		Pen.line(Point(point.x, 0), Point(point.x, parent.bounds.height));
-		Pen.stroke;
-		Pen.alpha = 1;
+		Pen.use {
+
+			Pen.color = Color.black;
+			Pen.alpha = alpha;
+			point = parent.gridPointToPixelPoint(this.origin);
+			// now in screen coordinates
+			Pen.line(Point(point.x, this.parent.virtualBounds.origin.y), Point(point.x, parent.virtualBounds.bottom));
+			Pen.stroke;
+			Pen.alpha = 1;
+		};
+
+		//Pen.color = Color.red;
+		//Pen.addRect(this.parent.virtualBounds);
+		//Pen.stroke;
 	}
 
 	selectNode {
@@ -558,9 +566,13 @@ CursorTimelineView : TimelineView {
 		};
 
 		playtask = Task({
-			var start_beat = TempoClock.default.beats;
-			var start_offset = this.model.startTime;
-			var endTime = this.model.endTime; // no real time modification of end time
+			var start_beat;
+			var start_offset;
+			var endTime;
+			Server.default.latency.wait; // compense for pattern latency
+			start_beat = TempoClock.default.beats;
+			start_offset = this.model.startTime;
+			endTime = this.model.endTime; // no real time modification of end time
 			cursorPos =  start_offset;
 			if(cursor.notNil and: { cursor.startPosition.notNil }) {
 				start_offset = start_offset max: cursor.startPosition;

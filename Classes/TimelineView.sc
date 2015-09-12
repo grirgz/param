@@ -79,7 +79,7 @@ TimelineView : SCViewHolder {
 
 		this.makeUpdater;
 		action = {
-			model.debug("timeline action before");
+			//model.debug("timeline action before");
 			model.reorder;
 		};
 
@@ -172,7 +172,6 @@ TimelineView : SCViewHolder {
 							newpos = gpos; 
 						};
 
-						// FIXME: the new event should come from outside of the class
 						newevent = this.eventFactory(newpos);
 						chosennode = this.addEvent(newevent);
 
@@ -291,7 +290,8 @@ TimelineView : SCViewHolder {
 							if(chosennode != nil) { // a node is selected
 								debug("---------mouseMoveAction: move mode");
 								// FIXME: chosennode seems to be moved and signaled two times
-								selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
+								debug("======= selected nodes will be moved!!!");
+								//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
 								chosennode.setLoc_(newpos.(chosennode));
 								block {|break|
 									selNodes.do({arg node; 
@@ -308,7 +308,8 @@ TimelineView : SCViewHolder {
 									});
 								};
 								trackAction.value(chosennode, chosennode.spritenum, this.normPointToGridPoint(chosennode.nodeloc));
-								selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes was moved!!!");
+								debug("======= selected nodes was moved!!!");
+								//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes was moved!!!");
 								model.print; 
 							} { // no node is selected
 								if( startSelPoint.debug("startSelPoint") != Point(0,0) ) {
@@ -420,6 +421,7 @@ TimelineView : SCViewHolder {
 
 	eventFactory { arg pos;
 		var nodesize = Point(1,1);
+		// why nodesize is in normalized form ???
 		nodesize = this.gridPointToNormPoint(nodesize);
 		if(eventFactory.isNil) {
 			^(absTime: pos.x, midinote: pos.y, sustain:nodesize.x);
@@ -531,15 +533,23 @@ TimelineView : SCViewHolder {
 
 	drawNodes {
 
+		var defered_nodes = List.new;
 		//debug("start drawing nodes");
 		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
 
-		[this.viewport, this.bounds, this.virtualBounds, this.areasize].debug("drawNodes:bounds");
+		//[this.viewport, this.bounds, this.virtualBounds, this.areasize].debug("drawNodes:bounds");
 		paraNodes.do({arg node;
-			[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
-			[node.rect, this.gridRectToNormRect(node.rect), this.gridRectToPixelRect(node.rect)].debug("drawNodes:rect, norm, pixel");
-			node.draw;
+			//[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
+			//[node.rect, this.gridRectToNormRect(node.rect), this.gridRectToPixelRect(node.rect)].debug("drawNodes:rect, norm, pixel");
+			if(node.class == TimelineViewLocatorLineNode) {
+				defered_nodes.add(node)
+			} {
+				node.draw;
+			}
 		});
+		defered_nodes.do { arg node;
+			node.draw;
+		};
 
 		//debug("stop drawing nodes");
 		Pen.stroke;		
@@ -561,6 +571,7 @@ TimelineView : SCViewHolder {
 	}
 
 	virtualBounds {
+		// virtualBounds use screen coordinates
 		^(virtualBounds ? Rect(0,0,this.bounds.width, this.bounds.height));
 	}
 
@@ -617,7 +628,7 @@ TimelineView : SCViewHolder {
 
 	///////////////// coordinates conversion
 
-	normRectToPixelRect_old { arg rect;
+	normRectToPixelRect_old { arg rect; //////////// OLD
 		// 
 		var bounds = this.virtualBounds;
 		^Rect(
@@ -638,84 +649,105 @@ TimelineView : SCViewHolder {
 		);
 	}
 	////////////
+	
+	// grid are in bottom coordinates
+	// norm are in bottom coordinates
+	// bounds are in screen coordinates
+	// pixels are in screen coordinates
 
 	normRectToPixelRect { arg rect;
 		// 
 		var bounds = this.virtualBounds;
 		var x_norm_to_pixel;
 		var y_norm_to_pixel;
-		x_norm_to_pixel = 
-			(rect.origin.x - viewport.origin.x)  	// if viewport.left = 0.15, a point at nx=0.15 would appear at the left border (px=0)
-			* (bounds.width / viewport.width) // smaller the viewport width (zoom), bigger the interval between left border and the point
-			+ bounds.origin.x;						// shifting for displaying the timeline as a block in a bigger timeline
+	//	x_norm_to_pixel = 
+	//		(rect.origin.x - viewport.origin.x)  	// if viewport.left = 0.15, a point at nx=0.15 would appear at the left border (px=0)
+	//		* (bounds.width / viewport.width) // smaller the viewport width (zoom), bigger the interval between left border and the point
+	//		+ bounds.origin.x;						// shifting for displaying the timeline as a block in a bigger timeline
 
-		y_norm_to_pixel = 
-			(rect.origin.y - viewport.origin.y)  	// if viewport.left = 0.15, a point at nx=0.15 would appear at the left border (px=0)
-			* (bounds.height / viewport.height) // smaller the viewport width (zoom), bigger the interval between left border and the point
-			+ bounds.origin.y;						// shifting for displaying the timeline as a block in a bigger timeline
-			
-		y_norm_to_pixel = bounds.height - y_norm_to_pixel; // flipping Y because we want our canvas origin on the bottom
+	//	y_norm_to_pixel = 
+	//		(rect.origin.y - viewport.origin.y)  	// if viewport.left = 0.15, a point at nx=0.15 would appear at the left border (px=0)
+	//		* (bounds.height / viewport.height) // smaller the viewport width (zoom), bigger the interval between left border and the point
+	//		+ bounds.origin.y;						// shifting for displaying the timeline as a block in a bigger timeline
+	//		
+		//y_norm_to_pixel = bounds.height - y_norm_to_pixel; // flipping Y because we want our canvas origin on the bottom
 
 
-		^Rect(
-			x_norm_to_pixel,
-			y_norm_to_pixel,
-			rect.width * bounds.width / viewport.width,
-			(0 - (rect.height * bounds.height) ) / viewport.height, // flipping Y (needed or it's because node.rect return negative extent ?)
-			//((rect.height * bounds.height) ) / viewport.height,
-		);
+		rect = rect
+			.translate(0-viewport.origin)
+			.scale(1/viewport.extent)
+			.scale(bounds.extent)
+			// now in pixel in bottom coordinates
+			.flipScreen(bounds.height)
+			// now in pixel in screen coordinates
+			.translate(bounds.origin) // bounds is in screen coordinates so need flipping before translating
+		;
+
+		^rect;
+
+		//^Rect(
+		//	x_norm_to_pixel,
+		//	y_norm_to_pixel,
+		//	rect.width * bounds.width / viewport.width,
+		//	//(0 - (rect.height * bounds.height) ) / viewport.height, // flipping Y (needed or it's because node.rect return negative extent ?)
+		//	rect.height * bounds.height / viewport.height,
+		//).flipScreen(this.virtualBounds.height);
 	}
 
 
 	pixelRectToNormRect { arg rect;
 		var bounds = this.virtualBounds;
-		var x_pixel_to_norm = 
-			(rect.origin.x - bounds.origin.x)
-			/ (bounds.width / viewport.width)
-			+ viewport.origin.x;
+		var x_pixel_to_norm, y_pixel_to_norm;
 
-		var y_pixel_to_norm;
-		y_pixel_to_norm = bounds.height - rect.origin.y; // flipping Y
-		y_pixel_to_norm = 
-			(y_pixel_to_norm - bounds.origin.y)
-			/ (bounds.height / viewport.height)
-			+ viewport.origin.y;
+		rect = rect
+			// now in pixels in screen coordinates
+			.translate(0-bounds.origin)
+			.flipScreen(bounds.height)
+			// now in pixels in bottom coordinates
+			.scale(1/bounds.extent)
+			// now in normalized in bottom coordinate
+			.scale(viewport.extent)
+			.translate(viewport.origin)
+		;
 
-		//y_pixel_to_norm = 1-y_pixel_to_norm; // flipping Y
+		^rect;
 
-		// proof: reversing normRectToPixelRect function
-		//
-		// y_norm_to_pixel = 
-		//	(rect.origin.y - viewport.origin.y)  
-		//	* (bounds.height / viewport.height) 
-		//	+ bounds.origin.y;				
-		//
-		// y_norm_to_pixel - bounds.origin.y / (bounds.height / viewport.height) + viewport.origin.y = rect.origin.y
-		//
+		//rect = rect.flipScreen(bounds.height);
+		//x_pixel_to_norm = 
+		//	(rect.origin.x - bounds.origin.x)
+		//	/ (bounds.width / viewport.width)
+		//	+ viewport.origin.x;
 
-		^Rect(
-			x_pixel_to_norm,
-			y_pixel_to_norm,
-			rect.width / bounds.extent.x * viewport.extent.x,
-			rect.height / bounds.extent.y * viewport.extent.y, // FIXME: why no Y flipping here ???
-		).flipY; // finally added flipping
+		//y_pixel_to_norm = rect.origin.y; // flipping Y
+		//y_pixel_to_norm = 
+		//	(y_pixel_to_norm - bounds.origin.y)
+		//	/ (bounds.height / viewport.height)
+		//	+ viewport.origin.y;
+
+		////y_pixel_to_norm = 1-y_pixel_to_norm; // flipping Y
+
+		//// proof: reversing normRectToPixelRect function
+		////
+		//// y_norm_to_pixel = 
+		////	(rect.origin.y - viewport.origin.y)  
+		////	* (bounds.height / viewport.height) 
+		////	+ bounds.origin.y;				
+		////
+		//// y_norm_to_pixel - bounds.origin.y / (bounds.height / viewport.height) + viewport.origin.y = rect.origin.y
+		////
+
+		//^Rect(
+		//	x_pixel_to_norm,
+		//	y_pixel_to_norm,
+		//	rect.width / bounds.extent.x * viewport.extent.x,
+		//	rect.height / bounds.extent.y * viewport.extent.y, // FIXME: why no Y flipping here ???
+		//); // finally added flipping
 	}
 
-	gridPointToNormPoint { arg point;
-		^(point / areasize)
-	}
-
-	normPointToGridPoint { arg point;
-		^(point * areasize)
-	}
-
-	pixelExtentToGridExtent { arg point;
-		^(point / this.bounds.extent * areasize * viewport.extent);
-	}
 
 
 	gridRectToNormRect { arg rect;
-		rect.debug("gridRectToNormRect");
+		//rect.debug("gridRectToNormRect");
 		^Rect.fromPoints(
 			this.gridPointToNormPoint(rect.origin),
 			this.gridPointToNormPoint(rect.rightBottom),
@@ -745,12 +777,26 @@ TimelineView : SCViewHolder {
 		^this.pixelRectToNormRect(Rect.fromPoints(point, point+Point(0,0))).origin;
 	}
 
+	gridPointToNormPoint { arg point;
+		^(point / areasize)
+	}
+
+	normPointToGridPoint { arg point;
+		^(point * areasize)
+	}
+
 	pixelPointToGridPoint { arg point;
 		^this.normPointToGridPoint(this.pixelPointToNormPoint(point))
 	}
 
 	gridPointToPixelPoint { arg point;
 		^this.normPointToPixelPoint(this.gridPointToNormPoint(point))
+	}
+
+
+	pixelExtentToGridExtent { arg point;
+		// not used currently
+		^(point / this.bounds.extent * areasize * viewport.extent);
 	}
 
 	///////////////// 
@@ -825,7 +871,7 @@ TimelineView : SCViewHolder {
 	}
 
 	refreshEventList {
-		model.debug("refreshEventList");
+		//model.debug("refreshEventList");
 		this.clearSpace;
 		model.do { arg event;
 			this.addEvent(event)
@@ -833,14 +879,14 @@ TimelineView : SCViewHolder {
 	}
 
 	mapEventList { arg eventlist;
-		paraNodes.debug("mapEventList");
+		//paraNodes.debug("mapEventList");
 		model = eventlist;
 		this.refreshEventList;
-		paraNodes.debug("mapEventList2");
+		//paraNodes.debug("mapEventList2");
 
 		this.makeUpdater;
 		
-		[areasize, viewport, paraNodes].debug("mapEventList3");
+		//[areasize, viewport, paraNodes].debug("mapEventList3");
 	}
 		
 	createConnection {arg node1, node2, refresh=true;
@@ -1096,6 +1142,7 @@ TimelineView : SCViewHolder {
 	
 	// local function
 	findNode {arg x, y;
+		// findNode take x and y in grid coordinates, because TimelineNode.rect is in grid coordinates
 		var point = Point.new(x,y);
 		paraNodes.reverse.do({arg node; 
 			node.spritenum.debug("spritnum");
@@ -1116,7 +1163,7 @@ TimelineView : SCViewHolder {
 	}
 }
 
-////////////////////////////////
+//////////////////////////////// preview
 
 TimelinePreview : TimelineView {
 	drawFunc {
@@ -1124,6 +1171,18 @@ TimelinePreview : TimelineView {
 		this.drawEndLine;
 	}
 }
+
+TimelinePreview_Env : TimelineView {
+	drawFunc {
+		this.drawNodes;
+		this.drawEndLine;
+	}
+
+	nodeClass {
+		^TimelineEnvViewNode
+	}
+}
+
 
 ////////////////////////////////
 
@@ -1134,8 +1193,8 @@ TimelineViewNode {
 	*new { arg parent, nodeidx, event;
 		var type;
 		type = event[\nodeType] ? event[\type];
-		[ parent.class, type.asCompileString ].debug("TimelineViewNode: new: nodeType/type");
-		[ event[\nodeType], event, event.parent ].debug("TimelineViewNode: nodeType");
+		//[ parent.class, type.asCompileString ].debug("TimelineViewNode: new: nodeType/type");
+		//[ event[\nodeType], event, event.parent ].debug("TimelineViewNode: nodeType");
 		^switch(type,
 			\start, {
 				var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
@@ -1147,6 +1206,9 @@ TimelineViewNode {
 				res.alpha = 1;
 				res;
 			},
+			\eventenv, {
+				TimelineViewEventEnvNode(parent, nodeidx, event)
+			},
 			\eventlist, {
 				TimelineViewEventListNode(parent, nodeidx, event)
 			},
@@ -1157,12 +1219,13 @@ TimelineViewNode {
 				TimelineViewLocatorLineNode(parent, nodeidx, event)
 			},
 			{
-				type.asCompileString.debug("mais pourquoi ?? :(");
+				//type.asCompileString.debug("mais pourquoi ?? :(");
 				TimelineViewEventNode(parent, nodeidx, event)
 			}
 		)
 	}
 }
+
 
 //// base
 
@@ -1189,11 +1252,18 @@ TimelineViewNodeBase {
 }
 
 TimelineViewEventNode : TimelineViewNodeBase {
+	var <>colorSelected;
+	var <>colorDeselected;
 
 	var <>refloc;
 
 	*new { arg parent, nodeidx, event;
-		^super.new.init(parent, nodeidx, event);
+		^super.new.init(parent, nodeidx, event).baseInit;
+	}
+
+	baseInit {
+		this.colorDeselected = Color.black;
+		this.colorSelected = Color.red;
 	}
 
 	init { arg xparent, nodeidx, event;
@@ -1201,10 +1271,10 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		spritenum = nodeidx;
 		model = event;
 
-		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
-			[model, origin, extent].debug("node action before");
+			//[model, origin, extent].debug("node action before");
 			model[timeKey] = origin.x;
 			model[posyKey] = origin.y;
 			model[lenKey] = extent.x;
@@ -1215,7 +1285,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 			color = Color.green;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
-			[spritenum, origin, extent, color].debug("node refresh");
+			//[spritenum, origin, extent, color].debug("node refresh");
 		};
 
 		this.makeUpdater;
@@ -1296,11 +1366,11 @@ TimelineViewEventNode : TimelineViewNodeBase {
 
 	selectNode {
 		this.refloc = this.nodeloc;
-		outlineColor = Color.red;
+		outlineColor = this.colorSelected;
 	}
 
 	deselectNode {
-		outlineColor = Color.black;
+		outlineColor = this.colorDeselected;
 	}
 
 	free {
@@ -1317,18 +1387,22 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	//	^super.new.init(parent, nodeidx, event);
 	//}
 
+	timelinePreviewClass {
+		^TimelinePreview
+	}
+
 	init { arg xparent, nodeidx, event;
 		parent = xparent;
 		spritenum = nodeidx;
 		model = event;
 
-		preview = TimelinePreview.new;
+		preview = this.timelinePreviewClass.new;
 		preview.areasize.x = parent.areasize.x;
 
-		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
-			[model, origin, extent].debug("node action before");
+			//[model, origin, extent].debug("node action before");
 			model[timeKey] = origin.x;
 			model[posyKey] = origin.y;
 			model[lenKey] = extent.x;
@@ -1344,7 +1418,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 				preview.mapEventList(model[\eventlist]);
 			};
 			parent.refresh;
-			[spritenum, origin, extent, color].debug("node refresh");
+			//[spritenum, origin, extent, color].debug("node refresh");
 		};
 
 		this.makeUpdater;
@@ -1365,8 +1439,9 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		pos = this.origin;
 
 		rect = parent.gridRectToPixelRect(this.rect);
-		previewrect = rect.insetAll(0,0,0,0-labelheight);
-		labelrect = Rect(rect.origin.x, rect.origin.y+rect.height+20, rect.width, -20);
+		// now rect is in screen coordinates
+		previewrect = rect.insetAll(0,labelheight,0,0);
+		labelrect = rect.insetAll(0,0,0,rect.height-labelheight);
 
 		labelrect.debug("labelrect");
 		previewrect.debug("previewrect");
@@ -1391,23 +1466,31 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		//Pen.string(label);
 
 		//virtualBounds_rect =  Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-previewrect.height);
-		Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-previewrect.height).debug("vboundsrect orig");
-		virtualBounds_rect =  Rect(0, 0, 100, 100);
-		virtualBounds_rect =  previewrect;
-		virtualBounds_rect = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-parent.virtualBounds.height-previewrect.height);
-		virtualBounds_rect.debug("vboundsrect now");
+		//Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-previewrect.height).debug("vboundsrect orig");
+		//virtualBounds_rect =  Rect(0, 0, 100, 100);
+		//virtualBounds_rect =  previewrect;
+		//virtualBounds_rect = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-parent.virtualBounds.height-previewrect.height);
+		//virtualBounds_rect = previewrect.flipScreen(parent.virtualBounds);
+		//virtualBounds_rect = previewrect;
+		//virtualBounds_rect.debug("vboundsrect now");
 		//virtualBounds_rect =  Rect(previewrect.leftBottom.x, previewrect.leftBottom.y+previewrect.height, parent.bounds.width, previewrect.height);
+		virtualBounds_rect = Rect(previewrect.leftTop.x, previewrect.leftTop.y, this.parent.virtualBounds.width, previewrect.height);
+
+		//virtualBounds_rect = previewrect;
 		preview.virtualBounds = virtualBounds_rect;
-		Pen.color = Color.red;
-		Pen.addRect( virtualBounds_rect );
-		Pen.stroke;
-		Pen.color = Color.blue;
-		Pen.addRect( previewrect );
-		Pen.stroke;
+		preview.areasize = preview.areasize.x_(this.parent.areasize.x);
+		preview.viewport = preview.viewport.width_(this.parent.viewport.width);
+
+		//Pen.color = Color.red;
+		//Pen.addRect( virtualBounds_rect );
+		//Pen.stroke;
+		//Pen.color = Color.blue;
+		//Pen.addRect( previewrect );
+		//Pen.stroke;
 		//preview.virtualBounds = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, previewrect.height);
 		Pen.use {
-			//Pen.addRect(rect);
-			//Pen.clip;
+			Pen.addRect(previewrect);
+			Pen.clip;
 			preview.drawFunc;
 		};
 		//Pen.stroke;
@@ -1424,7 +1507,17 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	}
 }
 
-// FIXME: lot of common code
+TimelineViewEventEnvNode : TimelineViewEventListNode {
+
+	timelinePreviewClass {
+		^TimelinePreview_Env
+	}
+
+
+}
+
+
+// FIXME: lot of common code with TimelineViewEventListNode, not maintened currently
 TimelineViewEventLoopNode : TimelineViewEventListNode {
 
 	init { arg xparent, nodeidx, event;
@@ -1435,10 +1528,10 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 		preview = TimelinePreview.new;
 		preview.areasize.x = parent.areasize.x;
 
-		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
-			[model, origin, extent].debug("node action before");
+			//[model, origin, extent].debug("node action before");
 			model[timeKey] = origin.x;
 			model[posyKey] = origin.y;
 			model[lenKey] = extent.x;
@@ -1451,7 +1544,7 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
 			label = model[\label] ? "unnamed";
 			preview.mapEventList(model[\eventloop].list);
-			[spritenum, origin, extent, color].debug("node refresh");
+			//[spritenum, origin, extent, color].debug("node refresh");
 		};
 
 		this.makeUpdater;
@@ -1486,26 +1579,41 @@ TimelineEnvView : TimelineView {
 }
 
 TimelineEnvViewNode : TimelineViewEventNode {
-	var radius = 15;
+	var <>radius = 3;
+
+	*new { arg parent, nodeidx, event;
+		switch(event[\type],
+			\start, {
+				^TimelineViewLocatorLineNode.new(parent, nodeidx, event);
+			},
+			\end, {
+				^TimelineViewLocatorLineNode.new(parent, nodeidx, event);
+			},
+			{
+				^super.new(parent, nodeidx, event).baseInit;
+			}
+		);
+	}
+
 
 	init { arg xparent, nodeidx, event;
 		parent = xparent;
 		spritenum = nodeidx;
 		model = event;
 
-		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
-			[model, origin].debug("node action before");
+			//[model, origin].debug("node action before");
 			model[timeKey] = origin.x;
 			model[posyKey] = origin.y;
 			//model[lenKey] = extent.x;
 		};
 
 		refresh = {
-			origin = Point(model[timeKey], model[posyKey]);
+			origin = Point(model[timeKey] ? 0, model[posyKey] ? 0);
 			color = Color.black;
-			outlineColor = Color.green;
+			outlineColor = Color.grey;
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
 			[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
@@ -1520,7 +1628,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		var pos;
 		pos = this.origin;
 		point = parent.gridPointToPixelPoint(this.origin);
-		[spritenum, point].debug("draw");
+		//[spritenum, point].debug("draw");
 
 		Pen.color = this.color;
 		Pen.lineTo(point);
@@ -1528,7 +1636,12 @@ TimelineEnvViewNode : TimelineViewEventNode {
 
 		Pen.color = this.outlineColor;
 		Pen.addArc(point, radius, 0, 2*pi);
-		Pen.strokeRect(this.pixelRect);
+		//Pen.strokeRect(this.pixelRect);
+		Pen.stroke;
+
+		Pen.color = Color(0.8,0.8,0.8);
+		Pen.addArc(point, radius-1, 0, 2*pi);
+		//Pen.strokeRect(this.pixelRect);
 		Pen.stroke;
 
 		Pen.color = this.color;
@@ -1536,14 +1649,14 @@ TimelineEnvViewNode : TimelineViewEventNode {
 
 	}
 
-	deselectNode {
-		outlineColor = Color.green;
-	}
+	//deselectNode {
+	//	outlineColor = Color.green;
+	//}
 
 	pixelRect {
 		var point, rect;
 		point = parent.gridPointToPixelPoint(this.origin);
-		rect = Rect(point.x-radius, point.y-radius, radius*2, 0-radius*2)
+		rect = Rect(point.x-radius, point.y-radius, radius*2, radius*2)
 		^rect;
 	}
 
@@ -1737,6 +1850,18 @@ TimelineScroller : SCViewHolder {
 + Rect {
 	flipY {
 		^Rect(this.origin.x, this.origin.y, this.extent.x, 0-this.extent.y);
+	}
+
+	flipScreen { arg screen_height;
+		^Rect(this.origin.x, screen_height - (this.origin.y+this.extent.y), this.extent.x, this.extent.y);
+	}
+
+	translate { arg point;
+		^Rect(this.origin.x + point.x, this.origin.y + point.y, this.width, this.height)
+	}
+
+	scale { arg point;
+		^Rect(this.origin.x * point.x, this.origin.y * point.y, this.width * point.x, this.height * point.y)
 	}
 }
 

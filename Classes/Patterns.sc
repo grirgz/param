@@ -1463,6 +1463,35 @@ PlayerWrapper  {
 		}
 	}
 
+	isPlaying {
+		switch(target.class,
+			Pdef, {
+				^target.isPlaying;
+			},
+			Ndef, {
+				^target.monitor.isPlaying;
+			}, {
+				^target.isPlaying
+			}
+		)
+	}
+
+	label {
+		switch(target.class,
+			Pdef, {
+				^target.key;
+			},
+			Ndef, {
+				^target.key;
+			}, {
+				^target.tryPerform(\label) ?? { "" }
+			}
+		)
+
+
+	}
+
+
 	stop {
 		if(target.notNil) {
 			target.stop;
