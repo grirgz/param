@@ -534,8 +534,10 @@ TimelineView : SCViewHolder {
 		//debug("start drawing nodes");
 		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
 
+		[this.viewport, this.bounds, this.virtualBounds, this.areasize].debug("drawNodes:bounds");
 		paraNodes.do({arg node;
-			//[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
+			[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
+			[node.rect, this.gridRectToNormRect(node.rect), this.gridRectToPixelRect(node.rect)].debug("drawNodes:rect, norm, pixel");
 			node.draw;
 		});
 
@@ -1167,19 +1169,19 @@ TimelineViewNode {
 TimelineViewNodeBase {
 	var <spritenum;
 	var <model;
-	var absTime;
-	var xpos;
-	var refreshAction;
-	var timeKey = \absTime;
-	var posyKey = \midinote;
-	var lenKey = \sustain;
+	var <>absTime;
+	var <>xpos;
+	var <>refreshAction;
+	var <>timeKey = \absTime;
+	var <>posyKey = \midinote;
+	var <>lenKey = \sustain;
 	var <>origin;
 	var <>extent;
 	var <>color, <>outlineColor;
-	var parent;
-	var action;
-	var refresh;
-	var controller;
+	var <>parent;
+	var <>action;
+	var <>refresh;
+	var <>controller;
 	var <>selectable = true; // to be or not ignored by findNode
 	*new {
 		^super.new
@@ -1309,8 +1311,8 @@ TimelineViewEventNode : TimelineViewNodeBase {
 //// children
 
 TimelineViewEventListNode : TimelineViewEventNode {
-	var label;
-	var preview;
+	var <>label;
+	var <>preview;
 	//*new { arg parent, nodeidx, event;
 	//	^super.new.init(parent, nodeidx, event);
 	//}
@@ -1358,6 +1360,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		var labelheight = 20;
 		var preview_background = Color.new255(101, 166, 62);
 		var label_background = Color.new255(130, 173, 105);
+		var virtualBounds_rect;
 
 		pos = this.origin;
 
@@ -1386,11 +1389,25 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		Pen.stringLeftJustIn(" "++label, labelrect);
 		//Pen.stringInRect(label, labelrect);
 		//Pen.string(label);
-		preview.virtualBounds = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-previewrect.height);
+
+		//virtualBounds_rect =  Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-previewrect.height);
+		Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-previewrect.height).debug("vboundsrect orig");
+		virtualBounds_rect =  Rect(0, 0, 100, 100);
+		virtualBounds_rect =  previewrect;
+		virtualBounds_rect = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-parent.virtualBounds.height-previewrect.height);
+		virtualBounds_rect.debug("vboundsrect now");
+		//virtualBounds_rect =  Rect(previewrect.leftBottom.x, previewrect.leftBottom.y+previewrect.height, parent.bounds.width, previewrect.height);
+		preview.virtualBounds = virtualBounds_rect;
+		Pen.color = Color.red;
+		Pen.addRect( virtualBounds_rect );
+		Pen.stroke;
+		Pen.color = Color.blue;
+		Pen.addRect( previewrect );
+		Pen.stroke;
 		//preview.virtualBounds = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, previewrect.height);
 		Pen.use {
-			Pen.addRect(rect);
-			Pen.clip;
+			//Pen.addRect(rect);
+			//Pen.clip;
 			preview.drawFunc;
 		};
 		//Pen.stroke;
