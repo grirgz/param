@@ -155,7 +155,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		spritenum = nodeidx;
 		model = event;
 
-		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
 			//[model, origin].debug("node action before");
@@ -165,13 +165,20 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		};
 
 		refresh = {
+			"TimelineViewLocatorLineNode: refresh: 1".debug;
 			origin = Point(model[timeKey], 0);
+			"TimelineViewLocatorLineNode: refresh: 2".debug;
 			color = Color.black;
+			"TimelineViewLocatorLineNode: refresh: 3".debug;
 			label = model[labelKey] ? (model[\type] ? "unnamed");
+			"TimelineViewLocatorLineNode: refresh: 4".debug;
+			[parent.viewport, parent.areasize, Point(width,height)].debug("parent vi, are, size");
 			extent = parent.pixelPointToGridPoint(Point(width,height)); //FIXME: why /2 ???
+			"TimelineViewLocatorLineNode: refresh: 5".debug;
 			//extent.debug("---------extent");
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
 			parent.model.changed(\redraw);
+			"TimelineViewLocatorLineNode: refresh: 6".debug;
 			//[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
 

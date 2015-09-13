@@ -510,6 +510,8 @@ Param {
 				},
 				\env, {
 					^val.asStringPrec(precision);
+				}, {
+					^val.asCompileString
 				}
 			);
 		};
@@ -655,10 +657,15 @@ Param {
 	}
 
 	mapPopUpMenu { arg view;
-		this.mapIndexPopUpMenu(view)
+		if(this.type == \scalar) {
+			this.mapIndexPopUpMenu(view)
+		} {
+			this.mapValuePopUpMenu(view)
+		};
 	}
 
 	mapIndexPopUpMenu { arg view, keys;
+		// FIXME: mapIndexPopUpMenu does not use updater
 		var pm = view;
 		if(keys.notNil) {
 			pm.items = keys;
@@ -668,6 +675,21 @@ Param {
 		};
 		pm.onChange(this.controllerTarget, \set, { arg me;
 			me.value = this.get;
+		});
+	}
+
+	mapValuePopUpMenu { arg view;
+		// FIXME: mapIndexPopUpMenu does not use updater
+		// TODO: define a listener when the list change
+		var pm = view;
+		view.items = this.spec.labelList.asArray;
+		view.value = this.spec.unmapIndex(this.get);
+		pm.action = {
+			this.set(this.spec.mapIndex(view.value))
+		};
+		pm.onChange(this.controllerTarget, \set, { arg me;
+			// TODO: do not change the whole row when just one value is updated!
+			view.value = this.spec.unmapIndex(this.get);
 		});
 	}
 
@@ -796,6 +818,10 @@ Param {
 		^but;
 	}
 
+	asPopUpMenu {
+		^PopUpMenu.new.mapParam(this)
+	}
+
 	asView {
 		case(
 			{ this.spec.class == XEnvSpec }, {
@@ -803,6 +829,9 @@ Param {
 			},
 			{ this.spec.class == XArraySpec }, {
 				^this.asMultiSlider;
+			},
+			{ this.spec.isKindOf(MenuSpec) }, {
+				^this.asPopUpMenu;
 			},
 			{ this.spec.isKindOf(XBufferSpec) }, {
 				var scv = SampleChooserView.new;
@@ -962,6 +991,7 @@ Param {
 
 
 BaseParam {
+	var <target, <property, <spec, <key;
 
 	at { arg idx;
 		^Param(this.target, this.property -> idx, this.spec)
@@ -1032,10 +1062,25 @@ BaseParam {
 	controllerTarget {
 		^this.target
 	}
+
+	instrument { nil }
+
+	default {
+		var instr = this.instrument;
+		var val;
+		if(instr.notNil) {
+			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec.default };
+			if(spec.class == XEnvSpec) {
+				val = val.asEnv;
+			};
+		} {
+			val = spec.default
+		};
+		^val.copy;
+	}
 }
 
 StandardConstructorParam : BaseParam {
-	var <target, <property, <spec, <key;
 
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
@@ -1089,7 +1134,6 @@ StandardConstructorParam : BaseParam {
 ////////////////// Ndef
 
 NdefParam : BaseParam {
-	var <target, <property, <spec, <key;
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
@@ -1283,7 +1327,6 @@ NdefParamEnvSlot : NdefParam {
 ////////////////// Pdef
 
 PdefParam : BaseParam {
-	var <target, <property, <spec, <key;
 	var <multiParam = false;
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
@@ -1535,7 +1578,6 @@ PdefParamEnvSlot : PdefParam {
 
 
 NdefVolParam : NdefParam {
-	var <target, <property, <spec, <key;
 	*new { arg obj, meth, sp;
 		^super.new(obj, meth, sp);
 	}
@@ -1590,7 +1632,6 @@ NdefVolParam : NdefParam {
 
 
 VolumeParam : BaseParam {
-	var <target, <property, <spec, <key;
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
@@ -1652,7 +1693,6 @@ VolumeParam : BaseParam {
 
 
 TempoClockParam : BaseParam {
-	var <target, <property, <spec, <key;
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
@@ -1712,7 +1752,6 @@ TempoClockParam : BaseParam {
 ////////////////// List
 
 ListParam : BaseParam {
-	var <target, <property, spec, <key;
 	*new { arg obj, meth, sp;
 		// meth/property is useless
 		^super.new.init(obj, meth, sp);
@@ -1792,7 +1831,6 @@ ListParam : BaseParam {
 }
 
 ListParamSlot : BaseParam {
-	var <target, <property, <spec, <key;
 	*new { arg obj, meth, sp;
 		// meth/property is index
 		// spec should be scalar
@@ -1888,7 +1926,6 @@ PbindSeqDefParamSlot : PdefParamSlot {
 
 DictionaryParam : BaseParam {
 	
-	var <target, <property, <spec, <key;
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
@@ -1923,19 +1960,6 @@ DictionaryParam : BaseParam {
 		^target[\instrument] ? target.getHalo(\instrument);
 	}
 
-	default {
-		var instr = this.instrument;
-		var val;
-		if(instr.notNil) {
-			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec.default };
-			if(spec.class == XEnvSpec) {
-				val = val.asEnv;
-			};
-		} {
-			val = spec.default
-		};
-		^val.copy;
-	}
 
 	setDefaultIfNil {
 		if(target[property].isNil) {
@@ -1980,7 +2004,7 @@ DictionaryParam : BaseParam {
 }
 
 DictionaryParamSlot : DictionaryParam {
-	var <target, <property, spec, <key, <index;
+	var <>index;
 	*new { arg obj, meth, sp, index;
 		// meth/property is index
 		// spec should be scalar
@@ -3473,7 +3497,11 @@ CachedBus : Bus {
 +PopUpMenu {
 	// map index of popupmenu to param 
 	mapParam { arg param;
-		this.mapIndexParam(param)
+		param.mapPopUpMenu(this);
+	}
+
+	mapValueParam { arg param;
+		param.mapValuePopUpMenu(this);
 	}
 
 	mapIndexParam { arg param;

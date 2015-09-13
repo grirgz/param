@@ -172,15 +172,23 @@ TimelineView : SCViewHolder {
 							newpos = gpos; 
 						};
 
+						"mouseDownAction: 1".debug;
 						newevent = this.eventFactory(newpos);
 						chosennode = this.addEvent(newevent);
+						newevent.debug("mouseDownAction: 2");
 
 						createNodeDeferedAction = {
+							debug("mouseDownAction: 3");
 							model.addEvent(newevent);
+							debug("mouseDownAction: 4");
 							model.reorder;
+							debug("mouseDownAction: 5");
 							model.changed(\refresh);
+							debug("mouseDownAction: 6");
 						};
 
+						[chosennode.posyKey, chosennode.model, chosennode.origin].debug("posy, model, origin");
+						[chosennode.width].debug("pppp");
 						refPoint = newpos; // var used here for reference in trackfunc
 						refWidth = chosennode.width;
 
@@ -534,6 +542,7 @@ TimelineView : SCViewHolder {
 	drawNodes {
 
 		var defered_nodes = List.new;
+		var first = true;
 		//debug("start drawing nodes");
 		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
 
@@ -544,6 +553,10 @@ TimelineView : SCViewHolder {
 			if(node.class == TimelineViewLocatorLineNode) {
 				defered_nodes.add(node)
 			} {
+				if(first) { // for env timelines
+					Pen.moveTo(this.gridPointToPixelPoint(node.origin));
+					first = false;
+				};
 				node.draw;
 			}
 		});
@@ -839,9 +852,14 @@ TimelineView : SCViewHolder {
 		node = this.nodeClass.new(this, nodeCount, event);
 		nodeCount = nodeCount + 1;
 		paraNodes.add(node);
+		this.initNode(node);
 		createNodeHook.(node, nodeCount);
 		if(refreshEnabled) { this.refresh };
 		^node;
+	}
+
+	initNode { arg node;
+
 	}
 
 	addEvent { arg event;
@@ -1192,7 +1210,8 @@ TimelinePreview_Env : TimelineView {
 TimelineViewNode {
 	*new { arg parent, nodeidx, event;
 		var type;
-		type = event[\nodeType] ? event[\type];
+		// FIXME: choose a better type system
+		type = event[\nodeType] ? event[\eventType] ? event[\type];
 		//[ parent.class, type.asCompileString ].debug("TimelineViewNode: new: nodeType/type");
 		//[ event[\nodeType], event, event.parent ].debug("TimelineViewNode: nodeType");
 		^switch(type,
@@ -1210,6 +1229,9 @@ TimelineViewNode {
 				TimelineViewEventEnvNode(parent, nodeidx, event)
 			},
 			\eventlist, {
+				TimelineViewEventListNode(parent, nodeidx, event)
+			},
+			\pattern, {
 				TimelineViewEventListNode(parent, nodeidx, event)
 			},
 			\eventloop, {
@@ -1281,7 +1303,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		};
 
 		refresh = {
-			origin = Point(model[timeKey], model[posyKey]);
+			origin = Point(model[timeKey], model[posyKey] ? 0);
 			color = Color.green;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
@@ -1573,8 +1595,57 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 ////////////////////////////////
 
 TimelineEnvView : TimelineView {
+	var valueKey = \midinote;
+	var <>param;
 	nodeClass {
 		^TimelineEnvViewNode
+	}
+
+	initNode { arg node;
+		node.posyKey = valueKey;
+		node.refresh;
+		node.posyKey.debug("initNode: posyKey");
+	}
+
+	mapParam { arg param_object;
+		param = param_object;
+		this.valueKey = param.property;
+		this.areasize.y = param.spec.range;
+	}
+
+	valueKey {
+		^valueKey;
+	}
+
+	valueKey_ { arg val;
+		valueKey = val;
+		paraNodes.do { arg node;
+			if(node.isKindOf(TimelineEnvViewNode)) {
+				node.posyKey = val;
+				node.refresh;
+			}
+		};
+		this.refreshEventList;
+	}
+
+	eventFactory { arg pos;
+		var nodesize = Point(1,1);
+		// why nodesize is in normalized form ???
+		nodesize = this.gridPointToNormPoint(nodesize);
+		if(eventFactory.isNil) {
+			var ev;
+			ev = (absTime: pos.x, sustain:nodesize.x);
+			if(param.isNil) {
+				"=========eventFactory: param is nil".debug;
+				ev[\midinote] = pos.y;
+			} {
+				param.property.debug("=========eventFactory: param property");
+				ev[param.property] = pos.y;
+			};
+			^ev;
+		} {
+			^eventFactory.(pos, nodesize.x);
+		}
 	}
 }
 
@@ -1600,8 +1671,9 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		parent = xparent;
 		spritenum = nodeidx;
 		model = event;
+		extent = Point(1/4,1);
 
-		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
 			//[model, origin].debug("node action before");
@@ -1611,7 +1683,14 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		};
 
 		refresh = {
-			origin = Point(model[timeKey] ? 0, model[posyKey] ? 0);
+			var posy = model[posyKey] ? (
+				if(parent.param.notNil) {
+					parent.param.default.debug("dd====================");
+				} {
+					0
+				}
+			);
+			origin = Point(model[timeKey] ? 0, posy);
 			color = Color.black;
 			outlineColor = Color.grey;
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?

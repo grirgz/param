@@ -331,6 +331,44 @@ XOutBusSpec : XBusSpec {
 
 }
 
+MenuSpec : Spec {
+	var <>labelList, <>valueList;
+
+	*new { arg list;
+		^super.new.menuSpecInit(list);
+	}
+
+	menuSpecInit { arg list;
+		labelList = List.new;
+		valueList = List.new;
+		list.do { arg x;
+			if(x.class == Association) {
+				labelList.add(x.key);
+				valueList.add(x.value);
+			} {
+				labelList.add(x);
+				valueList.add(x);
+			}
+		}
+	}
+
+	mapIndex { arg val;
+		^valueList[val]
+	}
+
+	unmapIndex { arg val;
+		^valueList.detectIndex({ arg x; x == val })
+	}
+
+	map { arg val;
+		^this.mapIndex(val * valueList.size)
+	}
+
+	unmap { arg val;
+		^this.unmapIndex(val) / valueList.size;
+	}
+
+}
 
 // ~a = XArraySpec( \freq.asSpec ! 15  ) // array of size 15
 // ~a = XArraySpec( [\freq, \unipolar]  ) // array of size two
