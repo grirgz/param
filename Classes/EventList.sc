@@ -92,12 +92,22 @@ XEventList : List {
 	}
 
 	startTime {
+		// this time is absolute
 		^startTime;
 		//if(this.size > 0) {
 		//	^this[0].absTime
 		//} {
 		//	^0
 		//};
+	}
+
+	relStartTime {
+		// this time is relative to the first event
+		^this.startTime - firstTime;
+	}
+
+	firstTime {
+		^this[0][\absTime];
 	}
 
 	addEvent { |ev|
@@ -117,11 +127,10 @@ XEventList : List {
 	}
 
 	finish { |absTime|
-		// FIXME: \start is not always the first event
 		this.addEvent((absTime: absTime, type: \end, relDur: 0));
-		totalDur = absTime - this.first[\absTime];
-		playingDur = totalDur;
-		this.setPlayDursToRelDur;
+		//totalDur = absTime - this.first[\absTime]; // set in .reorder
+		//playingDur = totalDur; // set in .reorder
+		//this.setPlayDursToRelDur; // called in .reorder
 		this.reorder;
 	}
 
@@ -195,6 +204,8 @@ XEventList : List {
 		};
 		this.calcRelDurs;
 		this.setPlayDursToRelDur;
+		totalDur = endTime - startTime;
+		playingDur = totalDur;
 		//this.changed(\refresh);
 	}
 
@@ -603,6 +614,11 @@ XEventLoop {
 
 }
 
+XEventEnv : XEventList {
+	var <>param;
+
+	
+}
 
 Pev {
 	*new { arg event;

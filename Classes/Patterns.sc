@@ -240,7 +240,7 @@ StepEvent : Event {
 				// and not call asPattern on it
 				pairs.add(val.addHalo(\seqstyle, \button).prest);
 			} {
-				pairs.add(val.asPattern);
+				pairs.add(val.asPattern); // FIXME: what if already a pattern ?
 			}
 		};
 		pbind = Pbind(
@@ -804,6 +804,8 @@ EventPrototype {
 }
 
 StepSeqManager : EventPrototype {
+	// bad name: not really the manager, should be the reverse
+	// but it's just a prototype now, should be translated in real class code
 	*initClass {
 		this.eventPrototypeInitClass((
 			file: "/home/ggz/code/sc/seco/vlive/demo/param/lib/stepeditor.scd",
