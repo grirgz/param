@@ -103,7 +103,7 @@ XEventList : List {
 
 	relStartTime {
 		// this time is relative to the first event
-		^this.startTime - firstTime;
+		^this.startTime - this.firstTime;
 	}
 
 	firstTime {

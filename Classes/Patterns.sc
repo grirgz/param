@@ -1509,6 +1509,27 @@ PlayerWrapper  {
 	}
 }
 
+EventPlayerWrapper : PlayerWrapper {
+	// allow an event to act as a PlayerWrapper
+
+	play {
+		if(target.notNil) {
+			target.eventPlay;
+		}
+	}
+
+	isPlaying {
+		^target.eventIsPlaying
+	}
+
+	stop {
+		if(target.notNil) {
+			target.eventStop;
+		}
+	}
+
+}
+
 
 
 // not needed, just use Pdefn

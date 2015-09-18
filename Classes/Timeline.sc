@@ -2,6 +2,18 @@
 TimelineRulerView : TimelineView {
 	// this is X ruler actually
 	var <>mygrid; // debug
+	var <>cursor;
+
+	mapCursor { arg curs;
+		cursor = curs;
+		this.view.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
+			px.debug("TimelineLocatorBarView: mousedown set start");
+			//if(chosennode.isNil) 
+			cursor.startPosition_(this.pixelPointToGridPoint(Point(px, 0)).x.round(quant.value.x));
+			mouseDownAction.(me, px, py, mod, buttonNumber, clickCount);
+		}
+	}
+
 
 	//*new { arg w, bounds; 
 	//	^super.new.initTimelineRulerView(w, bounds);
@@ -57,7 +69,6 @@ TimelineRulerView : TimelineView {
 }
 
 TimelineLocatorBarView : TimelineView {
-	var <>cursor;
 
 	specialInit {
 		"SPECIAL INIT".debug;
@@ -66,15 +77,6 @@ TimelineLocatorBarView : TimelineView {
 			this.deselectAllNodes;
 			this.refresh;
 		};
-	}
-
-	mapCursor { arg curs;
-		cursor = curs;
-		mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
-			px.debug("TimelineLocatorBarView: mousedown set start");
-			//if(chosennode.isNil) 
-			cursor.startPosition_(this.pixelPointToGridPoint(Point(px, 0)).x.round(quant.value.x));
-		}
 	}
 
 	nodeClass {
@@ -507,14 +509,14 @@ CursorTimelineView : TimelineView {
 		if(cursor.notNil) {
 			Pen.color = Color.blue;
 			spos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
-			[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
+			//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
 			Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
 			Pen.stroke;
 
 			if(cursor.endPosition.notNil) {
 				Pen.color = Color.blue;
 				spos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
-				[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
+				//[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
 				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
 				Pen.stroke;
 
