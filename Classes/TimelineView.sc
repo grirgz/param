@@ -1190,7 +1190,7 @@ TimelinePreview : TimelineView {
 	}
 }
 
-TimelinePreview_Env : TimelineView {
+TimelinePreview_Env : TimelineEnvView {
 	drawFunc {
 		this.drawNodes;
 		this.drawEndLine;
@@ -1229,6 +1229,17 @@ TimelineViewNode {
 				TimelineViewEventEnvNode(parent, nodeidx, event)
 			},
 			\eventlist, {
+				TimelineViewEventListNode(parent, nodeidx, event)
+			},
+			\timeline, {
+				//if(event.timeline.isKindOf(EnvTimeline)) {
+				if(event.timeline.eventType == \envTimeline) {
+					TimelineViewEventEnvNode(parent, nodeidx, event)
+				} {
+					TimelineViewEventListNode(parent, nodeidx, event)
+				}
+			},
+			\player, {
 				TimelineViewEventListNode(parent, nodeidx, event)
 			},
 			\pattern, {
@@ -1413,6 +1424,8 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		^TimelinePreview
 	}
 
+	initPreview {}
+
 	init { arg xparent, nodeidx, event;
 		parent = xparent;
 		spritenum = nodeidx;
@@ -1420,6 +1433,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 		preview = this.timelinePreviewClass.new;
 		preview.areasize.x = parent.areasize.x;
+		this.initPreview;
 
 		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
@@ -1437,8 +1451,30 @@ TimelineViewEventListNode : TimelineViewEventNode {
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
 			label = model.use {  model.label } ? "unnamed";
 			if(model[\eventlist].notNil) {
-				preview.mapEventList(model[\eventlist]);
+				preview.mapEventList(model.eventlist);
 			};
+
+			// FIXME: this is specific code, should be generalized
+			if(model.timeline.notNil) {
+				switch(model.timeline.eventType,
+					\envTimeline, {
+						preview.mapParam(model.timeline.levelParam);
+					},
+					\clipTimeline, {
+						// FIXME: should optimize this out of here
+						var maxy = 1;
+						model.timeline.eventList.do { arg ev;
+							if(ev[posyKey].notNil and: { ev[posyKey]  > maxy }) {
+								maxy = ev[posyKey];
+							};
+						};
+						preview.areasize.y = maxy + 1;
+					}, {
+
+					}
+				);
+			};
+
 			parent.refresh;
 			//[spritenum, origin, extent, color].debug("node refresh");
 		};
@@ -1750,7 +1786,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 
 
 
-////////////////////////////////
+//////////////////////////////// utilities
 
 
 DenseGridLines : GridLines {

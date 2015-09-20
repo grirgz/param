@@ -1459,12 +1459,6 @@ PlayerWrapper  {
 		target = tar;
 	}
 
-	play {
-		if(target.notNil) {
-			target.play;
-		}
-	}
-
 	isPlaying {
 		switch(target.class,
 			Pdef, {
@@ -1489,14 +1483,40 @@ PlayerWrapper  {
 				^target.tryPerform(\label) ?? { "" }
 			}
 		)
+	}
 
+	key { 
+		^this.label.asSymbol;
+	}
 
+	play {
+		if(target.notNil) {
+			switch(target.class,
+				Ndef, {
+					// hack: Ndef now have same latency than Pdef
+					//{
+						target.play 
+					//}.defer(Server.default.latency)
+				}, {
+					target.play;
+				}
+			);
+		}
 	}
 
 
 	stop {
 		if(target.notNil) {
-			target.stop;
+			switch(target.class,
+				Ndef, {
+					// hack: Ndef now have same latency than Pdef
+					{
+						target.stop 
+					}.defer(Server.default.latency)
+				}, {
+					target.stop;
+				}
+			);
 		}
 	}
 
@@ -1516,6 +1536,10 @@ EventPlayerWrapper : PlayerWrapper {
 		if(target.notNil) {
 			target.eventPlay;
 		}
+	}
+
+	label {
+		^target.label ? "-"
 	}
 
 	isPlaying {

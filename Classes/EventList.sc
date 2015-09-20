@@ -189,7 +189,7 @@ XEventList : List {
 					( a[\absTime] == b[\absTime] ).not and: { a[\absTime] < b[\absTime] }
 				},
 				{
-					a[\absTime] < b[\absTime] 
+					a[\absTime] <= b[\absTime] 
 				}
 			)
 			//a[\absTime] < b[\absTime] 
