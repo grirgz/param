@@ -195,6 +195,7 @@ ListParamLayout {
 	}
 }
 
+
 ParamGroupLayout {
 	*new { arg group;
 		^this.windowize(this.two_panes(group));
@@ -212,7 +213,14 @@ ParamGroupLayout {
 		// TODO: the window close before recreating if open
 	}
 
-	*two_panes { arg pg;
+	*block { arg label, pg;
+		^VLayout(
+			[StaticText.new.string_(label).background_(ParamView.color_dark), stretch:0],
+			[this.two_panes(pg, \property), stretch:1],
+		)
+	}
+
+	*two_panes { arg pg, label_mode;
 
 		var layout;
 		var gridlayout;
@@ -220,23 +228,33 @@ ParamGroupLayout {
 		var scalarlist, biglist;
 		var layout_type;
 
+		label_mode = label_mode ? \full; // \full, \property
+
 		scalarlist = pg.select({ arg param; 
 			param.type == \scalar;
 		});
 		biglist = pg.select({ arg param;
-			param.type != \scalar;
+			param.type != \scalar and: { 
+				param.spec.isKindOf(AudioSpec).not
+			}
 		});
 
 		gridlayout = GridLayout.rows(*
 			scalarlist.collect({ arg param;
 				[
-					param.asStaticTextLabel,
+					if(label_mode == \full) {
+						param.asStaticTextLabel;
+					} {
+						StaticText.new.string_(param.property)
+					},
 					param.asSlider.orientation_(\horizontal),
 					param.asTextField,
 				]
 			})
 		);
-		gridlayout.setColumnStretch(1,1);
+		gridlayout.setColumnStretch(0,2);
+		gridlayout.setColumnStretch(1,6);
+		gridlayout.setColumnStretch(2,2);
 
 		// chipotage
 		if(biglist.size < 5 and: { scalarlist.size < 6 } ) {
@@ -248,7 +266,11 @@ ParamGroupLayout {
 		biglayout = VLayout(*
 			biglist.collect({ arg param;
 				VLayout(
-					param.asStaticTextLabel,
+					if(label_mode == \full) {
+						param.asStaticTextLabel;
+					} {
+						StaticText.new.string_(param.property)
+					},
 					param.asView,
 					param.asTextField,
 				)
@@ -634,6 +656,8 @@ StepListView : SCViewHolder {
 			if(hasCursor) {
 				this.addCursor;
 			}
+		} {
+			this.view.removeAll;
 		}
 	}
 }
@@ -650,6 +674,7 @@ StepEventView : SCViewHolder {
 	var <>popupview;
 	var <>eventseq;
 	var <>controller;
+	var <>sizer_view;
 
 	*new { arg seq;
 		^super.new.init(seq);
@@ -659,8 +684,11 @@ StepEventView : SCViewHolder {
 		this.view = View.new;
 		stepseqview = StepListView.new;
 		this.view.layout = HLayout(
-			stepseqview.view,
-			popupview = PopUpMenu.new,
+			[stepseqview.view, stretch:1],
+			VLayout(
+				popupview = PopUpMenu.new,
+				sizer_view = NumberBox.new; [sizer_view, stretch:0],
+			)
 		);
 		if(seq.notNil) {
 			this.mapStepEvent(seq);
@@ -690,7 +718,14 @@ StepEventView : SCViewHolder {
 		popupview.items = eventseq.keys.asArray.sort;
 		popupview.action = { arg view;
 			var stepseq = eventseq[view.items[view.value].asSymbol];
-			stepseqview.mapStepList(stepseq)
+			if(stepseq.isKindOf(StepList)) {
+				stepseqview.mapStepList(stepseq);
+				sizer_view.mapParam(Param(Message(stepseq), \stepCount));
+			} {
+				// TODO: implement simple knob if scalar
+				stepseqview.mapStepList(nil);
+				sizer_view.unmapParam;
+			}
 		};
 		if(eventseq.size > 0) {
 			if(eventseq[\isRest].notNil) {
@@ -728,6 +763,8 @@ DictStepListView : StepListView {
 			style = style ?? { seq.getHalo(\seqstyle) ? \valuePopup }; 
 			//[style, seq.dict].debug("mapDictStepList: style, dict");
 			this.view.layout_(this.makeLayout(seq, style));
+		} {
+			this.view.removeAll;
 		}
 	}
 }
@@ -776,8 +813,9 @@ XVLayout : VLayout {
 
 
 PlayerWrapperView : ObjectGui {
+	var <>states;
 	var player;
-	var button;
+	var <>button;
 	var skipjack;
 	var pollRate = 1;
 	new { arg model;
@@ -803,7 +841,7 @@ PlayerWrapperView : ObjectGui {
 				);
 			})
 		);
-		button.states = this.getStates;
+		button.states = this.getStates(model.label);
 		this.makeUpdater;
 		^lay;
 	}
@@ -826,10 +864,15 @@ PlayerWrapperView : ObjectGui {
 	}
 
 	getStates { arg str="";
-		^[
-			[ str + "▶", Color.black, Color.white ],
-			[ str + "||", Color.black, ParamView.color_ligth ],
-		];
+		[ str ++ " ▶" ].debug("getStates");
+		if(states.notNil) {
+			^states.(str);
+		} {
+			^[
+				[ str ++ " ▶", Color.black, Color.white ],
+				[ str ++ " ||", Color.black, ParamView.color_ligth ],
+			];
+		}
 	}
 
 	update { arg changed, changer ... args;
@@ -839,14 +882,9 @@ PlayerWrapperView : ObjectGui {
         if(changer !== this) {  
 			var label;
 			//model.isPlaying.debug("isPlaying?");
-			if(model.isKindOf(PlayerWrapper).not or: { model.target.notNil }) {
-				if(model.class == PlayerWrapper) {
-					label = model.label;
-				} {
-					label = model.tryPerform(\name) ? model.tryPerform(\label) ? model.tryPerform(\key);
-					label = model.class.asString[0].asString + label;
-				};
-
+			if(model.isKindOf(PlayerWrapper)) {
+				label = model.label;
+				label.asCompileString.debug("PlayerWrapperView: getlabel");
 				button.states = this.getStates(label);
 				if(model.isPlaying) {
 					button.value = 1

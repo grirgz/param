@@ -353,7 +353,7 @@ MenuSpec : Spec {
 	}
 
 	mapIndex { arg val;
-		^valueList[val]
+		^valueList[val.round.asInteger]
 	}
 
 	unmapIndex { arg val;
@@ -361,11 +361,11 @@ MenuSpec : Spec {
 	}
 
 	map { arg val;
-		^this.mapIndex(val * valueList.size)
+		^this.mapIndex(val * ( valueList.size - 1))
 	}
 
 	unmap { arg val;
-		^this.unmapIndex(val) / valueList.size;
+		^this.unmapIndex(val) / ( valueList.size - 1);
 	}
 
 }

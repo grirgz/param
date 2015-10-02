@@ -356,3 +356,26 @@ SampleProxy  {
 	}
 
 }
+
+
+///////////////////////// dont know where to put that
+
+
++ List {
+	sortLike { arg model;
+		var ar = Array.new(this.size);
+		model.do({ arg key;
+			if(array.includes(key)) {
+				ar = ar.add( array.remove(key) );
+			}
+		});
+		//array.do { arg val;
+		//	if(val.notNil) {
+		//		ar = ar.add(val)
+		//	}
+		//}
+		ar = ar ++ array;
+		array = ar
+	}
+}
+

@@ -528,10 +528,23 @@ TimelineView : SCViewHolder {
 	
 	drawGridY {
 
+		var y_lines_count;
+		var y_lines_factor;
 		Pen.alpha = 0.5;
 		Pen.color = Color.black;
 
-		areasize.y.do { arg py;
+		y_lines_count = areasize.y;
+
+		// naive way to reduce number of lines
+		7.do {
+			if(y_lines_count > 128) {
+				y_lines_count = y_lines_count / 2;
+			};
+		};
+		y_lines_factor = areasize.y / y_lines_count;
+
+		y_lines_count.do { arg py;
+			py = py * y_lines_factor;
 			Pen.line(this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py)));
 		};
 		Pen.stroke;

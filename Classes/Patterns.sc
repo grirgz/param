@@ -180,6 +180,7 @@ PstepSeq : ListPattern {
 //}
 
 StepList : List {
+	var <>bypass = 0;
 
 	// TODO: send changed message when .put or other
 
@@ -188,7 +189,11 @@ StepList : List {
 	}
 
 	asPattern {
-		^PstepSeq(this)
+		if(bypass == 1) {
+			^nil
+		} {
+			^PstepSeq(this)
+		}
 	}
 
 	asParam {
@@ -206,6 +211,7 @@ StepList : List {
 	stepCount_ { arg val;
 		this.array = this.array.wrapExtend(val.asInteger);
 		this.changed(\refresh);
+		this.changed(\set, [\stepCount]);
 	}
 
 	stepCount {
@@ -230,7 +236,6 @@ StepEvent : Event {
 		var pairs = List.new;
 		var pbind;
 		this.keysValuesDo { arg key, val;
-			pairs.add(key);
 			if(key == \isRest) {
 				// FIXME: to much assumption on how rest are handled
 				// currently, if a key is isRest, it's a coin pattern with button style
@@ -238,9 +243,19 @@ StepEvent : Event {
 				// maybe isRest could be a function looking if \step != 0 is defined and if \amp != 0
 				// need to add a filter on values, excluding functions in the view
 				// and not call asPattern on it
+				pairs.add(key);
 				pairs.add(val.addHalo(\seqstyle, \button).prest);
 			} {
-				pairs.add(val.asPattern); // FIXME: what if already a pattern ?
+				var pat;
+				if(val.isKindOf(Event) and: { val[\eventType] == \envTimeline }) {
+					pat = val.outBus.asMap;
+				} {
+					pat = val.asPattern;
+				};
+				if(pat.notNil) {
+					pairs.add(key);
+					pairs.add(pat); // FIXME: what if already a pattern ?
+				}
 			}
 		};
 		pbind = Pbind(
@@ -250,6 +265,9 @@ StepEvent : Event {
 			//	1
 			//})]
 		);
+		if(pairs.size == 0) { // avoid infinite loop when empty because not infinite when not empty
+			pbind = pbind.keep(1);
+		};
 		ev = pbind.embedInStream(ev);
 		ev.debug("ev: end");
 		^ev;
@@ -269,6 +287,7 @@ StepEvent : Event {
 				v.stepCount = val;
 			}
 		};
+		this.changed(\set, [\stepCount]);
 	}
 
 	stepCount {
@@ -277,6 +296,7 @@ StepEvent : Event {
 				^v.stepCount;
 			}
 		};
+		^1
 	}
 
 
@@ -1450,75 +1470,79 @@ Builder {
 
 
 PlayerWrapper  {
-	var <>target;
+	var <>wrapper;
+
 	*new { arg target;
-		^super.new.init(target);
+		^super.new.initWrapper(target);
 	}
 
-	init { arg tar;
-		target = tar;
+	initWrapper { arg target;
+		wrapper = case 
+			{ target.isKindOf(Event) } {
+				PlayerWrapper_Event(target)
+			}
+			{ target.isKindOf(NodeProxy) } {
+				PlayerWrapper_NodeProxy(target)
+			}
+			{ target.isKindOf(EventPatternProxy) } {
+				PlayerWrapper_EventPatternProxy(target)
+			}
+			{ target.isKindOf(Param) } {
+				PlayerWrapper_Param.new(target)
+			}
+		;
+		
 	}
+
+	target {
+		if(wrapper.notNil) {
+			^wrapper.target
+		} {
+			^nil
+		};
+	}
+
+	///////// API
+	// play
+	// stop
+	// isPlaying
+	// label and key
+
+	// *could be added
+	// pause
+	// record
+
+    doesNotUnderstand { arg selector...args;
+		[selector, args].debug("PlayerWrapper: doesNotUnderstand");
+        if(wrapper.class.findRespondingMethodFor(selector).notNil) {
+			"PlayerWrapper: perform".debug;
+			^wrapper.perform(selector, * args);
+		} {
+			if(wrapper.target.class.findRespondingMethodFor(selector).notNil) {
+				"PlayerWrapper: sub perform".debug;
+				^wrapper.target.perform(selector, * args);
+			} {
+				"PlayerWrapper: doesnot".debug;
+				DoesNotUnderstandError.throw;
+			}
+		};
+	}
+
+	/////////////// overRide object methods
 
 	isPlaying {
-		switch(target.class,
-			Pdef, {
-				^target.isPlaying;
-			},
-			Ndef, {
-				^target.monitor.isPlaying;
-			}, {
-				^target.isPlaying
-			}
-		)
+		^wrapper.isPlaying
 	}
 
-	label {
-		switch(target.class,
-			Pdef, {
-				^target.key;
-			},
-			Ndef, {
-				^target.key;
-			}, {
-				^target.tryPerform(\label) ?? { "" }
-			}
-		)
-	}
-
-	key { 
-		^this.label.asSymbol;
+	stop {
+		wrapper.stop;
 	}
 
 	play {
-		if(target.notNil) {
-			switch(target.class,
-				Ndef, {
-					// hack: Ndef now have same latency than Pdef
-					//{
-						target.play 
-					//}.defer(Server.default.latency)
-				}, {
-					target.play;
-				}
-			);
-		}
+		wrapper.play;
 	}
 
-
-	stop {
-		if(target.notNil) {
-			switch(target.class,
-				Ndef, {
-					// hack: Ndef now have same latency than Pdef
-					{
-						target.stop 
-					}.defer(Server.default.latency)
-				}, {
-					target.stop;
-				}
-			);
-		}
-	}
+	///////////// gui
 
 	edit {
 		^WindowLayout({ PlayerWrapperView.new(this).layout });
@@ -1529,17 +1553,117 @@ PlayerWrapper  {
 	}
 }
 
-EventPlayerWrapper : PlayerWrapper {
-	// allow an event to act as a PlayerWrapper
+PlayerWrapper_Base {
+	var <>target;
+	*new { arg target;
+		^super.new.init(target)
+	}
 
-	play {
-		if(target.notNil) {
-			target.eventPlay;
+	init { arg xtarget;
+		target = xtarget
+	}
+
+	key { arg self;
+		^this.label.asSymbol;
+	}
+
+
+    doesNotUnderstand { arg selector...args;
+		[selector, args].debug("PlayerWrapper_Base: doesNotUnderstand");
+		if(target.class.findRespondingMethodFor(selector).notNil) {
+			"perform".debug;
+			^target.perform(selector, * args);
+		} {
+			"PlayerWrapper_Base: doesnot".debug;
+			DoesNotUnderstandError.throw;
 		}
 	}
 
+	/////////////// overRide object methods
+
+	isPlaying {
+		^target.isPlaying;
+	}
+
+	stop {
+		target.stop;
+	}
+
+	play {
+		target.play;
+	}
+
+
+}
+
+PlayerWrapper_Param : PlayerWrapper_Base {
+	play {
+		target.normSet(1)
+	}
+
 	label {
-		^target.label ? "-"
+		var res;
+		res = target.property;
+		if(res.isKindOf(Function)) {
+			^""
+		} {
+			^res
+		}
+	}
+
+	stop {
+		target.normSet(0)
+	}
+
+	isPlaying {
+		^target.normGet == 1
+	}
+}
+
+PlayerWrapper_NodeProxy : PlayerWrapper_Base {
+	label {
+		if(target.isKindOf(Ndef)) {
+			^target.key
+		} {
+			^""
+		}
+	}
+
+	stop {
+		// hack: Ndef now have same latency than Pdef
+		{
+			target.stop 
+		}.defer(Server.default.latency)
+	}
+
+	isPlaying {
+		target.monitor.isPlaying;
+	}
+
+}
+
+PlayerWrapper_EventPatternProxy : PlayerWrapper_Base {
+	label {
+		if(target.isKindOf(Pdef)) {
+			^target.key
+		} {
+			^""
+		}
+	}
+
+}
+
+EventPlayerWrapper : PlayerWrapper_Event { } // compat, to be deleted
+
+PlayerWrapper_Event : PlayerWrapper_Base {
+	// allow an event to act as a PlayerWrapper
+
+	play {
+		target.eventPlay;
+	}
+
+	label {
+		^target.label ?? "-"
 	}
 
 	isPlaying {
@@ -1547,9 +1671,7 @@ EventPlayerWrapper : PlayerWrapper {
 	}
 
 	stop {
-		if(target.notNil) {
-			target.eventStop;
-		}
+		target.eventStop;
 	}
 
 }

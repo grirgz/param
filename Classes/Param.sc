@@ -274,6 +274,9 @@ Param {
 			Builder: {
 				Builder.debug("newWrapper");
 				wrapper = BuilderParam(*args);
+			},
+			Bus: {
+				wrapper = BusParam(*args);
 			}
 		);
 		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
@@ -2151,6 +2154,26 @@ BuilderParam : StandardConstructorParam {
 	}
 }
 
+BusParam : StandardConstructorParam {
+
+	controllerTarget {
+		^this.target;
+	}
+
+	asLabel {
+		^"% %".format(target.class, property)
+	}
+
+	set { arg val;
+		//target.receiver.perform((property++"_").asSymbol, val);	
+		this.target.set(val);
+		this.controllerTarget.changed(\set); // FIXME: may update two times when pointed object already send changed signal
+	}
+
+	get { 
+		^target.getSynchronous; // could use cached bus
+	}
+}
 
 
 ////////////////////////////////////////
@@ -2476,6 +2499,10 @@ ParamGroup : List {
 			ParamGroupLayout.new(pg);
 		};
 		fun.(this);
+	}
+
+	editorView { 
+		ParamGroupLayout.two_panes(this);
 	}
 
 }
