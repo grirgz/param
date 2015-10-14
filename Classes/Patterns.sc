@@ -232,6 +232,18 @@ StepListDef {
 
 StepEvent : Event {
 
+	asParamGroup {
+		var instr;
+		var specgroup;
+		instr = this.getHalo(\instrument) ? this.instrument;
+		if(instr.notNil) {
+			^SynthDesc(instr).asParamGroup(this);
+		} {
+			"error: no instrument found".postln;
+			^nil;
+		}
+	}
+
 	embedInStream { arg ev;
 		var pairs = List.new;
 		var pbind;
@@ -298,8 +310,44 @@ StepEvent : Event {
 		};
 		^1
 	}
+}
 
+PresetEvent : StepEvent {
 
+	embedInStream { arg ev;
+		var pairs = List.new;
+		var pbind;
+		this.keysValuesDo { arg k, v;
+			pairs.add(k);
+			pairs.add(v);
+		};
+		pbind = Pbind(
+			*pairs.debug("pairs")
+			//++ [\what, Pfunc({ arg ev; ev.debug("WTF!"); pairs.clump(2).do { arg x; 
+			//	x.debug("list") };
+			//	1
+			//})]
+		);
+		pbind = pbind.keep(1); // force reread of event keys for each event
+		ev = pbind.embedInStream(ev);
+		//ev.debug("ev: end");
+		^ev;
+	}
+
+	asView {
+		^ParamGroupLayout.two_panes(this.asParamGroup, \property)
+	}
+
+	edit {
+		var window = Window.new;
+		var layout;
+		layout = VLayout(
+			this.asView
+		);
+		window.layout = layout;
+		//window.alwaysOnTop = true;
+		window.front;
+	}
 }
 
 BankList : List {
@@ -575,6 +623,7 @@ DrumRack {
 	classvar <>lib_score;
 	classvar <>lib_instr;
 	classvar <>all;
+	var <>playerWrapper;
 	//var <>lib_drumrack; // in ~drumrack instance directly, maybe add a redirection
 	//var <>lib_drumpad;
 	//var <>lib_score;
@@ -1471,6 +1520,7 @@ Builder {
 
 PlayerWrapper  {
 	var <>wrapper;
+	var >label;
 
 	*new { arg target;
 		^super.new.initWrapper(target);
@@ -1540,6 +1590,14 @@ PlayerWrapper  {
 
 	play {
 		wrapper.play;
+	}
+
+	label {
+		if(label.notNil) {
+			^label;
+		} {
+			^wrapper.label;
+		}
 	}
 
 	///////////// gui

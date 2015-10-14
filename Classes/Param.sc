@@ -281,10 +281,14 @@ Param {
 		);
 		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
 		class_dispatcher['Pbindef'] = class_dispatcher['Pdef'];
+
 		class_dispatcher['StepList'] = class_dispatcher['List'];
 		class_dispatcher['DictStepList'] = class_dispatcher['List'];
 		class_dispatcher['ParDictStepList'] = class_dispatcher['List'];
+
 		class_dispatcher['Event'] = class_dispatcher['Dictionary'];
+		class_dispatcher['PresetEvent'] = class_dispatcher['Dictionary'];
+		class_dispatcher['StepEvent'] = class_dispatcher['Dictionary'];
 		class_dispatcher['IdentityDictionary'] = class_dispatcher['Dictionary'];
 		class_dispatcher['Environment'] = class_dispatcher['Dictionary'];
 
@@ -330,6 +334,10 @@ Param {
 
 	type {
 		^wrapper.type
+	}
+
+	default {
+		^wrapper.default;
 	}
 
 	setBusMode { arg enable=true, free=true;
@@ -3720,76 +3728,3 @@ CachedBus : Bus {
 }
 
 
-////////////////////////////////
-
-
-+SynthDesc {
-	*new { arg name;
-		if(name.isNil) {
-			^super.new
-		} {
-			^SynthDescLib.global.at(name)
-		}
-	}
-
-	params { 
-		^this.controls.collect { arg control;
-			var ret;
-			var spec;
-			if(control.name == '?') {
-				ret = nil;
-			} {
-				spec = this.getSpec(control.name.asSymbol);
-				if(spec.isNil) {
-					ret = control.name.asSymbol;
-				} {
-					ret = [control.name.asSymbol, spec];
-				};
-			};
-			ret
-		}.select(_.notNil);
-	}
-
-	specs {
-		var val;
-		val = this.metadata;
-		if(val.notNil) {
-			val = val.specs;
-			if(val.notNil) {
-				^val.composeEvent(this.getHalo(\specs))
-			} {
-				^this.getHalo(\specs)
-			}
-		} {
-			^this.getHalo(\specs)
-		}
-	}
-
-	defaultValue { arg argname;
-		var val;
-		var con = this.controlDict[argname];
-		if(con.notNil) {
-			val = con.defaultValue;
-		}
-		^val;
-	}
-
-	getSpec { arg name;
-		var val;
-		var rval;
-		if(super.getSpec(name).notNil) {
-			rval = super.getSpec(name)
-		} {
-			val = this.metadata;
-			if(val.notNil) {
-				val = val.specs;
-				if(val.notNil) {
-					rval = val[name];
-				}
-			};
-
-		};
-		^rval;
-	}
-	
-}

@@ -864,7 +864,8 @@ PlayerWrapperView : ObjectGui {
 	}
 
 	getStates { arg str="";
-		[ str ++ " ▶" ].debug("getStates");
+		// FIXME: uncomment debug lines to see that the SkipJack continue to run
+		//[ str ++ " ▶" ].debug("getStates");
 		if(states.notNil) {
 			^states.(str);
 		} {
@@ -884,7 +885,7 @@ PlayerWrapperView : ObjectGui {
 			//model.isPlaying.debug("isPlaying?");
 			if(model.isKindOf(PlayerWrapper)) {
 				label = model.label;
-				label.asCompileString.debug("PlayerWrapperView: getlabel");
+				//label.asCompileString.debug("PlayerWrapperView: getlabel");
 				button.states = this.getStates(label);
 				if(model.isPlaying) {
 					button.value = 1
