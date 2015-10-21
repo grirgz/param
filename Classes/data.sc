@@ -1,3 +1,33 @@
+EnvInit {
+	*new { arg key, val;
+		if(currentEnvironment[key].isNil) {
+			currentEnvironment[key] = val;
+		};
+		^currentEnvironment[key];
+	}
+}
+
+
+// this class is just a dictionary stored as a class name, with the syntax of Event
+// to be subclassed to easily create Class dictionaries
+// usefull as a namespace
+ClassMethodDictionary {
+	classvar <>all;
+	*initClass {
+		all = IdentityDictionary.new;
+	}
+
+    *doesNotUnderstand { arg selector...args;
+		if(selector.asString.endsWith("_")) {
+			all[selector.asGetter] = args[0];
+			^all[selector.asGetter];
+		} {
+			^all[selector]
+		}
+	}
+}
+
+EventClass : ClassMethodDictionary {}
 
 ArchiveDictionary {
 	classvar <>loaderStack;

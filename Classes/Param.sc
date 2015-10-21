@@ -2468,11 +2468,13 @@ ParamGroup : List {
 	save { arg key=\default; 
 		presets[key] = super.array.collect { arg param;
 			param.get;
-		}
+		};
+		this.changed(\presets);
 	}
 
 	presets_ { arg val;
 		presets = val.deepCopy;
+		this.changed(\presets);
 	}
 
 	getPreset { arg key=\default;
@@ -2481,7 +2483,6 @@ ParamGroup : List {
 
 	getPresetCompileString { arg key=\default;
 		// TODO: write asPresetCompileStringNdef and Pdef and each other Param type
-
 	}
 
 	valueList {
@@ -2492,6 +2493,7 @@ ParamGroup : List {
 
 	erase { arg key=\default;
 		presets[key] = nil;
+		this.changed(\presets);
 	}
 
 	load { arg key=\default; 
@@ -2510,12 +2512,18 @@ ParamGroup : List {
 	}
 
 	editorView { 
-		ParamGroupLayout.two_panes(this);
+		// FIXME: should decide terminology..
+		^ParamGroupLayout.two_panes(this);
+	}
+
+	asView {
+		^this.editorView
 	}
 
 }
 
 ParamGroupDef {
+	// FIXME: this should be a subclass or superclass of ParamGroup because changed signals don't propagate
 	classvar <lib;
 	var <key;
 	var <group;
@@ -2597,6 +2605,7 @@ ParamGroupDef {
 		};
 		group.presets = presets;
 		group.morphers = archive[\presets];
+		this.changed(\presets);
 		"end load Archive".debug;
 	}
 
@@ -2613,6 +2622,7 @@ ParamGroupDef {
 	save { arg name;
 		group.save(name);
 		this.saveArchive;
+		this.changed(\presets);
 	}
 
 	load { arg name;
@@ -2623,6 +2633,7 @@ ParamGroupDef {
 	erase { arg name;
 		group.erase(name);
 		this.saveArchive;
+		this.changed(\presets);
 	}
 
 	do { arg fun;
@@ -2643,6 +2654,10 @@ ParamGroupDef {
 
 	edit {
 		group.edit;
+	}
+
+	asView {
+		^group.asView;
 	}
 
 	asList {
@@ -2865,7 +2880,7 @@ ParamMorpherDef : ParamMorpher {
 
 PresetListMorpher : ParamMorpher {
 	var <disabledPresets;
-	var size;
+	var <>size;
 	*new { arg group, size, prefix=\preset;
 		var pval = ParamValue.new;
 		var inst;
@@ -2891,9 +2906,13 @@ PresetListMorpher : ParamMorpher {
 		this.wrapper.set(val);
 		presets_vals = presets.collect({ arg x; 
 			var res = group.getPreset(x);
-			res;
+			if(disabledPresets.includes(x).not) {
+				res;
+			} {
+				nil;
+			}
 		});
-		presets_vals = presets_vals.reject({ arg x; x.isNil }).reject(disabledPresets.includes(_));
+		presets_vals = presets_vals.reject({ arg x; x.isNil });
 		xsize = presets_vals.size;
 		//[presets_vals, presets].debug("presets");
 		if(xsize == 0) {
@@ -2948,6 +2967,14 @@ PresetListMorpher : ParamMorpher {
 
 	disablePreset { arg preset_index;
 		disabledPresets = disabledPresets.add(presets[preset_index]);
+	}
+
+	toggleEnablePreset { arg preset_index;
+		if(this.isEnabled(preset_index)) {
+			this.disablePreset(preset_index)
+		} {
+			this.enablePreset(preset_index)
+		}
 	}
 }
 

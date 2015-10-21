@@ -236,6 +236,10 @@ ParamGroupLayout {
 		biglist = pg.select({ arg param;
 			param.type != \scalar and: { 
 				param.spec.isKindOf(AudioSpec).not
+				and: { 
+					// FIXME: find a better way to handle this
+					param.type != \other 
+				}
 			}
 		});
 
@@ -303,6 +307,115 @@ WindowLayout {
 		//window.alwaysOnTop = true;
 		window.front;
 	}
+
+}
+
+WindowDef {
+	classvar <>all;
+	var <>key;
+	var <>source;
+	var <>window;
+	var <>windowProperties;
+
+
+	// FIXME: window is not restored at the exact same position but is shifted downward, maybe a ubuntu unity bug
+	// FIXME: if maximized then restored, the bound is lost
+
+	*initClass {
+		all = PresetDictionary(\WindowDef)
+	}
+
+	*new { arg key, val;
+		if(all[key].isNil) {
+			if(val.notNil) {
+				^super.new.init(val).prAdd(key)
+			} {
+				^nil
+			}
+		} {
+			var ret = all[key];
+			if(val.notNil) {
+				ret.source = val
+			};
+			^ret;
+		}
+	}
+
+	prAdd { arg xkey;
+		key = xkey;
+		all[key] = this;
+	}
+
+	init { arg val;
+		source = val;
+		windowProperties = IdentityDictionary.new;
+	}
+
+	front {
+		this.windowize;
+		window.front;
+	}
+
+	frontTop {
+		this.windowize;
+		window.alwaysOnTop = true;
+		window.front;
+	}
+
+	saveWindowProperties {
+		[\alwaysOnTop].do { arg k;
+			windowProperties[k] = window.perform(k);
+		}
+	}
+
+	loadWindowProperties {
+		[\alwaysOnTop, \bounds].do { arg k;
+			window.perform(k.asSetter, windowProperties[k]);
+		};
+	}
+	
+	isFullScreen {
+		if(window.notNil) {
+			^Window.availableBounds.extent == window.bounds.extent;
+		} {
+			^false
+		}
+	}
+
+	saveBounds {
+		if(window.notNil and: { window.isFullScreen }) {
+			//FIXME: full screen protection dont work: bounds are saved wide
+			windowProperties[\bounds] = window.bounds;
+		}
+	}
+
+	windowize {
+		var layout;
+		var val;
+		if(window.isNil or: { window.isClosed }) {
+			window = Window.new;
+			window.name = key;
+			this.loadWindowProperties;
+			val = source.value(window);
+			if(val.isKindOf(Layout)) {
+				layout = val;
+			} {
+				layout = HLayout(val)
+			};
+			window.layout = layout;
+			window.view.onClose = {
+				this.saveWindowProperties;
+			};
+			window.view.onResize = {
+				this.saveBounds;
+			};
+			window.view.onMove = {
+				this.saveBounds;
+			};
+		};
+		//window.alwaysOnTop = true;
+	}
+
 }
 
 //////////////////////// Enhanceds SCLib views (X prefix because I don't know how to handle this)

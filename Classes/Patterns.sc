@@ -224,9 +224,9 @@ StepList : List {
 
 StepListDef {
 	// TODO
-	*new { arg key; 
+	var steplist;
+	*new { arg key, val; 
 		Pdefn(key, StepList.new)
-
 	}
 }
 
@@ -876,10 +876,12 @@ StepSeqManager : EventPrototype {
 	// bad name: not really the manager, should be the reverse
 	// but it's just a prototype now, should be translated in real class code
 	*initClass {
-		this.eventPrototypeInitClass((
-			file: "/home/ggz/code/sc/seco/vlive/demo/param/lib/stepeditor.scd",
-			name: \class_score_manager,
-		));
+		// since param/Proto/main.scd, this is not needed anymore
+
+		//this.eventPrototypeInitClass((
+		//	file: "/home/ggz/code/sc/seco/vlive/demo/param/lib/stepeditor.scd",
+		//	name: \class_score_manager,
+		//));
 	}
 
 	*new { arg ... args;
@@ -889,10 +891,12 @@ StepSeqManager : EventPrototype {
 
 DrumRackManager : EventPrototype {
 	*initClass {
-		this.eventPrototypeInitClass((
-			file: "/home/ggz/code/sc/seco/vlive/demo/param/lib/drumrack.scd",
-			name: \class_drumrack,
-		));
+		// since param/Proto/main.scd, this is not needed anymore
+
+		//this.eventPrototypeInitClass((
+		//	file: "/home/ggz/code/sc/seco/vlive/demo/param/lib/drumrack.scd",
+		//	name: \class_drumrack,
+		//));
 	}
 
 	*new { arg ... args;
@@ -1695,7 +1699,7 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 	}
 
 	isPlaying {
-		target.monitor.isPlaying;
+		^target.monitor.isPlaying;
 	}
 
 }
