@@ -1655,6 +1655,13 @@ PlayerWrapper_Base {
 		target.play;
 	}
 
+	togglePlay {
+		if(this.isPlaying) {
+			this.stop;
+		} {
+			this.play;
+		}
+	}
 
 }
 
