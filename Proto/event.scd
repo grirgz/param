@@ -158,3 +158,68 @@
 		},
 
 	);
+
+
+
+~stepEventCoinView = (
+	new: { arg self, stepEvent;
+		self = self.deepCopy;
+	
+		self.stepEvent = stepEvent;
+
+	
+		self;
+	},
+
+	mapStepEvent: { arg self, stepevent;
+		self.stepEvent = stepevent;
+		if(self.stepEvent.notNil) {
+			self.stepEvent[\dur] = self.stepEvent[\dur] ? 1;
+			self.stepEvent[\isRest] = self.stepEvent[\isRest] ?? { StepList[1].addSpec(\list, \unipolar) };
+		};
+		if(self.durField.notNil) {
+			if(self.stepEvent.isNil) {
+				"TODO stepEvent.isNil".debug;
+			} {
+				self.stepListView.mapStepList(self.stepEvent[\isRest]);
+				self.durField.mapParam(Param(self.stepEvent, \dur, ControlSpec(0,100,\lin)));
+				self.stepField.mapParam(Param(Message(self.stepEvent[\isRest]), \stepCount, ControlSpec(1,128,\lin)));
+			}
+		}
+	},
+
+	asView: { arg self;
+		self.stepListView = StepListView.new;
+		self.durField = TextField.new.maxWidth_(40);
+		self.stepField = NumberBox.new.maxWidth_(40);
+		self.layout = HLayout (
+			PopUpMenu.new.items_(["step", "coin"]).action_({ arg view;
+				switch(view.value,
+					0, {
+						self.stepEvent[\isRest].addHalo(\seqstyle, \button);
+						self.stepListView.mapStepList(self.stepEvent[\isRest])
+					},
+					1, {
+						self.stepEvent[\isRest].addHalo(\seqstyle, \knob);
+						self.stepListView.mapStepList(self.stepEvent[\isRest])
+					}
+				)
+			}),
+			self.durField,
+			self.stepField,
+			self.stepListView.asView,
+		);
+		self.mapStepEvent(self.stepEvent);
+		self.layout;
+	},
+
+	edit: { arg self;
+		var window = Window.new;
+		var layout;
+		layout = self.asView;
+		window.layout = layout;
+		//window.alwaysOnTop = true;
+		window.front;
+	},
+
+);

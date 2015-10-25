@@ -78,7 +78,9 @@ ListParamLayout {
 
 	*button { arg param;
 		^super.new.init(param, { arg param;
-			param.asButton;
+			//param.asButton;
+			// bug in button size, workaround:
+			View.new.layout_(HLayout(param.asButton).margins_(0));
 		});
 	}
 
@@ -383,7 +385,7 @@ WindowDef {
 	}
 
 	saveBounds {
-		if(window.notNil and: { window.isFullScreen }) {
+		if(window.notNil and: { this.isFullScreen.not }) {
 			//FIXME: full screen protection dont work: bounds are saved wide
 			windowProperties[\bounds] = window.bounds;
 		}
@@ -680,8 +682,13 @@ StepListView : SCViewHolder {
 	var <>selectAction;
 	var <>deselectAction;
 	var <>hasCursor = false;
+	var <>cellWidth = 40;
 	*new { arg stepseq;
 		^super.new.init(stepseq);
+	}
+
+	stepList { // realname, should avoid stepseq
+		^stepseq
 	}
 
 	viewlist { 
@@ -747,7 +754,9 @@ StepListView : SCViewHolder {
 	}
 
 	makeLayout { arg seq, style;
-		^ListParamLayout.perform(style, stepseq.asParam)
+		var lpl = ListParamLayout.perform(style, stepseq.asParam);
+		lpl.viewlist.collect({ arg x; x.fixedWidth = cellWidth});
+		^lpl
 	}
 
 	makeUpdater {
@@ -932,7 +941,7 @@ PlayerWrapperView : ObjectGui {
 	var skipjack;
 	var pollRate = 1;
 	new { arg model;
-		super.new(model);
+		^super.new(model);
 	}
 
 	// FIXME: this is dirty, a layout is not a view
@@ -969,6 +978,9 @@ PlayerWrapperView : ObjectGui {
 	}
 
 	model_ { arg val;
+		if(val.isKindOf(PlayerWrapper).not) {
+			val = PlayerWrapper(val)
+		};
 		if(val.notNil) {
 			model = val;
 		} {

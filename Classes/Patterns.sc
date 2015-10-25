@@ -381,6 +381,121 @@ BankList : List {
 	}
 }
 
+ParBankList : List {
+
+	index_ { arg val;
+		this.do({ arg bank;
+			bank.index = val;
+		});
+		this.changed(\index);
+	}
+
+	index { 
+		^this.first.index;
+	}
+
+	asPattern {
+		^Plazy({
+			if(this.size > 0) {
+				Ppar([
+					this.collect({ arg bank;
+						bank.current.asPattern;
+					})
+				]);
+			} {
+				Event.silent(1); // is it good ??
+			}
+		})
+	}
+
+	current {
+		^this.collect({ arg bank; bank.current })
+	}
+
+	current_ { arg vals;
+		this.do { arg bank, i; 
+			bank[bank.index] = vals.wrapAt(i);
+		};
+	}
+
+	keys {
+		^(0..this.size-1)
+	}
+
+	embedInStream { arg ev;
+		^this.asPattern.embedInStream(ev);
+	}
+}
+
+ParBankDictionary : IdentityDictionary {
+
+	index_ { arg val;
+		this.do({ arg bank;
+			bank.index = val;
+		});
+		this.changed(\index);
+	}
+
+	index { 
+		^this[this.keys.asArray.first].index;
+	}
+
+	asPattern {
+		^Plazy({
+			if(this.size > 0) {
+				Ppar([
+					this.collect({ arg bank;
+						bank.current.asPattern;
+					})
+				]);
+			} {
+				Event.silent(1); // is it good ??
+			}
+		})
+	}
+
+	//current {
+	//	^this.collect({ arg bank; bank.current })
+	//}
+
+	//current_ { arg val_dict;
+	//	this.do { arg bank, i; 
+	//		bank[bank.index] = vals.wrapAt(i);
+	//	};
+	//}
+
+	pageKeys {
+		^this[this.keys.asArray.first].keys;
+	}
+
+	pageCount {
+		^this[this.keys.asArray.first].size;
+	}
+
+	addPage { arg fun, select_it=true;
+		this.keysValuesDo({ arg k, v;
+			this[k].add(fun.value(k,v))
+		});
+		if(select_it == true) {
+			this.index = this.pageCount-1;
+		};
+		this.changed(\pageCount);
+	}
+
+	removePage { arg idx;
+		this.keysValuesDo({ arg k, v;
+			this[k].removeAt(idx)
+		});
+		this.index = this.index.clip(0, this.pageCount-1);
+		this.changed(\pageCount);
+	}
+
+	embedInStream { arg ev;
+		^this.asPattern.embedInStream(ev);
+	}
+
+}
+
 DictStepList : StepList {
 	var >dict;
 
@@ -1716,7 +1831,7 @@ PlayerWrapper_EventPatternProxy : PlayerWrapper_Base {
 		if(target.isKindOf(Pdef)) {
 			^target.key
 		} {
-			^""
+			^target.getHalo(\label) ? ""
 		}
 	}
 
