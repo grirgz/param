@@ -231,6 +231,7 @@ StepListDef {
 }
 
 StepEvent : Event {
+	var <>repeats = 1;
 
 	asParamGroup {
 		var instr;
@@ -286,7 +287,7 @@ StepEvent : Event {
 	}
 
 	asPattern {
-		^Prout({ arg ev; this.embedInStream(ev) });
+		^Prout({ arg ev; this.embedInStream(ev) }).repeat(repeats);
 	}
 
 
@@ -1646,7 +1647,12 @@ PlayerWrapper  {
 	}
 
 	initWrapper { arg target;
+		// FIXME: handle when not a kind of wrapper in list, and handle GUI when wrapper is nil
 		wrapper = case 
+			{ target.isNil } {
+				"WARNING: PlayerWrapper: target is nil".debug;
+				^nil;
+			}
 			{ target.isKindOf(Event) } {
 				PlayerWrapper_Event(target)
 			}

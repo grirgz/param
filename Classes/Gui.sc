@@ -78,9 +78,19 @@ ListParamLayout {
 
 	*button { arg param;
 		^super.new.init(param, { arg param;
-			//param.asButton;
-			// bug in button size, workaround:
-			View.new.layout_(HLayout(param.asButton).margins_(0));
+			param.asButton;
+		});
+	}
+
+	*gridButton { arg xparam;
+		// bug in button size, gridButton is a workaround,
+		// the drawback is you need to access to the button inside the view:
+		^super.new.init(xparam, { arg param;
+			var button = param.asButton;
+			View.new.layout_(HLayout(button).margins_(0))
+				.addHalo(\isGridButton, true)
+				.addUniqueMethod(\button, { button } )
+			;
 		});
 	}
 
@@ -174,7 +184,7 @@ ListParamLayout {
 				args.debug("cursor!!");
 			})
 			.states_([
-				["", Color.black, Color.clear],
+				["", Color.black, Color.white],
 				["", Color.black, ParamView.color_ligth],
 			]);
 		})
@@ -692,7 +702,11 @@ StepListView : SCViewHolder {
 	}
 
 	viewlist { 
-		^this.view.layout.viewlist;
+		if(this.view.notNil and: { this.view.layout.notNil }) {
+			^this.view.layout.viewlist;
+		} {
+			^nil
+		}
 	}
 
 	init { arg seq;
@@ -712,44 +726,66 @@ StepListView : SCViewHolder {
 	addCursor { arg select, deselect;
 		select = select ? selectAction;
 		deselect = deselect ? deselectAction;
-		this.viewlist.do { arg view, x;
-			ListParamLayout.addCursor(x, view, stepseq.asParam.at(x), select ? { 
-				if(view.isKindOf(Button)) {
-					var states, val;
-					states = view.states;
-					val = view.value;
-					states.do { arg x; x[0] = "O" };
-					view.states = states;
-					view.value = val;
-				} {
-					var color = view.color;
-					var newcolor = ParamView.color_ligth;
-					if(color.isSequenceableCollection) {
-						color[0] = newcolor;
+		if(this.viewlist.notNil) {
+			this.viewlist.do { arg view, x;
+				ListParamLayout.addCursor(x, view, stepseq.asParam.at(x), select ? { 
+					if(view.isKindOf(Button)) {
+						var states, val;
+						states = view.states;
+						val = view.value;
+						states.do { arg x; x[0] = "O" };
+						view.states = states;
+						view.value = val;
 					} {
-						color = newcolor;
-					};
-					view.color = color;
-				}
-			}, deselect ? {
-				if(view.isKindOf(Button)) {
-					var states, val;
-					states = view.states;
-					val = view.value;
-					states.do { arg x; x[0] = " " };
-					view.states = states;
-					view.value = val;
-				} {
-					var color = view.color;
-					var newcolor = Color.white;
-					if(color.isSequenceableCollection) {
-						color[0] = newcolor;
+						if(view.getHalo(\isGridButton) == true) {
+							var states, val;
+							var myview = view.button;
+							states = myview.states;
+							val = myview.value;
+							states.do { arg x; x[0] = "O" };
+							myview.states = states;
+							myview.value = val;
+						} {
+							var color = view.color;
+							var newcolor = ParamView.color_ligth;
+							if(color.isSequenceableCollection) {
+								color[0] = newcolor;
+							} {
+								color = newcolor;
+							};
+							view.color = color;
+						}
+					}
+				}, deselect ? {
+					if(view.isKindOf(Button)) {
+						var states, val;
+						states = view.states;
+						val = view.value;
+						states.do { arg x; x[0] = " " };
+						view.states = states;
+						view.value = val;
 					} {
-						color = newcolor;
-					};
-					view.color = color;
-				}
-			}) 
+						if(view.getHalo(\isGridButton) == true) {
+							var states, val;
+							var myview = view.button;
+							states = myview.states;
+							val = myview.value;
+							states.do { arg x; x[0] = " " };
+							myview.states = states;
+							myview.value = val;
+						} {
+							var color = view.color;
+							var newcolor = Color.white;
+							if(color.isSequenceableCollection) {
+								color[0] = newcolor;
+							} {
+								color = newcolor;
+							};
+							view.color = color;
+						}
+					}
+				}) 
+			};
 		}
 	}
 

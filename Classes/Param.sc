@@ -825,8 +825,8 @@ Param {
 	asButton {
 		var but = Button.new
 			.states_([
-				[""],
-				["", Color.white, Color.black],
+				["", Color.black, Color.white],
+				["", Color.black, ParamView.color_ligth],
 			]);
 		but.mapParam(this);
 		^but;

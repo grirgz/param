@@ -1,7 +1,7 @@
 
 "Init base.scd".postln;
 
-~selector = (
+~view_selector = (
 	// this selector version added possibility to regenere the views if they have been removed
 	selected_color: ParamView.color_dark,
 	deselected_color: ParamView.color_ligth,
@@ -70,3 +70,5 @@
 	},
 
 );
+
+~selector = ~view_selector; // backward compat, i needed a less common name
