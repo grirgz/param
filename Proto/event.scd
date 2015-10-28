@@ -310,7 +310,7 @@
 		},
 
 		asEventPattern: { arg self;
-			(Plazy({ self.stepevent.asPattern })  <> Plazy({ self.base })).loop,
+			(Plazy({ self.stepevent.asPattern })  <> Plazy({ self.base })).loop;
 		},
 
 		xasPattern: { arg self;
@@ -320,7 +320,7 @@
 			]).loop
 		},
 
-		asEnvPattern: {
+		asEnvPattern: { arg self;
 			Plazy({
 				var list = List.new;
 				self.stepevent.keys.asArray.do({ arg key;

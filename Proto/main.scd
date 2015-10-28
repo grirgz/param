@@ -13,7 +13,9 @@
 
 		"synth.scd",
 	].do({ arg file;
-		(ParamProto.base_path +/+ file).load
+		var path = (ParamProto.base_path +/+ file);
+		("loading " ++ path).debug;
+		path.load
 	});
 
 );

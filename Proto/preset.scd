@@ -1,3 +1,4 @@
+"init preset.scd".postln;
 
 EventClass.presetSelectorView = { arg pg;
 		var layout;

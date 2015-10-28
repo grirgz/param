@@ -290,6 +290,24 @@ StepEvent : Event {
 		^Prout({ arg ev; this.embedInStream(ev) }).repeat(repeats);
 	}
 
+	asSidePattern {
+		^Plazy({
+			var list = List.new;
+			this.keys.asArray.do({ arg key;
+				var val = this[key];
+				if(val.isKindOf(Event) and: { val.eventType == \envTimeline }) {
+					list.add(val.xasPattern);
+				};
+			});
+			if(list.size == 0) {
+				nil // can be inifinite zero loop if looped infinitely
+				// need nilsafe by james harkins
+			} {
+				Ppar(list);
+			};
+		});
+		//}).repeat(repeats)
+	}
 
 	setSize { arg val;
 	}
