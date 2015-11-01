@@ -716,7 +716,7 @@ if(~clipTimeline_all.isNil) {
 
 			self.eventloop.list.changed(\cursor, \play);
 			Pfindur(totalDur, ~timeline_pattern.(
-				Pn(self.eventloop.list, 1),
+				Pn(eventlist, 1),
 				relStartTime
 			));
 		}).repeat(self.repeatCount);
@@ -972,7 +972,7 @@ if(~envTimeline_all.isNil) {
 	make_stop_button: { arg self;
 		XSimpleButton.new.label_("[]").action_({
 			self.cursor.startPosition = self.eventloop.list.startTime;
-			EventPlayerWrapper(self.timeline_model).stop;
+			PlayerWrapper(self.timeline_model).stop;
 			self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
 		});
 	},
@@ -1384,7 +1384,11 @@ if(~envTimeline_all.isNil) {
 		self.type_popup.action = {
 			switch( self.type_popup.items[self.type_popup.value],
 				\Ndef, {
-					name_popup.items = Ndef.all[\localhost].envir.keys.asArray;
+					if(Ndef.all[\localhost].notNil) {
+						name_popup.items = Ndef.all[\localhost].envir.keys.asArray;
+					} {
+						name_popup.items = [];
+					}
 				},
 				\Pdef, {
 					name_popup.items = Pdef.all.keys.asArray;
@@ -1546,7 +1550,7 @@ if(~envTimeline_all.isNil) {
 
 	make_header: { arg self;
 		self.header_layout = HLayout(
-			PlayerWrapperView(EventPlayerWrapper(self.timeline_model)).view,
+			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
 			XSimpleButton.new.label_("Add track").action_({
 				self.add_track;
@@ -1642,7 +1646,7 @@ if(~envTimeline_all.isNil) {
 
 	make_header: { arg self;
 		HLayout(
-			PlayerWrapperView(EventPlayerWrapper(self.timeline_model)).view,
+			PlayerWrapperView(self.timeline_model).view,
 			if(self.param.target.isKindOf(Bus)) {
 				nil;
 			} {
@@ -1711,7 +1715,7 @@ if(~envTimeline_all.isNil) {
 
 	make_header: { arg self;
 		self.header_layout = HLayout(
-			PlayerWrapperView(EventPlayerWrapper(self.timeline_model)).view,
+			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,

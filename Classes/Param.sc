@@ -1133,7 +1133,7 @@ StandardConstructorParam : BaseParam {
 			// update only if concerned key is set
 			// FIXME: may break if property is an association :(
 			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
-			if(args[2].notNil) {
+			if(args[2].notNil and: { args[2].isSequenceableCollection }) {
 				if(args[2].any({ arg x; x == param.property })) {
 					action.(view, param);
 				}

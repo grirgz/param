@@ -29,6 +29,30 @@ ClassMethodDictionary {
 
 EventClass : ClassMethodDictionary {}
 
+XProtoEvent : Event {
+	// FIXME: does not work!
+
+	new { arg event;
+		^super.new
+	}
+
+	asPatttern { arg ... args;
+		^this[\asPattern].(this, * args)
+	}
+
+	play { arg ... args;
+		^this[\play].(this, * args)
+	}
+
+	stop { arg ... args;
+		^this[\stop].(this, * args)
+	}
+
+	embedInStream { arg ... args;
+		^this[\embedInStream].(this, * args)
+	}
+}
+
 ArchiveDictionary {
 	classvar <>loaderStack;
 	classvar <>lockedFiles;
