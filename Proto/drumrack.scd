@@ -199,6 +199,15 @@
 				item.as_pattern;
 			}))
 		};
+
+		self.patternList = if(self.list.size == 0) {
+			[(isRest: true, type: \rest)]
+		} {
+			self.list.collect({ arg item;
+				item.as_pattern;
+			})
+		};
+
 	},
 
 	as_stream: { arg self;

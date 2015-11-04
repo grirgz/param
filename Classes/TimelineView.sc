@@ -626,19 +626,60 @@ TimelineView : SCViewHolder {
 		});
 	}
 
-	mimicTimeline { arg timeline;
+	mimicTimeline { arg timeline, orientation;
+		// FIXME: why no changed signal ? ("this.viewport =" instead of "viewport =")
+		var rect_copy_horizontal = { arg me, rect;
+			me.width = rect.width;
+			me.origin = Point(rect.origin.x, me.origin.y);
+			me;
+		};
+		var rect_copy_vertical = { arg me, rect;
+			me.height = rect.height;
+			me.origin = Point(me.origin.x, rect.origin.y);
+			me;
+		};
+
 		if(timeline_controller.notNil) {timeline_controller.remove};
 		timeline_controller = SimpleController(timeline)
 			.put(\viewport, {
-				//TODO: remove controller
-				[this].debug("refresh viewport because mimicTimeline!!");
-				viewport = timeline.viewport;
-				this.refresh;
+				if(this.view.isClosed) {
+					timeline_controller.remove;
+				} {
+					[this].debug("refresh viewport because mimicTimeline!!");
+					switch(orientation,
+						\horizontal, {
+							this.viewport = rect_copy_horizontal.(viewport, timeline.viewport);
+						},
+						\vertical, {
+							this.viewport = rect_copy_vertical.(viewport, timeline.viewport);
+						},
+						// else
+						{
+							this.viewport = timeline.viewport;
+						}
+					);
+					this.refresh;
+				}
 			})
 			.put(\areasize, {
-				[this].debug("refresh viewport because mimicTimeline!!");
-				areasize = timeline.areasize;
-				this.refresh;
+				if(this.view.isClosed) {
+					timeline_controller.remove;
+				} {
+					[this].debug("refresh viewport because mimicTimeline!!");
+					switch(orientation,
+						\horizontal, {
+							this.areasize = Point(timeline.areasize.x, areasize.y);
+						},
+						\vertical, {
+							this.areasize = Point(areasize.x, timeline.areasize.y);
+						},
+						// else
+						{
+							this.areasize = timeline.areasize;
+						}
+					);
+					this.refresh;
+				}
 			});
 	}
 

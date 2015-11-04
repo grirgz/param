@@ -757,7 +757,7 @@ if(~noteTimeline_all.isNil) {
 		var el = self.makeDefaultEventList;
 		self.param = param;
 		self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
-		self.areasize = 9@128;
+		self.areasize = 10@128;
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
@@ -832,7 +832,15 @@ if(~envTimeline_all.isNil) {
 		self = self.deepCopy;
 		self.key = \instance;
 		param.debug("envTimeline: newInstance: param");
-		self[\outBus] = param.target;
+		if(bus.isNil) {
+			if({param.target.isKindOf(Bus)}) {
+				self[\outBus] = param.target;
+			} {
+				// TODO
+			};
+		} {
+			self[\outBus] = bus;
+		};
 		"xx".debug;
 		self.init(param)
 	},
@@ -865,7 +873,7 @@ if(~envTimeline_all.isNil) {
 		var el = self.makeDefaultEventList;
 		self.param = param;
 		self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
-		self.areasize = 9@128;
+		self.areasize = 10@128;
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
@@ -939,7 +947,7 @@ if(~envTimeline_all.isNil) {
 		self = self.deepCopy;
 
 		self.eventloop = eventloop;
-		self.areasize = 9@1;
+		self.areasize = 10@1;
 		self.quant_ref = Ref(Point(1/8,1));
 
 		self.definePattern;
@@ -1016,6 +1024,7 @@ if(~envTimeline_all.isNil) {
 	},
 
 	definePattern: { arg self;
+		// FIXME: why this is in a view class ??
 		Pdef(self.eventloop.key, Plazy({
 			//PtimeGatePunch(self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"))
 			var start, end;
@@ -1225,6 +1234,7 @@ if(~envTimeline_all.isNil) {
 		;
 
 
+		// FIXME: created even if disabled, sometime not what we want
 		track_header = self.make_track_header(timeline);
 
 
@@ -1242,7 +1252,7 @@ if(~envTimeline_all.isNil) {
 					})
 			],
 			[
-				track_header,
+				if(self.disable_track_header != true) {track_header},
 				StackLayout(
 					cursor_timeline.view,
 					timeline.view,
@@ -1251,8 +1261,8 @@ if(~envTimeline_all.isNil) {
 			],
 			[
 				nil,
-				hrange.view,
-				sizer,
+				if(self.disable_hrange != true) {hrange.view},
+				if(self.disable_hrange != true) {sizer},
 			]
 		);
 		tl_layout.spacing = 0;
