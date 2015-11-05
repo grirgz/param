@@ -54,6 +54,7 @@
 	select_item: { arg self, x, views;
 		views = views ?? {self.views};
 		[self.selected_index, x, views].debug("selector.select_item: old selected_index, new one, views");
+		x = x.clip(0, views.size-1);
 		if(views.size > 0) {
 			if(views[self.selected_index].notNil) {
 				views[self.selected_index].background_(self.deselected_color);

@@ -708,16 +708,17 @@ if(~clipTimeline_all.isNil) {
 	xasPattern: { arg self, relStartTime, totalDur;
 		self.proxy.source = Plazy({
 			var eventlist = self.eventList;
+			var xrelStartTime, xtotalDur;
 
-			relStartTime = relStartTime ? eventlist.relStartTime;
-			totalDur = totalDur ? eventlist.totalDur;
+			xrelStartTime = relStartTime ? eventlist.relStartTime;
+			xtotalDur = totalDur ? eventlist.totalDur;
 
-			[relStartTime, totalDur].debug("clip xasPattern: plazy: relstart, totdur");
+			[xrelStartTime, xtotalDur].debug("clip xasPattern: plazy: relstart, totdur");
 
 			self.eventloop.list.changed(\cursor, \play);
-			Pfindur(totalDur, ~timeline_pattern.(
+			Pfindur(xtotalDur, ~timeline_pattern.(
 				Pn(eventlist, 1),
-				relStartTime
+				xrelStartTime
 			));
 		}).repeat(self.repeatCount);
 		self.proxy;
@@ -778,14 +779,15 @@ if(~noteTimeline_all.isNil) {
 		self.proxy.source = Plazy({
 			var eventlist = self.eventloop.list;
 			var pat;
+			var xrelStartTime, xtotalDur;
 
-			relStartTime = relStartTime ? eventlist.relStartTime;
-			totalDur = totalDur ? eventlist.totalDur;
+			xrelStartTime = relStartTime ? eventlist.relStartTime;
+			xtotalDur = totalDur ? eventlist.totalDur;
 
 			self.eventloop.list.changed(\cursor, \play);
-			pat = Pfindur(totalDur, ~timeline_pattern.(
+			pat = Pfindur(xtotalDur, ~timeline_pattern.(
 				Pn(self.eventloop.list, 1),
-				relStartTime
+				xrelStartTime
 			));
 
 			if(self.composeParamPattern == true) {
@@ -896,11 +898,12 @@ if(~envTimeline_all.isNil) {
 			var str;
 			var first;
 			var first_level;
+			var xrelStartTime, xtotalDur;	
 
-			relStartTime = relStartTime ? eventlist.relStartTime;
-			totalDur = totalDur ? eventlist.totalDur;
+			xrelStartTime = relStartTime ? eventlist.relStartTime;
+			xtotalDur = totalDur ? eventlist.totalDur;
 
-			[relStartTime, totalDur].debug("xasPattern: prout: relstart, totdur");
+			[xrelStartTime, xtotalDur].debug("xasPattern: prout: relstart, totdur");
 
 			// FIXME: this should be an event
 			if(self.param.notNil and:{ self.param.target.isKindOf(Bus).not }) {
@@ -919,9 +922,9 @@ if(~envTimeline_all.isNil) {
 					\time, Pfunc({ arg ev; ev.debug("ev!!!!!!!!!!!!!!!!!!"); ev.use { ev.sustain } }),
 				).trace(prefix:"MAIIIIIIIIIIIIIIIIIIIIIIII")
 				<>
-				Pfindur(totalDur, ~timeline_pattern.(
+				Pfindur(xtotalDur, ~timeline_pattern.(
 					Pn(self.eventloop.list, 1),
-					relStartTime
+					xrelStartTime
 				))
 			;
 

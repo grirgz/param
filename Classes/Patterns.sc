@@ -332,13 +332,16 @@ StepEvent : Event {
 }
 
 PresetEvent : StepEvent {
+	var >bypass;
 
 	embedInStream { arg ev;
 		var pairs = List.new;
 		var pbind;
 		this.keysValuesDo { arg k, v;
-			pairs.add(k);
-			pairs.add(v);
+			if(bypass.notNil and: { bypass[k] != true }) {
+				pairs.add(k);
+				pairs.add(v);
+			}
 		};
 		pbind = Pbind(
 			*pairs.debug("pairs")
@@ -351,6 +354,16 @@ PresetEvent : StepEvent {
 		ev = pbind.embedInStream(ev);
 		//ev.debug("ev: end");
 		^ev;
+	}
+
+	bypassKey { arg key, val=true;
+		bypass = bypass ?? { IdentityDictionary.new };
+		bypass[key] = val;
+	}
+
+	bypass { 
+		bypass = bypass ?? { IdentityDictionary.new };
+		^bypass;
 	}
 
 	asView {

@@ -321,7 +321,7 @@ Param {
 	}
 
 	== { arg param;
-		( this.wrapper.property == param.wrapper.property)
+		^( this.wrapper.property == param.wrapper.property)
 		and: { this.wrapper.target == param.wrapper.target } 
 	}
 
