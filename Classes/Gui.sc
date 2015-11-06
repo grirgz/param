@@ -328,6 +328,7 @@ WindowDef {
 	var <>source;
 	var <>window;
 	var <>windowProperties;
+	var <>alwaysRecreate = false;
 
 
 	// FIXME: window is not restored at the exact same position but is shifted downward, maybe a ubuntu unity bug
@@ -404,6 +405,11 @@ WindowDef {
 	windowize {
 		var layout;
 		var val;
+		if(alwaysRecreate == true) {
+			if(window.notNil and: { window.isClosed.not }) {
+				window.close;
+			}
+		};
 		if(window.isNil or: { window.isClosed }) {
 			window = Window.new;
 			window.name = key;
@@ -817,6 +823,46 @@ StepListView : SCViewHolder {
 		} {
 			this.view.removeAll;
 		}
+	}
+}
+
+StepListColorView : StepListView {
+	classvar <>colorRing;
+
+	makeLayout { arg seq, style;
+		^this.makeColorLayout(seq, style);
+	}
+
+	makeColorLayout { arg seq, style;
+		var lpl = ListParamLayout.perform(style, stepseq.asParam);
+		var color;
+		var color_ring = colorRing ?? { [
+			Color.newHex("D5F8F8"),
+			Color.newHex("D5F8F8"),
+			Color.newHex("A0E6E6"),
+			Color.newHex("A0E6E6"),
+		]};
+		color_ring = color_ring.copy;
+		^HLayout(*
+			lpl.viewlist.collect({ arg x; 
+				x.fixedWidth = 30;
+				x.minHeight_(30+3);
+			}).clump(4).collect({ arg group4;
+				color = color_ring[0]; 
+				color_ring = color_ring.rotate(-1);
+				View.new.layout_(
+					HLayout (
+						* group4.collect({ arg view;
+							view;
+						})
+					).spacing_(5).margins_([5,5])
+				).background_(color);
+			}) 
+			++ [nil];
+		).spacing_(0).margins_(0)
+			.addUniqueMethod(\viewlist, { lpl.viewlist })
+			.addUniqueMethod(\mapParam, { arg x; lpl.mapParam(x) })
+		;
 	}
 }
 

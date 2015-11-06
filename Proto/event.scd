@@ -370,7 +370,7 @@
 	},
 
 	asView: { arg self;
-		self.stepListView = StepListView.new;
+		self.stepListView = StepListColorView.new;
 		self.durField = TextField.new.maxWidth_(40);
 		self.stepField = NumberBox.new.maxWidth_(40);
 		self.layout = HLayout (
@@ -385,7 +385,13 @@
 						self.stepListView.mapStepList(self.stepEvent[\isRest])
 					}
 				)
-			}),
+			}).value_(
+				if(self.stepEvent[\isRest].getHalo(\seqstyle) == \gridButton) {
+					0
+				} {
+					1
+				}
+			),
 			self.durField,
 			self.stepField,
 			self.stepListView.asView,

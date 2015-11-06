@@ -10,6 +10,7 @@
 		"stepeditor.scd",
 		"event.scd",
 		"preset.scd",
+		"steptimeline.scd",
 
 		"synth.scd",
 	].do({ arg file;
