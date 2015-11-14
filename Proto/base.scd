@@ -30,7 +30,7 @@
 					.minWidth_(15) 
 					.action_({
 						self.select_item(x);
-						self.action.(x);
+						self.action.(x); // FIXME: should perhaps pass self as first argument
 						self.selector_count.debug("end selector action");
 					})
 					.background_(self.deselected_color).debug("WWWTTTFF");

@@ -13,6 +13,34 @@ ParamView {
 		color_dark = Color.newHex("009999");
 	}
 
+	*horizontal_slider { arg param, label_mode;
+		var view = View.new;
+		var slider, val, label;
+		view.layout_(
+			HLayout (
+				label = StaticText.new,
+				slider = param.asSlider.orientation_(\horizontal),
+				val = param.asTextField,
+			)
+		);
+		view.addUniqueMethod(\mapParam, { arg view, param;
+			if(label_mode == \full) {
+				label.string  = param.asLabel;
+			} {
+				label.string = param.property
+			};
+			val.mapParam(param);
+			slider.mapParam(param);
+		});
+		view.addUniqueMethod(\unmapParam, { arg view, param;
+			label.string = "";
+			val.unmapParam;
+			slider.unmapParam;
+		});
+		if(param.notNil) { view.mapParam(param) };
+		^view
+	}
+
 	*label_knob { arg name;
 		var view;
 		var val, label, control;
@@ -40,7 +68,7 @@ ParamView {
 		^view;
 	}
 
-	*knob { 
+	*knob { arg param;
 		var view;
 		var val, label, control;
 		label = StaticText.new;
@@ -65,6 +93,7 @@ ParamView {
 			val.unmapParam;
 			view;
 		});
+		if(param.notNil) { view.mapParam(param) };
 		^view;
 	}
 }

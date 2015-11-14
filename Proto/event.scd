@@ -65,7 +65,7 @@
 								//} {
 								//	StepListView(steplist).view;
 								//}
-								StepListView(steplist).setCursor.view;
+								StepListColorView(steplist).setCursor.view;
 							} {
 								StaticText.new.string_("empty");
 							};
