@@ -2294,6 +2294,60 @@ ParamGroupDef {
 		}
 	}
 
+	*update { arg defkey, group;
+		if(group.notNil and: { lib[defkey].notNil }) {
+			var inst = lib[defkey];
+			var news = List.new;
+			var olds = Set.new;
+			var losts = List.new;
+			var matching = IdentityDictionary.new;
+
+			// find new params:
+			group.collect({ arg param, idx;
+				var found = false;
+				block { arg break;
+					inst.group.do { arg oldparam, oldidx;
+						if(param == oldparam ) { 
+							found = true;
+							matching[idx] = oldidx;
+							//olds.add(oldidx);
+							break.value;
+						}
+					};
+				};
+				//if(found.not) {
+				//	news.add(param);
+				//};
+			});
+			//inst.group.do({ arg oldparam, x; 
+			//	if(olds.includes(x).not) {
+			//		losts.add(oldparam);
+			//	}
+			//});
+
+			/////
+
+			inst.presets.keys.do { arg key;
+				inst.presets[key] = group.collect({ arg param, idx;
+					var oldidx = matching[idx];
+					if(oldidx.isNil) {
+						param.get;
+					} {
+						inst.presets[key][oldidx]
+					}
+				})
+			};
+			inst.group.array = group.asArray;
+			^inst;
+		} {
+			if(group.notNil) {
+				^this.new(defkey, group)
+			} {
+				^nil
+			}
+		}
+	}
+
 	init { arg defkey, xgroup;
 		//xgroup.debug("hhhhhhhhhh");
 		key = defkey;
@@ -2303,6 +2357,11 @@ ParamGroupDef {
 		} {
 			this.loadArchive;
 		};
+	}
+
+	prGroup_ { arg val;
+		// private, don't use
+		group = val;
 	}
 
 	presets {
@@ -2387,6 +2446,10 @@ ParamGroupDef {
 
 	collect { arg fun;
 		^group.collect(fun)
+	}
+
+	select { arg fun;
+		^group.select(fun)
 	}
 
 	at { arg x;

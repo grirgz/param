@@ -1,9 +1,10 @@
 
 ~stepseq_page = (
-	new: { arg self;
+	new: { arg self, parent;
 		self = self.deepCopy;
 	
 		
+		self.parent_model = { parent };
 		self.lines = List.newFrom(
 			16.collect({
 				var se = StepEvent.new;
@@ -14,26 +15,174 @@
 				se;
 			})
 		);
+		self.proxy = EventPatternProxy.new;
+		self.proxy.source = self.xasPattern;
 		self.label = "No name";
 	
 		self;
 	},
 
+	drumrack: { arg self;
+		if(self.parent_model.notNil) {
+			self.parent_model.drumrack
+		} {
+			nil
+		}
+	},
+
+	bypass_track: { arg self, idx, val=true;
+		self.lines[idx][\type] = if(val) { \rest } { \note };
+	},
+
+	toggle_bypass_track: { arg self, idx;
+		if(self.is_track_bypassed(idx)) {
+			self.bypass_track(idx, false)
+		} {
+			self.bypass_track(idx, true)
+		}
+	},
+
+	is_track_bypassed: { arg self, idx;
+		self.lines[idx][\type] == \rest
+	},
+
+	///////////////////// Pattern
+
+	asRawPattern: { arg self;
+		Ppar(
+			self.lines.collect({ arg line, x;
+				Plazy({ self.lines[x].asPattern }).loop
+			});
+		);
+	},
+
+	xasPattern: { arg self, event;
+		Ppar(
+			self.lines.size.collect({ arg i;
+				~pdemul.(
+					PchainT(
+						Plazy({ self.lines[i].asPattern }).loop, 
+						Plazy({
+							var drumrack;
+							if(event.notNil and: { event.drumrack.notNil }) {
+								drumrack = event.drumrack;
+							} {
+								drumrack = self.drumrack;
+							};
+							//[i,drumrack].debug("event drumrack ?");
+							if(drumrack.notNil and: {drumrack.get_pad(i).patternList.size > 0}) {
+								//[i,j,drumrack.get_pad(i)].debug("drum i");
+								Ptuple(
+									drumrack.get_pad(i).patternList.collect({ arg spat, j;
+										if(event.notNil and: {event[\modulators].notNil}) {
+											spat = event[\modulators].value.get_pad_modulator_pattern(i,j) <> spat;
+										};
+										spat;
+									});
+								).keep(1);
+							} {
+								Ptuple([Pbind().keep(1)])
+							}
+						}).loop
+					)
+				)
+			})
+		);
+	},
+
+	asPatternList: { arg self;
+		self.lines.collect({ arg line;
+			line.asPattern.loop
+		})
+	},
+
+	///////////////////// Archiving
+
 	clone: { arg self;
-		var new = ~stepseq_page.new;
-		new.lines = self.lines.deepCopy;
-		new.lines.do { arg line, i;
-			line[\isRest].addSpec(\list, \unipolar.asSpec);
-			line[\isRest].addHalo(\seqstyle, self.lines[i].getHalo(\seqstyle))
+		var new = ~stepseq_page.new(self.parent_model);
+		//new.lines = self.lines.deepCopy;
+		new.lines = self.lines.collect { arg line, i;
+			var newline = line.clone;
+			// FIXME: halo should be already copied by clone
+			//newline[\isRest].addSpec(\list, \unipolar.asSpec);
+			//newline[\isRest].addHalo(\seqstyle, line.getHalo(\seqstyle));
+			newline;
 		};
 		new;
 	},
 
+	new_load: { arg self, data, parent;
+		self = self.deepCopy;
+		
+		self.parent_model = { parent }; // need to set parent later
+
+		// TODO: temporary, should be implemented in StepList.new_load
+		self.lines = data.lines.collect({ arg line, i;
+			line[\isRest].addSpec(\list, \unipolar.asSpec);
+			line;
+			//newline[\isRest].addHalo(\seqstyle, \gridButtonline.getHalo(\seqstyle));
+		});
+
+		self.proxy = EventPatternProxy.new;
+		self.proxy.source = self.xasPattern; // this will update in real time after parent is set
+		self.label = data.label;
+	
+		self;
+	},
+
+	asArchiveData: { arg self;
+		// TODO: implement asArchiveData on StepList
+		(
+			lines: self.lines,
+			label: self.label,
+			load: { arg me;
+				~stepseq_page.new_load(me)
+			},
+		)
+	},
+
+	///////////////////// GUI
+
 	makeLayout: { arg self;
 		var drumrack = self.drumrack;
 		var drkey = drumrack !? { drumrack.key } ? "";
-		VLayout (
+		var mute_button;
+		var refresh_mute_button = { arg x;
+			mute_button
+				.action_({
+					x.debug("selector Action!");
+					self.toggle_bypass_track(x);
+					self.track_selector.refresh_view(x);
+					refresh_mute_button.(x);
+				})
+			;
+			if(self.is_track_bypassed(x)) {
+				mute_button.label_(
+					"Unmute"
+				)
+				.background_(ParamView.color_ligth)
+			} {
+				mute_button.label_(
+					"Mute"
+				)
+				.background_(Color.white)
+			}
+		};
+		mute_button = XSimpleButton.new.label_("xMute");
+		self.track_selector = ~view_selector.new(self.lines.size, { arg x;
+			refresh_mute_button.(x);
+		}, { arg view, i;
+			var lab = i;
+			if(self.is_track_bypassed(i)) {
+				i = "[%]".format(i)
+			};
+			view.label_(i)
+		});
+		self.lines_view = View.new;
+		refresh_mute_button.(self.track_selector.selected_index);
+		self.layout = VLayout (
 			HLayout (
+				PlayerWrapper(self.proxy).asView,
 				TextField.new.string_(self.label).action_({ arg view;
 					self.label = view.string;
 				}),
@@ -42,19 +191,26 @@
 						self.drumrack.edit;
 					}
 				}),
+				mute_button
 			),
-			ScrollView.new.canvas_(View.new.layout_(
+			ScrollView.new.canvas_(self.lines_view)
+		);
+		self.updateLines;
+		self.layout;
+	},
+
+	updateLines: { arg self;
+		self.lines_view.removeAll;
+		self.lines_view.layout_(
 				VLayout (
 					* self.lines.collect({ arg stepevent, i;
 						HLayout (
-							StaticText.new.string_(i).minWidth_(20),
+							self.track_selector.views[i].fixedWidth_(30),
 							~stepEventCoinView.new(stepevent).hasCursor_(true).asView
 						)
 					})
 				).spacing_(0).margins_(0)
-			
-			))
-		)
+			);
 	},
 
 	makeWindow: { arg self;
@@ -65,18 +221,26 @@
 		////window.alwaysOnTop = true;
 		//window.front;
 
-		WindowDef(\stepseq, { self.makeLayout }).alwaysRecreate_(true).front;
+		WindowDef(\stepseq, { arg win;
+			win.view.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
+				[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+				if(keycode == 54) { // ^c
+					~stepseq_page_clipboard = self.lines[self.track_selector.selected_index];
+				};
+				if(keycode == 55) { // ^v
+					if(~stepseq_page_clipboard.notNil) {
+						self.lines[self.track_selector.selected_index] = ~stepseq_page_clipboard.clone;
+						self.updateLines;
+					}
+				}
+			});
+			self.makeLayout;
+		}).alwaysRecreate_(true).front;
 		
 	},
 
-	asPatternList: { arg self;
-		self.lines.collect({ arg line;
-			line.asPattern.loop
-		})
-	},
-
 	edit: { arg self, drumrack;
-		self.drumrack = drumrack;
+		//self.drumrack = drumrack; // use parent_model instead
 		self.makeWindow;
 	},
 );
@@ -117,10 +281,49 @@
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
-		"=============clipTimeline: end init".debug;
+		"=============stepTimeline: end init".debug;
 
 		self;
 	},
+
+	new_load: { arg self, data;
+		var el;
+		self = self.deepCopy;
+		self.prAdd(data.name).init;
+		el = ~eventlist_loadArchiveData.(data.eventlist);
+		el.do { arg ev;
+			if(ev[\stepseq_page].notNil) {
+				ev[\stepseq_page].parent_model = { self };
+			}
+		};
+		self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
+		self.eventList.reorder;
+		self.areasize = data.areasize;
+		self.cursor.startPosition = self.eventList.startTime;
+		self.quant_ref = data.quant_ref;
+		self.tracks_bypassed = data.tracks_bypassed;
+		self;
+	},
+
+	asArchiveData: { arg self;
+		(
+			name: self.key,
+			param: self.param,
+			eventlist: ~eventlist_asArchiveData.(self.eventList),
+			areasize: self.areasize,
+			quant_ref: self.quant_ref,
+			tracks_bypassed: self.tracks_bypassed,
+			load: { arg me; ~stepTimeline.new_load(me) },
+		)
+	},
+
+	asRefArchiveData: { arg self;
+		(
+			key: self.key,
+			load: { arg me; ~stepTimeline.new(me.key) },
+		)
+	},
+
 
 	xasPattern: { arg self, relStartTime, totalDur;
 		self.proxy.source = Plazy({
@@ -139,45 +342,54 @@
 				//Pn(eventlist, 1),
 				xrelStartTime
 			));
-		}).repeat(self.repeatCount);
+		}).repeat(self.repeatCount); // FIXME: repeat will not update in real time
 		self.proxy;
 	},
 
 	edit: { arg self;
-		self.editor = ~stepTimelinePanelView.new(self);
+		var editor = ~stepTimelinePanelView.new(self); 
+		self.editor = {editor};
 	},
 
 	initStepEvent: { arg self, ev;
 		ev.putAll(~event_type_pattern);
-		ev[\stepseq_page] = ~stepseq_page.new;
+		ev[\stepseq_page] = ~stepseq_page.new(self);
 		ev[\label] = { arg me; me.stepseq_page.label };
 		ev[\edit] = { arg me, drumrack; me.stepseq_page.edit(drumrack) };
+		ev[\asArchiveData] = { arg me;
+			var data = me.copy;
+			data[\stepseq_page] = data.stepseq_page.asArchiveData;
+			data[\load] = { arg datame;
+				datame[\stepseq_page] = datame.stepseq_page.load;
+			};
+		};
 		ev[\pattern] = { arg me; 
-			Ppar(
-				me.stepseq_page.asPatternList.collect({ arg pat,i;
-					~pdemul.(
-						PchainT(
-							pat, 
-							Plazy({
-								//me[\drumrack].debug("event drumrack ?");
-								if(me[\drumrack].notNil and: {me[\drumrack].get_pad(i).patternList.size > 0}) {
-									//[i,me[\drumrack].get_pad(i)].debug("drum i");
-									Ptuple(
-										me[\drumrack].get_pad(i).patternList.collect({ arg pat, j;
-											if(me[\modulators].notNil) {
-												pat = me[\modulators].value.get_pad_modulator_pattern(i,j) <> pat;
-											};
-											pat;
-										});
-									).keep(1);
-								} {
-									Ptuple([Pbind().keep(1)])
-								}
-							}).loop
-						)
-					)
-				})
-			)
+			me.stepseq_page.xasPattern(me);
+			//Ppar(
+			//	me.stepseq_page.asPatternList.collect({ arg pat,i;
+			//		~pdemul.(
+			//			PchainT(
+			//				pat, 
+			//				Plazy({
+			//					//me[\drumrack].debug("event drumrack ?");
+			//					if(me[\drumrack].notNil and: {me[\drumrack].get_pad(i).patternList.size > 0}) {
+			//						//[i,me[\drumrack].get_pad(i)].debug("drum i");
+			//						Ptuple(
+			//							me[\drumrack].get_pad(i).patternList.collect({ arg pat, j;
+			//								if(me[\modulators].notNil) {
+			//									pat = me[\modulators].value.get_pad_modulator_pattern(i,j) <> pat;
+			//								};
+			//								pat;
+			//							});
+			//						).keep(1);
+			//					} {
+			//						Ptuple([Pbind().keep(1)])
+			//					}
+			//				}).loop
+			//			)
+			//		)
+			//	})
+			//)
 			//Pbind(
 			//	\instrument, \default,
 			//	\freq, 200,
@@ -195,7 +407,7 @@
 	new: { arg self, timeline;
 		self = ~timelinePanelView[\new].(self, timeline.eventloop);
 	
-		self.timeline_model = timeline;
+		self.timeline_model = { timeline };
 		self.areasize = self.timeline_model.areasize;
 		
 		self.makeWindow;
@@ -349,6 +561,7 @@
 
 ~modStepTimeline = (
 	parent: ~eventTimeline,
+	eventType: \modStepTimeline,
 	all: { PresetDictionary(\modStepTimeline) },
 	new: { arg self, name;
 	
@@ -364,15 +577,52 @@
 		self;
 	},
 
+	newInstance: { arg self;
+		self = self.deepCopy;
+		self.key = \instance;
+		self.init;
+		self;
+	},
+
 	init: { arg self;
 
 		self.proxy = EventPatternProxy.new;
+		self.eventloop = { arg me; me.stepTimeline.eventloop };
 		self.stepTimeline = ~stepTimeline.newInstance(self.key);
 		self.stepTimeline.modulators = { self };
 		//self.stepTimeline.modulators = { (get_pad_modulator_pattern: I)nil };
 		self.mod_timelines = List.new;
 		self.pad_modulators = Array.fill(16, { Array.fill(16, PresetEvent.new) });
 		
+	},
+
+	new_load: { arg self, data;
+		self = self.deepCopy;
+
+		self.proxy = EventPatternProxy.new;
+		self.stepTimeline = data[\stepTimeline].load;
+		self.eventloop = { arg me; me.stepTimeline.eventloop };
+		self.stepTimeline.modulators = { self };
+		//self.stepTimeline.modulators = { (get_pad_modulator_pattern: I)nil };
+		self.mod_timelines = List.new;
+		self.pad_modulators = Array.fill(16, { Array.fill(16, PresetEvent.new) });
+
+		self;
+	},
+
+	asArchiveData: { arg self;
+		(
+			name: self.key,
+			stepTimeline: self.stepTimeline.asArchiveData,
+			load: { arg me; ~modStepTimeline.new_load(me) },
+		)
+	},
+
+	asRefArchiveData: { arg self;
+		(
+			key: self.key,
+			load: { arg me; ~modStepTimeline.new(me.key) },
+		)
 	},
 
 	add_modulator: { arg self, param;
@@ -464,13 +714,18 @@
 		self.editor = ~modStepTimelinePanelView.new(self);
 		self.editor.makeWindow;
 	},
+
+	asView: { arg self;
+		self.editor = ~modStepTimelinePanelView.new(self);
+		self.editor.makeLayout;
+	},
 );
 
 ~modStepTimelinePanelView = (
 	new: { arg self, model;
 		self = self.deepCopy;
 	
-		self.model = model;
+		self.model = { model };
 		
 	
 		self;
@@ -481,7 +736,7 @@
 		var layout;
 		layout = self.makeLayout;
 		window.layout = layout;
-		window.alwaysOnTop = true;
+		//window.alwaysOnTop = true;
 		window.front;	
 	},
 
@@ -534,6 +789,14 @@
 			tl.timeline_model.addHalo(\viewport, tl.timeline.viewport);
 			tl.timeline_model.addHalo(\areasize, tl.timeline.areasize);
 		};
+	},
+
+	save_timeline_properties: { arg self;
+		self.save_timelines_properties;
+	},
+	
+	load_timeline_properties: { arg self;
+		self.load_timelines_properties
 	},
 
 	load_timelines_properties: { arg self;
@@ -753,3 +1016,82 @@
 	},
 );
 
+~modStepTimeline.all.loadIfNotInitialized;
+
+/////
+
+~modStepTimelineBank = ProtoClass((
+	all: { PresetDictionary(\modStepTimelineBank) },
+	new: { arg self, key;
+	
+		//if(self.all[key].isNil) {
+		if(true) {
+			self = self.deepCopy;
+			self.prAdd(key).init;
+		} {
+			self = self.all[key]
+		};
+	
+		self;
+	},
+
+	prAdd: { arg self, key;
+		self.all[key] = self;
+		self.key = key;
+	},
+
+	init: { arg self;
+		self.drumrack = DrumRack(self.key);
+		self.bank = BankList.new;
+		self.bank.add(self.new_item);
+	},
+
+	drumrack_: { arg self, dr;
+		self.bank.do({ arg x; x.drumrack = dr });
+	},
+
+	add_item: { arg self;
+		self.bank.add(self.new_item);
+	},
+
+	new_item: { arg self;
+		var item = ~modStepTimeline.newInstance;
+		item.drumrack = self.drumrack;
+		item;
+	},
+
+	asPattern: { arg self;
+		Plazy({ self.bank.current.xasPattern });
+	},
+
+	edit: { arg self;
+		WindowDef(\modStepTimelineBank_+++self.key, {
+			var bankselector = PopUpMenu.new;
+			var itemView = View.new;
+			var updateItemView = {
+				if(self.bank.current.editor.notNil) {
+					self.bank.current.editor.save_timeline_properties;
+				};
+				itemView.removeAll;
+				itemView.layout = self.bank.current.asView;
+				self.bank.current.editor.load_timeline_properties;
+				bankselector.mapParam(Param(Message(self.bank), \index, MenuSpec((0..self.bank.size-1))));
+			};
+			bankselector.onChange(self.bank, \index, {
+				updateItemView.()
+			});
+			updateItemView.();
+			VLayout(
+				HLayout(
+					bankselector,
+					XSimpleButton.new.label_("+").action_({ 
+						self.add_item;
+						updateItemView.();
+					}),
+					XSimpleButton.new.label_("-"),
+				),
+				itemView,
+			)
+		}).front;
+	},
+));

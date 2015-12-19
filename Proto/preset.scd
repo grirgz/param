@@ -111,10 +111,10 @@ EventClass.presetSelectorView = { arg pg;
 		};
 		
 		layout = HLayout(
-			left_button,
+			left_button.maxWidth_(40),
 			[popup_menu, stretch:1],
-			right_button,
-		);
+			right_button.maxWidth_(40),
+		).spacing_(1);
 		layout;
 
 };

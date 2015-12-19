@@ -11,31 +11,36 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1, gate=1;
 }).add;
 
 Event.addEventType(\player, {
-	var method = ~method ? \play;
+	var method = ~method.value ? \play;
+	var stopmethod = ~stopMethod.value ? \stop;
 	var args = ~arguments ? [];
 	var receiver = ~receiver.value;
 	var quant;
-	[method, args, receiver].debug("player EventType: method, args, receiver");
+	[method, args, receiver, ~disableQuant].debug("player EventType: method, args, receiver");
 	if(~disableQuant != false) {
-		quant = receiver.tryPerform(\quant);
-		receiver.tryPerform(\quant_, 0);
-	};
-	receiver.perform(method, *args);
-	if(~disableQuant != false) {
-		receiver.tryPerform(\quant_, quant);
-	};
-	if(method == \play) {
-		TempoClock.default.sched(~sustain.value(currentEnvironment), {
-			if(~disableQuant != false) {
+		TempoClock.default.sched(0, {
+			// apparently, latency is not needed, but there is a little latency quand meme 
+		//TempoClock.default.sched(Server.default.latency, {
+				receiver.perform(stopmethod, *args);
 				quant = receiver.tryPerform(\quant);
 				receiver.tryPerform(\quant_, 0);
-			};
-			receiver.perform(\stop, *args);
-			if(~disableQuant != false) {
+				receiver.quant.debug("receiver quant");
+				receiver.perform(method, *args);
 				receiver.tryPerform(\quant_, quant);
-			};
-			
+				quant.debug("in zero quant: old quant");
+				if(method == \play) {
+					TempoClock.default.sched(~sustain.value(currentEnvironment), {
+						receiver.perform(stopmethod, *args);
+					}.inEnvir);
+				};
 		}.inEnvir);
+	} {
+		receiver.perform(method, *args);
+		if(method == \play) {
+			TempoClock.default.sched(~sustain.value(currentEnvironment), {
+				receiver.perform(stopmethod, *args);
+			}.inEnvir);
+		};
 	};
 
 });
@@ -531,6 +536,18 @@ Event.addEventType(\player, {
 	}
 );
 
+~clear_event_type = { arg ev;
+	ev[\isEmbeddable] = nil;
+	ev[\embedEvent] = nil;
+	ev[\pattern] = nil;
+	ev[\key] = nil;
+	ev[\type] = nil;
+	ev[\eventType] = nil;
+	ev[\label] = nil;
+	ev[\eventlist] = nil;
+	ev;
+};
+
 ~event_type_eventlist = (
 	parent: Event.default,
 	label: ~event_get_label,
@@ -608,6 +625,11 @@ Event.addEventType(\player, {
 		self;
 	},
 
+	xclear: { arg self;
+		self.all[self.key] = nil;
+		nil
+	},
+
 	makeDefaultEventList: { arg self;
 		var el = XEventList.new;
 		el.start;
@@ -618,6 +640,7 @@ Event.addEventType(\player, {
 		var relStartTime, totalDur;
 		var eventlist = self.eventList;
 		// currentlty, startPosition and endPosition are in absolute time in the GUI, but will be relative to start event in futur
+		// this code translate absolute in relative (to start event)
 		if(startPosition.isNil) {
 			relStartTime = eventlist.relStartTime;
 		} {
@@ -628,9 +651,11 @@ Event.addEventType(\player, {
 		};
 
 		if(endPosition.isNil) {
-			totalDur = self.eventloop.list.totalDur - (startPosition - eventlist.startTime ).clip(0,inf);
+			//totalDur = self.eventloop.list.totalDur - (startPosition - eventlist.startTime ).clip(0,inf);
+			totalDur = self.eventloop.list.totalDur - relStartTime;
 		} {
-			totalDur = endPosition - (startPosition ? eventlist.startTime);
+			//totalDur = endPosition - (startPosition ? eventlist.startTime);
+			totalDur = (endPosition - eventlist.startTime) - relStartTime;
 		};
 		[startPosition, endPosition, relStartTime, totalDur].debug("asPatternAbs: start, end, relstart, totdur");
 		self.xasPattern(relStartTime, totalDur);
@@ -672,12 +697,12 @@ Event.addEventType(\player, {
 
 );
 
-if(~clipTimeline_all.isNil) {
-	~clipTimeline_all = IdentityDictionary.new;
-};
+//if(~clipTimeline_all.isNil) {
+//	~clipTimeline_all = IdentityDictionary.new;
+//};
 ~clipTimeline = (
 	parent: ~eventTimeline,
-	all: { ~clipTimeline_all },
+	all: { PresetDictionary.new(\clipTimeline) },
 	eventType: \clipTimeline,
 
 	new: { arg self, name;
@@ -700,9 +725,75 @@ if(~clipTimeline_all.isNil) {
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
+		self.tracks_bypassed = Set.new;
 		"=============clipTimeline: end init".debug;
 
 		self;
+	},
+
+	new_load: { arg self, data;
+		self = self.deepCopy;
+		self.prAdd(data.name).init(data.param);
+		self.eventloop = (list: ~eventlist_loadArchiveData.(data.eventlist), key: { self.key }); // fake eventloop for the moment
+		self.eventList.reorder;
+		self.areasize = data.areasize;
+		self.cursor.startPosition = self.eventList.startTime;
+		self.quant_ref = data.quant_ref;
+		self.tracks_bypassed = data.tracks_bypassed;
+		self;
+	},
+
+	asArchiveData: { arg self;
+		(
+			name: self.key,
+			param: self.param,
+			eventlist: ~eventlist_asArchiveData.(self.eventList),
+			areasize: self.areasize,
+			quant_ref: self.quant_ref,
+			tracks_bypassed: self.tracks_bypassed,
+			load: { arg me; ~clipTimeline.new_load(me) },
+		)
+	},
+
+	asRefArchiveData: { arg self;
+		(
+			key: self.key,
+			load: { arg me; ~clipTimeline.new(me.key) },
+		)
+	},
+
+	bypass_track: { arg self, track_index, val=true;
+		if(val) {
+			self.tracks_bypassed.add(track_index);
+		} {
+			self.tracks_bypassed.remove(track_index);
+		}
+	},
+
+	toggle_bypass_track: { arg self, track_index;
+		if(self.is_track_bypassed(track_index)) {
+			self.bypass_track(track_index, false)
+		} {
+			self.bypass_track(track_index, true)
+		}
+	},
+
+	is_track_bypassed: { arg self, track_index;
+		self.tracks_bypassed.includes(track_index);
+	},
+
+	bypass_pattern: { arg self, pat;
+		Pcollect({ arg ev;
+			"entering pcollect".debug;
+			ev = ev.copy;
+			if(self.tracks_bypassed.includes(ev.use({ev.midinote}))) {
+				ev[\type] = \rest;
+				ev[\eventType] = nil;
+				ev[\nodeType] = nil;
+			};
+			"ending pcollect".debug;
+			ev;
+		}, pat)	
 	},
 
 	xasPattern: { arg self, relStartTime, totalDur;
@@ -717,7 +808,7 @@ if(~clipTimeline_all.isNil) {
 
 			self.eventloop.list.changed(\cursor, \play);
 			Pfindur(xtotalDur, ~timeline_pattern.(
-				Pn(eventlist, 1),
+				self.bypass_pattern( Pn(eventlist, 1) ),
 				xrelStartTime
 			));
 		}).repeat(self.repeatCount);
@@ -725,18 +816,20 @@ if(~clipTimeline_all.isNil) {
 	},
 
 	edit: { arg self;
-		~clipTimelinePanelView.new(self);
+		var x = ~clipTimelinePanelView.new(self);
+		self.editor = { x };
+		x;
 	},
 
 );
 
 
-if(~noteTimeline_all.isNil) {
-	~noteTimeline_all = IdentityDictionary.new;
-};
+//if(~noteTimeline_all.isNil) {
+//	~noteTimeline_all = IdentityDictionary.new;
+//};
 ~noteTimeline = (
 	parent: ~eventTimeline,
-	all: { ~noteTimeline_all },
+	all: { PresetDictionary.new(\noteTimeline) },
 
 	eventType: \noteTimeline,
 	composeParamPattern: true,
@@ -744,7 +837,8 @@ if(~noteTimeline_all.isNil) {
 	new: { arg self, name, param;
 
 		if(self.all[name].notNil) {
-			self = self.all[name]
+			self = self.all[name];
+			if(param.notNil) { self.param = param };
 		} {
 			self = self.deepCopy;
 			self.prAdd(name).init(param);
@@ -766,6 +860,35 @@ if(~noteTimeline_all.isNil) {
 		// note: this is grid quant, not playing quant
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
 		
+	},
+
+	new_load: { arg self, data;
+		self = self.deepCopy;
+		self.prAdd(data.name).init(data.param);
+		self.eventloop = (list: data.eventlist, key: { self.key }); // fake eventloop for the moment
+		self.eventList.reorder;
+		self.areasize = data.areasize;
+		self.cursor.startPosition = self.eventList.startTime;
+		self.quant_ref = data.quant_ref;
+		self;
+	},
+
+	asArchiveData: { arg self;
+		(
+			name: self.key,
+			param: self.param,
+			eventlist: self.eventList,
+			areasize: self.areasize,
+			quant_ref: self.quant_ref,
+			load: { arg me; ~noteTimeline.new_load(me) },
+		)
+	},
+
+	asRefArchiveData: { arg self;
+		(
+			key: self.key,
+			load: { arg me; ~noteTimeline.new(me.key) },
+		)
 	},
 
 	xasPattern: { arg self, relStartTime, totalDur;
@@ -800,21 +923,19 @@ if(~noteTimeline_all.isNil) {
 	},
 
 	edit: { arg self;
-		~noteTimelinePanelView.new(self)
+		var x = ~noteTimelinePanelView.new(self);
+		self.editor = { x };
+		x;
 	},
 
 	asView: { arg self;
 		~noteTimelinePanelView.newView(self).makeLayout;
 	},
-
 );
 
-if(~envTimeline_all.isNil) {
-	~envTimeline_all = IdentityDictionary.new;
-};
 ~envTimeline = (
 	parent: ~eventTimeline,
-	all: { ~envTimeline_all },
+	all: { PresetDictionary.new(\envTimeline) },
 	eventType: \envTimeline,
 
 	new: { arg self, name, param;
@@ -834,15 +955,6 @@ if(~envTimeline_all.isNil) {
 		self = self.deepCopy;
 		self.key = \instance;
 		param.debug("envTimeline: newInstance: param");
-		if(bus.isNil) {
-			if({param.target.isKindOf(Bus)}) {
-				self[\outBus] = param.target;
-			} {
-				// TODO
-			};
-		} {
-			self[\outBus] = bus;
-		};
 		"xx".debug;
 		self.init(param)
 	},
@@ -860,8 +972,10 @@ if(~envTimeline_all.isNil) {
 	},
 
 	outBus: { arg self;
+		// overriden in init
 		BusDef(self.key, \control);
 	},
+
 
 	// when clicking play in GUI, it call to asPatternAbs
 	//listenToCursor: { arg self;
@@ -870,7 +984,7 @@ if(~envTimeline_all.isNil) {
 	//	})
 	//},
 
-	init: { arg self, param;
+	init: { arg self, param, bus;
 
 		var el = self.makeDefaultEventList;
 		self.param = param;
@@ -879,6 +993,17 @@ if(~envTimeline_all.isNil) {
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
+		if(bus.isNil) {
+			if(param.target.isKindOf(Bus)) {
+				self[\outBus] = param.target;
+			} {
+				// FIXME: should always call newInstance with a bus param
+				// else everything write to the same bus
+				self[\outBus] = BusDef(self.key, \control);
+			};
+		} {
+			self[\outBus] = bus;
+		};
 
 		// note: this is grid quant, not playing quant
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
@@ -887,6 +1012,42 @@ if(~envTimeline_all.isNil) {
 
 		self;
 		
+	},
+
+	new_load: { arg self, data;
+		self = self.deepCopy;
+		self.prAdd(data.name).init(data.param);
+		self.eventloop = (list: data.eventlist, key: { self.key }); // fake eventloop for the moment
+		self.eventList.reorder;
+		self.areasize = data.areasize;
+		self.cursor.startPosition = self.eventList.startTime;
+		self.quant_ref = data.quant_ref;
+		self.xasPattern;
+		self;
+	},
+
+	asArchiveData: { arg self;
+		(
+			name: self.key,
+			param: self.param,
+			eventlist: self.eventList,
+			areasize: self.areasize,
+			quant_ref: self.quant_ref,
+			load: { arg me; ~envTimeline.new_load(me) },
+		)
+	},
+
+	asRefArchiveData: { arg self;
+		// TODO: what if it's an instance, not a def ?
+		// maybe no need for this "if", just call asArchiveData when needed ?
+		if(self.key == \instance) {
+			self.asArchiveData
+		} {
+			(
+				key: self.key,
+				load: { arg me; ~envTimeline.new(me.key) },
+			)
+		}
 	},
 
 
@@ -936,11 +1097,17 @@ if(~envTimeline_all.isNil) {
 	},
 
 	edit: { arg self;
-		~envTimelinePanelView.new(self)
+		var x = ~envTimelinePanelView.new(self);
+		self.editor = { x };
+		x;
 	},
 
 );
 
+//////////////////////////////////////////// loading archived data
+~noteTimeline.all.loadIfNotInitialized;
+~envTimeline.all.loadIfNotInitialized;
+~clipTimeline.all.loadIfNotInitialized;
 
 ///////////////////////////////////////////////////////////////////// timeline panel
 
@@ -953,7 +1120,7 @@ if(~envTimeline_all.isNil) {
 		self.areasize = 10@1;
 		self.quant_ref = Ref(Point(1/8,1));
 
-		self.definePattern;
+		//self.definePattern;
 
 		self;
 	},
@@ -1026,35 +1193,41 @@ if(~envTimeline_all.isNil) {
 		View.new;
 	},
 
-	definePattern: { arg self;
-		// FIXME: why this is in a view class ??
-		Pdef(self.eventloop.key, Plazy({
-			//PtimeGatePunch(self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"))
-			var start, end;
-			var eventlist = self.eventloop.list;
-			if(self.cursor.notNil) {
-				start = self.cursor.startPosition - eventlist.startTime;
-				if(self.cursor.endPosition.notNil) {
-					end = self.cursor.endPosition - eventlist.endTime;
-				}
-			};
-			~timeline_pattern.(
-				~eventlist_aspattern.(
-					self.eventloop.list
-				).trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"),
-				start, end
-			);
-			//self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx")
-		}));
-	},
+	//definePattern: { arg self;
+	//	// FIXME: why this is in a view class ??
+	//	Pdef(self.eventloop.key, Plazy({
+	//		//PtimeGatePunch(self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"))
+	//		var start, end;
+	//		var eventlist = self.eventloop.list;
+	//		if(self.cursor.notNil) {
+	//			start = self.cursor.startPosition - eventlist.startTime;
+	//			if(self.cursor.endPosition.notNil) {
+	//				end = self.cursor.endPosition - eventlist.endTime;
+	//			}
+	//		};
+	//		~timeline_pattern.(
+	//			~eventlist_aspattern.(
+	//				self.eventloop.list
+	//			).trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"),
+	//			start, end
+	//		);
+	//		//self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx")
+	//	}));
+	//},
 
 	makeWindow: { arg self;
-		var window = Window.new;
-		var layout;
-		layout = self.makeLayout;
-		window.layout = layout;
-		window.alwaysOnTop = true;
-		window.front;	
+		//var window = Window.new;
+		WindowDef("%_%".format(self.timeline_model.eventType, self.key).asSymbol, { arg window;
+			var layout;
+			window.onClose_({
+				self.save_timeline_properties;
+			});
+			layout = self.makeLayout;
+			//window.layout = layout;
+			//window.alwaysOnTop = true;
+			//window.front;	
+			layout
+		}).front
 	},
 
 	add_track: { arg self;
@@ -1073,19 +1246,29 @@ if(~envTimeline_all.isNil) {
 	},
 
 	update_track_header: { arg self;
+		var track_count = self.areasize.y.asInteger;
 		var track_header_block = { arg x;
 			var res = View.new.layout_(
 				HLayout(
-					XSimpleButton.new.label_("track %".format(x))
+					//XSimpleButton.new.label_("track %".format(x)).
+					self.track_selector.views[track_count - 1 - x]
 				)
 			);
 			//res.background_(Color.blue);
 			res;
 		};
+		self.track_selector = ~view_selector.new(track_count, {}, { arg view, x; 
+			//x = track_count - x;
+			if(self.timeline_model.is_track_bypassed(x)) {
+				view.label_("[track %]".format(x));
+			} {
+				view.label_("track %".format(x));
+			}
+		});
 		self.track_header.canvas_(
 			self.track_header_view = View.new.layout_(
 				VLayout(*
-					self.areasize.y.asInteger.collect { arg x;
+					track_count.collect { arg x;
 						[
 							track_header_block.(x),
 							align: \top,
@@ -1116,14 +1299,18 @@ if(~envTimeline_all.isNil) {
 
 	update_track_header_size: { arg self;
 		//self.vrange.view.doAction;
-		if(self.timeline.notNil) {
-			"update_track_header_size: real updating now!".debug;
-			[self.timeline.bounds.height, self.timeline.viewport.height].debug("bh, vh");
-			self.track_header_view.fixedHeight = self.timeline.bounds.height / self.timeline.viewport.height;
-			self.track_header.visibleOrigin = Point(0,(1-self.timeline.viewport.bottom) * self.track_header.bounds.height);
-			self.timeline.viewport.top.debug("top");
-			[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height].debug("[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height]");
-			self.track_header.visibleOrigin.debug("update_track_header_size: visibleOrigin");
+		if(self.vrange.notNil) {
+			self.vrange_track_header_action(self.vrange.view)
+		} {
+			if(self.timeline.notNil) {
+				"update_track_header_size: real updating now!".debug;
+				[self.timeline.bounds.height, self.timeline.viewport.height].debug("bh, vh");
+				self.track_header_view.fixedHeight = self.timeline.bounds.height / self.timeline.viewport.height;
+				self.track_header.visibleOrigin = Point(0,(1-self.timeline.viewport.bottom) * self.track_header.bounds.height);
+				self.timeline.viewport.top.debug("top");
+				[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height].debug("[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height]");
+				self.track_header.visibleOrigin.debug("update_track_header_size: visibleOrigin");
+			}
 		}
 	},
 
@@ -1151,14 +1338,21 @@ if(~envTimeline_all.isNil) {
 		track_header.hasHorizontalScroller = false;
 		self.track_header = track_header;
 
-		self.vrange.view.addAction({ arg slider;
+		self.vrange_track_header_action = { arg self, slider;
 			self.track_header_view.fixedHeight = 1/slider.range * track_header.bounds.height;
 			( 1/slider.range * track_header.bounds.height ).debug("vrange.view.action: fixedHeight");
 			track_header.visibleOrigin = Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height;
 			( Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height ).debug("vrange.view.action: visibleOrigin");
+		};
+
+		self.vrange.view.addAction({ arg slider;
+			self.vrange_track_header_action.(slider)
 		});
 
 		self.update_track_header;
+
+		//self.vrange.view.activeLo = self.vrange.view.lo; // trigger action
+
 		self.track_header;
 	},
 
@@ -1180,8 +1374,11 @@ if(~envTimeline_all.isNil) {
 		vlayout = VLayout.new;
 		layout.add(vlayout);
 
+		self.save_timeline_properties;
 		timeline = self.timelineClass.new;
-		timeline.areasize = self.pr_areasize.debug("==================seting areasize");
+		self.timeline = timeline;
+		self.load_timeline_properties;
+		//timeline.areasize = self.pr_areasize.debug("==================seting areasize");
 		~mytl = timeline;
 		timeline.mouseDownAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
 			if(clickCount == 2) {
@@ -1205,6 +1402,7 @@ if(~envTimeline_all.isNil) {
 
 		ruler_x = TimelineRulerView.new;
 		ruler_x.mapCursor(self.cursor);
+		ruler_x.quant = self.quant_ref;
 		locatorbar = TimelineLocatorBarView.new;
 
 		locatorbar.quant = self.quant_ref;
@@ -1214,11 +1412,11 @@ if(~envTimeline_all.isNil) {
 		cursor_timeline.mimicTimeline(timeline);
 
 		hrange = TimelineScroller.new;
-		hrange.mapTimeline(timeline);
 		hrange.orientation = \horizontal;
+		hrange.mapTimeline(timeline);
 		vrange = TimelineScroller.new;
-		vrange.mapTimeline(timeline);
 		vrange.orientation = \vertical;
+		vrange.mapTimeline(timeline);
 		self.vrange = vrange;
 
 		sizer = 
@@ -1293,7 +1491,44 @@ if(~envTimeline_all.isNil) {
 		"iiAZE".debug;
 
 
-		self.zoom_fit;
+		//self.zoom_fit;
+
+		self.timeline.keyDownAction = ({ arg me, key, modifiers, unicode, keycode;
+			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+			if(modifiers.isCtrl) {
+				if(keycode == 54) { // ^c
+					~clipTimeline_clipboard = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
+				};
+				if(keycode == 55) { // ^v
+					if(~clipTimeline_clipboard.notNil) {
+						var delta;
+						var first = ~clipTimeline_clipboard.as(Array).inject(nil, { arg a, b; 
+							if(a.isNil) {
+								b
+							} {
+								if(a[\absTime] < b[\absTime]) {
+									a
+								} {
+									b
+								}
+							};
+						});
+						first.debug("first");
+						delta = self.timeline.lastGridPos.x - first[\absTime];
+						~clipTimeline_clipboard.debug("clipboard");
+						~clipTimeline_clipboard.do({ arg event;
+							var new;
+							new = event.copy;
+							[new, delta].debug("new, delta");
+							new[\absTime] = new[\absTime] + delta;
+							self.timeline.model.addEvent(new);
+						});
+						//self.timeline.model.changed(\refresh);
+						self.timeline.model.reorder;
+					}
+				}
+			}
+		});
 
 		layout;
 	},
@@ -1305,6 +1540,27 @@ if(~envTimeline_all.isNil) {
 
 	refresh: { arg self;
 		self.timeline.mapEventList(self.eventloop.list);
+	},
+
+	save_timeline_properties: { arg self;
+		var tl = self;
+		if(tl.timeline.notNil) {
+			tl.timeline_model.addHalo(\viewport, tl.timeline.viewport);
+			tl.timeline_model.addHalo(\areasize, tl.timeline.areasize);
+		}
+	},
+
+	load_timeline_properties: { arg self;
+		var tl = self;
+		var cur;
+		cur = tl.timeline_model.getHalo(\viewport);
+		if(cur.notNil) {
+			tl.timeline.viewport = cur;
+		};
+		cur = tl.timeline_model.getHalo(\areasize) ? self.pr_areasize;
+		if(cur.notNil) {
+			tl.timeline.areasize = cur;
+		};
 	},
 );
 
@@ -1365,7 +1621,10 @@ if(~envTimeline_all.isNil) {
 									type = 'ClipTimeline'
 								},
 								\noteTimeline, {
-									type = 'noteTimeline'
+									type = 'NoteTimeline'
+								},
+								\modStepTimeline, {
+									type = 'ModStepTimeline'
 								},
 							)
 						};
@@ -1393,6 +1652,7 @@ if(~envTimeline_all.isNil) {
 			'ClipTimeline',
 			'NoteTimeline',
 			'EnvTimeline',
+			'ModStepTimeline',
 		];
 		self.type_popup.action = {
 			switch( self.type_popup.items[self.type_popup.value],
@@ -1414,10 +1674,50 @@ if(~envTimeline_all.isNil) {
 				},
 				\EnvTimeline, {
 					name_popup.items = ~envTimeline.all.keys.asArray;
+				},
+				\ModStepTimeline, {
+					name_popup.items = ~modStepTimeline.all.keys.asArray;
 				}
 			);
 		};
 		self.type_popup.valueAction = 0;
+	},
+
+	edit_selected: { arg self, model;
+		model = model ? self.model;
+		[model.type, model].debug("Edit: type");
+		switch(model.type,
+			\player, {
+				var player = model.receiver.value;
+				if(player.class == PlayerWrapper) {
+					player = player.target;
+				};
+				if(player.getHalo(\edit).notNil) {
+					player.getHalo(\edit).value;
+				} {
+					player.edit;
+				}
+			},
+			\pattern, {
+				var player = model.receiver.value;
+				player.asParamGroup.debug("Edit: pattern");
+				if(player.class == PlayerWrapper) {
+					player = player.target;
+				};
+				player.debug("clipeditor: player");
+				player.getHalo(\edit).debug("clipeditor: player, edit");
+				if(player.getHalo(\edit).notNil) {
+					player.getHalo(\edit).debug("clipeditor: player, halo edit");
+					player.getHalo(\edit).value;
+				} {
+					player.getHalo(\edit).debug("clipeditor: normal edit");
+					player.asParamGroup.edit;
+				}
+			},
+			\timeline, {
+				model.timeline.edit;
+			}
+		);
 	},
 
 	makeLayout: { arg self;
@@ -1438,30 +1738,41 @@ if(~envTimeline_all.isNil) {
 			var model = self.model;
 			switch( type_popup.items[type_popup.value],
 				\Ndef, {
+					~clear_event_type.(model);
 					model.putAll(~event_type_player);
 					model[\receiver] = Ref(PlayerWrapper(Ndef(curname)));
 					//model.changed(\refresh);
 					self.parent_model.changed(\refresh);
 				},
 				\Pdef, {
+					~clear_event_type.(model);
 					model.putAll(~event_type_pattern);
 					model.receiver = Ref(Pdef(curname));
 					//model.changed(\refresh);
 					self.parent_model.changed(\refresh);
 				},
 				\NoteTimeline, {
+					~clear_event_type.(model);
 					model.putAll(~event_type_timeline);
 					model[\timeline] = ~noteTimeline.new(curname);
 					self.parent_model.changed(\refresh);
 				},
 				\ClipTimeline, {
+					~clear_event_type.(model);
 					model.putAll(~event_type_timeline);
 					model[\timeline] = ~clipTimeline.new(curname);
 					self.parent_model.changed(\refresh);
 				},
 				\EnvTimeline, {
+					~clear_event_type.(model);
 					model.putAll(~event_type_timeline);
 					model[\timeline] = ~envTimeline.new(curname);
+					self.parent_model.changed(\refresh);
+				},
+				\ModStepTimeline, {
+					~clear_event_type.(model);
+					model.putAll(~event_type_timeline);
+					model[\timeline] = ~modStepTimeline.new(curname);
 					self.parent_model.changed(\refresh);
 				},
 			);
@@ -1473,40 +1784,7 @@ if(~envTimeline_all.isNil) {
 			type_popup,
 			name_popup,
 			XSimpleButton.new.label_("Edit").action_({
-				var model = self.model;
-				[model.type, model].debug("Edit: type");
-				switch(model.type,
-					\player, {
-						var player = model.receiver.value;
-						if(player.class == PlayerWrapper) {
-							player = player.target;
-						};
-						if(player.getHalo(\edit).notNil) {
-							player.getHalo(\edit).value;
-						} {
-							player.edit;
-						}
-					},
-					\pattern, {
-						var player = model.receiver.value;
-						player.asParamGroup.debug("Edit: pattern");
-						if(player.class == PlayerWrapper) {
-							player = player.target;
-						};
-						player.debug("clipeditor: player");
-						player.getHalo(\edit).debug("clipeditor: player, edit");
-						if(player.getHalo(\edit).notNil) {
-							player.getHalo(\edit).debug("clipeditor: player, halo edit");
-							player.getHalo(\edit).value;
-						} {
-							player.getHalo(\edit).debug("clipeditor: normal edit");
-							player.asParamGroup.edit;
-						}
-					},
-					\timeline, {
-						model.timeline.edit;
-					}
-				);
+				self.edit_selected;
 			})
 		);
 		layout = VLayout(
@@ -1523,7 +1801,7 @@ if(~envTimeline_all.isNil) {
 		var layout;
 		layout = self.makeLayout;
 		window.layout = layout;
-		window.alwaysOnTop = true;
+		//window.alwaysOnTop = true;
 		window.front;
 
 		self.makeUpdater;
@@ -1562,12 +1840,27 @@ if(~envTimeline_all.isNil) {
 
 
 	make_header: { arg self;
+		var mute_button = Button.new.states_([
+			[ "Mute", Color.black, Color.white ],
+			[ "Unmute", Color.black, ParamView.color_ligth ],
+		]).onChange(self.track_selector, \selected_index, { arg view;
+			view.value = if(self.timeline_model.is_track_bypassed(self.track_selector.selected_index)) {
+				1
+			} {
+				0
+			}
+		}).action_({
+			self.timeline_model.toggle_bypass_track(self.track_selector.selected_index);
+			self.track_selector.viewInit.(self.track_selector.selected_view, self.track_selector.selected_index);
+		});
+
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
 			XSimpleButton.new.label_("Add track").action_({
 				self.add_track;
 			}),
+			mute_button,
 			self.make_quant_popup,
 		);
 		
@@ -1592,13 +1885,19 @@ if(~envTimeline_all.isNil) {
 			//self.parent.makeLayout,
 		);
 		self.timeline.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
-			if(chosennode.notNil) {
-				self.clipEditor.model = chosennode.model;
-				self.clipEditor.makeUpdater;
-				chosennode.model.changed(\refresh);
+			if(clickCount == 2) {
+				if(chosennode.notNil) {
+					self.clipEditor.edit_selected(chosennode.model);
+				}
 			} {
-				self.clipEditor.model = nil;
-				self.clipEditor.clearEditor;
+				if(chosennode.notNil) {
+					self.clipEditor.model = chosennode.model;
+					self.clipEditor.makeUpdater;
+					chosennode.model.changed(\refresh);
+				} {
+					self.clipEditor.model = nil;
+					self.clipEditor.clearEditor;
+				}
 			}
 		};
 		self.layout;
@@ -1905,184 +2204,221 @@ if(~envTimeline_all.isNil) {
 };
 
 
+~eventlist_asArchiveData = { arg eventlist;
+	var el = eventlist.collect({ arg ev;
+		if(ev[\asArchiveData].notNil) {
+			ev = ev.asArchiveData;
+		} {
+			ev = ev.copy;
+			if(ev.use({ev.type}) == \timeline) {
+				var tl = ev.use({ev.timeline});
+				ev[\timeline]  = tl.asRefArchiveData;
+			};
+		};
+		ev;
+	});
+	(
+		eventlist: el,
+		load: { arg self;
+			~eventlist_loadArchiveData.(self)
+		},
+	);
+};
+
+~eventlist_loadArchiveData = { arg eventlist_data;
+	var el = eventlist_data[\eventlist].collect({ arg ev;
+		if(ev[\load].notNil) {
+			ev = ev.load;
+		} {
+			ev = ev.copy;
+			if(ev.use({ev.type}) == \timeline) {
+				var tl = ev.use({ev.timeline});
+				ev[\timeline]  = tl.load;
+			};
+		};
+		ev;
+	});
+	XEventList.newFrom(el);
+};
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 
 
 
 // To be converted in class in Gui.sc
-	~fxblock = { arg name, player, mixparam, pg;
-		VLayout(
-			View.new.layout_(
+~fxblock = { arg name, player, mixparam, pg;
+	VLayout(
+		View.new.layout_(
 
-				HLayout(
-					//player.asView, //.background_(ParamView.color_dark);
-					~onoff.(player),
-					//StaticText.new.string_(name).background_(ParamView.color_dark),
-					StaticText.new.string_(name),
-					//mixparam.asSlider.orientation_(\horizontal).background_(ParamView.color_dark),
-					mixparam.asSlider.orientation_(\horizontal),
-				).margins_(2),
-			).background_(ParamView.color_dark),
-			ParamGroupLayout.two_panes(pg, \property)
-		);
-	};
-
-	~onoff = { arg player;
-		var p = PlayerWrapperView(player);
-		var view = p.view;
-		p.states = { [
-			["Off", Color.gray, Color.white],
-			["On", Color.black, Color.white], 
-		] };
-		p.button.fixedSize = 30@20;
-		p.button.background_(ParamView.color_dark);
-		view;
-	};
-
-	if( ~iProxyChain_all.isNil) { 
-		~iProxyChain_all = IdentityDictionary.new; 
-	};
-	~iProxyChain = (
-		all: { ~iProxyChain_all },
-		new: { arg self, name, slots, inKey=\inBus;
-
-			if(self.all[name].notNil) {
-				self = self.all[name];
-			} {
-				self = self.deepCopy;
-				self.init(slots, inKey).prAdd(name);
-			};
-		
-			self;
-		},
-
-		label: { arg self;
-			self.name;	
-		},
-
-		prAdd: { arg self, name;
-			self.name = name;
-			self.all[name] = self;
-		},
-
-		init: { arg self, slots, inKey;
-			self.slots = slots;
-			self.inKey = inKey;
-			self.isEnabled = 1 ! self.slots.size;
-			self.monitor = NodeProxy.new.source_({ arg inBus; InFeedback.ar(inBus, 2); });
-
-			self.resetOrder;
-			//self.updateRouting;
-			//self.busses = { Bus.audio(s,2) } ! self.slots.size;
-
-			self;
-			
-		},
-
-		proxyGroup: { arg self;
-			GroupDef(self.name);
-		},
-
-		updateRouting: { arg self;
-			var in = self.inBus;
-			var out;
-			if(in.notNil) {
-				self.proxyOrder.do { arg slot_idx, i;
-					var slot;
-					slot_idx.debug("slot_idx");
-					slot = self.slots[slot_idx];
-					if(slot.notNil and: { self.isEnabled[slot_idx] != 0 }) {
-						[slot_idx, in, i].debug("in!!!");
-						slot.xset(self.inKey, in.asControlInput);
-						//slot.parentGroup = self.proxyGroup;
-						//self.proxyGroup.moveNodeToTail(slot.group);
-						//slot.play;
-						slot.send;
-						in = slot.bus;
-					}
-				};
-				self.lastIn = in;
-				//self.proxyOrder.asArray.reverse.do { arg slot_idx;
-				//	var slot;
-				//	slot_idx.debug("slot_idx2");
-				//	slot = self.slots[slot_idx];
-				//	if(slot.notNil and: { self.isEnabled[slot_idx] != 0 }) {
-				//		slot.play(self.inBus.asControlInput, 2);
-				//		slot.set(self.inKey, self.inBus.asControlInput);
-				//	}
-				//};
-
-				[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!!");
-				self.monitor.xset(\inBus, in);
-				[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!! after");
-				//self.proxyGroup.moveNodeToHead(self.monitor.group);
-				//self.monitor.group.moveNodeToTail(Group(s));
-				//self.slots[self.proxyOrder.asArray.last].play(0)
-			};
-		},
-
-		eventPlay: { arg self;
-			self.updateRouting;
-			self.monitor.play;
-		},
-
-		eventStop: { arg self;
-			self.monitor.xset(\inBus, self.inBus);
-			self.monitor.play;
-		},
-
-		eventIsPlaying: { arg self;
-			self.monitor.monitor.isPlaying and: { 
-				self.monitor.get(\inBus) != self.inBus
-			};
-		},
-
-		enableLink: { arg self, x, onezero=1;
-			self.isEnabled[x] = onezero;
-			self.updateRouting;
-		},
-
-		enabledLinkParam: { arg self, x;
-			Param({ self.isEnabled[x] }, { arg val; self.enableLink(x, val) }, ControlSpec(0,1,\lin,1));
-		},
-
-		resetOrder: { arg self;
-			self.proxyOrder = (0..self.slots.size-1);
-		},
-
-		proxyOrder_: { arg self, seq;
-			self[\proxyOrder] = OrderedIdentitySet.newFrom(seq.asArray.keep(self.slots.size));
-			self.updateRouting;
-		},
-
-		xadd: { arg self, proxy;
-			self.slots.add(proxy);
-			self.isEnabled.add(1);
-			self.proxyOder.add(self.slots.size-1);
-			self.updateRouting;
-		},
-
-		xput: { arg self, i, proxy;
-			self.slots.put(i, proxy);
-			self.isEnabled.put(i, 1);
-			self.updateRouting;
-			//self.order.pu(self.slots.size-1);
-		},
-
-		xinsert: { arg self, i, proxy;
-			self.slots.insert(i, proxy);
-			self.isEnabled.insert(i, 1);
-			self.updateRouting;
-			//self.order.pu(self.slots.size-1);
-		},
-
-		removeAt: { arg self, idx;
-			self.slots.removeAt(idx);
-			self.isEnabled.removeAt(idx);
-			self.proxyOrder.remove(idx);
-			self.updateRouting;
-		}
-
+			HLayout(
+				//player.asView, //.background_(ParamView.color_dark);
+				~onoff.(player),
+				//StaticText.new.string_(name).background_(ParamView.color_dark),
+				StaticText.new.string_(name),
+				//mixparam.asSlider.orientation_(\horizontal).background_(ParamView.color_dark),
+				mixparam.asSlider.orientation_(\horizontal),
+			).margins_(2),
+		).background_(ParamView.color_dark),
+		ParamGroupLayout.two_panes(pg, \property)
 	);
+};
+
+~onoff = { arg player;
+	var p = PlayerWrapperView(player);
+	var view = p.view;
+	p.states = { [
+		["Off", Color.gray, Color.white],
+		["On", Color.black, Color.white], 
+	] };
+	p.button.fixedSize = 30@20;
+	p.button.background_(ParamView.color_dark);
+	view;
+};
+
+if( ~iProxyChain_all.isNil) { 
+	~iProxyChain_all = IdentityDictionary.new; 
+};
+~iProxyChain = (
+	all: { ~iProxyChain_all },
+	new: { arg self, name, slots, inKey=\inBus;
+
+		if(self.all[name].notNil) {
+			self = self.all[name];
+		} {
+			self = self.deepCopy;
+			self.init(slots, inKey).prAdd(name);
+		};
+	
+		self;
+	},
+
+	label: { arg self;
+		self.name;	
+	},
+
+	prAdd: { arg self, name;
+		self.name = name;
+		self.all[name] = self;
+	},
+
+	init: { arg self, slots, inKey;
+		self.slots = slots;
+		self.inKey = inKey;
+		self.isEnabled = 1 ! self.slots.size;
+		self.monitor = NodeProxy.new.source_({ arg inBus; InFeedback.ar(inBus, 2); });
+
+		self.resetOrder;
+		//self.updateRouting;
+		//self.busses = { Bus.audio(s,2) } ! self.slots.size;
+
+		self;
+		
+	},
+
+	proxyGroup: { arg self;
+		GroupDef(self.name);
+	},
+
+	updateRouting: { arg self;
+		var in = self.inBus;
+		var out;
+		if(in.notNil) {
+			self.proxyOrder.do { arg slot_idx, i;
+				var slot;
+				slot_idx.debug("slot_idx");
+				slot = self.slots[slot_idx];
+				if(slot.notNil and: { self.isEnabled[slot_idx] != 0 }) {
+					[slot_idx, in, i].debug("in!!!");
+					slot.xset(self.inKey, in.asControlInput);
+					//slot.parentGroup = self.proxyGroup;
+					//self.proxyGroup.moveNodeToTail(slot.group);
+					//slot.play;
+					slot.send;
+					in = slot.bus;
+				}
+			};
+			self.lastIn = in;
+			//self.proxyOrder.asArray.reverse.do { arg slot_idx;
+			//	var slot;
+			//	slot_idx.debug("slot_idx2");
+			//	slot = self.slots[slot_idx];
+			//	if(slot.notNil and: { self.isEnabled[slot_idx] != 0 }) {
+			//		slot.play(self.inBus.asControlInput, 2);
+			//		slot.set(self.inKey, self.inBus.asControlInput);
+			//	}
+			//};
+
+			[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!!");
+			self.monitor.xset(\inBus, in);
+			[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!! after");
+			//self.proxyGroup.moveNodeToHead(self.monitor.group);
+			//self.monitor.group.moveNodeToTail(Group(s));
+			//self.slots[self.proxyOrder.asArray.last].play(0)
+		};
+	},
+
+	eventPlay: { arg self;
+		self.updateRouting;
+		self.monitor.play;
+	},
+
+	eventStop: { arg self;
+		self.monitor.xset(\inBus, self.inBus);
+		self.monitor.play;
+	},
+
+	eventIsPlaying: { arg self;
+		self.monitor.monitor.isPlaying and: { 
+			self.monitor.get(\inBus) != self.inBus
+		};
+	},
+
+	enableLink: { arg self, x, onezero=1;
+		self.isEnabled[x] = onezero;
+		self.updateRouting;
+	},
+
+	enabledLinkParam: { arg self, x;
+		Param({ self.isEnabled[x] }, { arg val; self.enableLink(x, val) }, ControlSpec(0,1,\lin,1));
+	},
+
+	resetOrder: { arg self;
+		self.proxyOrder = (0..self.slots.size-1);
+	},
+
+	proxyOrder_: { arg self, seq;
+		self[\proxyOrder] = OrderedIdentitySet.newFrom(seq.asArray.keep(self.slots.size));
+		self.updateRouting;
+	},
+
+	xadd: { arg self, proxy;
+		self.slots.add(proxy);
+		self.isEnabled.add(1);
+		self.proxyOder.add(self.slots.size-1);
+		self.updateRouting;
+	},
+
+	xput: { arg self, i, proxy;
+		self.slots.put(i, proxy);
+		self.isEnabled.put(i, 1);
+		self.updateRouting;
+		//self.order.pu(self.slots.size-1);
+	},
+
+	xinsert: { arg self, i, proxy;
+		self.slots.insert(i, proxy);
+		self.isEnabled.insert(i, 1);
+		self.updateRouting;
+		//self.order.pu(self.slots.size-1);
+	},
+
+	removeAt: { arg self, idx;
+		self.slots.removeAt(idx);
+		self.isEnabled.removeAt(idx);
+		self.proxyOrder.remove(idx);
+		self.updateRouting;
+	}
+
+);
 

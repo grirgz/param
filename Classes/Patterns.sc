@@ -108,25 +108,26 @@ PstepSeq : ListPattern {
 
 	embedInStream {  arg ev;
 		var item, offsetValue;
-		var i = 0;
-		block { arg break;
-			this.changed(\cursor, nil, 0); // turn off all cells
-			this.list.changed(\cursor, nil, 0); // turn off all cells
-			loop {
+		var i;
+		repeats.do {
+			i = 0;
+			block { arg break;
+				this.changed(\cursor, nil, 0); // turn off all cells
+				this.list.changed(\cursor, nil, 0); // turn off all cells
+				loop {
+					if( this.list[i].notNil ) {
+						// cursor following 
+						this.changed(\cursor, (i-1).wrap(0,this.list.size-1), 0);
+						this.list.changed(\cursor, (i-1).wrap(0,this.list.size-1), 0);
+						this.changed(\cursor, i, 1, this.list[i]);
+						this.list.changed(\cursor, i, 1, this.list[i]);
 
-
-				if( this.list[i].notNil ) {
-					// cursor following 
-					this.changed(\cursor, (i-1).wrap(0,this.list.size-1), 0);
-					this.list.changed(\cursor, (i-1).wrap(0,this.list.size-1), 0);
-					this.changed(\cursor, i, 1, this.list[i]);
-					this.list.changed(\cursor, i, 1, this.list[i]);
-
-					ev = this.list[i].yield(ev);
-				} {
-					break.value;
+						ev = this.list[i].yield(ev);
+					} {
+						break.value;
+					};
+					i = i + 1;
 				};
-				i = i + 1;
 			};
 		};
 		i = 0;
@@ -218,6 +219,14 @@ StepList : List {
 		^this.size;
 	}
 
+	clone {
+		var new = this.deepCopy;
+		//Halo.put(new, Halo.at(this).deepCopy);
+		new.addHalo(\seqstyle, this.getHalo(\seqstyle));
+		new.addSpec(\list, this.getSpec(\list));
+		^new;
+	}
+
 	isNaN { ^true }
 
 }
@@ -257,7 +266,8 @@ StepEvent : Event {
 				// need to add a filter on values, excluding functions in the view
 				// and not call asPattern on it
 				pairs.add(key);
-				pairs.add(val.addHalo(\seqstyle, \button).prest);
+				//pairs.add(val.addHalo(\seqstyle, \button).prest);
+				pairs.add(val.prest);
 			} {
 				var pat;
 				if(val.isKindOf(Event) and: { val[\eventType] == \envTimeline }) {
@@ -319,6 +329,16 @@ StepEvent : Event {
 			}
 		};
 		this.changed(\set, [\stepCount]);
+	}
+
+	clone { 
+		^this.collect({ arg x;
+			if(x.respondsTo(\clone)) {
+				x.clone;
+			} {
+				x.deepCopy;
+			}
+		})
 	}
 
 	stepCount {
@@ -402,6 +422,7 @@ BankList : List {
 
 	current_ { arg val;
 		this[this.index] = val;
+		this.changed(\current);
 	}
 
 	keys {
@@ -1576,327 +1597,6 @@ PtimeGatePunch : Pattern {
 	}
 }
 
-///////////////////////////// Builder - Not really a pattern..
-
-Builder {
-	var <source;
-	var >envir;
-	var <>key;
-	classvar <all;
-
-	*initClass {
-		all = IdentityDictionary.new;
-	}
-
-	*new { arg key, fun;
-		if(all[key].isNil) {
-			all[key] = this.make(fun).key_(key);
-			^all[key];
-		} {
-			var ins;
-			ins = all[key];
-			if(fun.notNil and: { ins.notNil }) {
-				ins.source = fun;
-			};
-			^ins;
-		}
-	}
-
-	*make { arg fun;
-		var ins = super.new;
-		ins.source = fun;
-		ins.envir[\builder] = ins;
-		^ins;
-	}
-
-	source_ { arg fun;
-		if( fun.isNil ) {
-			fun = {}
-		};
-		source = fun;
-		this.class.functionArgsToEnvir(fun).keysValuesDo { arg k, v;
-			if( this.envir[k].isNil ) {
-				this.envir[k] = v;
-			};
-		};
-	}
-	 
-	envir {
-		if(envir.isNil) { 
-			envir = IdentityDictionary.new;
-			envir[\builder] = this;
-		};
-		^envir
-	}
-
-	*functionArgsToEnvir { arg fun;
-		var env = ();
-		fun.def.argNames.do { arg name, x;
-			env[name] = fun.def.prototypeFrame[x]
-		};
-		^env;
-	}
-
-	build {
-		^source.valueWithEnvir(this.envir);
-	}
-
-	set { arg ...args;
-		var hasChanged = false;
-		args.pairsDo { arg key, val; 
-			if(this.envir.at(key) != val) {
-				this.envir.put(key, val);
-				hasChanged = true;
-			}
-		};
-		if(hasChanged) {
-			this.build;
-			this.changed(\set, args);
-		}
-	}
-
-	unset { arg ... args;
-		args.do { arg key; this.envir.removeAt(key) };
-		this.changed(\unset, args);
-	}
-
-	get { arg key;
-		^this.envir[key];
-	}
-	
-}
-
-
-
-
-PlayerWrapper  {
-	var <>wrapper;
-	var >label;
-
-	*new { arg target;
-		^super.new.initWrapper(target);
-	}
-
-	initWrapper { arg target;
-		// FIXME: handle when not a kind of wrapper in list, and handle GUI when wrapper is nil
-		wrapper = case 
-			{ target.isNil } {
-				"WARNING: PlayerWrapper: target is nil".debug;
-				^nil;
-			}
-			{ target.isKindOf(Event) } {
-				PlayerWrapper_Event(target)
-			}
-			{ target.isKindOf(NodeProxy) } {
-				PlayerWrapper_NodeProxy(target)
-			}
-			{ target.isKindOf(EventPatternProxy) } {
-				PlayerWrapper_EventPatternProxy(target)
-			}
-			{ target.isKindOf(Param) } {
-				PlayerWrapper_Param.new(target)
-			}
-		;
-		
-	}
-
-	target {
-		if(wrapper.notNil) {
-			^wrapper.target
-		} {
-			^nil
-		};
-	}
-
-	///////// API
-	// play
-	// stop
-	// isPlaying
-	// label and key
-
-	// *could be added
-	// pause
-	// record
-
-    doesNotUnderstand { arg selector...args;
-		[selector, args].debug("PlayerWrapper: doesNotUnderstand");
-        if(wrapper.class.findRespondingMethodFor(selector).notNil) {
-			"PlayerWrapper: perform".debug;
-			^wrapper.perform(selector, * args);
-		} {
-			if(wrapper.target.class.findRespondingMethodFor(selector).notNil) {
-				"PlayerWrapper: sub perform".debug;
-				^wrapper.target.perform(selector, * args);
-			} {
-				"PlayerWrapper: doesnot".debug;
-				DoesNotUnderstandError.throw;
-			}
-		};
-	}
-
-	/////////////// overRide object methods
-
-	isPlaying {
-		^wrapper.isPlaying
-	}
-
-	stop {
-		wrapper.stop;
-	}
-
-	play {
-		wrapper.play;
-	}
-
-	label {
-		if(label.notNil) {
-			^label;
-		} {
-			^wrapper.label;
-		}
-	}
-
-	///////////// gui
-
-	edit {
-		^WindowLayout({ PlayerWrapperView.new(this).layout });
-	}
-
-	asView {
-		^PlayerWrapperView.new(this).layout;
-	}
-}
-
-PlayerWrapper_Base {
-	var <>target;
-	*new { arg target;
-		^super.new.init(target)
-	}
-
-	init { arg xtarget;
-		target = xtarget
-	}
-
-	key { arg self;
-		^this.label.asSymbol;
-	}
-
-
-    doesNotUnderstand { arg selector...args;
-		[selector, args].debug("PlayerWrapper_Base: doesNotUnderstand");
-		if(target.class.findRespondingMethodFor(selector).notNil) {
-			"perform".debug;
-			^target.perform(selector, * args);
-		} {
-			"PlayerWrapper_Base: doesnot".debug;
-			DoesNotUnderstandError.throw;
-		}
-	}
-
-	/////////////// overRide object methods
-
-	isPlaying {
-		^target.isPlaying;
-	}
-
-	stop {
-		target.stop;
-	}
-
-	play {
-		target.play;
-	}
-
-	togglePlay {
-		if(this.isPlaying) {
-			this.stop;
-		} {
-			this.play;
-		}
-	}
-
-}
-
-PlayerWrapper_Param : PlayerWrapper_Base {
-	play {
-		target.normSet(1)
-	}
-
-	label {
-		var res;
-		res = target.property;
-		if(res.isKindOf(Function)) {
-			^""
-		} {
-			^res
-		}
-	}
-
-	stop {
-		target.normSet(0)
-	}
-
-	isPlaying {
-		^target.normGet == 1
-	}
-}
-
-PlayerWrapper_NodeProxy : PlayerWrapper_Base {
-	label {
-		if(target.isKindOf(Ndef)) {
-			^target.key
-		} {
-			^""
-		}
-	}
-
-	stop {
-		// hack: Ndef now have same latency than Pdef
-		{
-			target.stop 
-		}.defer(Server.default.latency)
-	}
-
-	isPlaying {
-		^target.monitor.isPlaying;
-	}
-
-}
-
-PlayerWrapper_EventPatternProxy : PlayerWrapper_Base {
-	label {
-		if(target.isKindOf(Pdef)) {
-			^target.key
-		} {
-			^target.getHalo(\label) ? ""
-		}
-	}
-
-}
-
-EventPlayerWrapper : PlayerWrapper_Event { } // compat, to be deleted
-
-PlayerWrapper_Event : PlayerWrapper_Base {
-	// allow an event to act as a PlayerWrapper
-
-	play {
-		target.eventPlay;
-	}
-
-	label {
-		^target.label ?? "-"
-	}
-
-	isPlaying {
-		^target.eventIsPlaying
-	}
-
-	stop {
-		target.eventStop;
-	}
-
-}
-
 
 
 // not needed, just use Pdefn
@@ -1946,3 +1646,21 @@ PlayerWrapper_Event : PlayerWrapper_Base {
 //	}
 //
 //}
+
++ Pdef {
+	setModel { arg fun;
+		var model = fun.(this);
+		this.addUniqueMethod(\model, { model });
+		this.addUniqueMethod(\edit, { model.edit });
+		this.addUniqueMethod(\asView, { model.asView });
+	}
+}
+
++ EventPatternProxy {
+	setModel { arg fun;
+		var model = fun.(this);
+		this.addUniqueMethod(\model, { model });
+		this.addUniqueMethod(\edit, { model.edit });
+		this.addUniqueMethod(\asView, { model.asView });
+	}
+}

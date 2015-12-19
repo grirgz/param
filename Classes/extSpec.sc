@@ -352,6 +352,10 @@ MenuSpec : Spec {
 		}
 	}
 
+	default { 
+		^valueList[0]
+	}
+
 	mapIndex { arg val;
 		^valueList[val.round.asInteger]
 	}

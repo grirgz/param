@@ -30,6 +30,8 @@ TimelineView : SCViewHolder {
 	var background, fillcolor;
 	var nodeCount, shape;
 	var startSelPoint, endSelPoint, refPoint, refWidth;
+	var <>lastPixelPos;
+	var <>lastGridPos;
 	var <selNodes, outlinecolor, selectFillColor, selectStrokeColor;
 	var keytracker, conFlag; // experimental
 	var nodeSize, swapNode;
@@ -145,6 +147,8 @@ TimelineView : SCViewHolder {
 
 				npos = this.pixelPointToNormPoint(Point(px,py));
 				gpos = this.pixelPointToGridPoint(Point(px,py));
+				lastPixelPos = Point(px,py);
+				lastGridPos = gpos;
 				[px, py, npos, gpos].debug("mouseDownAction_ px,py, npos, gpos");
 				chosennode = this.findNode(gpos.x, gpos.y);
 				[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
@@ -1996,6 +2000,8 @@ TimelineScroller : SCViewHolder {
 			[caller, receiver, morearg].debug("onChange args");
 			this.refresh(timeline);
 		});
+
+		this.refresh(timeline);
 	
 	}
 

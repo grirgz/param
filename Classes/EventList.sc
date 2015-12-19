@@ -261,6 +261,10 @@ XEventList : List {
 			endtime = absTime;
 			ins.finish(endtime);
 			^ins
+		} {
+			if(pat.isKindOf(SequenceableCollection)) {
+				^super.newFrom(pat.asArray);
+			}
 		}
 		
 	}

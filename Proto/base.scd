@@ -19,6 +19,7 @@
 		"xr.".debug;
 		self.views.debug("wtf");
 		self.debug("self!!!");
+		self.changed(\selected_index);
 		self;
 	},
 
@@ -47,6 +48,7 @@
 		size.debug("selector.resize");
 		self.selector_count = size;
 		self.selected_index = self.selected_index.clip(0, size-1);
+		self.changed(\selected_index);
 		self.pr_views = nil; // don't know what bug can be caused by having a no more referenced views
 			// but must find a way to update views because there is more or less now
 	},
@@ -63,11 +65,20 @@
 				views[x].background_(self.selected_color);
 			};
 			self.selected_index = x;
+			self.changed(\selected_index);
 		}
+	},
+
+	refresh_view: { arg self, idx;
+		self.viewInit.(self.views[idx], idx);
 	},
 
 	selected_view: { arg self;
 		self.views[self.selected_index]
+	},
+
+	is_selected: { arg self, x;
+		self.selected_index == x
 	},
 
 );

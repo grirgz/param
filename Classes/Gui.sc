@@ -261,6 +261,31 @@ ParamGroupLayout {
 		)
 	}
 
+	*player_block { arg player, pg, views;
+		^VLayout(
+			[View.new.layout_(
+				HLayout(
+					PlayerWrapper(player).asView,
+					views,
+					nil
+				).margins_(0)
+			).background_(ParamView.color_dark), stretch:0],
+			[this.two_panes(pg, \property), stretch:1],
+		);
+	}
+
+	*player_preset_block { arg player, pg, views;
+		^VLayout (
+			HLayout (
+				PlayerWrapper(player).asView,
+				views,
+				EventClass.presetSelectorView.(pg),
+			),
+			ParamGroupLayout.two_panes(pg, \property),
+		)
+
+	}
+
 	*two_panes { arg pg, label_mode;
 
 		var layout;
@@ -357,7 +382,7 @@ WindowDef {
 	var <>source;
 	var <>window;
 	var <>windowProperties;
-	var <>alwaysRecreate = false;
+	var <>alwaysRecreate = true;
 
 
 	// FIXME: window is not restored at the exact same position but is shifted downward, maybe a ubuntu unity bug
@@ -450,9 +475,9 @@ WindowDef {
 				layout = HLayout(val)
 			};
 			window.layout = layout;
-			window.view.onClose = {
+			window.onClose = window.onClose.addFunc({
 				this.saveWindowProperties;
-			};
+			});
 			window.view.onResize = {
 				this.saveBounds;
 			};

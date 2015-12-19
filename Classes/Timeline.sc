@@ -1,6 +1,8 @@
+// Timeline helper widgets
 
 TimelineRulerView : TimelineView {
 	// this is X ruler actually
+	// you can define start and stop of timeline interactively
 	var <>mygrid; // debug
 	var <>cursor;
 
@@ -9,7 +11,19 @@ TimelineRulerView : TimelineView {
 		this.view.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
 			px.debug("TimelineLocatorBarView: mousedown set start");
 			//if(chosennode.isNil) 
-			cursor.startPosition_(this.pixelPointToGridPoint(Point(px, 0)).x.round(quant.value.x));
+			switch(buttonNumber,
+				0, {
+					cursor.startPosition_(this.pixelPointToGridPoint(Point(px, 0)).x.round(quant.value.x));
+				},
+				1, {
+					cursor.endPosition_(this.pixelPointToGridPoint(Point(px, 0)).x.round(quant.value.x));
+				},
+				2, {
+					cursor.startPosition_(nil);
+					cursor.endPosition_(nil);
+				}
+			);
+			this.refresh;
 			mouseDownAction.(me, px, py, mod, buttonNumber, clickCount);
 		}
 	}
@@ -43,6 +57,50 @@ TimelineRulerView : TimelineView {
 	//bounds {
 	//	^this.view.bounds;
 	//}
+	drawCursor {
+		var start_ppos = 0;
+		var end_ppos;
+		//Pen.color = Color.red;
+		//cpos = this.gridPointToPixelPoint(Point(cursorPos, 0)).x;
+		//Pen.line(Point(cpos,0), Point(cpos, this.virtualBounds.height));
+		//Pen.stroke;
+
+		if(cursor.notNil) {
+			if(cursor.startPosition.notNil) {
+				Pen.color = Color.blue;
+				start_ppos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
+			};
+			//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
+			//Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+			//Pen.stroke;
+
+			if(cursor.endPosition.notNil) {
+				//var 
+				Pen.color = Color.blue.alpha_(0.4);
+				end_ppos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
+				//[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
+				//Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+				//Pen.fillRect(Rect(start_ppos, 0, end_ppos - start_ppos, this.virtualBounds.height));
+
+			};
+
+			//if(cursor.startPosition.notNil or: { cursor.endPosition.notNil }) {
+			// TODO: find a way to retrieve end event time position
+			if(end_ppos.notNil) {
+
+				Pen.fillRect(Rect(
+					start_ppos, 
+					//0,
+					this.virtualBounds.height * 3/4, 
+					end_ppos - start_ppos, 
+					this.virtualBounds.height * 1/4
+				));
+				Pen.stroke;
+			}
+		} {
+			"cursorisnil:::!!!!".debug;
+		};
+	}
 
 	drawFunc {
 		var grid;
@@ -65,6 +123,9 @@ TimelineRulerView : TimelineView {
 				nil
 			).draw;
 		};
+		this.drawCursor;
+
+
 	}
 }
 
@@ -494,10 +555,13 @@ PdefTimelineView : TimelineView {
 ////////////////////////// cursor
 
 CursorTimelineView : TimelineView {
+	// an userview to put on top of timeline to have lines indicating the start and end of cursor
+	// TimelineRulerView handle the interactivity
 	var <>cursorPos = 0;
 	var <>playtask;
 	var <>cursor;
 	var <>cursorController;
+
 	drawFunc {
 		var cpos;
 		var spos;
@@ -507,11 +571,13 @@ CursorTimelineView : TimelineView {
 		Pen.stroke;
 
 		if(cursor.notNil) {
-			Pen.color = Color.blue;
-			spos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
-			//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
-			Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
-			Pen.stroke;
+			if(cursor.startPosition.notNil) {
+				Pen.color = Color.blue;
+				spos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
+				//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
+				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+				Pen.stroke;
+			};
 
 			if(cursor.endPosition.notNil) {
 				Pen.color = Color.blue;
@@ -620,12 +686,25 @@ CursorTimeline {
 	var <endPosition;
 	startPosition_ { arg startPos;
 		startPosition = startPos;
+		this.swapIfNegative;
 		this.changed(\startPosition, startPosition);
 		this.changed(\refresh);
 	}
 
+	swapIfNegative {
+		if(endPosition.notNil and: { startPosition.notNil }) {
+			if(endPosition < startPosition) {
+				var x;
+				x = startPosition;
+				startPosition = endPosition;
+				endPosition = x;
+			}
+		}
+	}
+
 	endPosition_ { arg endPos;
 		endPosition = endPos;
+		this.swapIfNegative;
 		this.changed(\endPosition, startPosition);
 		this.changed(\refresh);
 	}
