@@ -71,6 +71,22 @@ ProtoClass : Event {
 		^this[\stop].(this, * args)
 	}
 
+	isPlaying { arg ... args;
+		^this[\isPlaying].(this, * args)
+	}
+
+	source { arg ... args;
+		^this[\source].(this, * args)
+	}
+
+	source_ { arg ... args;
+		if(this[\source_].notNil) {
+			this[\source_].(this, *args)
+		} {
+			this[\source] = args[0]
+		}
+	}
+
 	embedInStream { arg ... args;
 		^this[\embedInStream].(this, * args)
 	}
@@ -565,8 +581,15 @@ PlayerWrapper  {
 		// FIXME: handle when not a kind of wrapper in list, and handle GUI when wrapper is nil
 		wrapper = case 
 			{ target.isNil } {
-				"WARNING: PlayerWrapper: target is nil".debug;
-				^nil;
+				//"WARNING: PlayerWrapper: target is nil".debug;
+				PlayerWrapper_Nil(target)
+				//^nil;
+			}
+			{ target.isKindOf(PlayerWrapper) } {
+				^target
+			}
+			{ target.isKindOf(ProtoClass) } {
+				PlayerWrapper_ProtoClass(target)
 			}
 			{ target.isKindOf(Event) } {
 				PlayerWrapper_Event(target)
@@ -580,6 +603,10 @@ PlayerWrapper  {
 			{ target.isKindOf(Param) } {
 				PlayerWrapper_Param.new(target)
 			}
+			{
+				// assume target respond to wrapper interface
+				target
+			}
 		;
 		
 	}
@@ -590,6 +617,10 @@ PlayerWrapper  {
 		} {
 			^nil
 		};
+	}
+
+	target_ { arg target;
+		this.initWrapper(target);
 	}
 
 	///////// API
@@ -801,6 +832,47 @@ PlayerWrapper_Event : PlayerWrapper_Base {
 
 	stop {
 		target.eventStop;
+	}
+
+}
+
+PlayerWrapper_ProtoClass : PlayerWrapper_Base {
+	// allow a protoclass to act as a PlayerWrapper
+
+	play {
+		target.play;
+	}
+
+	label {
+		^target.label ?? "-"
+	}
+
+	isPlaying {
+		^target.isPlaying
+	}
+
+	stop {
+		target.stop;
+	}
+
+}
+
+PlayerWrapper_Nil : PlayerWrapper_Base {
+	// allow a protoclass to act as a PlayerWrapper
+
+	play {
+		
+	}
+
+	label {
+		^"-"
+	}
+
+	isPlaying {
+		^false
+	}
+
+	stop {
 	}
 
 }

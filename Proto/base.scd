@@ -26,22 +26,26 @@
 	views: { arg self;
 		if(self.pr_views.isNil or: { self.pr_views.size > 0 and: {self.pr_views.first.isClosed }}) {
 			[self.selector_count, self.selected_index].debug("refreshing selector.pr_views");
-			self.pr_views = self.selector_count.collect({ arg x;
-				XSimpleButton.new
-					.minWidth_(15) 
-					.action_({
-						self.select_item(x);
-						self.action.(x); // FIXME: should perhaps pass self as first argument
-						self.selector_count.debug("end selector action");
-					})
-					.background_(self.deselected_color).debug("WWWTTTFF");
-			}).debug("selector.views: created views");
+			self.pr_views = self.makeViews;
 			self.pr_views.do(self.viewInit);
 			self.select_item(self.selected_index, self.pr_views);
 			self.pr_views;
 		} {
 			self.pr_views
 		}
+	},
+
+	makeViews: { arg self;
+		self.selector_count.collect({ arg x;
+			XSimpleButton.new
+				.minWidth_(15) 
+				.action_({
+					self.select_item(x);
+					self.action.(x); // FIXME: should perhaps pass self as first argument
+					self.selector_count.debug("end selector action");
+				})
+				.background_(self.deselected_color).debug("WWWTTTFF");
+		}).debug("selector.views: created views");
 	},
 
 	resize: { arg self, size;
@@ -59,10 +63,18 @@
 		x = x.clip(0, views.size-1);
 		if(views.size > 0) {
 			if(views[self.selected_index].notNil) {
-				views[self.selected_index].background_(self.deselected_color);
+				if(self[\deselect_action].notNil) {
+					self.deselect_action(views[self.selected_index]);
+				} {
+					views[self.selected_index].background_(self.deselected_color);
+				}
 			};
 			if(views[x].notNil) {
-				views[x].background_(self.selected_color);
+				if(self[\select_action].notNil) {
+					self.select_action(views[x]);
+				} {
+					views[x].background_(self.selected_color);
+				}
 			};
 			self.selected_index = x;
 			self.changed(\selected_index);
