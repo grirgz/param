@@ -354,6 +354,110 @@ ParamGroupLayout {
 		^layout;
 	}
 
+	*inline_groups { arg pg, label_mode;
+
+		var layout;
+		var gridlayout;
+		var biglayout;
+		var scalarlist, biglist;
+		var layout_type;
+		var scrollview;
+
+		var vertical_slider_group = { arg params, size=8;
+			var lay;
+			lay = GridLayout.rows(
+				* size.collect({ arg idx;
+					var param = params[idx];
+					param.debug("what param");
+					if(param.isNil) {
+						nil ! 3;
+						//{ Button.new } ! 3
+					} {
+						[
+							if(label_mode == \full) {
+								param.asStaticTextLabel;
+							} {
+								StaticText.new.string_(param.property)
+							},
+							param.asSlider.orientation_(\horizontal).minWidth_(150),
+							param.asTextField.minWidth_(70),
+						]
+					}
+				}) ++ [{ View.new }!3]
+			).vSpacing_(2);
+
+			lay;
+		};
+
+		label_mode = label_mode ? \property; // \full, \property
+
+		scalarlist = pg.select({ arg param; 
+			param.type == \scalar;
+		});
+		biglist = pg.select({ arg param;
+			param.type != \scalar and: { 
+				param.spec.isKindOf(AudioSpec).not
+				and: { 
+					// FIXME: find a better way to handle this
+					param.type != \other 
+				}
+			}
+		});
+
+		gridlayout = GridLayout.rows(*
+			scalarlist.collect({ arg param;
+				[
+					if(label_mode == \full) {
+						param.asStaticTextLabel;
+					} {
+						StaticText.new.string_(param.property)
+					},
+					param.asSlider.orientation_(\horizontal),
+					param.asTextField,
+				]
+			})
+		);
+		gridlayout.setColumnStretch(0,2);
+		gridlayout.setColumnStretch(1,6);
+		gridlayout.setColumnStretch(2,2);
+
+		// chipotage
+		//if(biglist.size < 5 and: { scalarlist.size < 6 } ) {
+		//	layout_type = VLayout;
+		//} {
+		//	layout_type = HLayout;
+		//};
+		layout_type = HLayout;
+
+		biglayout = HLayout(*
+			biglist.collect({ arg param;
+
+				[
+				View.new.layout_(VLayout(
+					if(label_mode == \full) {
+						param.asStaticTextLabel;
+					} {
+						StaticText.new.string_(param.property).maxHeight_(10)
+					},
+					param.asView,
+					param.asTextField,
+					View.new,
+					nil,
+				).margins_(0)).minWidth_(300).maxHeight_(200),
+				align: \top,
+				]
+			})
+		);
+
+		layout = layout_type.new(
+			HLayout(*scalarlist.clump(8).collect({ arg gr; gr.debug("gr"); vertical_slider_group.(gr) })),
+			biglayout
+		);
+		layout;
+		scrollview = ScrollView.new.canvas_(View.new.layout_(layout));
+		^VLayout(scrollview)
+	}
+
 	*cursorRow { arg param;
 	}
 }
@@ -393,7 +497,7 @@ WindowDef {
 	}
 
 	*new { arg key, val;
-		if(all[key].isNil) {
+		if(key.isNil or: {all[key].isNil}) {
 			if(val.notNil) {
 				^super.new.init(val).prAdd(key)
 			} {
@@ -410,7 +514,9 @@ WindowDef {
 
 	prAdd { arg xkey;
 		key = xkey;
-		all[key] = this;
+		if(xkey.notNil) {
+			all[key] = this;
+		}
 	}
 
 	init { arg val;
@@ -466,7 +572,7 @@ WindowDef {
 		};
 		if(window.isNil or: { window.isClosed }) {
 			window = Window.new;
-			window.name = key;
+			window.name = key ? "";
 			this.loadWindowProperties;
 			val = source.value(window);
 			if(val.isKindOf(Layout)) {
@@ -1070,15 +1176,21 @@ XVLayout : VLayout {
 }
 
 
-PlayerWrapperView : ObjectGui {
+//PlayerWrapperView : ObjectGui {
+PlayerWrapperView {
 	var <>states;
 	var player;
 	var <>button;
 	var skipjack;
-	var pollRate = 1;
+	var <>pollRate = 1;
 	var <>label;
-	new { arg model;
-		^super.new(model);
+	var <model, >view;
+	*new { arg model;
+		^super.new.init(model);
+	}
+
+	init { arg xmodel;
+		model = xmodel;
 	}
 
 	// FIXME: this is dirty, a layout is not a view
@@ -1177,13 +1289,13 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 	var <>labelView;
 	var <>selectAction;
 	var selected;
-	var color_selected, color_deselected;
+	var <>color_selected, <>color_deselected;
 
 
 	*initClass {
 	}
 
-	new { arg model;
+	*new { arg model;
 		^super.new(model).initPlayerWrapperSelectorView;
 	}
 
@@ -1221,10 +1333,17 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 		});
 		view.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
 		view.addUniqueMethod(\labelView, { labelView }); // FIXME: why is button wrapped in a layout ?
-		view.addUniqueMethod(\selected, { arg x; this.selected });
-		view.addUniqueMethod(\selected_, { arg x; this.selected = x });
+		view.addUniqueMethod(\selected, { arg me, x; this.selected });
+		view.addUniqueMethod(\selected_, { arg me, x; this.selected = x });
 		this.makeUpdater;
 		this.update;
+		^view;
+	}
+
+	view { 
+		if(view.isNil) {
+			this.layout;
+		};
 		^view;
 	}
 
@@ -1234,10 +1353,13 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 
 	selected_ { arg val;
 		selected = val;
+		[selected, val].debug( "PlayerWrapperSelectorView.selected" );
 		if(val == true) {
-			view.background_(color_selected);
+			this.view.debug("seltrue");
+			this.view.background_(color_selected);
 		} {
-			view.background_(color_deselected);
+			this.view.debug("selfalse");
+			this.view.background_(color_deselected);
 		}
 	}
 
@@ -1296,11 +1418,11 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 				} {
 					button.value = 0
 				};
-				labelView.string = xlabel;
+				labelView.string = xlabel ++ " ";
 			} {
 				xlabel = label;
 				button.states = this.getStates;
-				labelView.string = xlabel;
+				labelView.string = xlabel ++ " ";
 				button.value = 0;
 			}
 		}

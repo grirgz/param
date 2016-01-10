@@ -36,15 +36,16 @@ TrackDef {
 
 	init { arg val;
 		wrapper = val;
+		wrapper.me = { this };
 	}
 
 	at { arg x;
 		x.debug("at");
-		^wrapper.atClip(x)
+		^wrapper.atChild(x)
 	}
 
 	put { arg x, val;
-		wrapper.putClip(x, val);
+		wrapper.putChild(x, val);
 	}
 
 	clear {
@@ -54,11 +55,11 @@ TrackDef {
 	}
 
 	collect { arg fun;
-		^this.collectClip(fun)
+		^this.collectChildren(fun)
 	}
 
 	do { arg fun;
-		^this.doClip(fun)
+		^this.doChildren(fun)
 	}
 
 	source { arg ... args;
@@ -85,9 +86,10 @@ TrackDef {
 				wrapper.class.findRespondingMethodFor(selector).notNil
 			}
 		) {
-			"% perform: %, %".format(this.class, selector, args).debug;
+			//"% perform: %, %".format(this.class, selector, args).debug;
 			^wrapper.perform(selector, * args);
 		} {
+			"% perform: %, %".format(this.class, selector, args).debug;
 			"soft doesNotUnderstand".debug;
 			DoesNotUnderstandError.new(this, selector, args).throw
 		};
@@ -105,6 +107,7 @@ TrackGroupDef : TrackDef {
 			wrapper = ~trackGroupType_PlayerWrapper.new(src);
 		} {
 			wrapper = src
-		}
+		};
+		wrapper.me = { this };
 	}
 }

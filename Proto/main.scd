@@ -11,6 +11,7 @@
 		"event.scd",
 		"preset.scd",
 		"steptimeline.scd",
+		"track.scd",
 
 		"synth.scd",
 	].do({ arg file;

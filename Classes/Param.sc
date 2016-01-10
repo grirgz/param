@@ -513,7 +513,7 @@ Param {
 			// the parameter is mapped to a Ndef
 			^val.asCompileString;
 		} {
-			switch(this.type,
+			switch(this.valueType,
 				\scalar, {
 					^val.asFloat.asStringPrec(precision);
 				},
@@ -1054,12 +1054,34 @@ BaseParam {
 	}
 
 	type {
+		// type according to spec
 		var res = [
 			[XEnvSpec, \env],
 			[XArraySpec, \array],
 			[ControlSpec, \scalar],
 		].detect({ arg x;
 			this.spec.isKindOf(x[0])
+		});
+		if(res.notNil) {
+			^res[1];
+		} {
+			^\other
+		};
+		//^switch(this.spec.class,
+		//	XEnvSpec, \env,
+		//	XArraySpec, \array,
+		//	\scalar,
+		//)
+	}
+
+	valueType {
+		// type according to value
+		var res = [
+			[Env, \env],
+			[SequenceableCollection, \array],
+			[Number, \scalar],
+		].detect({ arg x;
+			this.get.isKindOf(x[0])
 		});
 		if(res.notNil) {
 			^res[1];
@@ -2230,6 +2252,14 @@ ParamGroup : List {
 		// TODO: write asPresetCompileStringNdef and Pdef and each other Param type
 	}
 
+	getPbindCompileString {
+		^"Pbind(\n%\n)\n".format(
+			this.collect({ arg p; 
+				"%, %,".format(p.property.asCompileString, p.get.asCompileString)
+			}).join("\n\t")
+		)
+	}
+
 	valueList {
 		^this.collect { arg param;
 			param.get;
@@ -3201,10 +3231,11 @@ CachedBus : Bus {
 		// TODO: find a better name for 'notes' argument (this is for adding \dur and \legato)
 		var list;
 
-		instrument = instrument ?? { this.getHalo(\instrument) };
+		instrument = PdefParam.instrument(this);
 		if(instrument.isNil) {
-			"ERROR: Pdef:asParamGroup: Can't create paramGroup: no instrument is defined".postln;
-			^nil
+			//"ERROR: Pdef:asParamGroup: Can't create paramGroup: no instrument is defined".postln;
+			//^nil
+			list = List.new;
 		} {
 			exclude = exclude ? [\out, \gate, \doneAction, \bufnum];
 
@@ -3216,14 +3247,14 @@ CachedBus : Bus {
 				Param( this, con.name );
 			});
 
-			if(notes) {
-				list = [
-					Param(this, \dur),
-					Param(this, \legato),
-				] ++ list;
-			};
-			^ParamGroup(list)
-		}
+		};
+		if(notes) {
+			list = [
+				Param(this, \dur),
+				Param(this, \legato),
+			] ++ list;
+		};
+		^ParamGroup(list)
 	}
 
 	asEnvirCompileString {
@@ -3561,5 +3592,6 @@ CachedBus : Bus {
 	}
 
 }
+
 
 
