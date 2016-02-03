@@ -65,8 +65,8 @@ SynthDef(\dr_kick, { |out=0, amp=0.1, pan=0, fratio=1.5, freqpan=0.01, spread=0.
 	son = LPF.ar(son, env1m*fratio, env0);
 	son = son + SinOsc.ar(env1m, 0.5, env0);
 	
-	son = son * 1.2;
-	son = son.clip2(1);
+	//son = son * 1.2;
+	//son = son.clip2(1);
 
 	son = son * amp;
 	son = Splay.ar(son, spread, amp, pan);
