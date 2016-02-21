@@ -2253,7 +2253,7 @@ ParamGroup : List {
 	}
 
 	getPbindCompileString {
-		^"Pbind(\n%\n)\n".format(
+		^"\nPbind(\n\t%\n)\n".format(
 			this.collect({ arg p; 
 				"%, %,".format(p.property.asCompileString, p.get.asCompileString)
 			}).join("\n\t")
