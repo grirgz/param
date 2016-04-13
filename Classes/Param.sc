@@ -998,6 +998,8 @@ Param {
     doesNotUnderstand { arg selector...args;
         if(wrapper.class.findRespondingMethodFor(selector).notNil) {
 			^wrapper.perform(selector, * args);
+		} {
+			DoesNotUnderstandError(selector, args).throw
 		};
 	}
 
