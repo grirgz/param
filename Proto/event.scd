@@ -67,11 +67,11 @@
 							//}
 							StepListColorView(steplist).setCursor.view;
 						} {
-							StaticText.new.string_("empty");
+							StaticText.new.string_(steplist.asCompileString);
 						};
 
 						[
-							if(steplist.bypass == 1) {
+							if(steplist.isKindOf(StepList) and: {steplist.bypass == 1}) {
 								StaticText.new.string_("[%]".format(key));
 							} {
 								StaticText.new.string_(key);
@@ -238,7 +238,7 @@
 						};
 
 						[
-							if(steplist.bypass == 1) {
+							if(steplist.isKindOf(StepList) and: {steplist.bypass == 1}) {
 								StaticText.new.string_("[%]".format(key));
 							} {
 								StaticText.new.string_(key);

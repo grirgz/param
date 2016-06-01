@@ -227,7 +227,7 @@ StepList : List {
 		^new;
 	}
 
-	isNaN { ^true }
+	isNaN { ^true } // TODO: document why this method
 
 }
 

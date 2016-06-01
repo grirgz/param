@@ -2,6 +2,7 @@
 "Init base.scd".postln;
 
 ~view_selector = (
+	// this view selector is based 
 	// this selector version added possibility to regenere the views if they have been removed
 	selected_color: ParamView.color_dark,
 	deselected_color: ParamView.color_ligth,
@@ -23,6 +24,10 @@
 		self;
 	},
 
+	add_view: { arg self, view;
+		self.pr_views = self.pr_views.add(view);
+	},
+
 	views: { arg self;
 		if(self.pr_views.isNil or: { self.pr_views.size > 0 and: {self.pr_views.first.isClosed }}) {
 			[self.selector_count, self.selected_index].debug("refreshing selector.pr_views");
@@ -35,13 +40,17 @@
 		}
 	},
 
+	views_: { arg self, views;
+		self.pr_views = views;
+	},
+
 	makeViews: { arg self;
 		self.selector_count.collect({ arg x;
 			XSimpleButton.new
 				.minWidth_(15) 
 				.action_({
 					self.select_item(x);
-					self.action.(x); // FIXME: should perhaps pass self as first argument
+					self.action.(x); // FIXME: should perhaps pass self as first argument (or view ?)
 					self.selector_count.debug("end selector action");
 				})
 				.background_(self.deselected_color).debug("WWWTTTFF");
