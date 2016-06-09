@@ -102,16 +102,16 @@ ParamView {
 ListParamLayout {
 
 	*new { arg param, makecell;
-		super.new.init(param, makecell)
+		^super.new.init(param, makecell)
 	}
 
-	*button { arg param;
+	*button { arg param, width=40;
 		^super.new.init(param, { arg param;
-			param.asButton;
+			param.asButton.fixedWidth_(width);
 		});
 	}
 
-	*gridButton { arg xparam;
+	*gridButton { arg xparam, width=40;
 		// bug in button size, gridButton is a workaround,
 		// the drawback is you need to access to the button inside the view:
 		^super.new.init(xparam, { arg param;
@@ -123,21 +123,23 @@ ListParamLayout {
 		});
 	}
 
-	*slider { arg param;
+	*slider { arg param, width=40;
 		^super.new.init(param, { arg param;
-			param.asSlider;
+			param.asSlider.fixedWidth_(width);
 		});
 	}
 
-	*knob { arg param;
+	*knob { arg param, width=40;
 		^super.new.init(param, { arg subparam;
-			subparam.asKnob;
+			subparam.asKnob.fixedWidth_(width);
 		});
 	}
 
-	*valuePopup { arg param, keys;
+	*valuePopup { arg param, keys, width=40;
+		keys = keys ? []; // TODO: use spec and Param.asPopupView
 		^super.new.init(param, { arg subparam;
 			var pm = PopUpMenu.new;
+			pm.fixedWidth_(width);
 			pm.items = keys;
 			pm.action = {
 				subparam.set(pm.value)
@@ -153,9 +155,11 @@ ListParamLayout {
 		});
 	}
 
-	*indexPopup { arg param, keys;
+	*indexPopup { arg param, keys, width=40;
+		keys = keys ? []; // TODO: use spec and Param.asPopupView
 		^super.new.init(param, { arg subparam;
 			var pm = PopUpMenu.new;
+			pm.fixedWidth_(width);
 			pm.items = keys;
 			pm.action = {
 				subparam.set(pm.value)
@@ -163,6 +167,7 @@ ListParamLayout {
 			pm.onChange(subparam.target, \set, {
 				pm.value = subparam.get;
 			});
+			pm.value = subparam.get;
 			pm;
 		});
 	}
@@ -190,11 +195,11 @@ ListParamLayout {
 		})
 	}
 
-	*cursor { arg param;
+	*cursor { arg param, width=40;
 		^super.new.init(param, { arg param, x;
 			Button.new
 			.enabled_(false)
-			.maxHeight_(10)
+			.fixedWidth_(width)
 			.onChange(param.target, \cursor, { arg view ...args;
 				[args[2], x].debug("bbb");
 				if(args[2] == x or: { args[2].isNil }) {
@@ -243,6 +248,7 @@ ParamGroupLayout {
 	}
 
 	*windowize { arg layout, alwaysOnTop=true;
+		// replaced by WindowLayout and WindowDef
 		var win = Window.new;
 		win.layout = layout;
 		win.alwaysOnTop = alwaysOnTop;
@@ -404,6 +410,7 @@ ParamGroupLayout {
 			}
 		});
 
+		// FIXME: not used ?!
 		gridlayout = GridLayout.rows(*
 			scalarlist.collect({ arg param;
 				[
@@ -747,7 +754,7 @@ BasicButton : QButton {
 		this.label = val;
 	}
 
-	string: { ^this.label }
+	string { ^this.label }
 
 	value_ { arg val;
 		myValue = val;
@@ -763,7 +770,7 @@ BasicButton : QButton {
 
 }
 
-XSimpleButton: BasicButton {} // backward compat
+XSimpleButton : BasicButton {} // backward compat
 
 ///////////////////////// special control view
 

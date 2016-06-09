@@ -2,6 +2,7 @@
 Param {
 	var <wrapper;
 	var init_args;
+	var >label;  // why not in BaseParam ?
 	classvar <>defaultSpec;
 	classvar <>simpleControllers;
 	classvar <>defaultUpdateMode = \dependants;
@@ -333,6 +334,10 @@ Param {
 		^wrapper.asLabel;
 	}
 
+	label {
+		^(label ?? { this.asLabel })
+	}
+
 	type {
 		^wrapper.type
 	}
@@ -363,6 +368,18 @@ Param {
 
 	spec {
 		^wrapper.spec;
+	}
+
+	spec_ { arg val; // not sure if safe
+		wrapper.spec = val;
+	}
+
+	combinator {
+		^wrapper.combinator;
+	}
+
+	combinator_ { arg val;
+		wrapper.combinator = val;
 	}
 
 	///////// list behavior
@@ -681,12 +698,18 @@ Param {
 	mapIndexPopUpMenu { arg view, keys;
 		// FIXME: mapIndexPopUpMenu does not use updater
 		var pm = view;
+		[keys, this.spec, this.spec.labelList].debug("mapIndexPopUpMenu: whatXXX");
+		if(keys.isNil and: {this.spec.isKindOf(MenuSpec)}) {
+			[keys, this.spec, this.spec.labelList].debug("whatXXX");
+			keys = this.spec.labelList;
+		};
 		if(keys.notNil) {
-			pm.items = keys;
+			pm.items = keys.asArray; // because PopUpMenu doesn't accept List
 		};
 		pm.action = {
-			this.set(pm.value)
+			this.set(pm.value);
 		};
+		pm.value = this.get; // init, FIXME: maybe should be handled in onChange ?
 		pm.onChange(this.controllerTarget, \set, { arg me;
 			me.value = this.get;
 		});
@@ -834,6 +857,10 @@ Param {
 
 	asPopUpMenu {
 		^PopUpMenu.new.mapParam(this)
+	}
+
+	asIndexPopUpMenu {
+		^PopUpMenu.new.mapIndexParam(this)
 	}
 
 	asView {
@@ -997,9 +1024,13 @@ Param {
 
     doesNotUnderstand { arg selector...args;
         if(wrapper.class.findRespondingMethodFor(selector).notNil) {
-			^wrapper.perform(selector, * args);
+			if(selector.asString.endsWith("_")) {
+				wrapper.perform(selector, * args);
+			} {
+				^wrapper.perform(selector, * args);
+			}
 		} {
-			DoesNotUnderstandError(selector, args).throw
+			DoesNotUnderstandError(this, selector, args).throw
 		};
 	}
 
@@ -1007,10 +1038,16 @@ Param {
 
 
 BaseParam {
-	var <target, <property, <spec, <key;
+	var <target, <property, <>spec, <key;
+	var >shortLabel;
+	var <>combinator;
 
 	at { arg idx;
 		^Param(this.target, this.property -> idx, this.spec)
+	}
+
+	shortLabel {
+		^( shortLabel ? property );
 	}
 
 	asParamList {
@@ -2326,6 +2363,10 @@ ParamGroupDef {
 		}
 	}
 
+	*force { arg ...args;
+		^this.update(*args)
+	}
+
 	*update { arg defkey, group;
 		if(group.notNil and: { lib[defkey].notNil }) {
 			var inst = lib[defkey];
@@ -2851,17 +2892,69 @@ PresetListMorpherDef : PresetListMorpher {
 
 
 ParamCombinator {
+	// attach to param target so it can reuse the existing ParamCombinator
+	// because each ParamCombinator instance has a different Ndef name
+	// ndef is used only in bus mode
+	// FIXME: maybe use NodeProxy instead, but I don't know if Param support NodeProxy yet
 	var <ranges, <inputs, <base;
 	var <baseParam, <rangeParam, <inputParam, <targetParam;
 	var <controllers; 
 	var <rangeSize;
+	var <key;
+	var <>proxy;
+	var <halokey;
+	var <>busMode, <>rate;
 
 	*new { arg param, size=3;
+		var halokey = \ParamCombinator_+++param.property;
 		Class.initClassTree(ParamGroupLayout);
-		^super.new.init(param, size);
+		if(param.target.getHalo(halokey).isNil) {
+			var inst = super.new.init(param, size);
+			param.target.addHalo(halokey, inst);
+			^inst;
+		} {
+			^param.target.getHalo(halokey)
+		}
+	}
+
+	//*force { arg param, size=3;
+
+	//}
+
+	*bus { arg ...args;
+		^this.kr(*args)
+	}
+
+	// not a ugen, is this a good idea ?
+	*kr { arg  param, size=3;
+		var inst = this.new(param, size);
+		if(inst.busMode.not) {
+			inst.rate = \kr;
+			inst.setBusMode(true);
+		};
+		^inst;
+	}
+
+	*ar { arg  param, size=3;
+		var inst = this.new(param, size);
+		if(inst.busMode.not) {
+			inst.rate = \ar;
+			inst.setBusMode(true);
+		};
+		^inst;
+	}
+
+	clear {
+		Ndef(key).clear;
+		targetParam.target.addHalo(halokey, nil);
+		^nil;
 	}
 
 	init { arg param, size=3;
+
+		halokey = \ParamCombinator_+++param.property;
+		key = \ParamCombinator_+++1000000.rand.asSymbol;
+		busMode = false;
 
 		rangeSize = size;
 		ranges = List.newFrom( 0!size );
@@ -2869,6 +2962,10 @@ ParamCombinator {
 		targetParam = param;
 		base = ParamValue(param.spec).set(param.get);
 		baseParam = base.asParam;
+		baseParam.label = targetParam.asLabel; 
+		baseParam.shortLabel = targetParam.shortLabel;
+		baseParam.property = targetParam.property;
+		baseParam.combinator = this;
 
 		rangeParam = Param(ranges, \list, \bipolar);
 		inputParam = Param(inputs, \list, \unipolar);
@@ -2894,30 +2991,43 @@ ParamCombinator {
 		controllers.do { arg x; x.remove; };
 	}
 
-	setBusMode { arg bool=true, name=\default;
+	setBusMode { arg bool=true, name;
 		// TODO: disable, anyone ?
-		var bus = BusDef(name, \control);
+		var bus;
+		busMode = bool;
+		name = name ? key;
+		bus = BusDef(name, \control);
+		proxy = Ndef(name);
 		Ndef(name).clear;
 		Ndef(name, {
 			var inputs, ranges;
 			var fval;
-			fval = \base.kr(0);
+			var sig;
+			fval = \base.perform(rate, 0);
 			fval = targetParam.spec.unmap(fval);
-			inputs = \inputs.kr(0!rangeSize);
-			ranges = \ranges.kr(0!rangeSize);
+			inputs = \inputs.perform(rate,0!rangeSize);
+			ranges = \ranges.perform(rate,0!rangeSize);
 
 			inputs.do { arg in, x;
 				fval = fval + (in * ranges[x])
 			};
-			targetParam.spec.map(fval).poll;
+			sig = targetParam.spec.map(fval);
+			//sig.poll;
+			sig;
 		});
 		this.freeAllSimpleControllers;
 		baseParam = Param(Ndef(name), \base, targetParam.spec);
+		baseParam.set(targetParam.get);
 		targetParam.target.set(targetParam.property, Ndef(name).asMap);
 		rangeParam = Param(Ndef(name), \ranges, XArraySpec(\bipolar ! rangeSize));
 		rangeParam.set(ranges.asArray); // whyyyy list doesnt do anything ????
 		inputParam = Param(Ndef(name), \inputs, XArraySpec(\unipolar ! rangeSize));
 		inputParam.set(inputs.asArray);
+
+
+		baseParam.label = targetParam.asLabel;
+		baseParam.shortLabel = targetParam.shortLabel.asString + "(m)";
+		baseParam.combinator = this;
 	}
 
 	computeTargetValue {
@@ -3075,6 +3185,34 @@ CachedBus : Bus {
 //////////////////////////////////
 
 +Symbol {
+	asBus { arg numChannels=1, busclass;
+		var rate;
+		var index;
+		var map;
+		busclass = busclass ? Bus;
+		map = this;
+		map = map.asString;
+		switch(map[0],
+			$c, {
+				rate = \control;
+			},
+			$a, {
+				rate = \audio;
+			}, {
+				"get_bus_from_map: error, not a bus: %".format(map).postln;
+			}
+		);
+		index = map[1..].asInteger;
+		^busclass.new(rate, index, numChannels, Server.default);
+	}
+
+	asCachedBus { arg numChannels=1;
+		^this.asBus(numChannels, CachedBus);
+	}
+
+}
+
++String {
 	asBus { arg numChannels=1, busclass;
 		var rate;
 		var index;
@@ -3407,14 +3545,15 @@ CachedBus : Bus {
 		param.mapValuePopUpMenu(this);
 	}
 
-	mapIndexParam { arg param;
-		param.mapIndexPopUpMenu(this)
+	mapIndexParam { arg param, keys;
+		param.mapIndexPopUpMenu(this, keys)
 	}
 }
 
 /////////////
 
 + View {
+	// FIXME: why doesnt init ? 
 	onChange { arg model, key, fun;
 		var con = SimpleController.new(model).put(key, { arg ...args;
 			if(this.isClosed) {

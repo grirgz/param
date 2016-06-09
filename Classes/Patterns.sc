@@ -7,11 +7,12 @@ PseqCursor : Prout {
 				list.changed(\cursor, x, 0);
 			};
 			loop {
-				list.size.do { arg x;
+				//list.size.do { arg x;
+				list.do { arg elm, idx;
 					list.changed(\cursor, previous, 0);
-					list.changed(\cursor, x, 1);
-					previous = x;
-					x.embedInStream;
+					list.changed(\cursor, idx, 1);
+					previous = idx;
+					elm.embedInStream;
 				};
 			}
 		})

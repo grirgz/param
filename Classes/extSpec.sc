@@ -338,6 +338,25 @@ MenuSpec : Spec {
 		^super.new.menuSpecInit(list);
 	}
 
+	*index { arg list;
+		^super.new.indexMenuSpecInit(list);
+	}
+
+	add { arg key, val;
+		if(key.class == Association) {
+			labelList.add(key.key);
+			valueList.add(key.value);
+		} {
+			labelList.add(key);
+			valueList.add(val ? key);
+		}
+	}
+
+	indexAdd { arg val;
+		labelList.add(val);
+		valueList.add(valueList.size);
+	}
+
 	menuSpecInit { arg list;
 		labelList = List.new;
 		valueList = List.new;
@@ -348,6 +367,20 @@ MenuSpec : Spec {
 			} {
 				labelList.add(x);
 				valueList.add(x);
+			}
+		}
+	}
+
+	indexMenuSpecInit { arg list;
+		labelList = List.new;
+		valueList = List.new;
+		list.do { arg x, idx;
+			if(x.class == Association) {
+				labelList.add(x.key);
+				valueList.add(x.value);
+			} {
+				labelList.add(x);
+				valueList.add(idx);
 			}
 		}
 	}
