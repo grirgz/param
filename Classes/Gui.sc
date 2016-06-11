@@ -1192,6 +1192,7 @@ XVLayout : VLayout {
 
 
 //PlayerWrapperView : ObjectGui {
+// FIXME: maybe use BasicButton to simplify implementationjgTgT
 PlayerWrapperView {
 	var <>states;
 	var player;
@@ -1205,7 +1206,7 @@ PlayerWrapperView {
 	}
 
 	init { arg xmodel;
-		model = xmodel;
+		this.model = xmodel;
 	}
 
 	// FIXME: this is dirty, a layout is not a view

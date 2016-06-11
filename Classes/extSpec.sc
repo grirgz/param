@@ -8,6 +8,12 @@ XArraySpec : Spec {
 		var isMonoSpec;
 		array = array.collect(_.asSpec);
 
+		array.do({ arg sp;
+			if(sp.isNil) {
+				Error("XArraySpec: spec is nil or not in Spec library: "++array.asCompileString).throw
+			}
+		});
+
 		if(
 			array.any { arg val;
 				val != array[0]

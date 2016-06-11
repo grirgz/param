@@ -719,14 +719,21 @@ Param {
 		// FIXME: mapIndexPopUpMenu does not use updater
 		// TODO: define a listener when the list change
 		var pm = view;
+		debug("mapValuePopUpMenu:1");
 		view.items = this.spec.labelList.asArray;
+		[this.spec, this.get].debug("mapValuePopUpMenu:2");
 		view.value = this.spec.unmapIndex(this.get);
+		view.value.debug("mapValuePopUpMenu:3");
 		pm.action = {
-			this.set(this.spec.mapIndex(view.value))
+			view.value.debug("mapValuePopUpMenu:4 (action)");
+			this.set(this.spec.mapIndex(view.value));
+			this.get.debug("mapValuePopUpMenu:5 (action)");
 		};
 		pm.onChange(this.controllerTarget, \set, { arg me;
 			// TODO: do not change the whole row when just one value is updated!
+			view.value.debug("mapValuePopUpMenu:6 (onchange)");
 			view.value = this.spec.unmapIndex(this.get);
+			view.value.debug("mapValuePopUpMenu:7 (onchange)");
 		});
 	}
 
@@ -2931,6 +2938,8 @@ ParamCombinator {
 		if(inst.busMode.not) {
 			inst.rate = \kr;
 			inst.setBusMode(true);
+		} {
+			inst.proxy.wakeUp; // when CmdPeriod, proxy is freed, need to wake up to work again
 		};
 		^inst;
 	}
@@ -2940,6 +2949,8 @@ ParamCombinator {
 		if(inst.busMode.not) {
 			inst.rate = \ar;
 			inst.setBusMode(true);
+		} {
+			inst.proxy.wakeUp;
 		};
 		^inst;
 	}

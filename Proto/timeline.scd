@@ -617,7 +617,7 @@ Event.addEventType(\player, {
 ///////////////////////////////////////////////////////////////////// timeline objects
 
 
-~eventTimeline = (
+~eventTimeline = ProtoClass((
 
 	prAdd: { arg self, name;
 		self.all[name] = self;
@@ -625,7 +625,7 @@ Event.addEventType(\player, {
 		self;
 	},
 
-	xclear: { arg self;
+	clear: { arg self;
 		self.all[self.key] = nil;
 		nil
 	},
@@ -671,20 +671,24 @@ Event.addEventType(\player, {
 		self.xasPattern(relStartTime, self.eventList.totalDur min: sustain);
 	},
 
-	xembedInStream: { arg self, inval;
-		self.xasPattern
+	embedInStream: { arg self, inval;
+		self.asPattern
 	},
 
-	eventPlay: { arg self;
+	xembedInStream: { arg self, inval;
+		self.embedInStream(inval);
+	},
+
+	play: { arg self;
 		[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
 		self.asPatternAbs(self.cursor.startPosition, self.cursor.endPosition).play;
 	},
 
-	eventStop: { arg self;
+	stop: { arg self;
 		self.proxy.stop;
 	},
 
-	eventIsPlaying: { arg self;
+	isPlaying: { arg self;
 		self.proxy.isPlaying;
 	},
 
@@ -695,12 +699,34 @@ Event.addEventType(\player, {
 
 	repeatCount: inf,
 
-);
+	/////////////// backward compat (old way before ProtoClass)
+
+	eventIsPlaying: { arg self;
+		self.isPlaying;
+	},
+
+	eventStop: { arg self;
+		self.stop;
+	},
+
+	eventPlay: { arg self; 
+		self.play;
+	},
+
+	xclear: { arg self;
+		self.clear;
+	},
+
+	xasPattern: { arg self ...args;
+		self.asPattern(*args);
+	},
+
+));
 
 //if(~clipTimeline_all.isNil) {
 //	~clipTimeline_all = IdentityDictionary.new;
 //};
-~clipTimeline = (
+~clipTimeline = ProtoClass((
 	parent: ~eventTimeline,
 	all: { PresetDictionary.new(\clipTimeline) },
 	eventType: \clipTimeline,
@@ -796,7 +822,7 @@ Event.addEventType(\player, {
 		}, pat)	
 	},
 
-	xasPattern: { arg self, relStartTime, totalDur;
+	asPattern: { arg self, relStartTime, totalDur;
 		self.proxy.source = Plazy({
 			var eventlist = self.eventList;
 			var xrelStartTime, xtotalDur;
@@ -821,13 +847,13 @@ Event.addEventType(\player, {
 		x;
 	},
 
-);
+));
 
 
 //if(~noteTimeline_all.isNil) {
 //	~noteTimeline_all = IdentityDictionary.new;
 //};
-~noteTimeline = (
+~noteTimeline = ProtoClass((
 	parent: ~eventTimeline,
 	all: { PresetDictionary.new(\noteTimeline) },
 
@@ -891,7 +917,7 @@ Event.addEventType(\player, {
 		)
 	},
 
-	xasPattern: { arg self, relStartTime, totalDur;
+	asPattern: { arg self, relStartTime, totalDur;
 		// there is 3 kinds of call to asPattern:
 		// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
 		// - the live code: no startPosition given, defaulting to start event : asPattern
@@ -931,9 +957,9 @@ Event.addEventType(\player, {
 	asView: { arg self;
 		~noteTimelinePanelView.newView(self).makeLayout;
 	},
-);
+));
 
-~envTimeline = (
+~envTimeline = ProtoClass((
 	parent: ~eventTimeline,
 	all: { PresetDictionary.new(\envTimeline) },
 	eventType: \envTimeline,
@@ -1051,7 +1077,7 @@ Event.addEventType(\player, {
 	},
 
 
-	xasPattern: { arg self, relStartTime, totalDur;
+	asPattern: { arg self, relStartTime, totalDur;
 		[relStartTime, totalDur].debug("xasPattern: relstart, totdur");
 		self.proxy.source = Prout({ arg inval;
 			var eventlist = self.eventloop.list;
@@ -1102,7 +1128,7 @@ Event.addEventType(\player, {
 		x;
 	},
 
-);
+));
 
 //////////////////////////////////////////// loading archived data
 ~noteTimeline.all.loadIfNotInitialized;
@@ -1534,8 +1560,8 @@ Event.addEventType(\player, {
 	},
 
 	asPattern: { arg self;
+		// TODO
 		Pfunc({})
-
 	},
 
 	refresh: { arg self;

@@ -35,8 +35,8 @@ EventClass : ClassMethodDictionary {}
 // FIXME: should be better named EventClass (but now is used everywhere)
 ProtoClass : Event {
 	//var <>protoclass_event;
-	// FIXME: does not work!
-		// yes it work, forgot the * !
+	// FIXME: parent does not work!
+
 
 	*new { arg xevent;
 		var inst;
@@ -46,6 +46,7 @@ ProtoClass : Event {
 		//inst.protoclass_event = ();
 		//inst.protoclass_event.putAll(xevent);
 		inst.putAll(xevent);
+		inst.parent = xevent.parent; // is not copied with putAll
 		^inst;
 	}
 
@@ -93,10 +94,16 @@ ProtoClass : Event {
 	embedInStream { arg ... args;
 		^this[\embedInStream].(this, * args)
 	}
+
+	clear { arg ... args;
+		^this[\clear].(this, * args)
+	}
 }
 
 
 ArchiveDictionary {
+	// this class take a dictionary and a file name and write it on disk
+	// FIXME: bad name, not a dictionary, but can archive Dictionaries. Maybe should be DictionaryArchiver
 	classvar <>loaderStack;
 	classvar <>lockedFiles;
 
@@ -288,6 +295,9 @@ PresetDictionary : IdentityDictionary {
 		}
 	}
 	
+	// FIXME: seems to be deprecated in favor of .load
+	// don't use Archive anymore as it's too easy to corrupt, and when corrupt, everything get erased
+	// now store as Compile Strings on text files
 	*loadAll {
 		if(allIsLoading.not) {
 			//var keys_order;
@@ -458,6 +468,7 @@ SampleProxy  {
 ////////////////////////////////
 
 
+// NOTE: experimental, don't know if useful yet
 SpecGroup : List {
 
 	asParamGroup { arg target;
@@ -846,3 +857,18 @@ ParGroupDef : GroupDef {
 	}
 	
 }
+
+
+
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////
+
+
+

@@ -221,7 +221,7 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 	stop {
 		// hack: Ndef now have same latency than Pdef
 		//{ // defer implemented in dereference_event
-			if(target.getHalo(\stopIsMute) == true) {
+			if(target.getHalo(\stopIsMute) != false) {
 				target.stop;
 			} {
 				target.free;
