@@ -1375,7 +1375,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 			origin = Point(model[timeKey], model[posyKey] ? 0);
 			color = Color.green;
 			outlineColor = Color.black;
-			extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
+			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			//[spritenum, origin, extent, color].debug("node refresh");
 		};
 
@@ -1506,7 +1506,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 			origin = Point(model[timeKey], model[posyKey]);
 			color = Color.green;
 			outlineColor = Color.black;
-			extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
+			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			label = model.use {  model.label } ? "unnamed";
 			if(model[\eventlist].notNil) {
 				preview.mapEventList(model.eventlist);
@@ -1657,7 +1657,7 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 			origin = Point(model[timeKey], model[posyKey]);
 			color = Color.green;
 			outlineColor = Color.black;
-			extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
+			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			label = model[\label] ? "unnamed";
 			preview.mapEventList(model[\eventloop].list);
 			//[spritenum, origin, extent, color].debug("node refresh");

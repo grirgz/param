@@ -634,6 +634,14 @@ Event.addEventType(\player, {
 		var el = XEventList.new;
 		el.start;
 		el.finish(1);
+		el;
+	},
+
+	makeDefaultEventLoop: { arg self;
+		var loop = XEventLoop.newInstance;
+		loop.list = self.makeDefaultEventList;
+		//loop.setList(0);
+		loop;
 	},
 
 	asPatternAbs: { arg self, startPosition, endPosition;
@@ -744,9 +752,9 @@ Event.addEventType(\player, {
 	},
 
 	init: { arg self;
-		var el = self.makeDefaultEventList;
 		self.areasize = 10@4;
-		self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
+		//self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
+		self.eventloop = self.makeDefaultEventLoop;
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
@@ -760,7 +768,7 @@ Event.addEventType(\player, {
 	new_load: { arg self, data;
 		self = self.deepCopy;
 		self.prAdd(data.name).init(data.param);
-		self.eventloop = (list: ~eventlist_loadArchiveData.(data.eventlist), key: { self.key }); // fake eventloop for the moment
+		self.eventloop = ~eventloop_loadArchiveData.(data.eventloop);
 		self.eventList.reorder;
 		self.areasize = data.areasize;
 		self.cursor.startPosition = self.eventList.startTime;
@@ -773,7 +781,7 @@ Event.addEventType(\player, {
 		(
 			name: self.key,
 			param: self.param,
-			eventlist: ~eventlist_asArchiveData.(self.eventList),
+			eventloop: ~eventloop_asArchiveData.(self.eventList),
 			areasize: self.areasize,
 			quant_ref: self.quant_ref,
 			tracks_bypassed: self.tracks_bypassed,
@@ -875,13 +883,17 @@ Event.addEventType(\player, {
 
 	init: { arg self, param;
 
-		var el = self.makeDefaultEventList;
 		self.param = param;
-		self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
+		self.eventloop = self.makeDefaultEventLoop;
 		self.areasize = 10@128;
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
+		self.eventFactory = ~class_event_factory.new(self.param.target);
+		self.eventFactory.eventLoop = self.eventloop;
+		self.eventFactory.mode = \note;
+		self.eventFactory.playmode = \gate;
+		self.eventFactory.fullrecord = false;
 
 		// note: this is grid quant, not playing quant
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
@@ -891,7 +903,7 @@ Event.addEventType(\player, {
 	new_load: { arg self, data;
 		self = self.deepCopy;
 		self.prAdd(data.name).init(data.param);
-		self.eventloop = (list: data.eventlist, key: { self.key }); // fake eventloop for the moment
+		self.eventloop = ~eventloop_loadArchiveData.(data.eventloop);
 		self.eventList.reorder;
 		self.areasize = data.areasize;
 		self.cursor.startPosition = self.eventList.startTime;
@@ -903,7 +915,7 @@ Event.addEventType(\player, {
 		(
 			name: self.key,
 			param: self.param,
-			eventlist: self.eventList,
+			eventloop: ~eventloop_asArchiveData.(self.eventloop),
 			areasize: self.areasize,
 			quant_ref: self.quant_ref,
 			load: { arg me; ~noteTimeline.new_load(me) },
@@ -939,7 +951,7 @@ Event.addEventType(\player, {
 				xrelStartTime
 			));
 
-			if(self.composeParamPattern == true) {
+			if(self.param.notNil and: {self.composeParamPattern == true}) {
 				pat = pat <> self.param.target;
 			};
 
@@ -1011,10 +1023,8 @@ Event.addEventType(\player, {
 	//},
 
 	init: { arg self, param, bus;
-
-		var el = self.makeDefaultEventList;
 		self.param = param;
-		self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
+		self.eventloop = self.makeDefaultEventLoop;
 		self.areasize = 10@128;
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
@@ -1043,7 +1053,7 @@ Event.addEventType(\player, {
 	new_load: { arg self, data;
 		self = self.deepCopy;
 		self.prAdd(data.name).init(data.param);
-		self.eventloop = (list: data.eventlist, key: { self.key }); // fake eventloop for the moment
+		self.eventloop = ~eventloop_loadArchiveData.(data.eventloop);
 		self.eventList.reorder;
 		self.areasize = data.areasize;
 		self.cursor.startPosition = self.eventList.startTime;
@@ -1056,7 +1066,7 @@ Event.addEventType(\player, {
 		(
 			name: self.key,
 			param: self.param,
-			eventlist: self.eventList,
+			eventloop: ~eventloop_asArchiveData.(self.eventloop),
 			areasize: self.areasize,
 			quant_ref: self.quant_ref,
 			load: { arg me; ~envTimeline.new_load(me) },
@@ -2087,6 +2097,17 @@ Event.addEventType(\player, {
 			//self.parent.makeLayout,
 		);
 		"noteTimelinePanelView.makeLayout af".debug;
+		self.timeline.view.onChange(self.eventloop, \list, { 
+			self.timeline.mapEventList( self.eventloop.list )
+		});
+		// not needed because of default event factory of TimelineView
+		//if(self.timeline_model.eventFactory.notNil) {
+		//	self.timeline.eventFactory = { arg pos, nodesize;
+		//		self.timeline_model.eventFactory.get(
+		//			(absTime: pos.x, midinote: pos.y, sustain:nodesize)
+		//		)
+		//	};
+		//}
 		self.layout;
 	},
 
@@ -2265,6 +2286,29 @@ Event.addEventType(\player, {
 		ev;
 	});
 	XEventList.newFrom(el);
+};
+
+~eventloop_asArchiveData = { arg eventloop;
+	(list: ~eventlist_asArchiveData.(eventloop.list), key: eventloop.key)
+};
+
+~eventloop_loadArchiveData = { arg eventloop_data;
+	var loop;
+	var list;
+	"eventloop_loadArchiveData".debug;
+	loop = XEventLoop.newInstance;
+	"eventloop_loadArchiveData y".debug;
+
+	loop.list = if(eventloop_data.notNil) { // FIXME: don't know why could be nil
+		~eventlist_loadArchiveData.(eventloop_data.list)
+	} {
+		XEventList.new.start.finish(1);
+	};
+	//loop.addList(list);
+	"eventloop_loadArchiveData x".debug;
+	//loop.setList(0);
+	"eventloop_loadArchiveData END".debug;
+	loop;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////

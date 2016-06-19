@@ -5,6 +5,7 @@
 (
 	[
 		"base.scd",
+		"eventFactory.scd",
 		"timeline.scd",
 		"drumrack.scd",
 		"stepeditor.scd",

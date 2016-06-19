@@ -83,6 +83,14 @@ ProtoClass : Event {
 		^this[\source].(this, * args)
 	}
 
+	next { arg ... args;
+		^this[\next].(this, * args)
+	}
+
+	make { arg ... args;
+		^this[\make].(this, * args)
+	}
+
 	source_ { arg ... args;
 		if(this[\source_].notNil) {
 			this[\source_].(this, *args)

@@ -295,6 +295,7 @@ XEventLoop {
 	var <list, <task, <isRecording = false;
 	var recStartTime, then;
 	var <>keysToRecord;
+	var >clock;
 
 	var <verbosity = 1;
 
@@ -352,6 +353,7 @@ XEventLoop {
 	// check that it is an EventList?
 	list_ { |inList|
 		list = inList;
+		this.changed(\list); // added by ggz
 		task.set(\list, list);
 	}
 
@@ -475,6 +477,8 @@ XEventLoop {
 
 	recordEvent { |event|
 		var recEvent;
+		isRecording.debug("XEventLoop: recordEvent: isRecording");
+		verbosity.debug("XEventLoop: recordEvent: isRecording");
 		if (isRecording) {
 			// autostart at 0
 			if (list.size == 0) { list.start(this.getAbsTime); };
@@ -487,11 +491,13 @@ XEventLoop {
 					recEvent.put(key, val);
 				};
 			};
+			[event, recEvent].debug("XEventLoop: recordEvent: event, recEvent");
 			list.addEvent(recEvent);
 			if (verbosity > 1) {
 				("//" + this.asString + "rec: ").post; recEvent.postln;
 			};
 		}
+		^recEvent; // added by ggz, needed to set noteOff/sustain
 	}
 
 	stopRec {
@@ -503,8 +509,9 @@ XEventLoop {
 		recStartTime = nil;
 
 		if (verbosity > 0) {
-			"// % stopRec; // recorded list[%] with % events.\n".postf(
-				this, lists.lastIndex, lists.last.size)
+			// ggz FIXED: the added list is not the last but the first
+			"// % stopRec; // recorded list[0] with % events.\n".postf(
+				this, lists.first.size)
 		};
 	}
 
@@ -513,14 +520,16 @@ XEventLoop {
 	}
 
 	getAbsTime {
-		var now = thisThread.seconds;
+		//var now = thisThread.seconds;
+		var now = this.clock.beats;
 		recStartTime = recStartTime ? now;
 		^now - recStartTime;
 	}
 
 	getTimes {
 		var absTime, relDur;
-		var now = thisThread.seconds;
+		var now = this.clock.beats;
+		var nowsec = thisThread.seconds;
 		if (then.isNil) {
 			then = now;
 			recStartTime = now;
@@ -595,7 +604,7 @@ XEventLoop {
 	setList { |index = 0|
 		var newList = lists[index];
 		if (newList.isNil) {
-			this.post; ": no list at index %.".postf(index);
+			this.post; ": no list at index %.\n".postf(index); // added \n
 			^this
 		};
 		this.list_(newList);
@@ -613,11 +622,17 @@ XEventLoop {
 	///////// added by ggz
 
 	clear {
+		// FIXME: should update lists, no ?
 		list = List.new;
+	}
+
+	clock { arg self;
+		^(clock ? TempoClock.default);
 	}
 
 }
 
+// not sure if needed
 XEventEnv : XEventList {
 	var <>param;
 
