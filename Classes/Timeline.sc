@@ -3,7 +3,7 @@
 TimelineRulerView : TimelineView {
 	// this is X ruler actually
 	// you can define start and stop of timeline interactively
-	var <>mygrid; // debug
+	//var <>mygrid; // debug, already in parentclass
 	var <>cursor;
 
 	mapCursor { arg curs;
@@ -102,26 +102,72 @@ TimelineRulerView : TimelineView {
 		};
 	}
 
+	*vertical_grid_do { arg view, fun;
+		// dynamic grid generation
+		var pixelRect = view.gridRectToPixelRect(Rect(0,0,1,1));
+		var gridRect = view.gridRectToPixelRect(Rect(0,0,1,1));
+
+		var minsize = 60;
+		var bounds = view.bounds;
+		var areasize = view.areasize;
+		var viewport = view.viewport;
+		var xlen = view.gridRectToPixelRect(Rect(0,0,1,1)).width;
+		var offset = pixelRect.left;
+		var factor = 1;
+		factor = 2**( xlen/minsize ).log2.asInteger;
+		//xlen.debug("xlen");
+
+		//[ (areasize.x * viewport.origin.x).asInteger, (areasize.x * factor * viewport.width + 1).asInteger ].debug("start, end XXXXXX");
+		(areasize.x * factor * viewport.width + 1).asInteger.do { arg idx;
+			var oidx, x;
+			//var orx;
+			oidx = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1);
+			x = oidx * xlen / factor + offset;
+			//orx = (idx) * xlen / factor + offset;
+			//x = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1) * xlen / factor + offset;
+			//[idx, x, xlen, bounds.height, bounds, offset, factor].debug("grid drawer: x");
+			fun.(factor, x, oidx, idx);
+		}
+	}
+
 	drawFunc {
 		var grid;
 		var bounds = this.bounds;
 		if(mygrid.notNil) {
 			mygrid.(this)
 		} {
-			DrawGrid(
-				//Rect(0 - (viewport.origin.x * bounds.width / viewport.width),0 - (viewport.origin.y * bounds.height / viewport.height), bounds.width / viewport.width, bounds.height / viewport.height),
+			this.class.vertical_grid_do(this, { arg factor, x, oidx, idx;
+				var yoffset;
+				if( oidx % 4 == 0 ) { 
+					yoffset = 0;
+					Pen.color = Color.black;
+					Pen.alpha = 1;
+				} { 
+					yoffset = 4;
+					Pen.color = Color.black;
+					Pen.alpha = 0.5;
+				};
+				Pen.line(Point(x,yoffset), Point(x,this.virtualBounds.height));
+				//Pen.stringAtPoint(x.asString, Point(x,10));
+				Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,0), Font.new.size_(8));
+				//Pen.stringAtPoint(" " ++ ( (idx+ ( areasize.x * viewport.origin.x * factor ).asInteger)/factor ).asString, Point(x,0), Font.new.size_(8));
+				Pen.stroke;
 
-				// x only
-				Rect(0 - (viewport.origin.x * bounds.width / viewport.width),0, bounds.width / viewport.width, bounds.height),
-				DenseGridLines(ControlSpec(
-						0,
-						areasize.x,
-						\lin,
-						0,
-						0
-				)).density_(1),
-				nil
-			).draw;
+			});
+			//DrawGrid(
+			//	//Rect(0 - (viewport.origin.x * bounds.width / viewport.width),0 - (viewport.origin.y * bounds.height / viewport.height), bounds.width / viewport.width, bounds.height / viewport.height),
+
+			//	// x only
+			//	Rect(0 - (viewport.origin.x * bounds.width / viewport.width),0, bounds.width / viewport.width, bounds.height),
+			//	DenseGridLines(ControlSpec(
+			//			0,
+			//			areasize.x,
+			//			\lin,
+			//			0,
+			//			0
+			//	)).density_(1),
+			//	nil
+			//).draw;
 		};
 		this.drawCursor;
 
@@ -252,6 +298,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 
 	draw {
 		var point;
+		var dbrect; // debug
 		var pos;
 		var len=width;
 		var box = {
@@ -295,12 +342,18 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		//Pen.color = Color.red;
 		//Pen.fillRect(parent.gridRectToPixelRect(this.rect));
 
+		//point = this.origin;
+		//extent = parent.pixelPointToGridPoint(Point(width,height)); 
+		//dbrect = Rect(point.x-(extent.x/2), 0, extent.x, extent.y*4);
+		//Pen.color = Color.blue;
+		//Pen.strokeRect(parent.gridRectToPixelRect(dbrect));
 	}
 
 	rect {
 		var rect;
 		var point = this.origin;
-		extent = parent.pixelExtentToGridExtent(Point(width,height)); 
+		//extent = parent.pixelExtentToGridExtent(Point(width,height));  // not used because should not be influenced by viewport
+		extent = parent.pixelPointToGridPoint(Point(width,height)); 
 		rect = Rect(point.x-(extent.x/2), 0, extent.x, extent.y*4);
 		^rect;
 	}

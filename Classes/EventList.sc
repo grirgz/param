@@ -609,6 +609,11 @@ XEventLoop {
 		};
 		this.list_(newList);
 		currIndex = index;
+		this.changed(\currIndex);
+	}
+
+	currIndex_ { arg index = 0;
+		this.setList(index);
 	}
 
 	listDur { ^list.last.keep(2).sum; }

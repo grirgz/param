@@ -127,7 +127,7 @@ TimelineView : SCViewHolder {
 				var oldport;
 				var top;
 				oldport = this.viewport;
-				top = ( oldport.top + ( yDelta/this.virtualBounds.height ) ).clip(0,oldport.height);
+				top = ( oldport.top + ( yDelta/this.virtualBounds.height ) ).clip(0,1-oldport.height);
 				newport = Rect(oldport.left, top, oldport.width, oldport.height);
 				[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
 				this.viewport = newport;
@@ -442,12 +442,54 @@ TimelineView : SCViewHolder {
 		}
 	}
 
+	drawGridX {
+		var grid;
+		mygrid.debug("===============mygrid");
+		grid = mygrid.(this.virtualBounds, this.areasize, this.viewport);
+		grid.debug("grid");
+
+		if(grid.notNil) {
+			grid.draw;
+		} {
+			TimelineRulerView.vertical_grid_do(this, { arg factor, x, oidx, idx;
+				if( oidx % 4 == 0 ) { 
+					Pen.alpha = 0.9;
+				} { 
+					Pen.alpha = 0.5;
+				};
+				Pen.color = Color.black;
+				Pen.line(Point(x,0), Point(x,this.virtualBounds.height));
+				Pen.stroke;
+			});
+
+		}
+		
+		//DrawGrid(
+		//	Rect(
+		//		0 - (viewport.origin.x * bounds.width / viewport.width),
+		//		0 - (viewport.origin.y * bounds.height / viewport.height), 
+		//		bounds.width / viewport.width, 
+		//		bounds.height / viewport.height
+		//	),
+		//	
+		//	DenseGridLines(ControlSpec(
+		//			0,areasize.x,
+		//			\lin,
+		//			0,
+		//			0
+		//	)).density_(1),
+		//	//MidinoteGridLines(\midinote.asSpec).density_(8).labelDensity_(2)
+		//	nil,
+		//);
+		
+
+	}
+
 	drawFunc {
 		//var bounds = this.view.bounds;
 		var pen = Pen;
 		var bounds = this.virtualBounds;
 		var pstartSelPoint, pendSelPoint;
-		var grid;
 
 
 		pen.width = 1;
@@ -457,36 +499,8 @@ TimelineView : SCViewHolder {
 
 		// grid
 
-		mygrid.debug("===============mygrid");
-		grid = mygrid.(bounds, areasize, viewport);
-		grid.debug("grid");
-
-		grid = grid ? 
-		
-				DrawGrid(
-					Rect(
-						0 - (viewport.origin.x * bounds.width / viewport.width),
-						0 - (viewport.origin.y * bounds.height / viewport.height), 
-						bounds.width / viewport.width, 
-						bounds.height / viewport.height
-					),
-					
-					DenseGridLines(ControlSpec(
-							0,areasize.x,
-							\lin,
-							0,
-							0
-					)).density_(1),
-					//MidinoteGridLines(\midinote.asSpec).density_(8).labelDensity_(2)
-					nil,
-				);
-		
-		grid.draw;
-
-		// explicit grid
-
+		this.drawGridX;
 		this.drawGridY;
-
 		
 		// the lines
 
@@ -684,7 +698,12 @@ TimelineView : SCViewHolder {
 					);
 					this.refresh;
 				}
-			});
+			})
+		;
+		// init
+		timeline.changed(\areasize);
+		timeline.changed(\viewport); 
+
 	}
 
 	areasize_ { arg val;
@@ -866,7 +885,7 @@ TimelineView : SCViewHolder {
 
 
 	pixelExtentToGridExtent { arg point;
-		// not used currently
+		// not used by TimelineViewLocatorNode
 		^(point / this.bounds.extent * areasize * viewport.extent);
 	}
 

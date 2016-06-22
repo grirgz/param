@@ -337,6 +337,21 @@ XOutBusSpec : XBusSpec {
 
 }
 
+XBoolSpec : Spec {
+	*new { 
+		^super.new;
+	}
+
+	map { arg val;
+		^(val > 0)
+	}
+
+	unmap { arg val;
+		^val.asInteger
+	}
+
+}
+
 MenuSpec : Spec {
 	var <>labelList, <>valueList;
 
@@ -412,6 +427,33 @@ MenuSpec : Spec {
 	}
 
 }
+
+ListIndexSpec : Spec {
+	var <>fun;
+	*new { arg fun;
+		^super.new.fun_(fun);
+	}
+
+	map { arg val;
+		^(val * ( fun.value.size - 1))
+	}
+
+	unmap { arg val;
+		^((val) / ( fun.value.size - 1));
+	}
+
+	maxval { 
+		^fun.value.size;
+	}
+
+	valueList {
+		^(0..fun.value.size);
+	}
+
+	minval { ^0 }
+
+}
+
 
 // ~a = XArraySpec( \freq.asSpec ! 15  ) // array of size 15
 // ~a = XArraySpec( [\freq, \unipolar]  ) // array of size two

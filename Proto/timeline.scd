@@ -649,23 +649,40 @@ Event.addEventType(\player, {
 		var eventlist = self.eventList;
 		// currentlty, startPosition and endPosition are in absolute time in the GUI, but will be relative to start event in futur
 		// this code translate absolute in relative (to start event)
-		if(startPosition.isNil) {
-			relStartTime = eventlist.relStartTime;
-		} {
-			relStartTime = ( startPosition - eventlist.firstTime ).clip(0,inf);
-			// now relStartTime is independent of start event
-			relStartTime = eventlist.relStartTime max: relStartTime;
-			// now relStartTime is always after start event
+		relStartTime = {
+			var sp = startPosition.value;
+			if(sp.isNil) {
+				self.eventList.relStartTime;
+			} {
+				var xx;
+				xx = ( sp - self.eventList.firstTime ).clip(0,inf);
+				// now relStartTime is independent of start event
+				eventlist.relStartTime max: xx;
+				// now relStartTime is always after start event
+			};
+
 		};
 
-		if(endPosition.isNil) {
-			//totalDur = self.eventloop.list.totalDur - (startPosition - eventlist.startTime ).clip(0,inf);
-			totalDur = self.eventloop.list.totalDur - relStartTime;
-		} {
-			//totalDur = endPosition - (startPosition ? eventlist.startTime);
-			totalDur = (endPosition - eventlist.startTime) - relStartTime;
+		totalDur = {
+			var rst = relStartTime.value;
+			var ep = endPosition.value;
+			var xx;
+			xx = if(ep.isNil) {
+				//totalDur = self.eventloop.list.totalDur - (startPosition - eventlist.startTime ).clip(0,inf);
+				self.eventloop.list.totalDur - rst;
+			} {
+				//totalDur = endPosition - (startPosition ? eventlist.startTime);
+				(ep - self.eventList.startTime) - rst;
+			};
+			// prevent empty (infinite loop)
+			if(xx == 0) {
+				self.eventloop.list.totalDur - rst;
+			} {
+				xx
+			}
 		};
-		[startPosition, endPosition, relStartTime, totalDur].debug("asPatternAbs: start, end, relstart, totdur");
+
+		//[startPosition, endPosition, relStartTime, totalDur].collect(_.value).debug("asPatternAbs: start, end, relstart, totdur");
 		self.xasPattern(relStartTime, totalDur);
 	},
 
@@ -689,7 +706,7 @@ Event.addEventType(\player, {
 
 	play: { arg self;
 		[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
-		self.asPatternAbs(self.cursor.startPosition, self.cursor.endPosition).play;
+		self.asPatternAbs({self.cursor.startPosition}, {self.cursor.endPosition}).play;
 	},
 
 	stop: { arg self;
@@ -835,8 +852,8 @@ Event.addEventType(\player, {
 			var eventlist = self.eventList;
 			var xrelStartTime, xtotalDur;
 
-			xrelStartTime = relStartTime ? eventlist.relStartTime;
-			xtotalDur = totalDur ? eventlist.totalDur;
+			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
+			xtotalDur = totalDur.value ? eventlist.totalDur;
 
 			[xrelStartTime, xtotalDur].debug("clip xasPattern: plazy: relstart, totdur");
 
@@ -942,8 +959,8 @@ Event.addEventType(\player, {
 			var pat;
 			var xrelStartTime, xtotalDur;
 
-			xrelStartTime = relStartTime ? eventlist.relStartTime;
-			xtotalDur = totalDur ? eventlist.totalDur;
+			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
+			xtotalDur = totalDur.value ? eventlist.totalDur;
 
 			self.eventloop.list.changed(\cursor, \play);
 			pat = Pfindur(xtotalDur, ~timeline_pattern.(
@@ -952,7 +969,13 @@ Event.addEventType(\player, {
 			));
 
 			if(self.param.notNil and: {self.composeParamPattern == true}) {
-				pat = pat <> self.param.target;
+				if(self.eventFactory.mode == \event) {
+					"Event mode!".debug;
+					pat = self.param.target <> pat;
+				} {
+					"Normal mode!".debug;
+					pat = pat <> self.param.target;
+				}
 			};
 
 			pat;
@@ -1097,8 +1120,8 @@ Event.addEventType(\player, {
 			var first_level;
 			var xrelStartTime, xtotalDur;	
 
-			xrelStartTime = relStartTime ? eventlist.relStartTime;
-			xtotalDur = totalDur ? eventlist.totalDur;
+			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
+			xtotalDur = totalDur.value ? eventlist.totalDur;
 
 			[xrelStartTime, xtotalDur].debug("xasPattern: prout: relstart, totdur");
 
@@ -1185,7 +1208,8 @@ Event.addEventType(\player, {
 
 	make_stop_button: { arg self;
 		XSimpleButton.new.label_("[]").action_({
-			self.cursor.startPosition = self.eventloop.list.startTime;
+			self.cursor.startPosition = nil;
+			self.cursor.endPosition = nil;
 			PlayerWrapper(self.timeline_model).stop;
 			self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
 		});
@@ -1439,7 +1463,9 @@ Event.addEventType(\player, {
 		ruler_x = TimelineRulerView.new;
 		ruler_x.mapCursor(self.cursor);
 		ruler_x.quant = self.quant_ref;
+		self.ruler_x = ruler_x;
 		locatorbar = TimelineLocatorBarView.new;
+		self.locatorbar = locatorbar;
 
 		locatorbar.quant = self.quant_ref;
 
@@ -1576,6 +1602,8 @@ Event.addEventType(\player, {
 
 	refresh: { arg self;
 		self.timeline.mapEventList(self.eventloop.list);
+		self.cursor_timeline.mapEventList(self.eventloop.list);
+		self.locatorbar.mapEventList(self.eventloop.list);
 	},
 
 	save_timeline_properties: { arg self;
@@ -2067,6 +2095,12 @@ Event.addEventType(\player, {
 			self.make_stop_button,
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
+			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
+			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventFactory.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			Button.new.mapParam(Param(Message(self.timeline_model.eventFactory), \isRecording, XBoolSpec())).states_([
+				["Rec", Color.black, Color.white],
+				["Rec", Color.black, Color.red],
+			]),
 		);
 		
 		self.header_layout;
@@ -2098,7 +2132,7 @@ Event.addEventType(\player, {
 		);
 		"noteTimelinePanelView.makeLayout af".debug;
 		self.timeline.view.onChange(self.eventloop, \list, { 
-			self.timeline.mapEventList( self.eventloop.list )
+			self.refresh;
 		});
 		// not needed because of default event factory of TimelineView
 		//if(self.timeline_model.eventFactory.notNil) {

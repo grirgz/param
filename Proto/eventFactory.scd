@@ -65,6 +65,10 @@
 		self.newChild((midinote:midinote));
 	},
 
+	chainfun: { arg self, pat1, pat2;
+		Pchain(pat1, pat2);
+	},
+
 	childAt: { arg self, index;
 		if(self.children[index].isNil) {
 			self.children[index] = self.childfun(index);
@@ -91,6 +95,7 @@
 			self.eventLoop.isRecording.debug("startRecording: before: isRecording");
 			self.eventLoop.startRec;
 			self.eventLoop.isRecording.debug("startRecording: after: isRecording");
+			self.changed(\isRecording);
 		}
 	},
 
@@ -99,6 +104,7 @@
 			self.eventLoop.isRecording.debug("stopRecording: before: isRecording");
 			self.eventLoop.stopRec;
 			self.eventLoop.isRecording.debug("stopRecording: after: isRecording");
+			self.changed(\isRecording);
 		}
 	},
 
@@ -108,6 +114,10 @@
 		} {
 			self.eventLoop.isRecording;
 		}
+	},
+
+	isRecording_: { arg self, val;
+		if(val == true or: { val == 1 }) { self.startRecording } { self.stopRecording };
 	},
 
 	recordEvent: { arg self, ev;
@@ -124,7 +134,8 @@
 
 	recordEventStop: { arg self;
 		if(self.eventLoop.notNil and: self.current_event.notNil) {
-			self.current_event.sustain = self.eventLoop.getAbsTime - self.current_event.absTime; // always in seconds, not good for changing tempo
+			//self.current_event.sustain = self.eventLoop.getAbsTime - self.current_event.absTime; // always in seconds, not good for changing tempo
+			self.current_event.sustain = (self.eventLoop.getAbsTime - self.current_event.absTime)/self.eventLoop.clock.tempo;
 			self.current_event.debug("recordEventStop");
 		}
 	},
@@ -333,15 +344,17 @@
 				// TODO
 				if(ev.isNil) {
 					self.stream = nil;
-					nil;
+					res = nil;
 				} {
 					if(self.player.notNil) {
 						self.player.release;
+						self.player = nil;
 					};
 					ev = ev.copy;
 					ev;
-					res = [pos_ev, ev, ev]; // TODO
+					res = [pos_ev, ev, ev];
 				};
+				res;
 			},
 			// take the event from the stream, the key pushed replace the key in the pattern
 			// useful for overriding the current melody score in input pattern
@@ -409,6 +422,7 @@
 				};
 			},
 			\event, {
+				self.recordEventStop;
 				if(self.player.notNil) {
 					if(self.player.hasGate) {
 						self.player.release;
