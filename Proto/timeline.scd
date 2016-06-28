@@ -2,10 +2,23 @@
 // "~/code/sc/seco/vlive/demo/param/lib/timeline.scd".standardizePath.load;
 
 
-SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1, gate=1;
+// why has a gate ? it's time the important thing
+// time should be in seconds
+// maybe i used gate to be able to release early when pattern is stopped ?
+// gate is used because when event is cut by dropdur, the sustain is cut, but the slope should be the same
+	// ^ to verify
+//SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1, gate=1;
+//	var sig;
+//	var in = In.kr(out);
+//	sig = EnvGen.kr(Env([in,level], [time], curve),gate,doneAction:2);
+//	sig.poll(label:"env segment");
+//	Out.kr(out, sig);
+//}).add;
+
+SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	var sig;
 	var in = In.kr(out);
-	sig = EnvGen.kr(Env([in,level], [time], curve),gate,doneAction:2);
+	sig = EnvGen.kr(Env([in,level], [time], curve),1,doneAction:2);
 	sig.poll(label:"env segment");
 	Out.kr(out, sig);
 }).add;
@@ -240,6 +253,7 @@ Event.addEventType(\player, {
 };
 
 ~eventlist_aspattern = { arg eventlist;
+	// used only by events of type \eventlist (so not timelines)
 	// to enable reading before start event or after end event, add a flag to ignore start and end event
 	// will be set by toplevel timeline view
 	var current_offset = 0;
@@ -690,6 +704,14 @@ Event.addEventType(\player, {
 		self.eventloop.list
 	},
 
+	eventLoop: { arg self;
+		self.eventloop;
+	},
+
+	eventLoop_: { arg self, val;
+		self.eventloop = val;
+	},
+
 	embedInTimeline: { arg self, drop_dur, sustain;
 		var relStartTime;
 		relStartTime = self.eventList.relStartTime + drop_dur;
@@ -746,6 +768,27 @@ Event.addEventType(\player, {
 		self.asPattern(*args);
 	},
 
+	startRecording: { arg self;
+		self.isRecording = true;
+	},
+
+	stopRecording: { arg self;
+		self.isRecording = false;
+	},
+
+	isRecording: { arg self;
+		if(self.eventFactory.notNil) {
+			self.eventFactory.isRecording;
+		} {
+			false
+		}
+	},
+
+	isRecording_: { arg self, val;
+		if(self.eventFactory.notNil) {
+			self.eventFactory.isRecording = val;
+		}
+	},
 ));
 
 //if(~clipTimeline_all.isNil) {
@@ -870,6 +913,10 @@ Event.addEventType(\player, {
 		var x = ~clipTimelinePanelView.new(self);
 		self.editor = { x };
 		x;
+	},
+
+	asView: { arg self;
+		~clipTimelinePanelView.newView(self).makeLayout;
 	},
 
 ));
@@ -1052,6 +1099,11 @@ Event.addEventType(\player, {
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
+		self.eventFactory = ~class_param_event_factory.new(self.param);
+		self.eventFactory.eventLoop = self.eventloop;
+		self.eventFactory.mode = \note;
+		self.eventFactory.playmode = \gate;
+		self.eventFactory.fullrecord = false;
 		if(bus.isNil) {
 			if(param.target.isKindOf(Bus)) {
 				self[\outBus] = param.target;
@@ -1127,10 +1179,16 @@ Event.addEventType(\player, {
 
 			// FIXME: this should be an event
 			if(self.param.notNil and:{ self.param.target.isKindOf(Bus).not }) {
-				self.param.set(self.outBus.asMap);
+				// FIXME: bus mode should be generic
+				if(self.param.target.class == Pdef) {
+					self.param.target.set(self.param.property, self.outBus.asMap)
+				} {
+					self.param.set(self.outBus.asMap);
+				};
 				//default = self.param.default;
 			};
 
+			~remove_envlist_duplicate.(self.eventloop.list);
 			~compute_eventenv_sustain.(self.eventloop.list);
 
 			pat = 
@@ -1139,11 +1197,36 @@ Event.addEventType(\player, {
 					//\level, Pfunc({ arg ev; ev[self.param.property] ? default }),
 					\curve, 0,
 					\out, self.outBus,
-					\time, Pfunc({ arg ev; ev.debug("ev!!!!!!!!!!!!!!!!!!"); ev.use { ev.sustain } }),
+					\time, Pfunc({ arg ev; ev.debug("ev!!!!!!!!!!!!!!!!!!"); ev.use { 
+							// absTime is in beats (but maybe should be in seconds ?)
+							// need to convert to seconds
+							//(ev.next_absTime ? ev.absTime) - ev.absTime / thisThread.clock.tempo
+							// use dur instead
+							ev[\sustain] / thisThread.clock.tempo
+					} }),
+					\type, Pfunc({  arg ev;
+
+						if(ev[\type].isNil or: { ev[\type] == \note }) {
+							if(ev[\next_level].isNil) { // last one should be rest
+								\rest
+							} {
+								if(ev[\time].debug("ev.time").notNil and: {ev[\time] < 0.051}, {
+									ev[\array] = [ ev[\level] ];
+									ev.debug("envTimeline: asPattern: busmode!");
+									\bus;
+								}, { 
+									\note;
+								});
+							}
+
+						} {
+							ev[\type]
+						}
+					})
 				).trace(prefix:"MAIIIIIIIIIIIIIIIIIIIIIIII")
 				<>
 				Pfindur(xtotalDur, ~timeline_pattern.(
-					Pn(self.eventloop.list, 1),
+					Pn(self.eventloop.list.copy, 1), // copy to prevent changes while playing ?
 					xrelStartTime
 				))
 			;
@@ -1159,6 +1242,10 @@ Event.addEventType(\player, {
 		var x = ~envTimelinePanelView.new(self);
 		self.editor = { x };
 		x;
+	},
+
+	asView: { arg self;
+		~envTimelinePanelView.newView(self).makeLayout;
 	},
 
 ));
@@ -1277,9 +1364,9 @@ Event.addEventType(\player, {
 
 	makeWindow: { arg self;
 		//var window = Window.new;
-		WindowDef("%_%".format(self.timeline_model.eventType, self.key).asSymbol, { arg window;
+		WindowDef("%_%".format(self.timeline_model.eventType, self.key).asSymbol, { arg me;
 			var layout;
-			window.onClose_({
+			me.window.onClose_({
 				self.save_timeline_properties;
 			});
 			layout = self.makeLayout;
@@ -1656,13 +1743,33 @@ Event.addEventType(\player, {
 				self.refreshPopups;
 				switch(ev[\eventType] ? ev[\nodeType] ? ev[\type],
 					\player, {
+						var branch;
+						branch = { arg obj;
+							switch( obj.class,
+								PlayerWrapper, {
+									branch.(obj.target)
+								},
+								Ndef, {
+									self.type_popup.value = self.type_popup.items.detectIndex({ arg x; x == \Ndef });
+									self.name_popup.items = Ndef.all[\localhost].envir.keys.asArray;
+									self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
+										x == ( ev.key ?? { obj.key } )
+									});
+									[self.name_popup.value, self.name_popup.items, ev[\key], ev[\receiver], ev[\receiver].value.key].debug("name, items, key, rec, reckey");
+								},
+								TrackDef, {
+									self.type_popup.value = self.type_popup.items.detectIndex({ arg x; x == \Tracks });
+									self.name_popup.items = TrackDef.all.keys.asArray;
+									self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
+										x == ( ev.key ?? { obj.key } )
+									});
+									[self.name_popup.value, self.name_popup.items, ev[\key], ev[\receiver], ev[\receiver].value.key].debug("name, items, key, rec, reckey: TRACKDEF");
+
+								}
+							);
+						};
 						ev.debug("clipEditor: updater: player");
-						self.type_popup.value = self.type_popup.items.detectIndex({ arg x; x == \Ndef });
-						self.name_popup.items = Ndef.all[\localhost].envir.keys.asArray;
-						self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
-							x == ( ev.key ?? { ev[\receiver].value.key } )
-						});
-						[self.name_popup.value, self.name_popup.items, ev[\key], ev[\receiver], ev[\receiver].value.key].debug("name, items, key, rec, reckey");
+						branch.(ev[\receiver].value);
 					},
 					\pattern, {
 						ev.debug("clipEditor: updater: pattern");
@@ -1717,6 +1824,7 @@ Event.addEventType(\player, {
 			'NoteTimeline',
 			'EnvTimeline',
 			'ModStepTimeline',
+			'Tracks',
 		];
 		self.type_popup.action = {
 			switch( self.type_popup.items[self.type_popup.value],
@@ -1741,7 +1849,10 @@ Event.addEventType(\player, {
 				},
 				\ModStepTimeline, {
 					name_popup.items = ~modStepTimeline.all.keys.asArray;
-				}
+				},
+				\Tracks, {
+					name_popup.items = TrackDef.all.keys.asArray;
+				},
 			);
 		};
 		self.type_popup.valueAction = 0;
@@ -1837,6 +1948,13 @@ Event.addEventType(\player, {
 					~clear_event_type.(model);
 					model.putAll(~event_type_timeline);
 					model[\timeline] = ~modStepTimeline.new(curname);
+					self.parent_model.changed(\refresh);
+				},
+				\Tracks, {
+					~clear_event_type.(model);
+					model.putAll(~event_type_player);
+					model[\receiver] = Ref(PlayerWrapper(TrackDef(curname)));
+					//model.changed(\refresh);
 					self.parent_model.changed(\refresh);
 				},
 			);
@@ -2028,7 +2146,15 @@ Event.addEventType(\player, {
 			} {
 				PlayerWrapperView(PlayerWrapper(self.param.target)).view;
 			},
+			self.param.asKnob,
+			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
+			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
+			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventFactory.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			Button.new.mapParam(Param(Message(self.timeline_model.eventFactory), \isRecording, XBoolSpec())).states_([
+				["Rec", Color.black, Color.white],
+				["Rec", Color.black, Color.red],
+			]),
 		)
 	},
 
@@ -2049,6 +2175,9 @@ Event.addEventType(\player, {
 		self.timeline.mouseUpAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
 			self.timeline.refreshEventList;
 		};
+		self.timeline.view.onChange(self.eventloop, \list, { 
+			self.refresh;
+		});
 		self.layout;
 	},
 );
@@ -2151,6 +2280,21 @@ Event.addEventType(\player, {
 /////////////////////////////////////////////////////////////////////
 
 
+~remove_envlist_duplicate = { arg eventlist;
+	var prev;
+	var to_remove = List.new;
+	eventlist.do { arg ev;
+		if(prev.notNil) {
+			if (prev[\level].notNil and: { prev[\level] == ev[\level] and: { prev[\dur] == 0 } }) {
+				to_remove.add(prev)
+			}
+		};
+		prev = ev;
+	};
+	to_remove.do { arg ev;
+		eventlist.remove(ev)
+	};
+};
 
 ~compute_eventenv_sustain = { arg eventlist;
 	var previous;
@@ -2161,10 +2305,16 @@ Event.addEventType(\player, {
 		} {
 			if(previous.notNil) {
 				if(previous[\dur] != 0) {
-					previous[\legato] = ( ev[\absTime] - previous[\absTime] ) / previous[\dur];  
+					// why ?? legato should always be one, no ?
+					// but legato is not used, env_segment use time to know the length
+					//previous[\legato] = ( ev[\absTime] - previous[\absTime] ) / previous[\dur];  
+					//previous[]
+					// sustain is in beats
 				};
+				previous[\sustain] = ( ev[\absTime] - previous[\absTime] ); // abstime is in beats, sustain is in beats
+				//previous[\legato] = 1; // 
 				previous[\next_level] = ev[\level];  
-				previous[\next_absTime] = ev[\absTime];  
+				previous[\next_absTime] = ev[\absTime]; // this is a bit useless, time can be computed from dur / tempo 
 			};
 			previous = ev;
 
@@ -2218,7 +2368,7 @@ Event.addEventType(\player, {
 		var val;
 		var first = true;
 		var previous_val;
-		var nextval; // ugly hack
+		var nextval; // ugly hack (FIXME: for what ?)
 		
 		block { arg break;
 			while({
@@ -2266,7 +2416,7 @@ Event.addEventType(\player, {
 						first = false;
 					}
 				} {
-					if(previous_val.use { previous_val.sustain} <= 0) {
+					if(previous_val.use { previous_val.time } <= 0) {
 						previous_val[\array] = [previous_val[\next_level]];
 						previous_val[\type] = \bus;
 					} {
@@ -2278,7 +2428,14 @@ Event.addEventType(\player, {
 				};
 			});
 		};
-		previous_val[\type] = \rest;
+		//previous_val[\type] = \rest; // this seems to be the cause to the last segment is rest
+		if(previous_val.use { previous_val.time } <= 0) {
+			previous_val[\array] = [previous_val[\next_level]];
+			previous_val[\type] = \bus;
+		} {
+			previous_val[\level] = previous_val[\next_level];
+			previous_val.debug("pattern_to_envpattern: yield previous");
+		};
 		previous_val.yield;
 	})
 

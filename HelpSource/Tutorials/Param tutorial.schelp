@@ -25,7 +25,7 @@ Ndef(\ndef_scalar, { arg freq=200, pan=0, amp=0.1, detune = 0;
 );
 ::
 
-Then create a Param which point the frequency argument of this Ndef, associated with the \freq spec.
+Then create a Param which point to the frequency argument of this Ndef, associated with the \freq spec.
 The first argument is the object to be controlled and the second is the name of the argument you want to control.
 The third argument is a spec, it's optional and if you don't give a spec, Param will search the spec in the controlled object.
 The spec is used to convert the values from the midi controller which goes from 0 to 127 to the specified range, here with freq, 20 to 20000.

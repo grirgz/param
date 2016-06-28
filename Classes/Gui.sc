@@ -326,11 +326,12 @@ ParamGroupLayout {
 					param.asSlider.orientation_(\horizontal),
 					param.asTextField,
 				]
-			})
+			}) 
 		);
 		gridlayout.setColumnStretch(0,2);
 		gridlayout.setColumnStretch(1,6);
 		gridlayout.setColumnStretch(2,2);
+		gridlayout = VLayout(gridlayout, [nil, stretch:2]);
 
 		// chipotage
 		if(biglist.size < 5 and: { scalarlist.size < 6 } ) {
@@ -500,6 +501,7 @@ WindowDef {
 	// FIXME: if maximized then restored, the bound is lost
 
 	*initClass {
+		Class.initClassTree(PresetDictionary);
 		all = PresetDictionary(\WindowDef)
 	}
 
@@ -531,13 +533,13 @@ WindowDef {
 		windowProperties = IdentityDictionary.new;
 	}
 
-	front {
-		this.windowize;
+	front { arg ...args;
+		this.windowize(*args);
 		window.front;
 	}
 
-	frontTop {
-		this.windowize;
+	frontTop { arg ...args;
+		this.windowize(*args);
 		window.alwaysOnTop = true;
 		window.front;
 	}
@@ -569,7 +571,11 @@ WindowDef {
 		}
 	}
 
-	windowize {
+	asView { arg ...args;
+		^source.value(this, *args)
+	}
+
+	windowize { arg ...args;
 		var layout;
 		var val;
 		if(alwaysRecreate == true) {
@@ -581,7 +587,7 @@ WindowDef {
 			window = Window.new;
 			window.name = key ? "";
 			this.loadWindowProperties;
-			val = source.value(window);
+			val = source.value(this, *args);
 			if(val.isKindOf(Layout)) {
 				layout = val;
 			} {
@@ -874,8 +880,11 @@ StepListView : SCViewHolder {
 	var <>deselectAction;
 	var <>hasCursor = false;
 	var <>cellWidth = 40;
-	*new { arg stepseq;
-		^super.new.init(stepseq);
+	var <>style;
+
+
+	*new { arg stepseq, style;
+		^super.new.init(stepseq, style);
 	}
 
 	stepList { // realname, should avoid stepseq
@@ -890,10 +899,11 @@ StepListView : SCViewHolder {
 		}
 	}
 
-	init { arg seq;
+	init { arg seq, astyle;
 		this.view = View.new;
+		style = astyle;
 		if(seq.notNil) {
-			this.mapStepList(seq);
+			this.mapStepList(seq, astyle);
 		}
 	}
 
@@ -970,9 +980,14 @@ StepListView : SCViewHolder {
 		}
 	}
 
-	makeLayout { arg seq, style;
-		var lpl = ListParamLayout.perform(style, stepseq.asParam);
-		lpl.viewlist.collect({ arg x; x.fixedWidth = cellWidth});
+	makeLayout { arg seq, astyle;
+		var lpl;
+		if(style.isKindOf(Function)) {
+			lpl = ListParamLayout.new(seq ? stepseq.asParam, astyle ? style);
+		} {
+			lpl = ListParamLayout.perform(astyle ? style, seq ? stepseq.asParam);
+			lpl.viewlist.collect({ arg x; x.fixedWidth = cellWidth});
+		};
 		^lpl
 	}
 
@@ -987,17 +1002,19 @@ StepListView : SCViewHolder {
 
 	mapStepList { arg seq, style;
 		stepseq = seq;
-		this.view.removeAll;
-		if(seq.notNil) {
-			this.makeUpdater;
-			style = style ?? { seq.getHalo(\seqstyle) ? \knob }; 
-			this.view.layout_(this.makeLayout(seq, style));
-			if(hasCursor) {
-				this.addCursor;
-			}
-		} {
+		if(this.view.notNil and: {this.view.isClosed.not}) {
 			this.view.removeAll;
-		}
+			if(seq.notNil) {
+				this.makeUpdater;
+				style = style ?? { seq.getHalo(\seqstyle) ? \knob }; 
+				this.view.layout_(this.makeLayout(seq, style));
+				if(hasCursor) {
+					this.addCursor;
+				}
+			} {
+				this.view.removeAll;
+			}
+		};
 	}
 }
 
@@ -1008,8 +1025,8 @@ StepListColorView : StepListView {
 		^this.makeColorLayout(seq, style);
 	}
 
-	makeColorLayout { arg seq, style;
-		var lpl = ListParamLayout.perform(style, stepseq.asParam);
+	makeColorLayout { arg seq, astyle;
+		var lpl;
 		var color;
 		var color_ring = colorRing ?? { [
 			Color.newHex("D5F8F8"),
@@ -1017,12 +1034,19 @@ StepListColorView : StepListView {
 			Color.newHex("A0E6E6"),
 			Color.newHex("A0E6E6"),
 		]};
-		color_ring = color_ring.copy;
-		^HLayout(*
-			lpl.viewlist.collect({ arg x; 
+		astyle = astyle ? style;
+		if(astyle.isKindOf(Function)) {
+			lpl = ListParamLayout(stepseq.asParam, astyle);
+		} {
+			lpl = ListParamLayout.perform(astyle, stepseq.asParam);
+			lpl.viewlist.do { arg x;
 				x.fixedWidth = 30;
 				x.minHeight_(30+3);
-			}).clump(4).collect({ arg group4;
+			};
+		};
+		color_ring = color_ring.copy;
+		^HLayout(*
+			lpl.viewlist.clump(4).collect({ arg group4;
 				color = color_ring[0]; 
 				color_ring = color_ring.rotate(-1);
 				View.new.layout_(
@@ -1376,7 +1400,7 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 		} {
 			this.view.debug("selfalse");
 			this.view.background_(color_deselected);
-		}
+		};
 	}
 
 	selected {

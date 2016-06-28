@@ -242,6 +242,7 @@ StepListDef {
 
 StepEvent : Event {
 	var <>repeats = 1;
+	var <player;
 
 	asParamGroup {
 		var instr;
@@ -256,6 +257,13 @@ StepEvent : Event {
 	}
 
 	embedInStream { arg ev;
+		repeats.do {
+			ev = this.embedInStreamOnce(ev);
+		};
+		^ev;
+	}
+
+	embedInStreamOnce { arg ev;
 		var pairs = List.new;
 		var pbind;
 		this.keysValuesDo { arg key, val;
@@ -274,7 +282,11 @@ StepEvent : Event {
 				if(val.isKindOf(Event) and: { val[\eventType] == \envTimeline }) {
 					pat = val.outBus.asMap;
 				} {
-					pat = val.asPattern;
+					if(pat.isKindOf(Number) or: { pat.isKindOf(Symbol) }) {
+						pat = Pfunc({ this[key] })
+					} {
+						pat = val.asPattern;
+					}
 				};
 				if(pat.notNil) {
 					pairs.add(key);
@@ -298,7 +310,9 @@ StepEvent : Event {
 	}
 
 	asPattern {
-		^Prout({ arg ev; this.embedInStream(ev) }).repeat(repeats);
+		^Prout({ arg ev; 
+			this.embedInStream(ev)
+		})
 	}
 
 	asSidePattern {
@@ -350,7 +364,51 @@ StepEvent : Event {
 		};
 		^1
 	}
+
+	play {
+		player = this.asPattern.play;
+	}
+
+	stop {
+		if(player.notNil) {
+			player.stop;
+			player = nil;
+		}
+	}
+
 }
+
+StepEventDef : StepEvent {
+	classvar <>all;
+	var <>key;
+	var <>source;
+
+	*initClass {
+		all = IdentityDictionary.new;
+	}
+
+	*new { arg key;
+		if(all[key].isNil) {
+			^super.new.prAdd(key)
+		} {
+			var ret = all[key];
+			^ret;
+		}
+	}
+
+	prAdd { arg xkey;
+		key = xkey;
+		all[key] = this;
+	}
+
+	clear {
+		if(key.notNil) {
+			all[key] = nil
+		};
+		^nil
+	}
+}
+
 
 PresetEvent : StepEvent {
 	var >bypass;

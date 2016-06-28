@@ -1710,6 +1710,27 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 TimelineEnvView : TimelineView {
 	var valueKey = \midinote;
 	var <>param;
+
+	gridPointToNormPoint { arg point;
+		if(param.notNil) {
+			var ypos;
+			ypos = param.spec.unmap(point.y);
+			^Point(point.x / areasize.x, ypos);
+		} {
+			^(point / areasize)
+		}
+	}
+
+	normPointToGridPoint { arg point;
+		if(param.notNil) {
+			var ypos;
+			ypos = param.spec.map(point.y);
+			^Point(point.x * areasize.x, ypos);
+		} {
+			^(point * areasize)
+		}
+	}
+
 	nodeClass {
 		^TimelineEnvViewNode
 	}

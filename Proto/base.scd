@@ -71,22 +71,23 @@
 		[self.selected_index, x, views].debug("selector.select_item: old selected_index, new one, views");
 		x = x.clip(0, views.size-1);
 		if(views.size > 0) {
+			self.old_selected_index = self.selected_index;
+			self.selected_index = x;
+			self.changed(\selected_index);
 			if(views[self.selected_index].notNil) {
 				if(self[\deselect_action].notNil) {
-					self.deselect_action(views[self.selected_index]);
+					self.deselect_action(views[self.old_selected_index], self.old_selected_index);
 				} {
 					views[self.selected_index].background_(self.deselected_color);
 				}
 			};
 			if(views[x].notNil) {
 				if(self[\select_action].notNil) {
-					self.select_action(views[x]);
+					self.select_action(views[x], x);
 				} {
 					views[x].background_(self.selected_color);
 				}
 			};
-			self.selected_index = x;
-			self.changed(\selected_index);
 		}
 	},
 

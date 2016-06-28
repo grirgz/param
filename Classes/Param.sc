@@ -291,6 +291,7 @@ Param {
 		class_dispatcher['Event'] = class_dispatcher['Dictionary'];
 		class_dispatcher['PresetEvent'] = class_dispatcher['Dictionary'];
 		class_dispatcher['StepEvent'] = class_dispatcher['Dictionary'];
+		class_dispatcher['StepEventDef'] = class_dispatcher['Dictionary'];
 		class_dispatcher['IdentityDictionary'] = class_dispatcher['Dictionary'];
 		class_dispatcher['Environment'] = class_dispatcher['Dictionary'];
 
@@ -331,11 +332,11 @@ Param {
 	}
 
 	asLabel {
-		^wrapper.asLabel;
+		^this.label
 	}
 
 	label {
-		^(label ?? { this.asLabel })
+		^(label ?? { wrapper.label })
 	}
 
 	type {
@@ -513,6 +514,15 @@ Param {
 
 	putListener { arg view, controller, action;
 		this.wrapper.putListener(this, view, controller, action);
+	}
+
+	makeListener { arg action, obj; 
+		// helper method for external to listen to param value changes
+		// action.(obj, param)
+		var cont;
+		cont = SimpleController.new(this.controllerTarget);
+		this.putListener(obj, cont, action);
+		^cont
 	}
 
 	*freeAllSimpleControllers {
@@ -1046,15 +1056,48 @@ Param {
 
 BaseParam {
 	var <target, <property, <>spec, <key;
-	var >shortLabel;
+	var >shortLabel; // deprecated
 	var <>combinator;
+	var <>labelmode;
+
+	/////// labels
+
+	shortLabel { // deprecated
+		^( shortLabel ? property );
+	}
+
+	typeLabel {
+		^""
+	}
+
+	propertyLabel {
+		^property.asString
+	}
+
+	targetLabel {
+		^target.asString
+	}
+
+	fullLabel {
+		^"% % %".format(this.typeLabel, this.targetLabel, this.propertyLabel)
+	}
+
+	asLabel { // backward compat
+		^this.label
+	}
+	
+	label {
+		if(labelmode == \full) {
+			^this.fullLabel
+		} {
+			^this.propertyLabel
+		}
+	}
+
+	/////////////////
 
 	at { arg idx;
 		^Param(this.target, this.property -> idx, this.spec)
-	}
-
-	shortLabel {
-		^( shortLabel ? property );
 	}
 
 	asParamList {
@@ -1168,10 +1211,6 @@ StandardConstructorParam : BaseParam {
 		^super.new.init(obj, meth, sp);
 	}
 
-	asLabel {
-		^"% %".format(target.class, property)
-	}
-
 	init { arg obj, meth, sp;
 		target = obj;
 		property = meth;
@@ -1220,8 +1259,12 @@ NdefParam : BaseParam {
 		^super.new.init(obj, meth, sp);
 	}
 
-	asLabel {
-		^"N % %".format(target.key, property)
+	typeLabel {
+		^"N"
+	}
+
+	targetLabel {
+		^target.key
 	}
 
 	init { arg obj, meth, sp;
@@ -1424,8 +1467,12 @@ PdefParam : BaseParam {
 		};
 	}
 
-	asLabel {
-		^"P % %".format(target.key, property)
+	typeLabel {
+		^"P"
+	}
+
+	targetLabel {
+		^target.key
 	}
 
 	*instrument { arg target;
@@ -1561,7 +1608,7 @@ PdefParam : BaseParam {
 	putListener { arg param, view, controller, action;
 		controller.put(\set, { arg ...args; 
 			// args: object, \set, keyval_list
-			//args.debug("args");
+			args.debug("PdefParam putListener args");
 
 			// update only if concerned key is set
 			// FIXME: may break if property is an association :(
@@ -1718,7 +1765,7 @@ VolumeParam : BaseParam {
 		^super.new.init(obj, meth, sp);
 	}
 
-	asLabel {
+	targetLabel {
 		if(key == \volume or: { key == \amp }) {
 			^"Vol";
 		} {
@@ -1779,7 +1826,7 @@ TempoClockParam : BaseParam {
 		^super.new.init(obj, meth, sp);
 	}
 
-	asLabel {
+	targetLabel {
 		if(key == \tempo ) {
 			^"Tempo";
 		} {
@@ -1839,8 +1886,12 @@ ListParam : BaseParam {
 		^super.new.init(obj, meth, sp);
 	}
 
-	asLabel {
-		^"L % %".format(target.identityHash, property)
+	typeLabel {
+		^"L"
+	}
+
+	targetLabel {
+		^target.identityHash
 	}
 
 	init { arg obj, meth, sp;
@@ -1919,8 +1970,12 @@ ListParamSlot : BaseParam {
 		^super.new.init(obj, meth, sp);
 	}
 
-	asLabel {
-		^"L % %".format(target.identityHash, property)
+	typeLabel {
+		^"L"
+	}
+
+	targetLabel {
+		^target.identityHash
 	}
 
 	init { arg obj, meth, sp;
@@ -2012,9 +2067,14 @@ DictionaryParam : BaseParam {
 		^super.new.init(obj, meth, sp);
 	}
 
-	asLabel {
-		^"D % %".format(target.identityHash, property)
+	typeLabel {
+		^"D"
 	}
+
+	targetLabel {
+		^target.identityHash
+	}
+
 
 	init { arg obj, meth, sp;
 		target = obj;
@@ -2097,10 +2157,6 @@ DictionaryParamSlot : DictionaryParam {
 		index = idx;
 	}
 
-	asLabel {
-		^"D % %".format(target.identityHash, property)
-	}
-
 	spec {
 		if(spec.class == XArraySpec) {
 			// FIXME: fail if imbricated XArraySpec, but it's not supported anyway
@@ -2170,8 +2226,8 @@ MessageParam : StandardConstructorParam {
 		^this.target.receiver;
 	}
 
-	asLabel {
-		^"% %".format(target.receiver.class, property)
+	targetLabel {
+		^target.receiver.class
 	}
 
 	set { arg val;
@@ -2187,8 +2243,12 @@ MessageParam : StandardConstructorParam {
 FunctionParam : StandardConstructorParam {
 	var <getFunc, <setFunc;
 
-	asLabel {
-		^"F % %".format(target.identityHash)
+	typeLabel {
+		^"F"
+	}
+
+	targetLabel {
+		^target.identityHash
 	}
 
 	init { arg obj, meth, sp;
@@ -2213,8 +2273,12 @@ FunctionParam : StandardConstructorParam {
 
 BuilderParam : StandardConstructorParam {
 
-	asLabel {
-		^"B % %".format(target.key ? "", property)
+	typeLabel {
+		^"B"
+	}
+
+	targetLabel {
+		^( target.key ? "" );
 	}
 
 	init { arg obj, meth, sp;
@@ -2234,13 +2298,12 @@ BuilderParam : StandardConstructorParam {
 }
 
 BusParam : StandardConstructorParam {
-
 	controllerTarget {
 		^this.target;
 	}
 
-	asLabel {
-		^"% %".format(target.class, property)
+	targetLabel {
+		^target.class
 	}
 
 	set { arg val;
@@ -2339,6 +2402,10 @@ ParamGroup : List {
 
 	asView {
 		^this.editorView
+	}
+
+	asParam {
+		^this; // to act like a Param with subparams
 	}
 
 }
@@ -2552,13 +2619,17 @@ ParamGroupDef {
 		^group
 	}
 
+	asParam {
+		^this; // to act like a Param with subparams
+	}
+
 }
 
 // act also as a Param wrapper
 ParamValue : BaseParam {
 	var <>value=0;
 	var <>spec, <>property=\value, <target;
-	var <>label;
+	var >label;
 
 	*new { arg spec;
 		^super.new.initParamValue(spec);
@@ -2584,8 +2655,8 @@ ParamValue : BaseParam {
 		this.changed(\set, [\value, val]);
 	}
 
-	asLabel {
-		^label;
+	label {
+		^label
 	}
 
 	map { arg val;
@@ -3126,7 +3197,7 @@ ParamCombinator {
 ////////////////////////////////////////
 
 CachedBus : Bus {
-	classvar cache;
+	classvar <cache;
 
 	*initClass {
 		Class.initClassTree(IdentityDictionary);

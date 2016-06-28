@@ -126,7 +126,7 @@
 			self.eventLoop.isRecording.debug("recordEvent: before: isRecording");
 			ev[\latency] = nil; // recorded in live with no latency, but should be played with latency
 			// FIXME: so should adjust timing too i guess, no ?
-			self.current_event = self.eventLoop.recordEvent(ev);
+			self.current_event = self.eventLoop.recordEvent(ev); // eventloop add timing info
 			self.eventLoop.isRecording.debug("isRecording");
 			self.eventLoop.debug("evloop");
 		}
@@ -433,6 +433,59 @@
 		);
 		
 	},
+
+));
+
+~class_param_event_factory = ProtoClass((
+	parent: ~class_event_factory,
+
+	new: { arg self, param;
+		self = self.deepCopy;
+
+		self.param = param;
+		self.children = SparseArray.new;
+		self.in_event = Event.default;
+		self.silentmode = false;
+		self.fullrecord = false;
+		self.mode = \note; // add some default, might change
+
+		self;
+	},
+
+	startRecording: { arg self;
+		if(self.eventLoop.notNil) {
+			if(self.controller.notNil) {
+				self.controller.remove;
+			};
+			self.controller = self.param.makeListener({ arg obj, param;
+				var ev = (level:param.get);
+				ev.debug("LEVEL EV RECORDING !!");
+				self.recordEvent(ev);
+			});
+			self.eventLoop.isRecording.debug("startRecording: before: isRecording");
+			self.eventLoop.startRec;
+			self.eventLoop.isRecording.debug("startRecording: after: isRecording");
+			self.changed(\isRecording);
+		}
+	},
+
+	makeEvent: { arg self, inEvent;
+		// not used ?
+		().putAll(inEvent)
+	},
+
+	stopRecording: { arg self;
+		if(self.eventLoop.notNil) {
+			if(self.controller.notNil) {
+				self.controller.remove;
+			};
+			self.eventLoop.isRecording.debug("stopRecording: before: isRecording");
+			self.eventLoop.stopRec;
+			self.eventLoop.isRecording.debug("stopRecording: after: isRecording");
+			self.changed(\isRecording);
+		}
+	},
+
 
 ));
 

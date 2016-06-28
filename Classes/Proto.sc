@@ -7,7 +7,8 @@ ParamProto {
 	classvar <>initialized = false;
 
 	*initClass {
-		base_path = Platform.userExtensionDir +/+ "param/Proto/";
+		//base_path = Platform.userExtensionDir +/+ "param/Proto/";
+		base_path = PathName(this.filenameSymbol.asString).pathOnly +/+ "../Proto/";
 	}
 
 	*init { arg force=false;
