@@ -91,6 +91,16 @@ ProtoClass : Event {
 		^this[\make].(this, * args)
 	}
 
+	quant {  arg ...args;
+		// so can use tryPerform on quant
+		^this[\quant].(this, * args)
+	}
+
+	quant_ { arg ...args;
+		// so can use tryPerform on quant
+		^this[\quant_].(this, * args)
+	}
+
 	source_ { arg ... args;
 		if(this[\source_].notNil) {
 			this[\source_].(this, *args)

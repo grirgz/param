@@ -23,40 +23,277 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	Out.kr(out, sig);
 }).add;
 
-Event.addEventType(\player, {
-	var method = ~method.value ? \play;
-	var stopmethod = ~stopMethod.value ? \stop;
-	var args = ~arguments ? [];
-	var receiver = ~receiver.value;
-	var quant;
-	[method, args, receiver, ~disableQuant].debug("player EventType: method, args, receiver");
-	if(~disableQuant != false) {
-		TempoClock.default.sched(0, {
-			// apparently, latency is not needed, but there is a little latency quand meme 
-		//TempoClock.default.sched(Server.default.latency, {
-				receiver.perform(stopmethod, *args);
-				quant = receiver.tryPerform(\quant);
-				receiver.tryPerform(\quant_, 0);
-				receiver.quant.debug("receiver quant");
-				receiver.perform(method, *args);
-				receiver.tryPerform(\quant_, quant);
-				quant.debug("in zero quant: old quant");
-				if(method == \play) {
-					TempoClock.default.sched(~sustain.value(currentEnvironment), {
-						receiver.perform(stopmethod, *args);
-					}.inEnvir);
-				};
-		}.inEnvir);
-	} {
-		receiver.perform(method, *args);
-		if(method == \play) {
-			TempoClock.default.sched(~sustain.value(currentEnvironment), {
-				receiver.perform(stopmethod, *args);
-			}.inEnvir);
-		};
-	};
+~pembed = ProtoClass((
+	// replace all following function by one class: Pembed, this is the prototype
 
-});
+	new: { arg self, pat, start_offset, stop_offset;
+		// FIXME: stop_offset not used (user should use Pfindur instead)
+		if(pat.isKindOf(Pattern)) {
+			self.embed_pattern(pat, start_offset);
+		} {
+			Pspawner({ arg spawner;
+				self.embed_event(spawner, pat);
+			})
+		};
+		
+	},
+
+	embed_pattern: { arg self, pat, start_offset;
+		Pspawner({ arg spawner;
+			var stream = pat.asStream;
+			[pat, start_offset].debug("timeline_pattern: start");
+
+			stream = self.cut_stream(start_offset, stream);
+
+			if(stream.notNil) {
+				stream.do({ arg ev;
+					self.embed_event(spawner, ev);
+				}, Event.default)
+			};
+
+		})
+		
+	},
+
+	embed_event: { arg self, spawner, ev;
+		ev.debug("EMBED event");
+		if(ev.type == \pattern) {
+			spawner.par(ev.embedPattern.debug("embedPattern"));
+			spawner.wait(ev.use {ev.dur}); // FIXME: use delta ?
+		} {
+			spawner.seq(Pseq([
+				ev
+			]))
+		};
+	},
+
+	split_event: { arg self, val;
+		[val].debug("entering ~split_event");
+		if(val.notNil) {
+			val.use {
+				var suboffset = val[\event_dropdur] - (val[\previous_event_dropdur] ? 0);
+				if(suboffset == 0) {
+					// we are on a border, do nothing;
+					val.debug("we are on a border, do nothing; ");
+				} {
+					if( suboffset > val.sustain ) {
+						// we are on a rest
+						val[\sustain] = val.sustain - suboffset;
+						val[\dur] = val.dur - suboffset;
+						val[\isRest] = true;
+						val.debug("we are on a rest");
+					} {
+						// we are on a note
+						val[\sustain] = val.sustain - suboffset;
+						val[\dur] = val.dur - suboffset;
+						//val[\event_dropdur] = suboffset;
+						val.debug("we are on a note");
+					};
+				}
+			};
+		};
+	},
+
+	cut_stream: { arg self, drop_time, stream;
+		var current_offset = 0;
+		var previous_offset = 0;
+		var val;
+		var crossing_line = List.new;
+		[drop_time, stream].debug("entering ~stream_dropdur");
+		if(drop_time.notNil and: { drop_time != 0}) {
+
+			while (
+				{
+					current_offset <= drop_time and: {
+						val = stream.next(Event.default);
+						val.notNil;
+					}
+				},
+				{
+					val.use {
+						val[\previous_event_dropdur] = val[\event_dropdur]; // used by ~split_event to not substract sustain two times
+						val.debug("stream_dropdur: val");
+						[val.dur, val.sustain].debug("stream_dropdur: val: dur, sustain");
+						previous_offset = current_offset;
+						current_offset = current_offset + val.dur; 
+						if(
+							current_offset <= drop_time and: {
+								( previous_offset + val.sustain ) > drop_time
+							}
+						) {
+							val[\event_dropdur] = drop_time - previous_offset + (val[\event_dropdur] ? 0);
+							val.debug("stream_dropdur: added to crossing_line");
+							crossing_line.add(val);
+						};
+						[current_offset, previous_offset, val].debug("mangling");
+					}
+				}
+			);
+			// now current_offset point to the end of current event, ie: past the drop_time line
+
+
+			if(val.notNil) {
+				val[\event_dropdur] = drop_time - previous_offset + (val[\event_dropdur] ? 0);
+				val = self.split_event(val.copy);
+
+				crossing_line = crossing_line.collect({ arg ev; 
+					ev = self.split_event(ev.copy);
+					ev[\dur] = 0;
+					ev.debug("stream_dropdur: transformed crossing_line");
+				});
+
+				Pseq(
+					crossing_line ++
+					[
+						val,
+						stream
+					]
+				).asStream;
+			} {
+				// if there is only one event crossing the line but it's not the last to start 
+				// (meaning his dur < sustain), val will be nil, but not crossing_line
+				if(crossing_line.size > 0) {
+					val = crossing_line.pop;
+					val = self.split_event(val.copy);
+					crossing_line = crossing_line.collect({ arg ev; 
+						ev = self.split_event(ev.copy);
+						ev[\dur] = 0;
+						ev.debug("stream_dropdur: transformed crossing_line");
+					});
+					Pseq(
+						crossing_line 
+						++
+						[
+							val;
+						]
+					).asStream;
+				} {
+					nil
+				}
+			}
+
+			// first yield all the splitted event concurrent with current val, then val, then remaining stream
+
+		} {
+			"~stream_dropdur: return original stream untouched".debug;
+			stream;
+		};
+	},
+
+	embed_eventlist: { arg self, eventlist;
+		// to enable reading before start event or after end event, add a flag to ignore start and end event
+		// will be set by toplevel timeline view
+		var current_offset = 0;
+		var previous_offset = 0;
+		var val;
+		var crossing_line = List.new;
+		var drop_time;
+		var original_eventlist = eventlist;
+		eventlist = eventlist.copy;
+		[eventlist].debug("entering ~eventlist_aspattern");
+
+		eventlist.do { arg ev;
+			if(ev[\type] == \start) {
+				drop_time = ev[\absTime]
+			};
+			if(ev[\playDur].notNil) {
+				ev[\dur] = ev[\playDur];
+			}
+		};
+
+		while (
+			{
+				val = eventlist.removeAt(0);
+				val = val.copy;
+				val.notNil and: {
+					val[\type] != \start;
+				}
+			},
+			{
+				val.use {
+					val.debug("eventlist_aspattern: val");
+					[val.dur, val.sustain].debug("eventlist_aspattern: val: dur, sustain");
+					previous_offset = current_offset;
+					current_offset = current_offset + val.dur; 
+					if(
+						val[\type] != \start and: {
+							val.sustain.notNil and: {
+								( previous_offset + val.sustain ) > drop_time
+							}
+						}
+					) {
+						val[\event_dropdur] = drop_time - previous_offset;
+						val.debug("eventlist_aspattern: added to crossing_line");
+						crossing_line.add(val);
+					};
+					[current_offset, previous_offset, val].debug("mangling");
+				}
+			}
+		);
+		// now current_offset point to the end of current event, ie: past the drop_time line
+		// now val is the start event
+
+
+		if(val.notNil) {
+
+			crossing_line = crossing_line.collect({ arg ev; 
+				ev = self.split_event(ev.copy);
+				ev[\dur] = 0; // every event start at the same time, \start event hold the delta to next event
+				ev.debug("eventlist_aspattern: transformed crossing_line");
+			});
+
+			val.use {
+				val = val.copy;
+				val[\type] = \rest;
+			};
+
+			Prout({ arg inval;
+				original_eventlist.changed(\cursor, \play);
+				"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
+				"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
+				"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
+				"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
+				crossing_line.collect({ arg x; 
+					x.debug("crossing_line list");
+					x.proto !? { x.proto.keys.debug("-proto") }
+				});
+				[val].collect({ arg x; 
+					x.debug("val list");
+					x.proto !? { x.proto.keys.debug("-proto") }
+				});
+				eventlist.collect({ arg x; 
+					x.debug("eventlist list");
+					x.proto !? { x.proto.keys.debug("-proto") }
+				});
+				( original_eventlist.endTime - original_eventlist.startTime ).debug("handling end event in pfindur");
+				Pfindur(original_eventlist.endTime - original_eventlist.startTime, Pseq(
+					( crossing_line ++ [val] ++ eventlist ).collect({ arg x; Pev(x) })
+				)).embedInStream(inval);
+				//original_eventlist.changed(\cursor, \stop);
+			})
+		} {
+			"should never get there".throw;
+			// if there is only one event crossing the line but it's not the last to start 
+			// (meaning his dur < sustain), val will be nil, but not crossing_line
+			//if(crossing_line.size > 0) {
+			//	val = crossing_line.pop;
+			//	val = ~split_event.(val.copy);
+			//	crossing_line = crossing_line.collect({ arg ev; 
+			//		ev = ~split_event.(ev.copy);
+			//		ev[\dur] = 0;
+			//		ev.debug("eventlist_aspattern: transformed crossing_line");
+			//	});
+			//	Pseq(
+			//		crossing_line ++ [ val, ];
+			//	);
+			//} {
+			//	nil
+			//}
+		}
+	},
+));
+
+
 
 ~dereference_event = { arg spawner, ev; 
 	[spawner, ev].debug("entering ~dereference_event");
@@ -743,6 +980,14 @@ Event.addEventType(\player, {
 		self.key;
 	},
 
+	quant: { arg self;
+		self.proxy.quant;
+	},
+
+	quant_: { arg self, val;
+		self.proxy.quant = val;  // so PlayerEvent can set quant of timelines
+	},
+
 
 	repeatCount: inf,
 
@@ -788,6 +1033,20 @@ Event.addEventType(\player, {
 		if(self.eventFactory.notNil) {
 			self.eventFactory.isRecording = val;
 		}
+	},
+
+	asPlayerEvent: { arg self;
+		PlayerEvent((
+			receiver: Ref(self)
+		))
+	},
+
+	asPatternEvent: { arg self;
+		PatternEvent((
+			eventType: \timeline, // i want to get ride of this type system
+			timeline: Ref(self)
+		))
+		
 	},
 ));
 
@@ -1010,7 +1269,12 @@ Event.addEventType(\player, {
 			xtotalDur = totalDur.value ? eventlist.totalDur;
 
 			self.eventloop.list.changed(\cursor, \play);
-			pat = Pfindur(xtotalDur, ~timeline_pattern.(
+			//pat = Pfindur(xtotalDur, ~timeline_pattern.(
+			//	Pn(self.eventloop.list, 1),
+			//	xrelStartTime
+			//));
+
+			pat = Pfindur(xtotalDur, Pembed(
 				Pn(self.eventloop.list, 1),
 				xrelStartTime
 			));
@@ -1715,7 +1979,7 @@ Event.addEventType(\player, {
 	},
 );
 
-~clipEditor = (
+~clipEditor_OLD = (
 	new: { arg self, model, parent;
 		self = self.deepCopy;
 	
@@ -1725,6 +1989,22 @@ Event.addEventType(\player, {
 		
 	
 		self;
+	},
+
+	init_default_clip_factories: { arg self;
+		self.clipFactories = ();
+		self.clipFactories.ndef = (
+			allKeys: {
+
+			},
+
+			editSelected: { arg self;
+				
+			},
+
+
+		)
+		
 	},
 
 	clearEditor: { arg self;
@@ -1958,6 +2238,358 @@ Event.addEventType(\player, {
 					self.parent_model.changed(\refresh);
 				},
 			);
+		};
+
+		self.refreshPopups;
+
+		header = HLayout(
+			type_popup,
+			name_popup,
+			XSimpleButton.new.label_("Edit").action_({
+				self.edit_selected;
+			})
+		);
+		layout = VLayout(
+			header,
+			editor,
+		);
+
+		self.layout = layout;
+		self.layout;
+	},
+
+	makeWindow: { arg self;
+		var window = Window.new;
+		var layout;
+		layout = self.makeLayout;
+		window.layout = layout;
+		//window.alwaysOnTop = true;
+		window.front;
+
+		self.makeUpdater;
+		self.model.changed(\refresh);
+	},
+
+);
+
+~clipEditor = (
+	new: { arg self, model, parent;
+		self = self.deepCopy;
+	
+		self.model = model;
+		self.parent_model = parent;
+		//self.makeWindow;
+		
+		self.init_default_clip_factories;
+	
+		self;
+	},
+
+	init_default_clip_factories: { arg self;
+		var tl;
+		self.clipFactories = ();
+
+		self.clipFactories.ndef = (
+			key: 'ndef',
+			label: { arg self; self.key.asString.capitalize },
+			keylist: {
+				if(Ndef.all[\localhost].notNil) {
+					Ndef.all[\localhost].envir.keys.asArray.sort;
+				} {
+					[];
+				}
+			},
+
+			getName: { arg self, ev;
+				ev.receiver.value.key;
+			},
+
+			editSelected: { arg self, model;
+				var player = model.receiver.value;
+				if(player.class == PlayerWrapper) {
+					player = player.target;
+				};
+				if(player.getHalo(\edit).notNil) {
+					player.getHalo(\edit).value;
+				} {
+					player.edit;
+				}
+			},
+
+			redefineClip: { arg me, curname, model;
+				PlayerEvent.redefine(model);
+				model[\receiver] = Ref(PlayerWrapper(Ndef(curname)));
+				//model.changed(\refresh);
+				self.parent_model.changed(\refresh);
+			},
+
+
+		);
+
+		self.clipFactories.pdef = (
+			key: 'pdef',
+			label: { arg self; self.key.asString.capitalize },
+			keylist: {
+				Pdef.all.keys.asArray.sort; 
+			},
+
+			getName: { arg self, ev;
+				if(ev.pattern.isKindOf(Pdef)) {
+					ev.pattern.key;
+				} {
+					"clipFactories.pdef: ERROR: getName: don't know what type!!!".debug;
+				}
+			},
+
+			editSelected: { arg self, model;
+				var player;
+				//player = model.receiver.value;
+				//player.asParamGroup.debug("Edit: pattern");
+				//if(player.class == PlayerWrapper) {
+				//	player = player.target;
+				//};
+				//player.debug("clipeditor: player");
+				//player.getHalo(\edit).debug("clipeditor: player, edit");
+				player = model.pattern;
+				if(player.isKindOf(Pdef)) {
+					if(player.getHalo(\edit).notNil) {
+						player.getHalo(\edit).debug("clipeditor: player, halo edit");
+						player.getHalo(\edit).value;
+					} {
+						player.getHalo(\edit).debug("clipeditor: normal edit");
+						player.asParamGroup.edit;
+					}
+				} {
+					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+				}
+			},
+
+			redefineClip: { arg me, curname, model;
+				PatternEvent.redefine(model);
+				model[\pattern] = Pdef(curname);
+				//model.changed(\refresh);
+				self.parent_model.changed(\refresh);
+			},
+		);
+
+		self.clipFactories.trackdef = (
+			key: 'trackdef',
+			label: { arg self; self.key.asString.capitalize },
+			keylist: {
+				TrackDef.all.keys.asArray.sort; 
+			},
+
+			getName: { arg self, ev;
+				ev.receiver.value.key;
+			},
+
+			editSelected: { arg self, model;
+				var player = model.receiver.value;
+				if(player.class == PlayerWrapper) {
+					player = player.target;
+				};
+				if(player.getHalo(\edit).notNil) {
+					player.getHalo(\edit).value;
+				} {
+					if(player[\edit].notNil) {
+						player.edit;
+					} {
+						player.editor.front;
+					}
+				}
+			},
+
+			redefineClip: { arg me, curname, model;
+				PlayerEvent.redefine(model);
+				model[\receiver] = Ref(PlayerWrapper(TrackDef(curname)));
+				//model.changed(\refresh);
+				self.parent_model.changed(\refresh);
+			},
+
+		);
+
+		// generic timeline factory
+		tl = (
+			key: 'generictimeline',
+			label: { arg self; self.key.asString.capitalize },
+
+			className: {
+				~noteTimeline
+			},
+
+			keylist: { arg self;
+				self.className.all.keys.asArray.sort;
+			},
+
+			getName: { arg self, model;
+				model.timeline.key;
+			},
+
+			editSelected: { arg self, model;
+				model.edit;
+			},
+
+			redefineClip: { arg me, curname, model;
+				PatternEvent.redefine(model);
+				model[\timeline] = { self.timeline.new(curname) };
+				//model.changed(\refresh);
+				self.parent_model.changed(\refresh);
+			},
+		);
+		self.clipFactories_timeline_parent = tl;
+
+		self.clipFactories.noteTimeline = (
+			key: 'noteTimeline',
+			parent: tl,
+			className: { ~noteTimeline },
+		);
+
+		self.clipFactories.clipTimeline = (
+			key: 'clipTimeline',
+			parent: tl,
+			className: { ~clipTimeline },
+		);
+
+		self.clipFactories.envTimeline = (
+			key: 'envTimeline',
+			parent: tl,
+			className: { ~envTimeline },
+		);
+
+		self.clipFactories.modStepTimeline = (
+			key: 'modStepTimeline',
+			parent: tl,
+			className: { ~modStepTimeline },
+		);
+
+
+		self.clipFactories_keys = self.clipFactories.keys.asArray.sort;
+		
+	},
+
+	event_to_clipFactory_key: { arg self, model;
+		var clipkey;
+
+		// 'Pdef',
+		// 'Ndef',
+		// 'ClipTimeline',
+		// 'NoteTimeline',
+		// 'EnvTimeline',
+		// 'ModStepTimeline',
+		// 'Tracks',
+
+		switch(model.type, 
+			\pattern, {
+				if(model.timeline.notNil) {
+					switch(model.timeline.eventType,
+						\envTimeline, {
+							clipkey = 'envTimeline'
+						},
+						\clipTimeline, {
+							clipkey = 'clipTimeline'
+						},
+						\noteTimeline, {
+							clipkey = 'noteTimeline'
+						},
+						\modStepTimeline, {
+							clipkey = 'modStepTimeline'
+						},
+					)
+				} {
+
+				}
+			},
+			\player, {
+				var branch = { arg obj;
+					switch( obj.class,
+						PlayerWrapper, {
+							branch.(obj.target)
+						},
+						Ndef, {
+							'ndef'
+						},
+						TrackDef, {
+							'tracks'
+						}
+					);
+				};
+				clipkey = branch.(model[\receiver].value);
+			},
+			{
+				model.debug("event_to_clipFactory_key: unknown");
+				nil
+			}
+		);
+		clipkey;
+	},
+
+	clearEditor: { arg self;
+		self.type_popup.items = [""];
+		self.name_popup.items = [""];
+	},
+
+	makeUpdater: { arg self;
+		self.controller.remove;
+		self.controller = SimpleController(self.model).put(\refresh, {
+			var ev = self.model;
+			[self.type_popup, ev].debug("entering clipEditor updater");
+			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
+				self.controller.remove;
+			} {
+				var clipkey;
+				var clipfac;
+				self.refreshPopups;
+				clipkey = self.event_to_clipFactory_key(ev);
+				if(clipkey.notNil) {
+					clipfac = self.clipFactories[clipkey];
+					self.type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
+					self.name_popup.items = clipfac.keylist;
+					self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
+						x == clipfac.getName(ev)
+					});
+				} {
+					self.type_popup.value = nil;
+					self.name_popup.value = nil;
+				}
+			}
+		});
+	},
+
+	refreshPopups: { arg self;
+		var name_popup = self.name_popup;
+		self.type_popup.items = self.clipFactories_keys.collect({ arg x; self.clipFactories[x].label });
+		self.type_popup.action = {
+			name_popup.items = self.clipFactories[ self.clipFactories_keys[self.type_popup.value] ].keylist;
+		};
+		self.type_popup.valueAction = 0;
+	},
+
+	edit_selected: { arg self, model;
+		var clipkey, clipfac;
+		model = model ? self.model;
+		[model.type, model].debug("Edit: type");
+		clipkey = self.event_to_clipFactory_key(model);
+		clipfac = self.clipFactories[clipkey];
+		clipfac.editSelected(model);
+	},
+
+	makeLayout: { arg self;
+		var layout;
+		var header;
+		var editor;
+		var type_popup, name_popup;
+		var model = self.model;
+		type_popup = PopUpMenu.new;
+		name_popup = PopUpMenu.new;
+		self.name_popup = name_popup;
+		self.type_popup = type_popup;
+		name_popup.allowsReselection = true;
+		//type_popup.allowsReselection = true; // lose selection
+		//name_popup.items = type_popup.items[type_popup.value].asClass.all.keys.asArray;
+		name_popup.action = {
+			var curname = name_popup.items[name_popup.value];
+			var model = self.model;
+			self.clipFactories[self.clipFactories_keys[type_popup.value]].redefineClip(curname, model);
 		};
 
 		self.refreshPopups;
@@ -2682,4 +3314,5 @@ if( ~iProxyChain_all.isNil) {
 	}
 
 );
+
 

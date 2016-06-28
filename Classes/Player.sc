@@ -126,6 +126,13 @@ PlayerWrapper  {
 	asView {
 		^PlayerWrapperView.new(this).layout;
 	}
+
+	asPlayerEvent {
+		^PlayerEvent((
+			receiver: Ref(this)
+		))
+	}
+	//TODO: asPatternEvent which detect if it's a pattern
 }
 
 PlayerWrapper_Base {
