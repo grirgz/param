@@ -132,6 +132,16 @@ PlayerWrapper  {
 			receiver: Ref(this)
 		))
 	}
+
+	makeListener { arg fun;
+		var controller;
+		this.target.debug("makeListener");
+		controller = SimpleController(this.target)
+			.put(\play, fun)
+			.put(\stop, fun)
+		;
+		^controller
+	}
 	//TODO: asPatternEvent which detect if it's a pattern
 }
 
@@ -298,7 +308,6 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 }
 
 PlayerWrapper_Nil : PlayerWrapper_Base {
-	// allow a protoclass to act as a PlayerWrapper
 
 	play {
 		
@@ -315,4 +324,48 @@ PlayerWrapper_Nil : PlayerWrapper_Base {
 	stop {
 	}
 
+}
+
+
+///////////////////////////////////////:
+
+PlayerWrapperGroup : List {
+	var <>mode;
+	var <>label;
+	*new { arg anArray;
+		var inst;
+		inst = super.new.setCollection( anArray.collect({ arg item;
+			if(item.isKindOf(PlayerWrapper)) {
+				item;
+			} {
+				PlayerWrapper(item)
+			}
+		}) );
+		inst.initPlayerWrapperGroup;
+		^inst;
+	}
+
+	initPlayerWrapperGroup {
+		mode = \any;
+		label = this.collect(_.label).inject("", { arg a, b; a.asString + b.asString });
+	}
+
+	play { 
+		this.collect(_.play);
+	}
+
+	stop {
+		this.collect(_.stop);
+	}
+
+	isPlaying {
+		if(mode == \any) {
+			^this.any({ arg x;
+				x.isPlaying ? false;
+			});
+		} {
+			^this.every({ arg x; x.isPlaying ? true });
+		}
+	}
+	
 }

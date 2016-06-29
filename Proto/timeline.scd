@@ -58,9 +58,15 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	embed_event: { arg self, spawner, ev;
 		ev.debug("EMBED event");
 		if(ev.type == \pattern) {
+			ev = PatternEvent(ev); // because normal Event have embedInStream which replace parent by Event.default
+			ev.parent.keys.debug("EMBED event parent keys");
 			spawner.par(ev.embedPattern.debug("embedPattern"));
 			spawner.wait(ev.use {ev.dur}); // FIXME: use delta ?
 		} {
+			if(ev.type == \player) {
+				ev = PlayerEvent(ev)
+			};
+			ev.parent.keys.debug("EMBED event parent keys");
 			spawner.seq(Pseq([
 				ev
 			]))
@@ -1074,6 +1080,11 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.areasize = 10@4;
 		//self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
 		self.eventloop = self.makeDefaultEventLoop;
+		self.eventFactory = ~class_player_event_factory.new;
+		self.eventFactory.eventLoop = self.eventloop;
+		self.eventFactory.mode = \note;
+		self.eventFactory.playmode = \gate;
+		self.eventFactory.fullrecord = false;
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
@@ -1160,7 +1171,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			[xrelStartTime, xtotalDur].debug("clip xasPattern: plazy: relstart, totdur");
 
 			self.eventloop.list.changed(\cursor, \play);
-			Pfindur(xtotalDur, ~timeline_pattern.(
+			Pfindur(xtotalDur, Pembed(
 				self.bypass_pattern( Pn(eventlist, 1) ),
 				xrelStartTime
 			));
@@ -2333,12 +2344,30 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				Pdef.all.keys.asArray.sort; 
 			},
 
-			getName: { arg self, ev;
+			getTarget: { arg self, ev;
+				// depends pattern event, player event
 				if(ev.pattern.isKindOf(Pdef)) {
-					ev.pattern.key;
+					// pattern type
+					ev.pattern;
 				} {
-					"clipFactories.pdef: ERROR: getName: don't know what type!!!".debug;
+					// player type
+					var tar = ev.receiver.value;
+					tar.key; // PlayerWrapper has key wrapper
+					if(tar.isKindOf(PlayerWrapper)) {
+						tar = tar.target;
+					};
+					if(tar.isKindOf(Pdef)) {
+						tar;
+					} {
+						"clipFactories.pdef: ERROR: getTarget: don't know what type!!!".debug;
+						nil;
+					}; 
 				}
+				
+			},
+
+			getName: { arg self, ev;
+				self.getTarget(ev).key;
 			},
 
 			editSelected: { arg self, model;
@@ -2350,7 +2379,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				//};
 				//player.debug("clipeditor: player");
 				//player.getHalo(\edit).debug("clipeditor: player, edit");
-				player = model.pattern;
+				player = self.getTarget(model);
 				if(player.isKindOf(Pdef)) {
 					if(player.getHalo(\edit).notNil) {
 						player.getHalo(\edit).debug("clipeditor: player, halo edit");
@@ -2496,7 +2525,16 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 						},
 					)
 				} {
-
+					//var tar = model.receiver.value;
+					//if(tar.isKindOf(PlayerWrapper)) {
+					//	tar = tar.target;
+					//};
+					var tar = model.pattern;
+					if(tar.isKindOf(Pdef)) {
+						clipkey = 'pdef'
+					} {
+						model.debug("event_to_clipFactory_key: pattern: unknown");
+					}
 				}
 			},
 			\player, {
@@ -2508,8 +2546,14 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 						Ndef, {
 							'ndef'
 						},
+						Pdef, {
+							'pdef'
+						},
 						TrackDef, {
-							'tracks'
+							'trackdef'
+						},
+						{
+							model.debug("event_to_clipFactory_key: player: unknown");
 						}
 					);
 				};
@@ -2520,7 +2564,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				nil
 			}
 		);
-		clipkey;
+		clipkey.debug("event_to_clipFactory_key: result");
 	},
 
 	clearEditor: { arg self;
@@ -2540,6 +2584,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				var clipfac;
 				self.refreshPopups;
 				clipkey = self.event_to_clipFactory_key(ev);
+				clipkey.debug("makeUpdater: clipkey");
 				if(clipkey.notNil) {
 					clipfac = self.clipFactories[clipkey];
 					self.type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
@@ -2640,6 +2685,17 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self;
 	},
 
+	newView: { arg self, timeline;
+		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+	
+		self.timeline_model = timeline;
+		self.areasize = self.timeline_model.areasize;
+		
+		//self.makeWindow;
+	
+		self;
+	},
+
 	cursor: { arg self;
 		self.timeline_model.cursor;
 	},
@@ -2676,6 +2732,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			}),
 			mute_button,
 			self.make_quant_popup,
+			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 		);
 		
 		self.header_layout;
@@ -2714,6 +2771,11 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				}
 			}
 		};
+		self.timeline.view.onChange(self.eventloop, \list, { 
+			{
+				self.refresh;
+			}.defer
+		});
 		self.layout;
 	},
 );
@@ -2782,7 +2844,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
-			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventFactory.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			Button.new.mapParam(Param(Message(self.timeline_model.eventFactory), \isRecording, XBoolSpec())).states_([
 				["Rec", Color.black, Color.white],
 				["Rec", Color.black, Color.red],
@@ -2857,7 +2919,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
-			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventFactory.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			Button.new.mapParam(Param(Message(self.timeline_model.eventFactory), \isRecording, XBoolSpec())).states_([
 				["Rec", Color.black, Color.white],
 				["Rec", Color.black, Color.red],

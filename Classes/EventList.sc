@@ -472,7 +472,10 @@ XEventLoop {
 		if (verbosity > 0) {
 			"  %.startRec; // recording list[%].\n".postf(this, list.size);
 		};
-		if (instant) { list.start(this.getAbsTime); };
+		if (instant) { 
+			list.start(this.getAbsTime);
+			this.getAbsTime.debug("instant start");
+		};
 	}
 
 	recordEvent { |event|
@@ -482,7 +485,9 @@ XEventLoop {
 		if (isRecording) {
 			// autostart at 0
 			if (list.size == 0) { list.start(this.getAbsTime); };
-			recEvent = this.getTimes;
+			//recEvent = this.getTimes;
+			recEvent = event.class.new; // added by ggz to keep event subclass
+			recEvent.putAll(this.getTimes);
 			event.keysValuesDo { |key, val|
 				if (key === \absTime) {
 					warn("" + thisMethod ++ ": can't use 'absTime' as key in event: %!"
@@ -522,8 +527,10 @@ XEventLoop {
 	getAbsTime {
 		//var now = thisThread.seconds;
 		var now = this.clock.beats;
+		//[now, recStartTime].debug("recStartTime: debug before");
 		recStartTime = recStartTime ? now;
-		^now - recStartTime;
+		//recStartTime.debug("recStartTime: debug after");
+		^( now - recStartTime );
 	}
 
 	getTimes {
@@ -531,8 +538,9 @@ XEventLoop {
 		var now = this.clock.beats;
 		var nowsec = thisThread.seconds;
 		if (then.isNil) {
-			then = now;
-			recStartTime = now;
+			//then = now;
+			//recStartTime = now;
+			then = recStartTime; // ggz: was a bug: instant not working because set recStartTime but "then" is not defined
 		};
 		relDur = now - then;
 		absTime = now - recStartTime;

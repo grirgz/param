@@ -635,12 +635,16 @@ TimelineView : SCViewHolder {
 				controller.remove;
 			} {
 				"TimelineView get a refresh signal!".debug;
-				this.refreshEventList;
-				this.refresh;
+				{
+					this.refreshEventList;
+					this.refresh;
+				}.defer
 			};
 		});
 		controller.put(\redraw, {
-			this.refresh;
+			{
+				this.refresh;
+			}.defer
 		});
 	}
 
@@ -1392,7 +1396,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 
 		refresh = {
 			origin = Point(model[timeKey], model[posyKey] ? 0);
-			color = Color.green;
+			color = ParamView.color_ligth;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			//[spritenum, origin, extent, color].debug("node refresh");
@@ -1448,7 +1452,9 @@ TimelineViewEventNode : TimelineViewNodeBase {
 				"YOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOo".debug;
 				this.free;
 			} {
-				this.refresh;
+				{
+					this.refresh;
+				}.defer
 			}
 		})
 	}
@@ -1491,6 +1497,9 @@ TimelineViewEventNode : TimelineViewNodeBase {
 //// children
 
 TimelineViewEventListNode : TimelineViewEventNode {
+	// is used for Ndef, Pdef, TrackDef and timelines
+	// that is player and pattern event types
+	// if timeline, can display content of timeline
 	var <>label;
 	var <>preview;
 	//*new { arg parent, nodeidx, event;
@@ -1523,7 +1532,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 		refresh = {
 			origin = Point(model[timeKey], model[posyKey]);
-			color = Color.green;
+			color = ParamView.color_ligth;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			label = model.use {  model.label } ? "unnamed";
@@ -1567,8 +1576,10 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		var previewrect;
 		var labelrect;
 		var labelheight = 20;
-		var preview_background = Color.new255(101, 166, 62);
-		var label_background = Color.new255(130, 173, 105);
+		//var preview_background = Color.new255(101, 166, 62);
+		//var label_background = Color.new255(130, 173, 105);
+		var preview_background = ParamView.color_ligth;
+		var label_background = ParamView.color_dark;
 		var virtualBounds_rect;
 
 		pos = this.origin;
@@ -1634,7 +1645,9 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	makeUpdater {
 		if(controller.notNil) {controller.remove};
 		controller = SimpleController(model).put(\refresh, {
-			this.refresh;
+			{
+				this.refresh;
+			}.defer
 		})
 		//controller = SimpleController(model[\eventlist]).put(\refresh, {
 		//	this.refresh;
@@ -1674,7 +1687,7 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 
 		refresh = {
 			origin = Point(model[timeKey], model[posyKey]);
-			color = Color.green;
+			color = ParamView.color_ligth;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			label = model[\label] ? "unnamed";
@@ -1690,7 +1703,9 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 	makeUpdater {
 		if(controller.notNil) {controller.remove};
 		controller = SimpleController(model).put(\refresh, {
-			this.refresh;
+			{
+				this.refresh;
+			}.defer
 		})
 		// TODO: 
 		// - add inner_controller to eventlist too

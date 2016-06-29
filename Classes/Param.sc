@@ -2329,9 +2329,10 @@ ParamGroup : List {
 	// - morphTo(\name, 0.3)
 	// - addMorphing(\name)
 	// - morphTo([\preset1, \preset2], 0.4)
+
 	*new { arg anArray;
 		var inst;
-		Class.initClassTree(ParamGroupLayout);
+		Class.initClassTree(ParamGroupLayout); // FIXME: should be in *initClass, no ?
 		inst = super.new.setCollection( anArray.collect(_.asParam) );
 		inst.initParamGroup;
 		^inst;

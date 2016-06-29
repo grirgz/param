@@ -330,7 +330,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 
 
 		box.();
-		Pen.color = Color.green;
+		Pen.color = ParamView.color_ligth;
 		Pen.fill;
 
 		box.();

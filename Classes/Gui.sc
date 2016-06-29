@@ -8,9 +8,11 @@ ParamView {
 	*initClass {
 		//color_ligth = Color.newHex("63AFD0");
 		//color_dark = Color.newHex("0772A1");
+		color_ligth = Color.new255(101, 166, 62);
+		color_dark = Color.new255(130, 173, 105);
 
-		color_ligth = Color.newHex("5CCCCC");
-		color_dark = Color.newHex("009999");
+		//color_ligth = Color.newHex("5CCCCC");
+		//color_dark = Color.newHex("009999");
 	}
 
 	*horizontal_slider { arg param, label_mode;

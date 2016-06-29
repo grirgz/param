@@ -45,13 +45,22 @@ PlayerEvent : Event {
 		};
 
 		Event.addEventType(\player, playfun);
-		Event.addEventType(\pattern, playfun);
+		Event.addEventType(\pattern, playfun); // just for compat
 
 		defaultParent = (
 			type: \player,
 			parent: Event.default,
+			target: { arg self; // should decide if named receiver (old) or target (like PlayerWrapper)
+				self.receiver;
+			},
 			label: { arg self;
-				self.target.label;
+				var tar;
+				tar = self.target.value;
+				if(tar.notNil) {
+					tar.label;
+				} {
+					"No name"
+				}
 			}
 		);
 	}
@@ -60,13 +69,16 @@ PlayerEvent : Event {
 		var inst;
 		inst = super.new;
 		inst.parent = myevent ? defaultParent;
-		inst.putAll(ev);
+		inst.putAll(ev ?? { () });
+		inst[\type] = \player;
 		^inst;
 	}
 
 	*redefine { arg ev;
+		ev = ev ?? { () };
 		this.resetEvent(ev);
 		ev.parent = defaultParent;
+		ev[\type] = \player; // because when used on normal event, doesnt have special embedInStream
 		^ev;
 	}
 
@@ -135,7 +147,8 @@ PatternEvent : Event {
 				if(self.timeline.notNil) {
 					self.timeline.asPattern;
 				} {
-					Pfindur(self.use {self.sustain}, Pembed(self.pattern, self.startOffset))
+					// event_dropdur is the old key, should replace by startOffset
+					Pfindur(self.use {self.sustain}, Pembed(self.pattern, self.startOffset ? self.event_dropdur))
 				}
 			},
 			receiver: { arg self; // can be used like a \type:\player thanks to this method
@@ -164,6 +177,7 @@ PatternEvent : Event {
 	*redefine { arg ev;
 		PlayerEvent.resetEvent(ev);
 		ev.parent = defaultParent;
+		ev[\type] = \pattern; // because when used on normal event, doesnt have special embedInStream
 		^ev;
 	}
 
