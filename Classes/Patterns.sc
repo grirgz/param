@@ -279,15 +279,28 @@ StepEvent : Event {
 				pairs.add(val.prest);
 			} {
 				var pat;
-				if(val.isKindOf(Event) and: { val[\eventType] == \envTimeline }) {
-					pat = val.outBus.asMap;
-				} {
-					if(pat.isKindOf(Number) or: { pat.isKindOf(Symbol) }) {
-						pat = Pfunc({ this[key] })
-					} {
-						pat = val.asPattern;
-					}
-				};
+				pat = Prout({ arg inevent;
+					case
+						{ val.isKindOf(StepList) } {
+							val.embedInStream(inevent);
+						}
+						{ val.isKindOf(Event) and: { val[\eventType] == \envTimeline } } {
+							val.outBus.asMap.yield;
+						}
+						{ val.isKindOf(Number) or: { val.isKindOf(Symbol) } } {
+							this[key].yield;
+						}
+						{ val.isKindOf(Bus) } {
+							val.asMap.yield;
+						}
+						{ val.isKindOf(Pattern) } {
+							val.embedInStream(inevent);
+						}
+						{
+							val.yield;
+						}
+					;
+				});
 				if(pat.notNil) {
 					pairs.add(key);
 					pairs.add(pat); // FIXME: what if already a pattern ?
