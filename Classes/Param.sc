@@ -72,9 +72,6 @@ Param {
 			),
 		);
 
-		//class_dispatcher = IdentityDictionary.new;
-		//"hello gangenr".debug;
-
 		property_dispatcher = { arg property, arrayclass, envclass;
 			// handle Array and Env indexing
 			switch(property.key.class,
@@ -117,6 +114,8 @@ Param {
 					Association, {
 						//"Ndef: an asso".debug;
 						property_dispatcher.(property, NdefParamSlot, NdefParamEnvSlot);
+						//property_dispatcher.(property, NdefParam);
+						//wrapper = NdefParam(*args);
 						//switch(property.key.class,
 						//	Association, { // index of ((\adsr -> \levels) -> 0)
 						//		var subpro = property.key.value;
@@ -262,6 +261,9 @@ Param {
 					}
 				);
 			},
+			StepEvent: { 
+				wrapper = StepEventParam(*args);
+			},
 			Array: {
 				//target.class.debug("mais what ??");
 				"ERROR: not implemented for Array, use List instead".postln;
@@ -290,8 +292,8 @@ Param {
 
 		class_dispatcher['Event'] = class_dispatcher['Dictionary'];
 		class_dispatcher['PresetEvent'] = class_dispatcher['Dictionary'];
-		class_dispatcher['StepEvent'] = class_dispatcher['Dictionary'];
-		class_dispatcher['StepEventDef'] = class_dispatcher['Dictionary'];
+		//class_dispatcher['StepEvent'] = class_dispatcher['Dictionary'];
+		class_dispatcher['StepEventDef'] = class_dispatcher['StepEvent'];
 		class_dispatcher['IdentityDictionary'] = class_dispatcher['Dictionary'];
 		class_dispatcher['Environment'] = class_dispatcher['Dictionary'];
 
@@ -882,10 +884,10 @@ Param {
 
 	asView {
 		case(
-			{ this.spec.class == XEnvSpec }, {
+			{ this.spec.isKindOf(XEnvSpec) }, {
 				^this.asEnvelopeView;
 			},
-			{ this.spec.class == XArraySpec }, {
+			{ this.spec.isKindOf(XArraySpec) }, {
 				^this.asMultiSlider;
 			},
 			{ this.spec.isKindOf(MenuSpec) }, {
@@ -930,12 +932,16 @@ Param {
 	/////////// Spec
 
 	*valueToSpec { arg val, default_spec;
-		default_spec = default_spec ? defaultSpec;
-		if(val.isSequenceableCollection) {
-			^XArraySpec.new(default_spec.asSpec!val.size)
+		var def = default_spec ? defaultSpec;
+		^if(val.isKindOf(Array) or: val.isKindOf(List)) {
+			XArraySpec( def ! val.size )
 		} {
-			^default_spec.asSpec
-		}
+			if(val.isKindOf(Env)) {
+				XEnvSpec( def ! val.levels.size )
+			} {
+				def.asSpec
+			}
+		};
 	}
 
 	*toSpec { arg spec, argName, default_spec=\widefreq;
@@ -983,7 +989,7 @@ Param {
 		if(def.class == Float) {
 			rval = default_spec;
 		} {
-			if(def.class.isSequenceableCollection) {
+			if(def.isSequenceableCollection) {
 				rval = XArraySpec(default_spec!def.size);
 			}
 		};
@@ -1199,7 +1205,11 @@ BaseParam {
 				val = val.asEnv;
 			};
 		} {
-			val = spec.default
+			if(spec.isNil) {
+				val = 0;
+			} {
+				val = spec.default
+			}
 		};
 		^val.copy;
 	}
@@ -1608,7 +1618,7 @@ PdefParam : BaseParam {
 	putListener { arg param, view, controller, action;
 		controller.put(\set, { arg ...args; 
 			// args: object, \set, keyval_list
-			args.debug("PdefParam putListener args");
+			//args.debug("PdefParam putListener args");
 
 			// update only if concerned key is set
 			// FIXME: may break if property is an association :(
@@ -2039,6 +2049,8 @@ ListParamSlot : BaseParam {
 	}
 }
 
+///////////
+
 PbindSeqDefParam : PdefParam {
 	spec {
 		var si = this.get.size;
@@ -2092,7 +2104,7 @@ DictionaryParam : BaseParam {
 			sp ?? {
 				// halo
 				target.getSpec(property) ?? {
-					Param.defaultSpec;
+					Param.valueToSpec(this.get)
 				};
 			};
 		^sp.asSpec;
@@ -2219,6 +2231,314 @@ DictionaryParamEnvSlot : DictionaryParamSlot {
 	
 }
 
+//////////////////// StepEvent
+
+ParamAccessor {
+
+	*neutral { 
+		^(
+			setval: { arg self, val;
+				self.obj.setRaw(val);
+			},
+
+			getval: { arg self;
+				self.obj.getRaw;
+			},
+
+			toSpec: { arg self, sp;
+				sp
+			},
+
+			property: { arg self, prop;
+				prop
+			},
+
+			path: { arg self, prop;
+				prop
+			},
+		)
+
+	}
+
+	*array { arg idx;
+		^(
+			setval: { arg self, val;
+				var oldval;
+				oldval = self.obj.parent.get;
+
+				oldval[idx] = val; 
+				self.obj.parent.set(oldval);
+			},
+
+			getval: { arg self;
+				var val;
+				val = self.obj.parent.get;
+				val[idx]
+			},
+
+			toSpec: { arg self, sp;
+				if(sp.isKindOf(XArraySpec)) {
+					sp[idx]
+				} {
+					sp
+				}
+			},
+
+			property: { arg self, prop;
+				idx
+			},
+
+			path: { arg self;
+				self.obj.parent.property -> idx;
+			},
+		);
+	}
+
+	*env { arg selector;
+		^(
+			setval: { arg self, val;
+				var oldval;
+				oldval = self.obj.parent.get;
+
+				oldval.perform(selector.asSetter, val);
+				self.obj.parent.set(oldval);
+			},
+
+			getval: { arg self;
+				var oldval;
+				oldval = self.obj.parent.get;
+				oldval.perform(selector)
+			},
+
+			toSpec: { arg self, sp;
+				if(sp.isKindOf(XEnvSpec)) {
+					sp.perform(selector);
+				} {
+					sp
+				}
+			},
+
+			property: { arg self, prop;
+				selector
+			},
+
+			path: { arg self, prop;
+				prop -> selector;
+			},
+		);
+	}
+
+	*envitem { arg selector, idx;
+		^(
+			setval: { arg self, val;
+				var oldval;
+				oldval = self.obj.parent.get;
+
+				oldval.perform(selector)[idx] = val;
+				self.obj.parent.set(oldval);
+			},
+
+			getval: { arg self;
+				var oldval;
+				oldval = self.obj.parent.get;
+				oldval.perform(selector)[idx]
+			},
+
+			toSpec: { arg self, sp;
+				if(sp.isKindOf(XEnvSpec)) {
+					sp.perform(selector)[idx];
+				} {
+					sp
+				}
+			},
+
+			property: { arg self, prop;
+				idx
+			},
+
+			path: { arg self, prop;
+				prop -> selector -> idx;
+			},
+		);
+	}
+}
+
+StepEventParam : BaseParam {
+	var <>accessor;
+	var <>parent;
+	
+	*new { arg obj, meth, sp;
+		^this.propertyDispatcher(obj, meth, sp);
+	}
+
+	*newWithAccessor { arg obj, meth, sp, acc;
+		^super.new.init(obj, meth, sp, acc)
+	}
+
+	*propertyDispatcher { arg obj, meth, sp;
+		var inst;
+		if(meth.isKindOf(Association)) {
+			// handle Array and Env indexing
+			switch(meth.key.class,
+				Association, { // index of ((\adsr -> \levels) -> 0)
+				var subpro = meth.key.value;
+				var idx = meth.value;
+				var pro = meth.key.key;
+				//"Ndef: a double asso".debug;
+				//(args++[subpro, idx]).debug("NdefParamEnvSlot args");
+				inst = super.new.init(obj, pro, sp).accessWith(ParamAccessor.envitem(subpro, idx));
+				^inst
+			},
+			{
+				//"Ndef: a simple asso".debug;
+				switch(meth.value, 
+					Symbol, { // env named segment: (\adsr -> \sustain) 
+					// need to get spec, but spec is determined after wrapper creation :(
+					"Ndef: env named segment".debug;
+					"NOT IMPLEMENTED YET!".debug;
+				},
+				// else: an index into an array: (\delaytab -> 0)
+				{ 
+					var idx;
+					var pro;
+					//"Ndef: an index into an array".debug;
+					pro = meth.key;
+					idx = meth.value;
+					//(args++[idx]).debug("NdefParamSlot args");
+					inst = super.new.init(obj, pro, sp).accessWith(ParamAccessor.array(idx));
+				})
+			});
+		} {
+			inst = super.new.init(obj, meth, sp);
+		};
+		^inst;
+	}
+
+	accessWith { arg acc;
+		var child = this.class.newWithAccessor(target, property, spec, acc);
+		child.parent = this;
+		^child;
+	}
+
+	typeLabel {
+		^"D"
+	}
+
+	targetLabel {
+		^target.identityHash
+	}
+
+	property {
+		^accessor.property(property);
+	}
+
+	propertyPath {
+		^accessor.path(property)
+	}
+
+	init { arg obj, meth, sp, acc;
+		target = obj;
+		property = meth;
+		accessor = acc ?? { ParamAccessor.neutral };
+		accessor.obj = this;
+		//sp.debug("sp1");
+		spec = accessor.toSpec(this.toSpec(sp));
+		key = meth ? \volume;
+	}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg sp;
+		//sp.debug("sp2");
+		sp = sp ?? {
+			// halo
+			target.getSpec(property) ?? {
+				var instr = this.instrument;
+				var xproperty = property;
+				if(instr.notNil) {
+					var mysp;
+					mysp = Param.getSynthDefSpec(xproperty, instr);
+					mysp ?? {
+						// arg name in Spec
+						xproperty.asSpec ?? {
+							// default value in SynthDef
+							Param.specFromDefaultValue(xproperty, instr) ?? {
+								Param.defaultSpec
+							}
+						}
+					}
+				} {
+					var val = this.get;
+					Param.valueToSpec(val)
+				}
+			};
+		};
+		^sp.asSpec;
+	}
+
+	instrument {
+		^target[\instrument] ?? { target.getHalo(\instrument) };
+	}
+
+
+	setDefaultIfNil {
+		if(target[property].isNil) {
+			this.set(this.default);
+		};
+	}
+
+	rawDefault {
+
+	}
+
+	getRaw {
+		var val;
+		val = target[property] ?? { this.default.debug("dddefault") };
+		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			val = Pdef.nestOff(val); 
+		};
+		^val;
+	}
+
+	setRaw { arg val;
+		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			val = Pdef.nestOn(val); 
+		};
+		target[property] = val;
+		target.changed(\set, property, val);
+	}
+
+	get {
+		^accessor.getval;
+	}
+
+	set { arg val;
+		^accessor.setval(val);
+	}
+
+	at { arg idx, idx2;
+		if(idx2.notNil) {
+			// at(\levels, 1)
+			^Param(target, property -> idx -> idx2, spec);
+		} {
+			^Param(target, property -> idx, spec);
+		}
+	}
+
+	normGet {
+		^spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\set, { arg ...args; 
+			action.(view, param);
+		});
+	}
+}
+
 ////////////////// Object property (message)
 MessageParam : StandardConstructorParam {
 
@@ -2260,6 +2580,11 @@ FunctionParam : StandardConstructorParam {
 
 		spec = this.toSpec(sp);
 		//key = obj.identityHash.asSymbol;
+	}
+
+	toSpec { arg sp;
+		sp = sp ?? { Param.defaultSpec };
+		^sp.asSpec;
 	}
 
 	set { arg val;
@@ -3813,6 +4138,11 @@ CachedBus : Bus {
 			}
 		});
 		^"%(%)".format(this.class.name, args.join(", "));
+	}
+
+	size {
+		// FIXME: or times because first level is init level ???
+		^this.levels.size;
 	}
 
 }

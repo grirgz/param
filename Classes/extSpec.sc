@@ -91,6 +91,12 @@ XArraySpec : Spec {
 	}
 }
 
+StepListSpec : XArraySpec {
+	default {
+		^StepList.newFrom(array.collect(_.default))
+	}
+}
+
 XEnvSpec : Spec {
 	var <levels, <times, <curves;
 	var <default;

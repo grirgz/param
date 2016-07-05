@@ -290,9 +290,10 @@ StepEvent : Event {
 						{ val.isKindOf(Number) or: { val.isKindOf(Symbol) } } {
 							this[key].yield;
 						}
-						{ val.isKindOf(Bus) } {
-							val.asMap.yield;
-						}
+						// not a good idea, how to set \out bus then ?
+						//{ val.isKindOf(Bus) } {
+						//	val.asMap.yield;
+						//}
 						{ val.isKindOf(Pattern) } {
 							val.embedInStream(inevent);
 						}
