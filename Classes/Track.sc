@@ -18,6 +18,7 @@ TrackDef : ProtoClass {
 			var ret = all[key];
 			if(val.notNil) {
 				ret.putAll(val);
+				ret[\key] = key;
 				ret[\parent] = val[\parent];
 			};
 			^ret;
@@ -31,6 +32,13 @@ TrackDef : ProtoClass {
 
 	key {
 		^this[\key]
+	}
+
+	putAll { arg ... args;
+		var k = this.key;
+		// preserve key
+		super.putAll(*args);
+		this[\key] = k;
 	}
 
 	clear {

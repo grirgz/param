@@ -244,6 +244,8 @@ StepEvent : Event {
 	var <>repeats = 1;
 	var <player;
 
+	//initPbindProxy
+
 	asParamGroup {
 		var instr;
 		var specgroup;
@@ -280,27 +282,36 @@ StepEvent : Event {
 			} {
 				var pat;
 				pat = Prout({ arg inevent;
-					case
-						{ val.isKindOf(StepList) } {
-							val.embedInStream(inevent);
-						}
-						{ val.isKindOf(Event) and: { val[\eventType] == \envTimeline } } {
-							val.outBus.asMap.yield;
-						}
-						{ val.isKindOf(Number) or: { val.isKindOf(Symbol) } } {
-							this[key].yield;
-						}
-						// not a good idea, how to set \out bus then ?
-						//{ val.isKindOf(Bus) } {
-						//	val.asMap.yield;
-						//}
-						{ val.isKindOf(Pattern) } {
-							val.embedInStream(inevent);
-						}
-						{
-							val.yield;
-						}
-					;
+					var rep = true;
+					while { rep = true  } {
+
+						case
+							{ val.isKindOf(StepList) } {
+								val.embedInStream(inevent);
+								rep = false;
+							}
+							{ val.isKindOf(Event) and: { val[\eventType] == \envTimeline } } {
+								val.outBus.asMap.yield;
+								rep = true;
+							}
+							{ val.isKindOf(Number) or: { val.isKindOf(Symbol) } } {
+								this[key].yield;
+								rep = true;
+							}
+							// not a good idea, how to set \out bus then ?
+							//{ val.isKindOf(Bus) } {
+							//	val.asMap.yield;
+							//}
+							{ val.isKindOf(Pattern) } {
+								val.embedInStream(inevent);
+								rep = false;
+							}
+							{
+								val.yield;
+								rep = true;
+							}
+						;
+					}
 				});
 				if(pat.notNil) {
 					pairs.add(key);
