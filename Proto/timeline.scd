@@ -1191,6 +1191,77 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 ));
 
+~trackTimeline = ProtoClass((
+	parent: ~clipTimeline,
+	all: { PresetDictionary.new(\trackTimeline) },
+	new: { arg self, name, tracks;
+
+		if(self.all[name].notNil) {
+			self = self.all[name]
+		} {
+			self = self.deepCopy;
+			self.prAdd(name).init(tracks);
+		};
+	
+		self;
+	},
+
+	init: { arg self, tracks;
+		var eventfac;
+		self.areasize = 10@4;
+		//self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
+		self.eventloop = self.makeDefaultEventLoop;
+		eventfac = ~class_track_event_factory.new(tracks);
+		self.eventFactory = { eventfac };
+		self.eventFactory.eventLoop = self.eventloop;
+		self.eventFactory.mode = \note;
+		self.eventFactory.playmode = \gate;
+		self.eventFactory.fullrecord = false;
+		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
+		self.proxy = EventPatternProxy.new;
+		self.cursor = CursorTimeline.new;
+		self.cursor.startPosition = self.eventList.startTime;
+		self.tracks_bypassed = Set.new;
+
+		self.tracks = { tracks };
+
+		"=============trackTimeline: end init".debug;
+
+		self;
+	},
+
+
+	asArchiveData: { arg self;
+		(
+			name: self.key,
+			param: self.param,
+			eventloop: ~eventloop_asArchiveData.(self.eventList),
+			areasize: self.areasize,
+			quant_ref: self.quant_ref,
+			tracks_bypassed: self.tracks_bypassed,
+			load: { arg me; ~trackTimeline.new_load(me) },
+		)
+	},
+
+	asRefArchiveData: { arg self;
+		(
+			key: self.key,
+			load: { arg me; ~trackTimeline.new(me.key) },
+		)
+	},
+
+
+	edit: { arg self;
+		var x = ~trackTimelinePanelView.new(self);
+		self.editor = { x };
+		x;
+	},
+
+	asView: { arg self;
+		~trackTimelinePanelView.newView(self).makeLayout;
+	},
+
+));
 
 //if(~noteTimeline_all.isNil) {
 //	~noteTimeline_all = IdentityDictionary.new;
@@ -1535,6 +1606,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 ~timelinePanelView = (
 	new: { arg self, eventloop;
+		"timelinePanelView".debug("init");
 		self = self.deepCopy;
 
 		self.eventloop = eventloop;
@@ -1543,6 +1615,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 		//self.definePattern;
 
+		"timelinePanelView".debug("end init");
 		self;
 	},
 
@@ -2288,7 +2361,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self = self.deepCopy;
 	
 		self.model = model;
-		self.parent_model = parent;
+		self.parent_model = {parent};
 		//self.makeWindow;
 		
 		self.init_default_clip_factories;
@@ -2624,11 +2697,13 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		var editor;
 		var type_popup, name_popup;
 		var model = self.model;
+		"clipEditor.makeLayout: init".debug;
 		type_popup = PopUpMenu.new;
 		name_popup = PopUpMenu.new;
 		self.name_popup = name_popup;
 		self.type_popup = type_popup;
 		name_popup.allowsReselection = true;
+		"clipEditor.makeLayout: part 1".debug;
 		//type_popup.allowsReselection = true; // lose selection
 		//name_popup.items = type_popup.items[type_popup.value].asClass.all.keys.asArray;
 		name_popup.action = {
@@ -2638,6 +2713,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		};
 
 		self.refreshPopups;
+		"clipEditor.makeLayout: part 2".debug;
 
 		header = HLayout(
 			type_popup,
@@ -2651,6 +2727,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			editor,
 		);
 
+		"clipEditor.makeLayout: part 3".debug;
 		self.layout = layout;
 		self.layout;
 	},
@@ -2669,6 +2746,10 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 );
 
+~trackEditor = (
+
+);
+
 //////////////////////////////// Views
 
 ~clipTimelinePanelView = (
@@ -2677,7 +2758,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	new: { arg self, timeline;
 		self = ~timelinePanelView[\new].(self, timeline.eventloop);
 	
-		self.timeline_model = timeline;
+		self.timeline_model = { timeline };
 		self.areasize = self.timeline_model.areasize;
 		
 		self.makeWindow;
@@ -2688,7 +2769,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	newView: { arg self, timeline;
 		self = ~timelinePanelView[\new].(self, timeline.eventloop);
 	
-		self.timeline_model = timeline;
+		self.timeline_model = {timeline};
 		self.areasize = self.timeline_model.areasize;
 		
 		//self.makeWindow;
@@ -2743,18 +2824,26 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 
 	makeLayout: { arg self;
-		self.clipEditor = ~clipEditor.new(nil, self.timeline_model.eventList);
+		var clipEditor;
+		"clipTimelinePanelView.makeLayout: start init".debug;
+
+		clipEditor = ~clipEditor.new(nil, self.timeline_model.eventList);
+		self.clipEditor = { clipEditor };
+		"clipTimelinePanelView.makeLayout: part 0.1".debug;
 		self.clipEditorLayout = self.clipEditor.makeLayout;
+		"clipTimelinePanelView.makeLayout: part 0.2".debug;
 		self.clipEditor.clearEditor;
+		"clipTimelinePanelView.makeLayout: part 1".debug;
 		self.layout = VLayout(
 			//HLayout(
 			//	PlayerWrapperView(Pdef(self.eventloop.key)).view,
 			//	XSimpleButton.new.label_("yep"),
 			//),
-			[self.parent[\makeLayout].(self), stretch:1],
+			[~timelinePanelView[\makeLayout].(self), stretch:1],
 			self.clipEditorLayout,
 			//self.parent.makeLayout,
 		);
+		"clipTimelinePanelView.makeLayout: part 2".debug;
 		self.timeline.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
 			if(clickCount == 2) {
 				if(chosennode.notNil) {
@@ -2771,13 +2860,109 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				}
 			}
 		};
+		"clipTimelinePanelView.makeLayout: part 3".debug;
 		self.timeline.view.onChange(self.eventloop, \list, { 
 			{
 				self.refresh;
 			}.defer
 		});
+		"clipTimelinePanelView.makeLayout: end init".debug;
 		self.layout;
 	},
+);
+
+~trackTimelinePanelView = (
+	parent: ~clipTimelinePanelView,
+
+	new: { arg self, timeline;
+		"trackTimelinePanelView: start init".debug;
+		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		"trackTimelinePanelView: init part1".debug;
+	
+		self.timeline_model = { timeline };
+		"trackTimelinePanelView: init part2".debug;
+		self.areasize = self.timeline_model.areasize;
+		"trackTimelinePanelView: init part3".debug;
+		
+		self.makeWindow;
+	
+		"trackTimelinePanelView: end init";
+		self;
+	},
+
+
+	newView: { arg self, timeline;
+		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+	
+		self.timeline_model = {timeline};
+		self.areasize = self.timeline_model.areasize;
+		
+		//self.makeWindow;
+	
+		self;
+	},
+
+	update_track_header: { arg self;
+		var track_count;
+		var track_header_block;
+		"trackTimelinePanelView.update_track_header: init".debug;
+		self.areasize.y = self.timeline_model.tracks.size;
+		track_count = self.areasize.y.asInteger;
+		track_header_block = { arg x;
+			var res = View.new.layout_(
+				HLayout(
+					//XSimpleButton.new.label_("track %".format(x)).
+					self.track_selector.views[track_count - 1 - x]
+				)
+			);
+			//res.background_(Color.blue);
+			res;
+		};
+		"trackTimelinePanelView.update_track_header: part 1".debug;
+		self.track_selector = ~view_selector.new(track_count, {}, { arg view, x; 
+			//x = track_count - x;
+			if(self.timeline_model.is_track_bypassed(x)) {
+				view.label_("[%]".format(self.timeline_model.tracks[x].label));
+			} {
+				view.label_("%".format(self.timeline_model.tracks[x].label));
+			}
+		});
+		"trackTimelinePanelView.update_track_header: part 2".debug;
+		self.track_header.canvas_(
+			self.track_header_view = View.new.layout_(
+				VLayout(*
+					track_count.collect { arg x;
+						[
+							track_header_block.(x),
+							align: \top,
+						]
+					}
+				).spacing_(0).margins_(0)
+			);
+			self.track_header_view
+		).maxWidth_(100);
+		"trackTimelinePanelView.update_track_header: part 3".debug;
+		self.update_track_header_size;
+		self.track_header.onResize = { self.update_track_header_size };
+		if(self.track_header_controller.notNil) {
+			self.track_header_controller.remove;
+		};
+		self.track_header_controller = SimpleController(self.timeline)
+		.put(\viewport, {
+			"update_track_header_size: viewport".debug;
+			//TODO: remove controller
+			self.update_track_header_size;
+		})
+		.put(\areasize, {
+			"update_track_header_size: areasize".debug;
+			self.update_track_header_size;
+			//self.update_track_header;
+		})
+		;
+		"trackTimelinePanelView.update_track_header: part 4".debug;
+	},
+
+
 );
 
 ~envTimelinePanelView = (

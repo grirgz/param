@@ -349,6 +349,10 @@ Param {
 		^wrapper.default;
 	}
 
+	default_ { arg val;
+		wrapper.default = val;
+	}
+
 	setBusMode { arg enable=true, free=true;
 		wrapper.setBusMode(enable, free);
 	}
@@ -1065,6 +1069,7 @@ BaseParam {
 	var >shortLabel; // deprecated
 	var <>combinator;
 	var <>labelmode;
+	var >default;
 
 	/////// labels
 
@@ -1197,8 +1202,12 @@ BaseParam {
 	instrument { nil }
 
 	default {
-		var instr = this.instrument;
+		var instr;
 		var val;
+		if(default.notNil) {
+			^default;
+		};
+		instr = this.instrument;
 		if(instr.notNil) {
 			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec.default };
 			if(spec.class == XEnvSpec) {

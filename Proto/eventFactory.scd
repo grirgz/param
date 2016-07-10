@@ -140,6 +140,7 @@
 			self.current_event.sustain = (self.eventLoop.getAbsTime - self.current_event.absTime)/self.eventLoop.clock.tempo;
 			self.current_event.changed(\refresh);
 			self.current_event.debug("recordEventStop");
+			self.current_event = nil;
 		}
 	},
 
@@ -493,6 +494,7 @@
 
 ));
 
+// parallel
 ~class_player_event_factory = ProtoClass((
 	parent: ~class_event_factory,
 
@@ -588,7 +590,166 @@
 			});
 		}
 	},
+));
 
+~class_serial_player_event_factory = ProtoClass((
+	parent: ~class_player_event_factory,
+
+	new: { arg self, players, midinote;
+		self.thisClass = { self };
+		self = self.deepCopy;
+
+		self.current_midinote = midinote; // midinote is already a method
+		self.set_players(players);
+		self.children = SparseArray.new;
+		self.in_event = Event.default;
+		self.silentmode = false;
+		self.fullrecord = false;
+		self.controllers = SparseArray.new;
+		self.mode = \note; // add some default, might change
+		self.recordingQuant = 1;
+
+		self;
+	},
+
+	newParent: { arg self, parent, players, midinote;
+		var inevent;
+		self.thisClass = { self };
+		self = self.deepCopy;
+
+		inevent = (midinote:midinote);
+
+		self.current_midinote = midinote; // midinote is already a method
+		self.set_players(players);
+		self.children = SparseArray.new;
+		self.parent_factory = { parent };
+		//self.children = List.new;
+		self.pattern = { arg self; self.parent_factory.pattern };
+		self.mode = { arg self; self.parent_factory.mode };
+		self.playmode = { arg self; self.parent_factory.playmode };
+		self.silentmode = { arg self; self.parent_factory.silentmode };
+		self.fullrecord = { arg self; self.parent_factory.fullrecord };
+		self[\stream] = { arg self; self.parent_factory.stream };
+		self[\stream_] = { arg self, val; self.parent_factory.stream = val;  };
+		self.in_event = Event.default.copy.putAll(inevent ? ());
+		self.eventLoop = { arg self; self.parent_factory.eventLoop };
+		self.recordingQuant = { arg self; self.parent_factory.recordingQuant };
+
+		self;
+	},
+
+	childfun: { arg self, idx;
+		self.newChild((part: idx, midinote:self.current_midinote));
+	},
+
+	set_players: { arg self, players;
+		if(players.isKindOf(PlayerWrapperGroup)) {
+			self.players = players;
+			self.rawplayers = players; // TODO
+		} {
+			self.rawplayers = players;
+			players = players.collect({ arg p; 
+				if(p.isKindOf(PlayerWrapper), { 
+					p
+				}, { 
+					PlayerWrapper(p);
+				});
+			});
+			self.players = players;
+		}
+	},
+
+	startListeningChildren: { arg self;
+		self.players.do { arg player, idx;
+			player.debug("startRecording: player");
+			self.childAt(idx).startListening(player);
+		};
+	},
+
+	startListening: { arg self, player;
+		self.stopListening;
+		player.debug("start listening");
+		self.controller = player.makeListener({ arg target, msg, quant;
+			var ev = player.asPlayerEvent;
+			msg.debug("received event");
+			if(msg == \play) {
+				ev.putAll(self.in_event);
+				ev.debug("LEVEL EV RECORDING !!");
+				self.clock.schedAbs(self.clock.nextTimeOnGrid(quant), {
+					self.parent_factory.children.do{ arg child;
+						// stop currently playing events
+						if(child.current_event.notNil) {
+							child.recordEventStop;
+						}
+					};
+					self.recordEvent(ev);
+				});
+				//self.current_event.absTime = self.eventLoop.clock.nextTimeOnGrid(quant);
+			} {
+				if(msg == \stop) {
+					self.recordEventStop;
+				}
+			}
+		});
+	},
+
+));
+
+~class_track_event_factory = ProtoClass((
+	parent: ~class_player_event_factory,
+
+	new: { arg self, tracks;
+		self.thisClass = { self };
+		self = self.deepCopy;
+
+		self.set_players(tracks);
+		self.children = SparseArray.new;
+		self.in_event = Event.default;
+		self.silentmode = false;
+		self.fullrecord = false;
+		self.controllers = SparseArray.new;
+		self.mode = \note; // add some default, might change
+		self.recordingQuant = 1;
+
+		self;
+	},
+
+	set_players: { arg self, players;
+		if(players.isKindOf(PlayerWrapperGroup)) {
+			self.players = players;
+			self.rawplayers = players; // TODO
+		} {
+			self.rawplayers = players;
+			players = players.collect({ arg p; 
+				if(p.isKindOf(PlayerWrapper), { 
+					p
+				}, { 
+					PlayerWrapper(p);
+				});
+			});
+			self.players = players;
+		}
+	},
+
+	childfun: { arg self, idx;
+		var child = ~class_serial_player_event_factory.newParent(self, self.players[idx].target.children, idx);
+		child;
+	},
+
+	startRecording: { arg self;
+		if(self.eventLoop.notNil) {
+			self.clock.schedAbs(self.clock.nextTimeOnGrid(self.recordingQuant), {
+				self.players.do { arg player, idx;
+					player.debug("startRecording: player");
+					self.childAt(idx).startListeningChildren;
+				};
+				self.eventLoop.isRecording.debug("startRecording: before: isRecording");
+				self.eventLoop.startRec(true);
+				self.eventLoop.isRecording.debug("startRecording: after: isRecording");
+				self.changed(\isRecording);
+			});
+		}
+	},
 
 ));
 
