@@ -116,6 +116,14 @@ ProtoClass : Event {
 	clear { arg ... args;
 		^this[\clear].(this, * args)
 	}
+
+	isEmpty { arg ... args;
+		^this[\isEmpty].(this, * args)
+	}
+
+	render { arg ... args;
+		^this[\render].(this, * args)
+	}
 }
 
 

@@ -1111,20 +1111,28 @@ BaseParam {
 		^Param(this.target, this.property -> idx, this.spec)
 	}
 
+	size {
+		if(this.spec.tryPerform(\isDynamic) == true) {
+			^this.get.size
+		} {
+			^this.spec.size
+		}
+	}
+
 	asParamList {
-		^this.spec.size.collect { arg x;
+		^this.size.collect { arg x;
 			this.at(x)
 		}
 	}
 
 	do { arg fun;
-		this.spec.size.do { arg x;
+		this.size.do { arg x;
 			fun.(this.at(x), x)
 		}
 	}
 
 	collect { arg fun;
-		^this.spec.size.collect { arg x;
+		^this.size.collect { arg x;
 			fun.(this.at(x), x)
 		}
 	}

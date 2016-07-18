@@ -1,11 +1,17 @@
 
 XArraySpec : Spec {
 	var <array, <default;
-	var <size, <>isMonoSpec;
+	var <>size, <>isMonoSpec;
+	var <>isDynamic;
 
 	*new { arg array, default=nil;
 		var size = array.size;
 		var isMonoSpec;
+		var isDynamic = false;
+		if(array.isSequenceableCollection.not) {
+			isDynamic = true;
+			array = [array.asSpec];
+		};
 		array = array.collect(_.asSpec);
 
 		array.do({ arg sp;
@@ -32,11 +38,11 @@ XArraySpec : Spec {
 			}
 		};
 
-		if(default.size != array.size) {
+		if(default.size != array.size and: { isDynamic.not }) {
 			"Warning: default value size does not match the spec array size".postln;
 		};
 
-		^super.newCopyArgs(array, default, size, isMonoSpec);
+		^super.newCopyArgs(array, default, size, isMonoSpec, isDynamic);
 	}
 
 	numChannels {
@@ -48,7 +54,7 @@ XArraySpec : Spec {
 	}
 
 	at { arg idx;
-		^array[idx];
+		^array.wrapAt(idx);
 	}
 
 	map { arg val;
@@ -60,7 +66,7 @@ XArraySpec : Spec {
 			nested = true;
 		};
 		res = val.collect({ arg subval, x;
-			this.array[x].map(subval)
+			this.array.wrapAt(x).map(subval)
 		});
 
 		if(nested) {
@@ -80,7 +86,7 @@ XArraySpec : Spec {
 			nested = true;
 		};
 		res = val.collect({ arg subval, x;
-			this.array[x].unmap(subval)
+			this.array.wrapAt(x).unmap(subval)
 		});
 
 		if(nested) {
@@ -102,12 +108,21 @@ XEnvSpec : Spec {
 	var <default;
 	var <size;
 	var <isMonoSpec;
+	var <isDynamic=false;
 	var <type=\default;
 
 	*new { arg levels, times, curves, default;
 		var size;
 		var isMonoSpec;
+		var isDynamic = false;
 
+		if(levels.isSequenceableCollection.not) {
+			isDynamic = true;
+			levels = levels.asSpec ! 2;
+		};
+		if(times.isSequenceableCollection.not) {
+			times = times.asSpec ! levels.size;
+		};
 		if(curves.isNil) {
 			// FIXME: provide better default spec
 			curves = ControlSpec(-9,9,\lin,0,0);
@@ -144,11 +159,11 @@ XEnvSpec : Spec {
 			default = Env(levels.collect(_.default), times.collect(_.default), curves.collect(_.default))
 		};
 
-		if(default.levels.size != levels.size) {
+		if(default.levels.size != levels.size and: { isDynamic.not }) {
 			"Warning: default value size does not match the spec env size".postln;
 		};
 
-		^super.newCopyArgs(levels, times, curves, default, size, isMonoSpec)
+		^super.newCopyArgs(levels, times, curves, default, size, isMonoSpec, isDynamic)
 	}
 
 	storeArgs {
@@ -206,10 +221,10 @@ XEnvSpec : Spec {
 			nested = true;
 		};
 		levels = val.levels.collect({ arg subval, x;
-			this.levels[x].map(subval);
+			this.levels.wrapAt(x).map(subval);
 		});
 		times = val.times.collect({ arg subval, x;
-			this.times[x].map(subval);
+			this.times.wrapAt(x).map(subval);
 		});
 
 		if(ignoreCurves) {
@@ -222,12 +237,12 @@ XEnvSpec : Spec {
 				Float, {
 					curves = [val.curves];
 					curves = curves.collect({ arg subval, x;
-						this.curves[x].map(subval);
+						this.curves.wrapAt(x).map(subval);
 					});
 				}, 
 				{
 					curves = val.curves.collect({ arg subval, x;
-						this.curves[x].map(subval);
+						this.curves.wrapAt(x).map(subval);
 					});
 				}
 			
@@ -254,10 +269,10 @@ XEnvSpec : Spec {
 			nested = true;
 		};
 		levels = val.levels.collect({ arg subval, x;
-			this.levels[x].unmap(subval);
+			this.levels.wrapAt(x).unmap(subval);
 		});
 		times = val.times.collect({ arg subval, x;
-			this.times[x].unmap(subval);
+			this.times.wrapAt(x).unmap(subval);
 		});
 
 		if(ignoreCurves) {
@@ -270,12 +285,12 @@ XEnvSpec : Spec {
 				Float, {
 					curves = [val.curves];
 					curves = curves.collect({ arg subval, x;
-						this.curves[x].unmap(subval);
+						this.curves.wrapAt(x).unmap(subval);
 					});
 				}, 
 				{
 					curves = val.curves.collect({ arg subval, x;
-						this.curves[x].unmap(subval);
+						this.curves.wrapAt(x).unmap(subval);
 					});
 				}
 			

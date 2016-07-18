@@ -44,6 +44,11 @@ PlayerWrapper  {
 		
 	}
 
+	mapPlayer { arg self, val;
+		this.initWrapper(val);
+		this.changed(\player);
+	}
+
 	target {
 		if(wrapper.notNil) {
 			^wrapper.target
@@ -78,6 +83,8 @@ PlayerWrapper  {
 	// *could be added
 	// pause
 	// record
+
+	///////////////
 
     doesNotUnderstand { arg selector...args;
 		[selector, args].debug("PlayerWrapper: doesNotUnderstand");
@@ -178,7 +185,9 @@ PlayerWrapper_Base {
 	}
 
 	stop {
-		target.stop;
+		this.doWithQuant {
+			target.stop;
+		}
 	}
 
 	play {
@@ -191,6 +200,22 @@ PlayerWrapper_Base {
 		} {
 			this.play;
 		}
+	}
+
+	outBus_ { arg val;
+		Param(this.target, \out, XBusSpec()).set(val);
+	}
+
+	outBus { arg val;
+		^Param(this.target, \out, XBusSpec()).get;
+	}
+
+	doWithQuant { arg fun;
+		this.clock.schedAbs(this.clock.nextTimeOnGrid(this.quant), fun)
+	}
+
+	clock {
+		^this.target.tryPerform(\clock) ?? { TempoClock.default };
 	}
 
 }
@@ -231,18 +256,20 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 	play {
 		// hack: Ndef now have same latency than Pdef
 		//{ // defer implemented in dereference_event
-			target.play;
+		target.play;
 		//}.defer(Server.default.latency)
 	}
 
 	stop {
 		// hack: Ndef now have same latency than Pdef
 		//{ // defer implemented in dereference_event
+		this.doWithQuant {
 			if(target.getHalo(\stopIsMute) != false) {
 				target.stop;
 			} {
 				target.free;
 			}
+		};
 		//}.defer(Server.default.latency)
 	}
 
@@ -348,6 +375,14 @@ PlayerWrapperGroup : List {
 	initPlayerWrapperGroup {
 		mode = \any;
 		label = this.collect(_.label).inject("", { arg a, b; a.asString + b.asString });
+	}
+
+	quant {
+		^this.first.quant;
+	}
+
+	quant_ { arg val;
+		this.do({ arg x; x.quant = val });
 	}
 
 	play { 

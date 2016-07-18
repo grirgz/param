@@ -6,7 +6,8 @@
 	// - silentmode: bool: should record play the generated pattern or be silent because it's handled elsewhere
 	// - fullrecord: bool: should record put every key of input pattern or just midinote and time because composition is done at playing time in pattern ?
 	new: { arg self, pat;
-		self.thisClass = { self };
+		var me= self;
+		self.thisClass = { me };
 		self = self.deepCopy;
 
 		self.pattern = pat;
@@ -444,7 +445,8 @@
 	parent: ~class_event_factory,
 
 	new: { arg self, param;
-		self.thisClass = { self };
+		var me = self;
+		self.thisClass = { me };
 		self = self.deepCopy;
 
 		self.param = param;

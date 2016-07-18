@@ -1,5 +1,6 @@
 
 "loading track.scd".debug;
+// deprecated, use TrackDef
 
 ~clipType_pat = ProtoClass((
 	new: { arg self, parent;

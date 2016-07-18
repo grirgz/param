@@ -1208,6 +1208,9 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 	init: { arg self, tracks;
 		var eventfac;
+		if(tracks.isKindOf(TrackDef)) {
+			tracks = PlayerWrapperGroup(tracks.children);
+		};
 		self.areasize = 10@4;
 		//self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
 		self.eventloop = self.makeDefaultEventLoop;
@@ -1878,7 +1881,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		timeline.mouseDownAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
 			if(clickCount == 2) {
 				if(chosennode.notNil) {
-					~clipEditor.new(chosennode.model, self.eventloop.list)
+					self.clipEditorNew(chosennode.model, self.eventloop.list)
 				};
 			}
 		};
@@ -2746,9 +2749,140 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 );
 
-~trackEditor = (
+~trackEditor = ProtoClass((
+	new: { arg self, model, parent, trackgroup;
+		self = self.deepCopy;
+	
+		self.model = model;
+		self.parent_model = {parent};
+		self.trackgroup = { trackgroup };
+		~clipEditor[\init_default_clip_factories].(self);
+		
+		self;
+	},
+	
+	mapModel: { arg self, model, parent, trackgroup;
+		self.model = model;
+		self.parent_model = { parent };
+		self.trackgroup = { trackgroup };
+		self.makeUpdater;
+		self.model.changed(\refresh);
+	},
 
-);
+	makeUpdater: { arg self;
+		self.controller.remove;
+		self.controller = SimpleController(self.model).put(\refresh, {
+			var ev = self.model;
+			[self.type_popup, ev].debug("entering clipEditor updater");
+			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
+				self.controller.remove;
+			} {
+				var clipkey;
+				var clipfac;
+				self.refreshPopups;
+			}
+		});
+	},
+
+	model_to_type_index: { arg self;
+		var track;
+		if(self.model.notNil and: { self.model.receiver.notNil }) {
+			track = self.model.receiver.value.target.parentTrack;
+			self.trackgroup.detectIndex({ arg x; x.target === track  });
+		}
+	},
+
+	model_to_name_index: { arg self;
+		if(self.model.notNil and: { self.model.receiver.notNil }) {
+			self.model.receiver.value.target.index;
+		}
+	},
+
+	redefineSelected: { arg self, model;
+		var view = self.name_popup;
+		var track = self.trackgroup[self.type_popup.value].target;
+		var idx = view.value;
+		model = model ? self.model;
+		PlayerEvent.redefine(model);
+		model[\receiver] = { PlayerWrapper(track.childAt(idx)) };
+		self.parent_model.changed(\refresh);
+	},
+
+	refreshPopups: { arg self;
+		var name_popup = self.name_popup;
+		"refreshPopups".debug;
+		self.type_popup.items = self.trackgroup.asArray.collect(_.label);
+		self.type_popup.action = {
+			"type_popup.action".debug;
+			if(self.type_popup.value.notNil) {
+				name_popup.items = self.trackgroup[self.type_popup.value ].target.children.asArray.collect(_.label);
+			}
+		};
+		self.name_popup.action = { arg view;
+			"name_popup.action".debug;
+			if(view.value.notNil and: {self.model.notNil and: {self.type_popup.value.notNil}}) {
+				self.redefineSelected;
+			}
+		};
+		self.type_popup.valueAction = self.model_to_type_index.debug("model_to_name_index");
+		self.name_popup.value = self.model_to_name_index.debug("model_to_name_index");
+	},
+
+	edit_selected: { arg self, model;
+		model = model ? self.model;
+		[model.type, model].debug("Edit: type");
+		self.model.receiver.value.target.edit;
+	},
+
+	makeLayout: { arg self;
+		var layout;
+		var header;
+		var editor;
+		var type_popup, name_popup;
+		var model = self.model;
+		"clipEditor.makeLayout: init".debug;
+		type_popup = PopUpMenu.new;
+		name_popup = PopUpMenu.new;
+		self.name_popup = name_popup;
+		self.type_popup = type_popup;
+		name_popup.allowsReselection = true;
+		"clipEditor.makeLayout: part 1".debug;
+		//type_popup.allowsReselection = true; // lose selection
+		self.refreshPopups;
+
+		header = HLayout(
+			type_popup,
+			name_popup,
+			BasicButton.new.label_("Edit").action_({
+				self.edit_selected;
+			})
+		);
+		layout = VLayout(
+			header,
+			editor,
+		);
+
+		"clipEditor.makeLayout: part 3".debug;
+		self.layout = layout;
+		self.layout;
+	},
+
+	makeWindow: { arg self;
+		var window = Window.new;
+		var layout;
+		layout = self.makeLayout;
+		window.layout = layout;
+		//window.alwaysOnTop = true;
+		window.front;
+
+		self.makeUpdater;
+		self.model.changed(\refresh);
+	},
+
+	asView: { arg self;
+		self.makeLayout;
+	},
+));
 
 //////////////////////////////// Views
 
@@ -2823,11 +2957,15 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		PdefTimelineView
 	},
 
+	clipEditorNew: { arg self, model;
+		~clipEditor.new(model ? self.model, self.timeline_model.eventList);
+	},
+
 	makeLayout: { arg self;
 		var clipEditor;
 		"clipTimelinePanelView.makeLayout: start init".debug;
 
-		clipEditor = ~clipEditor.new(nil, self.timeline_model.eventList);
+		clipEditor = self.clipEditorNew;
 		self.clipEditor = { clipEditor };
 		"clipTimelinePanelView.makeLayout: part 0.1".debug;
 		self.clipEditorLayout = self.clipEditor.makeLayout;
@@ -2900,6 +3038,11 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		//self.makeWindow;
 	
 		self;
+	},
+
+	clipEditorNew: { arg self, model;
+		"clipEditorNew".debug;
+		~trackEditor.new(model ? self.model, self.timeline_model.eventList, self.timeline_model.tracks);
 	},
 
 	update_track_header: { arg self;

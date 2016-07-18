@@ -60,6 +60,153 @@ TrackDef : ProtoClass {
 
 }
 
+FileSystemProject : TrackDef {
+	classvar <>defaultProject;
+	classvar <>paths;
+	classvar <cwd;
+	classvar <>loadingFiles;
+
+	*initClass {
+		all = IdentityDictionary.new;
+		loadingFiles = List.new;
+		defaultProject = (
+			path: { arg self;
+				self.key.asString
+			},
+
+			open: { arg self;
+				if(self.isOpening != true) {
+					self.server.waitForBoot {
+						self.isOpening = true;
+						FileSystemProject.cwd = self.path;
+						FileSystemProject.load("init.scd");
+						self.isOpening = false;
+					}
+				}
+			},
+
+			load: { arg self, val;
+				FileSystemProject.load(self.path +/+ val);
+			},
+
+			defaultQuant_: { arg self, quant;
+				Pdef.defaultQuant = quant;
+				Ndef.defaultQuant = quant;
+				self[\defaultQuant] = quant;
+			},
+
+			clock: { arg self;
+				TempoClock.default;
+			},
+
+			server: { arg self;
+				Server.default;
+			},
+
+			tempo_: { arg self, tempo;
+				~t = tempo;
+				self.clock.tempo = tempo;
+			},
+
+			tempo: { arg self;
+				self.clock.tempo;
+			},
+		);
+		paths = List.new;
+		cwd = "~/".standardizePath;
+	}
+
+	*loadFileTillEnd { arg path;
+		var res = path;
+		if(loadingFiles.includesEqual(path)) {
+			path.debug("Already loading this file, do nothing");
+		} {
+			if(File.exists(res)) {
+				var file;
+				var code;
+				var end;
+				loadingFiles.add(path);
+				File.use(res, "r", { arg file;
+					code = file.readAllString;
+				});
+				end = code.find("\n// END");
+				if(end.notNil) {
+					code = code.keep(end+1);
+				};
+
+				res.debug("Loading file");
+				try {
+					code.interpret;
+				} { arg e;
+					e.debug("ExC");
+					e.throw;
+					res.debug("Error when loading file");
+				};
+				loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }))
+			} {
+				path.debug("FileSystemProject: File don't exists");
+			}
+		}
+	}
+
+	*load { arg path;
+		var rpath = this.resolve(path);
+		if(rpath.notNil and: { rpath.isFile }) {
+			this.loadFileTillEnd(rpath.fullPath);
+		} {
+			( "FileSystemProject.load: file doesnt exists or is a directory: " ++ path ).debug;
+		};
+	}
+
+	*cwd_ { arg path;
+		var rp = this.resolve(path);
+		if(rp.notNil) {
+			cwd = rp.fullPath;
+		} {
+			( "FileSystemProject.cwd: file not found: " ++ path ).debug;
+		}
+	}
+
+	*addPath { arg path;
+		var rpath = this.resolve(path);
+		if(rpath.notNil) {
+			if(paths.includesEqual(rpath).not) {
+				paths.add(rpath.fullPath);
+			}
+		} {
+			debug( "Path not found: " ++ path )
+		}
+	}
+
+	*resolve { arg val;
+		val = val.standardizePath;
+		( [ this.cwd ] ++ paths ).do({ arg path;
+			var pn;
+			pn = PathName(val);
+			if(pn.isAbsolutePath.not) {
+				pn = PathName(path +/+ val);
+			};
+			if(pn.isFile or: { pn.isFolder }) {
+				^pn
+			}
+		});
+		^nil;
+	}
+
+	*new { arg key, val;
+		var rkey = this.resolve(key.asString);
+		if(rkey.notNil) {
+			if(all[rkey].isNil) {
+				^super.new(rkey.fullPath.asSymbol, val ? this.defaultProject);
+			} {
+				^super.new(rkey.fullPath.asSymbol, val);
+			}
+		};
+		^nil
+	}
+
+}
+
 
 
 //TrackDef {

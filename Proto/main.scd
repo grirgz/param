@@ -5,6 +5,7 @@
 (
 	[
 		"base.scd",
+		"selector.scd",
 		"eventFactory.scd",
 		"timeline.scd",
 		"drumrack.scd",
@@ -12,7 +13,8 @@
 		"event.scd",
 		"preset.scd",
 		"steptimeline.scd",
-		"track.scd",
+		//"track.scd", // deprecated
+		"mixer.scd",
 
 		"synth.scd",
 	].do({ arg file;

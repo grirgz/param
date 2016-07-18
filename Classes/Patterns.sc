@@ -1247,6 +1247,7 @@ StepSeq {
 
 
 PtimeGate : Pattern {
+	// FIXME: seems broken
 	// output continuously values from a pattern
 	// independently of the chained pattern asking 10 or 100 values
 	// until the specified time end
