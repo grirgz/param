@@ -3869,7 +3869,11 @@ CachedBus : Bus {
 	}
 
 	mapParam { arg param;
-		param.mapSlider(this);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapSlider(this);
+		};
 	}
 }
 
@@ -3879,7 +3883,11 @@ CachedBus : Bus {
 	}
 
 	mapParam { arg param;
-		param.mapSlider(this);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapSlider(this);
+		}
 	}
 }
 
@@ -3889,7 +3897,11 @@ CachedBus : Bus {
 	}
 
 	mapParam { arg param;
-		param.mapMultiSlider(this);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapMultiSlider(this);
+		}
 	}
 }
 
@@ -3902,11 +3914,19 @@ CachedBus : Bus {
 	}
 
 	mapParam { arg param;
-		param.mapStaticText(this);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapStaticText(this);
+		}
 	}
 
 	mapParamLabel { arg param;
-		param.mapStaticTextLabel(this);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapStaticTextLabel(this);
+		}
 	}
 }
 
@@ -3916,7 +3936,11 @@ CachedBus : Bus {
 	}
 
 	mapParam { arg param;
-		param.mapTextField(this);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapTextField(this);
+		}
 	}
 }
 
@@ -3926,7 +3950,11 @@ CachedBus : Bus {
 	}
 
 	mapParam { arg param;
-		param.mapNumberBox(this);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapNumberBox(this);
+		}
 	}
 }
 
@@ -3936,7 +3964,11 @@ CachedBus : Bus {
 	}
 
 	mapParam { arg param;
-		param.mapButton(this);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapButton(this);
+		}
 	}
 }
 
@@ -3946,7 +3978,11 @@ CachedBus : Bus {
 	}
 
 	mapParam { arg param, mapLabel=true;
-		param.mapEZKnob(this, mapLabel);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapEZKnob(this, mapLabel);
+		}
 	}
 }
 
@@ -3956,7 +3992,11 @@ CachedBus : Bus {
 	}
 
 	mapParam { arg param, mapLabel=true;
-		param.mapEZSlider(this, mapLabel);
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapEZSlider(this, mapLabel);
+		}
 	}
 }
 

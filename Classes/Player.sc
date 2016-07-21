@@ -253,6 +253,18 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		}
 	}
 
+	outBus_ { arg val;
+		if(val.isKindOf(Bus)) {
+			val = val.index;
+		};
+		this.target.initMonitor.out = val;
+	}
+
+	outBus { arg val;
+		this.target.initMonitor.out ? 0;
+	}
+
+
 	play {
 		// hack: Ndef now have same latency than Pdef
 		//{ // defer implemented in dereference_event

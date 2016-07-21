@@ -517,7 +517,7 @@
 	},
 
 	set_players: { arg self, players;
-		self.rawplayers = players;
+		self.rawplayers = {players};
 		players = players.collect({ arg p; 
 			if(p.isKindOf(PlayerWrapper), { 
 				p
@@ -525,7 +525,7 @@
 				PlayerWrapper(p);
 			});
 		});
-		self.players = players;
+		self.players = {players};
 	},
 
 	startListening: { arg self, player;
@@ -646,10 +646,10 @@
 
 	set_players: { arg self, players;
 		if(players.isKindOf(PlayerWrapperGroup)) {
-			self.players = players;
-			self.rawplayers = players; // TODO
+			self.players = {players};
+			self.rawplayers = {players}; // TODO
 		} {
-			self.rawplayers = players;
+			self.rawplayers = {players};
 			players = players.collect({ arg p; 
 				if(p.isKindOf(PlayerWrapper), { 
 					p
@@ -657,7 +657,7 @@
 					PlayerWrapper(p);
 				});
 			});
-			self.players = players;
+			self.players = { players };
 		}
 	},
 
@@ -718,10 +718,10 @@
 
 	set_players: { arg self, players;
 		if(players.isKindOf(PlayerWrapperGroup)) {
-			self.players = players;
-			self.rawplayers = players; // TODO
+			self.players = {players};
+			self.rawplayers = { players }; // TODO
 		} {
-			self.rawplayers = players;
+			self.rawplayers = { players };
 			players = players.collect({ arg p; 
 				if(p.isKindOf(PlayerWrapper), { 
 					p
@@ -729,7 +729,7 @@
 					PlayerWrapper(p);
 				});
 			});
-			self.players = players;
+			self.players = { players };
 		}
 	},
 
