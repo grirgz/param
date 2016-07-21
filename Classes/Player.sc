@@ -277,7 +277,7 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		//{ // defer implemented in dereference_event
 		this.doWithQuant {
 			if(target.getHalo(\stopIsMute) != false) {
-				target.stop;
+				target.stop(target.fadeTime); // FIXME: how to configure ?
 			} {
 				target.free;
 			}

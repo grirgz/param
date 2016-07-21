@@ -52,6 +52,7 @@
 		self.proxy.addSpec(\inbus, XBusSpec());
 		self.proxy.addSpec(\prefader, \db);
 		self.proxy.addSpec(\postfader, \db);
+		self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter);
 	},
 
 	play: { arg self;

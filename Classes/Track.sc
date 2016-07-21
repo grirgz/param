@@ -65,6 +65,7 @@ FileSystemProject : TrackDef {
 	classvar <>paths;
 	classvar <cwd;
 	classvar <>loadingFiles;
+	classvar <>current;
 
 	*initClass {
 		all = IdentityDictionary.new;
@@ -79,6 +80,7 @@ FileSystemProject : TrackDef {
 					self.server.waitForBoot {
 						self.isOpening = true;
 						FileSystemProject.cwd = self.path;
+						FileSystemProject.current = self;
 						FileSystemProject.load("init.scd");
 						self.isOpening = false;
 					}
@@ -113,13 +115,19 @@ FileSystemProject : TrackDef {
 			},
 		);
 		paths = List.new;
-		cwd = "~/".standardizePath;
+		cwd = Platform.userAppSupportDir +/+ "FileSystemProjectDictionary";
+		if(PathName(cwd).isFolder.not) {
+			File.mkdir(cwd);
+		};
+		this.addPath(cwd);
 	}
 
 	*loadFileTillEnd { arg path;
 		var res = path;
+		var ret;
 		if(loadingFiles.includesEqual(path)) {
 			path.debug("Already loading this file, do nothing");
+			^nil;
 		} {
 			if(File.exists(res)) {
 				var file;
@@ -136,7 +144,7 @@ FileSystemProject : TrackDef {
 
 				res.debug("Loading file");
 				try {
-					code.interpret;
+					ret = code.interpret;
 				} { arg e;
 					e.debug("ExC");
 					e.throw;
@@ -145,16 +153,19 @@ FileSystemProject : TrackDef {
 				loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }))
 			} {
 				path.debug("FileSystemProject: File don't exists");
-			}
-		}
+				^nil
+			};
+		};
+		^ret;
 	}
 
 	*load { arg path;
 		var rpath = this.resolve(path);
 		if(rpath.notNil and: { rpath.isFile }) {
-			this.loadFileTillEnd(rpath.fullPath);
+			^this.loadFileTillEnd(rpath.fullPath);
 		} {
 			( "FileSystemProject.load: file doesnt exists or is a directory: " ++ path ).debug;
+			^nil
 		};
 	}
 
@@ -179,13 +190,21 @@ FileSystemProject : TrackDef {
 	}
 
 	*resolve { arg val;
+		// note: return a pathname
 		val = val.standardizePath;
 		( [ this.cwd ] ++ paths ).do({ arg path;
 			var pn;
-			pn = PathName(val);
-			if(pn.isAbsolutePath.not) {
-				pn = PathName(path +/+ val);
+			[path, val].debug("try resolve");
+			if(val == "") {
+				pn = PathName(path);
+			} {
+				pn = PathName(val);
+				pn.fullPath.asCompileString.debug("fp");
+				if(pn.isAbsolutePath.not) {
+					pn = PathName(path +/+ val);
+				};
 			};
+			pn.fullPath.asCompileString.debug("fp2");
 			if(pn.isFile or: { pn.isFolder }) {
 				^pn
 			}
@@ -207,6 +226,179 @@ FileSystemProject : TrackDef {
 
 }
 
+FSProject {
+	*new { arg ... args;
+		^FileSystemProject(*args)
+	}
+}
+
+
+FileSystemProjectDictionary : IdentityDictionary {
+	classvar <>all;
+	var <>key;
+	var <>source;
+
+	*initClass {
+		all = IdentityDictionary.new;
+	}
+
+	*new { arg key, val;
+		if(all[key].isNil) {
+			^super.new.initFileSystemProjectDictionary(val).prAdd(key)
+		} {
+			var ret = all[key];
+			^ret;
+		}
+	}
+
+	prAdd { arg xkey;
+		key = xkey;
+		all[key] = this;
+	}
+
+	initFileSystemProjectDictionary { arg val;
+
+	}
+
+	at  { arg atkey;
+		var satkey, instanceKey, path, fullpath, curval;
+		var abspath, abskey;
+		satkey = atkey.asString;
+		instanceKey = PathName(satkey).fileName.asSymbol;
+		path = PathName(satkey).pathOnly;
+		abspath = FileSystemProject.resolve(path);
+		if(abspath.isNil) {
+			[key, atkey, abspath, abskey].debug("FileSystemProjectDictionary: Error: no project here");
+			^nil
+		} {
+			abspath = abspath.fullPath;
+			abskey = abspath +/+ instanceKey;
+			curval = super.at(abskey.asSymbol);
+			if(curval.isNil) {
+				var inst = this.loadFromFileSystam(abspath, instanceKey);
+				if(inst.isNil) {
+					[key, atkey, abspath, abskey].debug("FileSystemProjectDictionary: no archived data");
+					^nil
+				} {
+					super.put(abskey.asSymbol, inst);
+					^inst;
+				};
+			} {
+				^curval
+			};
+		}
+	}
+
+	put { arg atkey, val;
+		var satkey, instanceKey, path, fullpath, curval;
+		var abspath, abskey;
+		satkey = atkey.asString;
+		instanceKey = PathName(satkey).fileName.asSymbol;
+		path = PathName(satkey).pathOnly;
+		abspath = FileSystemProject.resolve(path);
+		if(abspath.isNil) {
+			[key, atkey, abspath, abskey].debug("FileSystemProjectDictionary: Error: no project here");
+			^nil
+		} {
+			abspath = abspath.fullPath;
+			abskey = abspath +/+ instanceKey;
+			super.put(abskey.asSymbol, val);
+		}
+	}
+
+	saveAt { arg atkey;
+		var satkey, instanceKey, path, fullpath, curval;
+		var abspath, abskey;
+		satkey = atkey.asString;
+		instanceKey = PathName(satkey).fileName.asSymbol;
+		path = PathName(satkey).pathOnly;
+		abspath = FileSystemProject.resolve(path);
+		if(abspath.isNil) {
+			[key, atkey, abspath, abskey].debug("FileSystemProjectDictionary: Error: no project here");
+			^nil
+		} {
+			abspath = abspath.fullPath;
+			abskey = abspath +/+ instanceKey;
+			curval = super.at(abskey.asSymbol);
+			if(curval.notNil) {
+				this.saveToFileSystam(abspath, instanceKey, curval);
+			} {
+				[key, atkey, abspath, abskey].debug("FileSystemProjectDictionary: no data to save");
+				^nil
+			};
+		}
+	}
+
+	loadAt { arg atkey;
+		var satkey, instanceKey, path, fullpath, curval;
+		var abspath, abskey;
+		satkey = atkey.asString;
+		instanceKey = PathName(satkey).fileName.asSymbol;
+		path = PathName(satkey).pathOnly;
+		abspath = FileSystemProject.resolve(path);
+		if(abspath.isNil) {
+			[key, atkey, abspath, abskey].debug("FileSystemProjectDictionary: Error: no project here");
+			^nil
+		} {
+			var inst;
+			abspath = abspath.fullPath;
+			abskey = abspath +/+ instanceKey;
+			inst = this.loadFromFileSystam(abspath, instanceKey);
+			if(inst.isNil) {
+				[key, atkey, abspath, abskey].debug("FileSystemProjectDictionary: no archived data");
+				^nil
+			} {
+				super.put(abskey.asSymbol, inst);
+				^inst;
+			};
+		}
+	}
+
+	saveToFileSystam { arg abspath, instanceKey, obj;
+		var datapath = abspath +/+ "data";
+		var filepath = datapath +/+ key +/+ ( instanceKey ++ ".arch.scd" );
+		var fh, archdata;
+		if(PathName(datapath).isFolder.not) {
+			File.mkdir(datapath);
+		};
+		if(PathName(datapath +/+ key).isFolder.not) {
+			File.mkdir(datapath +/+ key);
+		};
+		fh = File(filepath, "w");
+		archdata = obj.tryPerform(\asArchiveData);
+		if(archdata.notNil) {
+			fh.write(archdata.asCompileString)
+		} {
+			fh.write(obj.asCompileString)
+		};
+		fh.close;
+	}
+
+	loadFromFileSystam { arg abspath, instanceKey;
+		var datapath = abspath +/+ "data";
+		var filepath = datapath +/+ key +/+ ( instanceKey ++ ".arch.scd" );
+		//if(PathName(datapath).isFolder.not) {
+		//	File.mkdir(datapath);
+		//};
+		//if(PathName(datapath +/+ key).isFolder.not) {
+		//	File.mkdir(datapath +/+ key);
+		//};
+		[abspath, instanceKey, datapath, filepath].debug("filepath!");
+		if(PathName(filepath).isFile) {
+			^FileSystemProject.load(filepath);
+		} {
+			filepath.debug("No file!");
+			^nil;
+		}
+	}
+
+	clear {
+		if(key.notNil) {
+			all[key] = nil
+		};
+		^nil
+	}
+}
 
 
 //TrackDef {
