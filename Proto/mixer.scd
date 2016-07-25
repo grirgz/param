@@ -60,7 +60,8 @@
 		if(outbus.isKindOf(Bus)) {
 			outbus = outbus.index;
 		};
-		self.proxy.play(outbus, self.numchannels)
+		self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter);
+		self.proxy.play(outbus, self.numchannels);
 	},
 
 	setOut: { arg self, outbus;
@@ -96,11 +97,13 @@
 
 	build_sender: { arg self, idx;
 		var sendkey = \send+++idx;
+		// if proxy not playing, adding a source will create it on server, so set its group
 		self.proxy.addSpec(sendkey, \unipolar);
-		self.proxy[idx+1100] = \filter -> { arg in;
+		self.proxy.put(idx+1100, \filter -> { arg in;
 			Out.ar(( \sendbus+++idx ).kr(self.zerobus), in * sendkey.kr(0));
 			in;
-		}
+		}, now:false);
+		//self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter); 
 	},
 
 	stop: { arg self;
