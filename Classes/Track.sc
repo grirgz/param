@@ -133,6 +133,7 @@ FileSystemProject : TrackDef {
 				var file;
 				var code;
 				var end;
+				var oldpath;
 				loadingFiles.add(path);
 				File.use(res, "r", { arg file;
 					code = file.readAllString;
@@ -144,8 +145,12 @@ FileSystemProject : TrackDef {
 
 				res.debug("Loading file");
 				try {
+					oldpath = thisProcess.nowExecutingPath;
+					thisProcess.nowExecutingPath = path;
 					ret = code.interpret;
+					thisProcess.nowExecutingPath = oldpath;
 				} { arg e;
+					thisProcess.nowExecutingPath = oldpath;
 					e.debug("ExC");
 					e.throw;
 					res.debug("Error when loading file");
@@ -230,6 +235,7 @@ FSProject {
 	*new { arg ... args;
 		^FileSystemProject(*args)
 	}
+	// TODO: redirect to FileSystemProjectDictionary or switch the name
 }
 
 
@@ -512,4 +518,20 @@ FileSystemProjectDictionary : IdentityDictionary {
 //		};
 //		wrapper.me = { this };
 //	}
+//}
+
+//+Document {
+//	*load {
+//		switch(Platform.ideName,
+//			\scide, {
+//				var curdir = ""
+//
+//			}, 
+//			\scvim, {
+//
+//			}
+//	}
+//
+//	currentDir
+//	
 //}

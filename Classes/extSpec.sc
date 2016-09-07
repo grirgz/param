@@ -82,11 +82,13 @@ XArraySpec : Spec {
 		var res;
 		if(val[0].isSequenceableCollection) {
 			// pattern arrays are nested in []
+			//val.debug("nested!");
 			val = val[0];
 			nested = true;
 		};
 		res = val.collect({ arg subval, x;
-			this.array.wrapAt(x).unmap(subval)
+			//[ this.array, this.array.at(x), this.at(x), this.array.wrapAt(x), subval, x ].debug("collect!");
+			this.array.wrapAt(x).unmap(subval);
 		});
 
 		if(nested) {

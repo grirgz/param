@@ -220,6 +220,14 @@ StepList : List {
 		^this.size;
 	}
 
+	spec {
+		^this.getSpec(\list)
+	}
+
+	spec_ { arg sp;
+		this.addSpec(\list, sp);
+	}
+
 	clone {
 		var new = this.deepCopy;
 		//Halo.put(new, Halo.at(this).deepCopy);
@@ -1683,6 +1691,20 @@ PtimeGatePunch : Pattern {
 }
 
 
+/////////////////////////////////
+
+Ptask {
+	*new { arg fun, time=1;
+		^Prout({
+			Task(fun).play;
+			Event.silent(time).yield;
+		})
+	}
+}
+
+
+
+/////////////////////////////////
 
 // not needed, just use Pdefn
 
