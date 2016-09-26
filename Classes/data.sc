@@ -624,10 +624,46 @@ BufDef {
 		root = "~/Musique/sc/samplekit".standardizePath;
 	}
 
-	*new { arg name, path;
-		path = this.my_new(name, path);
-		path.debug("BufDef.new: path");
-		^BufferPool.get_stereo_sample(client, path);
+	*new { arg name, path, channels=2;
+		if(path.isNil) {
+			if(all.at(name).isNil) {
+				^nil
+			} {
+				var path = all.at(name);
+				if(path.isKindOf(Buffer)) {
+					^path;
+				} {
+					path = this.relpath_to_abspath(path);
+					^BufferPool.get_stereo_sample(client, path);
+				}
+			}
+		} {
+			if(path.isKindOf(Number)) {
+				// path is in fact the frame count
+				if(all.at(name).isNil) {
+					var buf = Buffer.alloc(Server.default, path, channels);
+					all.put(name, buf);
+					^all.at(name);
+				} {
+					^all.at(name);
+				}
+
+			} {
+				if(all.at(name).isNil) {
+					all.put(name, path);
+					path = this.relpath_to_abspath(path);
+					^BufferPool.get_stereo_sample(client, path);
+				} {
+					var path = all.at(name);
+					if(path.isKindOf(Buffer)) {
+						^path;
+					} {
+						path = this.relpath_to_abspath(path);
+						^BufferPool.get_stereo_sample(client, path);
+					}
+				}
+			}
+		};
 	}
 
 	*mono { arg name, path;
@@ -635,7 +671,7 @@ BufDef {
 		^BufferPool.get_mono_sample(client, path);
 	}
 
-	*my_new { arg name, path;
+	*my_new { arg name, path, channels;
 		if(path.isNil) {
 			path = all.at(name);
 			path = this.relpath_to_abspath(path);

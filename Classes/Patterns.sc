@@ -817,33 +817,31 @@ PdrumStep : Pattern {
 			scoreStream.do( { arg scoreev;
 				var pat;
 				if(scoreev.isNil) { "RETRUN".debug; ^inval };
-				if(scoreev[key].notNil) {
-					if(isRestFunction.(scoreev[key])) {
-						//ev = silentEvent.composeEvents(scoreev).debug("yieldrest").yield(ev);
-						ev = silentEvent.composeEvents(scoreev).yield(ev);
-					} {
-						var padevs;
-						var xscoreev = scoreev.copy;
-						//scoreev[key].debug("midinote");
-						xscoreev[key] = nil;
-						padevs = this.dictStream(scoreev[key]).next(inval);
-						//padevs.debug("padevs");
-						if(padevs.isSequenceableCollection.not) {
-							padevs = [padevs]
+				if(scoreev[key].isNil or: {isRestFunction.(scoreev[key])}) {
+					ev = silentEvent.composeEvents(scoreev).debug("yieldrest").yield(ev);
+					//ev = silentEvent.composeEvents(scoreev).yield(ev);
+				} {
+					var padevs;
+					var xscoreev = scoreev.copy;
+					scoreev[key].debug("midinote (or specified key)");
+					xscoreev[key] = nil;
+					padevs = this.dictStream(scoreev[key]).next(inval);
+					padevs.debug("padevs");
+					if(padevs.isSequenceableCollection.not) {
+						padevs = [padevs]
+					};
+					padevs.collect{ arg padev, x;
+						if(x == ( padevs.size-1 )) {
+							ev = padev.composeEvents(xscoreev).debug("yield1").yield(ev);
+							//ev = padev.composeEvents(xscoreev).yield(ev);
+						} {
+							var sc = xscoreev.copy;
+							sc[\delta] = 0;
+							ev = padev.composeEvents(sc).debug("yield2").yield(ev);
+							//ev = padev.composeEvents(sc).yield(ev);
 						};
-						padevs.collect{ arg padev, x;
-							if(x == ( padevs.size-1 )) {
-								//ev = padev.composeEvents(xscoreev).debug("yield1").yield(ev);
-								ev = padev.composeEvents(xscoreev).yield(ev);
-							} {
-								var sc = xscoreev.copy;
-								sc[\delta] = 0;
-								//ev = padev.composeEvents(sc).debug("yield2").yield(ev);
-								ev = padev.composeEvents(sc).yield(ev);
-							};
-							ev;
-						};
-					}
+						ev;
+					};
 				}
 			}, inval);
 		});

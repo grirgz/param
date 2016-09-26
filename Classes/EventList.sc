@@ -231,7 +231,7 @@ XEventList : List {
 		})
 	}
 
-	*newFrom { arg pat, size=200, inval;
+	*newFrom { arg pat, size=2000, inval;
 		//startTime = 0;
 		if(pat.isKindOf(Pattern)) {
 			var ins = super.new;
@@ -239,22 +239,39 @@ XEventList : List {
 			var str;
 			var absTime = 0;
 			var ev, prev;
+			var first = true;
 			str = pat.asStream;
 			ins.start(absTime);
 			inval = inval ? Event.default;
 			block { arg break;
 				size.do {
 					prev = ev;
-					ev = str.next(inval);
-					if(ev.notNil) {
-						ev.debug("ev");
-						ev[\absTime] = absTime;
-						absTime = absTime + ev[\dur];
-						ins.addEvent(ev);
-						ev.debug("endev");
+					ev = str.next(inval);  // no need to change inval because we are not chaining a pattern
+					if(first) {
+						// Number: handle Rest(x) which return x instead of an event
+						// TODO: but only at the start, should also implement the other case!
+						// maybe there is a better way ?
+						//ins[0].absTime = ev;
+						if(ev.isKindOf(Number)) {
+							absTime = ev;
+							ev.debug("starting rest");
+						} {
+							if( ev.isRest == true or: { ev.midinote == \rest }) {
+								absTime = ev.dur
+							}
+						}
 					} {
-						break.value;
+						if(ev.notNil) {
+							ev.debug("ev");
+							ev[\absTime] = absTime;
+							absTime = absTime + ev[\dur];
+							ins.addEvent(ev);
+							ev.debug("endev");
+						} {
+							break.value;
+						};
 					};
+					first = false;
 				}
 			};
 			//endtime = absTime + prev.use({ ~sustain.value(prev) }); // this is wrong
@@ -337,7 +354,7 @@ XEventLoop {
 
 	init { |argFunc|
 		func = func ?? { "defaultFunc!".postln; this.defaultFunc };
-		lists = XEventList[];
+		lists = List.new; // ggz: should not be XEventList
 
 		this.initTask;
 		this.prepRec;
@@ -635,14 +652,30 @@ XEventLoop {
 	///////// added by ggz
 
 	clear {
-		// FIXME: should update lists, no ?
 		list = List.new;
+		lists = List.new;
 	}
 
 	clock { arg self;
 		^(clock ? TempoClock.default);
 	}
 
+	startRecording {
+		^this.startRec
+	}
+
+	stopRecording {
+		^this.stopRec
+	}
+
+	isRecording_ { arg val;
+		if(val) {
+			this.startRecording;
+		} {
+			this.stopRecording;
+		}
+	
+	}
 }
 
 // not sure if needed

@@ -59,14 +59,16 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		ev.debug("EMBED event");
 		if(ev.type == \pattern) {
 			ev = PatternEvent(ev); // because normal Event have embedInStream which replace parent by Event.default
-			ev.parent.keys.debug("EMBED event parent keys");
+			ev.parent.keys.debug("EMBED event parent keys (pattern)");
 			spawner.par(ev.embedPattern.debug("embedPattern"));
 			spawner.wait(ev.use {ev.dur}); // FIXME: use delta ?
 		} {
 			if(ev.type == \player) {
-				ev = PlayerEvent(ev)
+				ev = PlayerEvent(ev);
+				ev.parent.keys.debug("EMBED event parent keys (player)");
+			} {
+				ev.parent.keys.debug("EMBED event parent keys (normal)");
 			};
-			ev.parent.keys.debug("EMBED event parent keys");
 			spawner.seq(Pseq([
 				ev
 			]))
@@ -947,6 +949,10 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.eventloop.list
 	},
 
+	eventList_: { arg self, val;
+		self.eventloop.list = val;
+	},
+
 	eventLoop: { arg self;
 		self.eventloop;
 	},
@@ -1599,6 +1605,154 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 ));
 
+~kitTimeline = ProtoClass((
+	parent: ~eventTimeline,
+	all: { PresetDictionary.new(\kitTimeline) },
+
+	eventType: \kitTimeline,
+	composeParamPattern: true,
+
+	new: { arg self, name, kit;
+
+		if(self.all[name].notNil) {
+			self = self.all[name];
+			if(kit.notNil) { self.kit = kit };
+		} {
+			self = self.deepCopy;
+			self.prAdd(name).init(kit);
+		};
+	
+		self;
+	},
+
+	init: { arg self, kit;
+
+		self.kit = kit;
+		self.eventloop = self.makeDefaultEventLoop;
+		self.areasize = 10@128;
+		self.proxy = EventPatternProxy.new;
+		self.cursor = CursorTimeline.new;
+		self.cursor.startPosition = self.eventList.startTime;
+
+		// note: this is grid quant, not playing quant
+		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
+		
+	},
+
+	kit_: { arg self, kit;
+		self[\kit] = kit;
+		self.wrapper = ~parPlayerGroup.new(self.kit);
+		self.recorder = ~playerGroupRecorder.new(self.wrapper);
+		self.recorder.eventLoop = self.eventLoop;
+	},
+
+	new_load: { arg self, data;
+		self = self.deepCopy;
+		self.prAdd(data.name).init(data.param);
+		self.eventloop = ~eventloop_loadArchiveData.(data.eventloop);
+		self.eventList.reorder;
+		self.areasize = data.areasize;
+		self.cursor.startPosition = self.eventList.startTime;
+		self.quant_ref = data.quant_ref;
+		self;
+	},
+
+	isRecording: { arg self;
+		self.recorder.isRecording;
+	},
+
+	startRecording: { arg self;
+		self.recorder.startRecording;
+	},
+
+	stopRecording: { arg self;
+		self.recorder.stopRecording;
+	},
+
+	isRecording_: { arg self, val;
+		self.recorder.isRecording = val;
+	},
+
+	asArchiveData: { arg self;
+		(
+			name: self.key,
+			param: self.param,
+			eventloop: ~eventloop_asArchiveData.(self.eventloop),
+			areasize: self.areasize,
+			quant_ref: self.quant_ref,
+			load: { arg me; ~noteTimeline.new_load(me) },
+		)
+	},
+
+	asRefArchiveData: { arg self;
+		(
+			key: self.key,
+			load: { arg me; ~noteTimeline.new(me.key) },
+		)
+	},
+
+	asPattern: { arg self, relStartTime, totalDur;
+		// there is 3 kinds of call to asPattern:
+		// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
+		// - the live code: no startPosition given, defaulting to start event : asPattern
+		// - when embedded in bigger timeline: startPosition is relative to start event : embedInTimeline
+
+		// timeline_pattern take a start time relative to firstEvent
+		// XEventList.relStartTime is relative to firstEvent
+		self.proxy.source = Plazy({
+			var eventlist = self.eventloop.list;
+			var pat;
+			var xrelStartTime, xtotalDur;
+
+			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
+			xtotalDur = totalDur.value ? eventlist.totalDur;
+
+			self.eventloop.list.changed(\cursor, \play);
+			//pat = Pfindur(xtotalDur, ~timeline_pattern.(
+			//	Pn(self.eventloop.list, 1),
+			//	xrelStartTime
+			//));
+
+			pat = Pfindur(xtotalDur, Pembed(
+				Pn(self.eventloop.list, 1),
+				xrelStartTime
+			));
+
+
+			if(self.kit.notNil and: {self.composeParamPattern == true}) {
+				pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
+			};
+
+			//if(self.param.notNil and: {self.composeParamPattern == true}) {
+			//	if(self.eventFactory.mode == \event) {
+			//		"Event mode!".debug;
+			//		pat = self.param.target <> pat;
+			//	} {
+			//		"Normal mode!".debug;
+			//		pat = pat <> self.param.target;
+			//	}
+			//};
+
+			pat;
+		}).repeat(self.repeatCount);
+		self.proxy;
+	},
+
+	edit: { arg self;
+		var x = ~kitTimelinePanelView.new(self);
+		self.editor = { x };
+		x;
+	},
+
+	asView: { arg self;
+		~kitTimelinePanelView.newView(self).makeLayout;
+	},
+
+	getPresetCompileString: { arg self;
+		"~kitTimeline.new(%).eventList = %".format(self.key.asCompileString, self.recorder.getPresetCompileString)
+	},
+));
+
 //////////////////////////////////////////// loading archived data
 ~noteTimeline.all.loadIfNotInitialized;
 ~envTimeline.all.loadIfNotInitialized;
@@ -1854,6 +2008,10 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.track_header;
 	},
 
+	makeTimelineView: { arg self;
+		self.timelineClass.new
+	},
+
 	makeLayout: { arg self;
 		var layout;
 		var tl_layout;
@@ -1873,7 +2031,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		layout.add(vlayout);
 
 		self.save_timeline_properties;
-		timeline = self.timelineClass.new;
+		timeline = self.makeTimelineView;
 		self.timeline = timeline;
 		self.load_timeline_properties;
 		//timeline.areasize = self.pr_areasize.debug("==================seting areasize");
@@ -3298,6 +3456,99 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 );
 
+~kitTimelinePanelView = (
+	parent: ~timelinePanelView,
+
+	new: { arg self, timeline;
+		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+	
+		self.timeline_model = timeline;
+		self.areasize = self.timeline_model.areasize;
+		self.makeWindow;
+	
+		self;
+	},
+
+	newView: { arg self, timeline;
+		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+	
+		self.timeline_model = timeline;
+		self.areasize = self.timeline_model.areasize;
+	
+		self;
+	},
+
+	cursor: { arg self;
+		self.timeline_model.cursor;
+	},
+
+	key: { arg self;
+		self.timeline_model.key;
+	},
+
+	param: { arg self;
+		self.timeline_model.param;
+	},
+
+	makeTimelineView: { arg self;
+		self.timelineClass.new(\kitIndex).viewport_(Rect(0,0,1,1/4))
+	},
+
+	make_header: { arg self;
+		self.header_layout = HLayout(
+			PlayerWrapperView(self.timeline_model).view,
+			self.make_stop_button,
+			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
+			self.make_quant_popup,
+			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
+			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
+				["Rec", Color.black, Color.white],
+				["Rec", Color.black, Color.red],
+			]),
+		);
+		
+		self.header_layout;
+	},
+
+
+	timelineClass: { arg self;
+		MidinoteTimelineView;
+	},
+
+	make_track_header: { arg self, timeline;
+		//self.track_header = View.new;
+		self.ruler_y = MidinoteTimelineRulerView.new;
+		self.track_header = self.ruler_y;
+		self.ruler_y.mimicTimeline(timeline);
+		self.ruler_y.view.minWidth_(50);
+	},
+
+	makeLayout: { arg self;
+		"noteTimelinePanelView.makeLayout".debug;
+		self.layout = VLayout(
+			//HLayout(
+			//	PlayerWrapperView(EventPlayerWrapper(self.timeline_model)).view,
+			//	XSimpleButton.new.label_("yep"),
+			//),
+		"noteTimelinePanelView.makeLayout bef".debug;
+			self.parent[\makeLayout].(self),
+			//self.parent.makeLayout,
+		);
+		"noteTimelinePanelView.makeLayout af".debug;
+		self.timeline.view.onChange(self.eventloop, \list, { 
+			self.refresh;
+		});
+
+		if(self.timeline_model.wrapper.notNil) {
+			self.timeline.eventFactory = { arg pos, nodesize;
+				(absTime: pos.x, kitIndex: pos.y, sustain:nodesize)
+			};
+		};
+		self.layout;
+	},
+
+);
 
 /////////////////////////////////////////////////////////////////////
 

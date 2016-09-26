@@ -57,20 +57,23 @@ TimelineView : SCViewHolder {
 	var createNodeDeferedAction;
 
 	var >eventFactory;
+	var <>posyKey = \midinote;
 
 	
-	*new { arg w, bounds; 
-		^super.new.initParaSpace(w, bounds);
+	*new { arg posyKey; 
+		^super.new.initParaSpace(posyKey);
 	}
 
-	*newFromEventList { arg eventlist, w, bounds;
-		^super.new.initParaSpace(w, bounds).mapEventList(eventlist);
+	*newFromEventList { arg eventlist, posyKey;
+		^super.new.initParaSpace(posyKey).mapEventList(eventlist);
 	}
 
-	initParaSpace { arg w, argbounds;
+	initParaSpace { arg xposyKey;
 		var a, b, rect, relX, relY, pen;
 		//bounds = argbounds ? Rect(20, 20, 400, 200);
 		//bounds = Rect(bounds.left + 0.5, bounds.top + 0.5, bounds.width, bounds.height);
+
+		posyKey = xposyKey ? \midinote;
 
 		//if((win= w).isNil, {
 		//	win = GUI.window.new("ParaSpace",
@@ -267,6 +270,8 @@ TimelineView : SCViewHolder {
 					if ( enableQuant ) {
 						res = res.round(quant.value);
 					};
+					res.x = res.x.clip(0,this.areasize.x-quant.value.x); // FIXME: not sure if -1 should be scaled to something
+					res.y = res.y.clip(0,this.areasize.y-quant.value.y);
 					res;
 				};
 
@@ -304,13 +309,13 @@ TimelineView : SCViewHolder {
 								// FIXME: chosennode seems to be moved and signaled two times
 								debug("======= selected nodes will be moved!!!");
 								//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
-								chosennode.setLoc_(newpos.(chosennode));
+								chosennode.setLoc(newpos.(chosennode));
 								block {|break|
 									selNodes.do({arg node; 
 										if(node === chosennode,{ // if the mousedown box is one of selected
 											break.value( // then move the whole thing ...
 												selNodes.do({arg node; // move selected boxes
-													node.setLoc_(
+													node.setLoc(
 														newpos.(node)
 													);
 													trackAction.value(node, node.spritenum, this.normPointToGridPoint(node.nodeloc));
@@ -359,16 +364,10 @@ TimelineView : SCViewHolder {
 					this.refresh;
 				},{ // no node is selected
 					// find which nodees are selected
+					var rect;
+					rect = this.normRectToGridRect(Rect.fromPoints(startSelPoint, endSelPoint));
 					selNodes = Set.new;
-					paraNodes.do({arg node;
-						var rect;
-						var grect;
-						rect = Rect.fromPoints(startSelPoint, endSelPoint);
-						grect = this.normRectToGridRect(rect);
-						if(grect.containsPoint(node.nodeloc)) {
-							this.selectNode(node);
-						};
-					});
+					this.findNodes(rect).do({ arg x;  this.selectNode(x) });
 					startSelPoint = 0@0;
 					endSelPoint = 0@0;
 					this.refresh;
@@ -396,7 +395,7 @@ TimelineView : SCViewHolder {
 	}
 
 	keyDownActionBase { |me, key, modifiers, unicode, keycode |
-		[key, modifiers, unicode, keycode].debug("key, modifiers, unicode, keycode");
+		[key, modifiers, unicode, keycode].debug("keyDownActionBase: key, modifiers, unicode, keycode");
 
 		// deleting nodes
 
@@ -409,9 +408,13 @@ TimelineView : SCViewHolder {
 		// quantize
 
 		if(key == $q) {
-			var nquant = this.gridPointToNormPoint(quant.value);
+			// TODO: should be implemented by adding a new property to the event, understood by XEventList
+			//			to be able to undo it
+			quant.value.debug("quantize!!");
 			selNodes.do { arg node;
-				node.setLoc = node.nodeloc.round(nquant);
+				//node.nodeloc.debug("before");
+				node.nodeloc = node.nodeloc.round(quant.value);
+				//node.nodeloc.debug("after");
 			}
 		};
 
@@ -1020,6 +1023,7 @@ TimelineView : SCViewHolder {
 	deleteNode { arg node, refresh=true;
 		var del;
 		var nodenr = node.spritenum;
+		if(node.deletable.not) { ^this };
 		del = 0;
 		connections.copy.do({arg conn, i; 
 			if(conn.includes(nodenr), { connections.removeAt((i-del)); del=del+1;})
@@ -1038,7 +1042,7 @@ TimelineView : SCViewHolder {
 		//var x, y;
 		//x = argX+bounds.left;
 		//y = argY+bounds.top;
-		paraNodes[index].setLoc_(Point(argX+0.5, argY+0.5));
+		paraNodes[index].setLoc(Point(argX+0.5, argY+0.5));
 		if(refresh == true, {this.refresh});
 	}
 	
@@ -1046,7 +1050,7 @@ TimelineView : SCViewHolder {
 		//var x, y;
 		//x = argX+bounds.left;
 		//y = argY+bounds.top;
-		paraNodes[index].setLoc_(Point(argX, argY));
+		paraNodes[index].setLoc(Point(argX, argY));
 		switch (action)
 			{\down} 	{downAction.value(paraNodes[index])}
 			{\up} 	{upAction.value(paraNodes[index])}
@@ -1066,7 +1070,7 @@ TimelineView : SCViewHolder {
 		var bounds = this.bounds;
 		x = (argX * bounds.width).round(1);
 		y = (argY * bounds.height).round(1);
-		paraNodes[index].setLoc_(Point(x+0.5, y+0.5));
+		paraNodes[index].setLoc(Point(x+0.5, y+0.5));
 		if(refresh == true, {this.refresh});
 	}
 
@@ -1075,7 +1079,7 @@ TimelineView : SCViewHolder {
 		var bounds = this.bounds;
 		x = (argX * bounds.width).round(1);
 		y = (argY * bounds.height).round(1);
-		paraNodes[index].setLoc_(Point(x+bounds.left, y+bounds.top));
+		paraNodes[index].setLoc(Point(x+bounds.left, y+bounds.top));
 		switch (action)
 			{\down} 	{downAction.value(paraNodes[index])}
 			{\up} 	{upAction.value(paraNodes[index])}
@@ -1104,6 +1108,7 @@ TimelineView : SCViewHolder {
 	}
 
 	setNodeStates_ {arg array; // array with [locs, connections, color, size, string]
+		// FIXME: not maintened
 		var bounds = this.bounds;
 		if(array[0].isNil == false, {
 			paraNodes = List.new; 
@@ -1254,6 +1259,18 @@ TimelineView : SCViewHolder {
 		^nil;
 	}
 
+	findNodes { arg rect;
+		^paraNodes.collect({arg node; 
+			var point = node.origin;
+			node.spritenum.debug("spritnum");
+			[rect, point].debug("findNodes");
+			if(node.selectable and: {rect.containsPoint(point)}, {
+				[node.rect, point].debug("findNode: found!!");
+				node;
+			});
+		}).select(_.notNil);
+	}
+
 	free {
 		paraNodes.reverse.do { arg node;
 			node.free;
@@ -1350,7 +1367,7 @@ TimelineViewNodeBase {
 	var <>xpos;
 	var <>refreshAction;
 	var <>timeKey = \absTime;
-	var <>posyKey = \midinote;
+	var >posyKey = \midinote;
 	var <>lenKey = \sustain;
 	var <>origin;
 	var <>extent;
@@ -1360,6 +1377,7 @@ TimelineViewNodeBase {
 	var <>refresh;
 	var <>controller;
 	var <>selectable = true; // to be or not ignored by findNode
+	var <>deletable = true;
 	*new {
 		^super.new
 	}
@@ -1380,6 +1398,14 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		this.colorSelected = Color.red;
 	}
 
+	posyKey {
+		if(parent.notNil) {
+			^parent.posyKey
+		} {
+			^posyKey
+		}
+	}
+
 	init { arg xparent, nodeidx, event;
 		parent = xparent;
 		spritenum = nodeidx;
@@ -1390,14 +1416,14 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		action = {
 			//[model, origin, extent].debug("node action before");
 			model[timeKey] = origin.x;
-			model[posyKey] = origin.y;
+			model[this.posyKey] = origin.y;
 			model[lenKey] = extent.x;
 		};
 
 		refresh = {
-			origin = Point(model[timeKey], model[posyKey] ? 0);
+			origin = Point(model[timeKey], model[this.posyKey] ? 0);
 			color = ParamView.color_ligth;
-			outlineColor = Color.black;
+			outlineColor = outlineColor ? Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			//[spritenum, origin, extent, color].debug("node refresh");
 		};
@@ -1405,6 +1431,14 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		this.makeUpdater;
 		this.refresh;
 		this.action;
+	}
+
+	selectable {
+		^[\rest, \start, \end].includes(this.model[\type]).not
+	}
+
+	deletable {
+		^[\rest, \start, \end].includes(this.model[\type]).not
 	}
 
 	rect {
@@ -1428,7 +1462,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		this.setLoc(val);
 	}
 
-	setLoc_ { arg val;
+	setLoc { arg val;
 		origin = val;
 		this.action;
 		parent.action;
@@ -1526,12 +1560,12 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		action = {
 			//[model, origin, extent].debug("node action before");
 			model[timeKey] = origin.x;
-			model[posyKey] = origin.y;
+			model[this.posyKey] = origin.y;
 			model[lenKey] = extent.x;
 		};
 
 		refresh = {
-			origin = Point(model[timeKey], model[posyKey]);
+			origin = Point(model[timeKey], model[this.posyKey]);
 			color = ParamView.color_ligth;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
@@ -1550,8 +1584,8 @@ TimelineViewEventListNode : TimelineViewEventNode {
 						// FIXME: should optimize this out of here
 						var maxy = 1;
 						model.timeline.eventList.do { arg ev;
-							if(ev[posyKey].notNil and: { ev[posyKey]  > maxy }) {
-								maxy = ev[posyKey];
+							if(ev[this.posyKey].notNil and: { ev[this.posyKey]  > maxy }) {
+								maxy = ev[this.posyKey];
 							};
 						};
 						preview.areasize.y = maxy + 1;
@@ -1681,12 +1715,12 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 		action = {
 			//[model, origin, extent].debug("node action before");
 			model[timeKey] = origin.x;
-			model[posyKey] = origin.y;
+			model[this.posyKey] = origin.y;
 			model[lenKey] = extent.x;
 		};
 
 		refresh = {
-			origin = Point(model[timeKey], model[posyKey]);
+			origin = Point(model[timeKey], model[this.posyKey]);
 			color = ParamView.color_ligth;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
@@ -1827,12 +1861,12 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		action = {
 			//[model, origin].debug("node action before");
 			model[timeKey] = origin.x;
-			model[posyKey] = origin.y;
+			model[this.posyKey] = origin.y;
 			//model[lenKey] = extent.x;
 		};
 
 		refresh = {
-			var posy = model[posyKey] ? (
+			var posy = model[this.posyKey] ? (
 				if(parent.param.notNil) {
 					parent.param.default.debug("dd====================");
 				} {

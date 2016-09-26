@@ -107,7 +107,7 @@ TimelineRulerView : TimelineView {
 		var pixelRect = view.gridRectToPixelRect(Rect(0,0,1,1));
 		var gridRect = view.gridRectToPixelRect(Rect(0,0,1,1));
 
-		var minsize = 60;
+		var minsize = 20;
 		var bounds = view.bounds;
 		var areasize = view.areasize;
 		var viewport = view.viewport;
@@ -149,7 +149,9 @@ TimelineRulerView : TimelineView {
 				};
 				Pen.line(Point(x,yoffset), Point(x,this.virtualBounds.height));
 				//Pen.stringAtPoint(x.asString, Point(x,10));
-				Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,0), Font.new.size_(8));
+				if(oidx % 2 == 0) {
+					Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,0), Font.new.size_(8));
+				};
 				//Pen.stringAtPoint(" " ++ ( (idx+ ( areasize.x * viewport.origin.x * factor ).asInteger)/factor ).asString, Point(x,0), Font.new.size_(8));
 				Pen.stroke;
 
@@ -356,6 +358,10 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		extent = parent.pixelPointToGridPoint(Point(width,height)); 
 		rect = Rect(point.x-(extent.x/2), 0, extent.x, extent.y*4);
 		^rect;
+	}
+
+	selectable {
+		^true
 	}
 
 	selectNode {
