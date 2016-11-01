@@ -409,6 +409,21 @@ StepEvent : Event {
 		}
 	}
 
+	asCompileString { 
+		^"StepEvent.newFrom((%))".format(
+			this.keys.as(Array).collect({ arg key, x;
+				"%: %".format(key, this[key].asCompileString)
+			}).join(", ")
+		)
+	}
+
+	storeOn { arg stream;
+		stream << this.asCompileString
+	}
+
+	printOn { arg stream;
+		this.storeOn(stream);
+	}
 }
 
 StepEventDef : StepEvent {
@@ -1692,7 +1707,7 @@ PtimeGatePunch : Pattern {
 /////////////////////////////////
 
 Ptask {
-	*new { arg fun, time=1;
+	*new { arg fun, time=0;
 		^Prout({
 			Task(fun).play;
 			Event.silent(time).yield;

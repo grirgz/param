@@ -150,7 +150,18 @@ TimelineRulerView : TimelineView {
 				Pen.line(Point(x,yoffset), Point(x,this.virtualBounds.height));
 				//Pen.stringAtPoint(x.asString, Point(x,10));
 				if(oidx % 2 == 0) {
-					Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,0), Font.new.size_(8));
+					var fontsize = 8;
+					if(oidx % 16 == 0) {
+						if(oidx % 32 == 0) {
+							fontsize = 10;
+							Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,-2), Font.new.size_(fontsize).bold_(true));
+						} {
+							fontsize = 10;
+							Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,-2), Font.new.size_(fontsize));
+						}
+					} {
+						Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,0), Font.new.size_(fontsize));
+					};
 				};
 				//Pen.stringAtPoint(" " ++ ( (idx+ ( areasize.x * viewport.origin.x * factor ).asInteger)/factor ).asString, Point(x,0), Font.new.size_(8));
 				Pen.stroke;

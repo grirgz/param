@@ -110,6 +110,30 @@ XEventList : List {
 		^this[0][\absTime];
 	}
 
+	clone {
+		^this.class.newFrom(this.collect(_.copy))
+	}
+
+	double {
+		var oldendidx;
+		var elcopy = this.copy;
+		elcopy.do( { arg ev, idx;
+			if(ev.type == \start) {
+				// NOOP
+			} {
+				ev = ev.copy;
+				ev[\absTime] = ev[\absTime] + elcopy.last[\absTime];
+				this.add(ev);
+			};
+			if(ev.type == \end) {
+				oldendidx = idx;
+			};
+		} );
+		this.removeAt(oldendidx);
+		this.reorder;
+		this.changed(\refresh);
+	}
+
 	addEvent { |ev|
 		if (array.size == 0) { this.start(ev[\absTime]) };
 		super.add(ev);
@@ -280,7 +304,9 @@ XEventList : List {
 			^ins
 		} {
 			if(pat.isKindOf(SequenceableCollection)) {
-				^super.newFrom(pat.asArray);
+				var ret = super.newFrom(pat.asArray);
+				ret.reorder;
+				^ret;
 			}
 		}
 		
@@ -313,6 +339,8 @@ XEventLoop {
 	var recStartTime, then;
 	var <>keysToRecord;
 	var >clock;
+
+	var <>recordQuant;
 
 	var <verbosity = 1;
 
@@ -479,7 +507,10 @@ XEventLoop {
 
 	// recording events:
 
-	startRec { |instant = false|
+	startRec { |instant = false, quant|
+		if(quant.notNil) {
+			this.recordQuant = quant;
+		};
 
 		if (isRecording) { ^this };
 
@@ -489,8 +520,8 @@ XEventLoop {
 		if (verbosity > 0) {
 			"  %.startRec; // recording list[%].\n".postf(this, list.size);
 		};
-		if (instant) { 
-			list.start(this.getAbsTime);
+		if (instant == true) { 
+			list.start(this.getAbsTime(this.recordQuant));
 			this.getAbsTime.debug("instant start");
 		};
 	}
@@ -501,7 +532,7 @@ XEventLoop {
 		verbosity.debug("XEventLoop: recordEvent: isRecording");
 		if (isRecording) {
 			// autostart at 0
-			if (list.size == 0) { list.start(this.getAbsTime); };
+			if (list.size == 0) { list.start(this.getAbsTime(this.recordQuant)); };
 			//recEvent = this.getTimes;
 			recEvent = event.class.new; // added by ggz to keep event subclass
 			recEvent.putAll(this.getTimes);
@@ -541,11 +572,16 @@ XEventLoop {
 		if (isRecording, { this.stopRec }, { this.startRec(instant) });
 	}
 
-	getAbsTime {
+	getAbsTime { arg quant = 0;
 		//var now = thisThread.seconds;
 		var now = this.clock.beats;
 		//[now, recStartTime].debug("recStartTime: debug before");
-		recStartTime = recStartTime ? now;
+		if(recStartTime.isNil and: { quant != 0 }) {
+			recStartTime = this.clock.nextTimeOnGrid(quant) - quant + Server.default.latency;
+			now = recStartTime;
+		} {
+			recStartTime = recStartTime ? now;
+		};
 		//recStartTime.debug("recStartTime: debug after");
 		^( now - recStartTime );
 	}
@@ -616,6 +652,10 @@ XEventLoop {
 			lists.addFirst(list);
 			numLists = lists.size;
 		}
+	}
+
+	pushList { // beter name
+		this.addList
 	}
 
 	listInfo { ^lists.collect { |l, i| [i, l.size] } }

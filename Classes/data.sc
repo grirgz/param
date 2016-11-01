@@ -626,6 +626,7 @@ BufDef {
 
 	*new { arg name, path, channels=2;
 		if(path.isNil) {
+			// getter
 			if(all.at(name).isNil) {
 				^nil
 			} {
@@ -638,10 +639,12 @@ BufDef {
 				}
 			}
 		} {
+			// setter
 			if(path.isKindOf(Number)) {
 				// path is in fact the frame count
 				if(all.at(name).isNil) {
 					var buf = Buffer.alloc(Server.default, path, channels);
+					buf.key = name;
 					all.put(name, buf);
 					^all.at(name);
 				} {
@@ -650,10 +653,12 @@ BufDef {
 
 			} {
 				if(all.at(name).isNil) {
+					// doesn't exists, define it
 					all.put(name, path);
 					path = this.relpath_to_abspath(path);
-					^BufferPool.get_stereo_sample(client, path);
+					^BufferPool.get_stereo_sample(client, path).key_(name);
 				} {
+					// already defined
 					var path = all.at(name);
 					if(path.isKindOf(Buffer)) {
 						^path;
@@ -664,6 +669,13 @@ BufDef {
 				}
 			}
 		};
+	}
+
+	*loadDialog { arg name;
+		Dialog.openPanel({ arg file;
+			BufDef(name, file)
+		});
+		^nil;
 	}
 
 	*mono { arg name, path;
@@ -810,6 +822,31 @@ ParGroupDef : GroupDef {
 
 
 ///////////////////////// dont know where to put that
+
++ Buffer {
+	saveDialog { arg numFrames=( -1 ), startFrame=0;
+		Dialog.savePanel({ arg file;
+			var format = PathName(file).extension;
+			if(format == "") { format = "FLAC" };
+			format = format.toUpper;
+			this.write(file, format, numFrames:numFrames, startFrame:startFrame);
+		});
+	}
+
+	clear {
+		if(this.key.notNil) {
+			BufDef.all[this.key] = nil;
+		}
+	}
+
+	key {
+		^this.getHalo(\key);
+	}
+
+	key_ { arg val;
+		this.addHalo(\key, val)
+	}
+}
 
 
 + List {

@@ -24,6 +24,9 @@ PlayerWrapper  {
 			{ target.isKindOf(ProtoClass) } {
 				PlayerWrapper_ProtoClass(target)
 			}
+			{ target.isKindOf(StepEvent) } {
+				PlayerWrapper_ProtoClass(target)
+			}
 			{ target.isKindOf(Event) } {
 				PlayerWrapper_Event(target)
 			}

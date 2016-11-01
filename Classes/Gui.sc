@@ -741,7 +741,7 @@ XStaticText : QStaticText {
 
 BasicButton : QButton {
 	// need to access to properties individually and setting them independently of state index (.value)
-	var <color, <label, <background, myValue;
+	var <color, <label, <background, myValue=0;
 
 	color_ { arg val;
 		color = val;

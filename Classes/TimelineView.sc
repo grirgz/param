@@ -942,6 +942,10 @@ TimelineView : SCViewHolder {
 		^node;
 	}
 
+	nodes {
+		^paraNodes
+	}
+
 	initNode { arg node;
 
 	}

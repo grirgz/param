@@ -14,11 +14,15 @@
 		self.parent_self.targets[self.index];
 	},
 
+	target_: { arg self, val;
+		self.parent_self.targets[self.index] = val;
+	},
+
 	play: { arg self;
 		if(self.target.notNil) {
 
 			if(self.stream.isNil) {
-				self.stream = self.target.asStream;
+				self.stream = self.target.asPattern.asStream;
 			};
 			if(self.cur_ev.notNil) { // required for not overwriting player if already playing (too fast pushing)
 				self.cur_ev.release;
@@ -49,6 +53,10 @@
 		// but asPlayerEvent is taken by PlayerWrapper
 		self.raw_ev.debug("asPlayerEvent: raw_ev");
 		self.raw_ev;
+	},
+
+	reboot: { arg self;
+		self.stream = nil;
 	},
 
 	isPlaying: { arg self;
@@ -147,8 +155,13 @@
 	},
 
 	init: { arg self, list;
-		self.targets = list;
 		self.children = SparseArray.new;
+		self.targets = list;
+	},
+
+	targets_: { arg self, val;
+		self[\targets] = val;
+		self.children.do({ arg x; x.reboot });
 	},
 
 	makeListener: { arg self, fun;
@@ -265,6 +278,14 @@
 		self[\priv_eventLoop] = el;
 	},
 
+	eventList: { arg self;
+		self.eventLoop.list
+	},
+
+	eventList_: { arg self, val;
+		self.eventLoop.list = val;
+	},
+
 	startRecording: { arg self;
 		self.controller.remove;
 		self.controller = self.target.makeListener({ arg status, player;
@@ -281,7 +302,7 @@
 				}
 			}
 		});
-		self.eventLoop.startRec;
+		self.eventLoop.startRec(false, self.quant ? Pdef.defaultQuant);
 	},
 
 	isRecording: { arg self;
@@ -301,7 +322,7 @@
 		self.eventLoop.stopRec;
 	},
 
-	getPresetCompileString: { arg self;
+	getPresetCompileStringPbind: { arg self;
 		var ret = "";
 		var lists = (
 		);
@@ -349,6 +370,20 @@
 			ret = "Pseq([ Event.silent(%), % ])".format(self.eventLoop.list[0].dur, ret)
 		};
 		ret = "XEventList.newFrom(%);".format(ret);
+		ret;
+	},
+
+	getPresetCompileString: { arg self;
+		var ret = "";
+		ret = self.eventList.collect({ arg ev;
+			"\t(%),\n".format(
+				// ev.asCompileString return stuff from parent event, so looping manually
+				ev.keys.as(Array).sort.collect({ arg key;
+					"%%: %, ".format("\\",key, ev[key].asCompileString)
+				}).join
+			)
+		}).join;
+		ret = "XEventList.newFrom([\n%]);".format(ret);
 		ret;
 	},
 	

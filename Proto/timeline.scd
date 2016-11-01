@@ -977,7 +977,11 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 	play: { arg self;
 		[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
-		self.asPatternAbs({self.cursor.startPosition}, {self.cursor.endPosition}).play;
+		self.asSelectedPattern.play;
+	},
+
+	asSelectedPattern: { arg self;
+		self.asPatternAbs({self.cursor.startPosition}, {self.cursor.endPosition})
 	},
 
 	stop: { arg self;
@@ -1627,8 +1631,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 	init: { arg self, kit;
 
-		self.kit = kit;
 		self.eventloop = self.makeDefaultEventLoop;
+		self.kit = kit;
 		self.areasize = 10@128;
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
@@ -1640,8 +1644,13 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 
 	kit_: { arg self, kit;
-		self[\kit] = kit;
-		self.wrapper = ~parPlayerGroup.new(self.kit);
+		if(kit.isSequenceableCollection) {
+			self[\kit] = kit;
+			self.wrapper = ~parPlayerGroup.new(self.kit);
+		} {
+			self.wrapper = kit;
+			self[\kit] = { arg self; self.wrapper.targets };
+		};
 		self.recorder = ~playerGroupRecorder.new(self.wrapper);
 		self.recorder.eventLoop = self.eventLoop;
 	},
@@ -2012,6 +2021,22 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.timelineClass.new
 	},
 
+	eventLoop: { arg self;
+		self.timeline_model.eventLoop;
+	},
+
+	eventLoop_: { arg self, val;
+		self.timeline_model.eventLoop = val;
+	},
+
+	eventList: { arg self;
+		self.timeline_model.eventList;
+	},
+
+	eventList_: { arg self, val;
+		self.timeline_model.eventList = val;
+	},
+
 	makeLayout: { arg self;
 		var layout;
 		var tl_layout;
@@ -2080,13 +2105,14 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		sizer = 
 		HLayout(
 			XSimpleButton.new.label_("<").action_({
-				var point = Point(4,0);
-				self.areasize = self.areasize - point;
+				var point = Point(2,1);
+				//self.areasize = self.areasize - point;
+				self.areasize = self.areasize / point;
 				timeline.refresh;
 			}).fixedSize_(Point(10,20)),
 			XSimpleButton.new.label_(">").action_({
-				var point = Point(4,0);
-				self.areasize = self.areasize + point;
+				var point = Point(2,1);
+				self.areasize = self.areasize * point;
 				timeline.refresh;
 			}).fixedSize_(Point(10,20)),
 		).spacing_(0)
@@ -2152,12 +2178,49 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		//self.zoom_fit;
 
 		self.timeline.keyDownAction = ({ arg me, key, modifiers, unicode, keycode;
-			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
 			if(modifiers.isCtrl) {
-				if(keycode == 54) { // ^c
-					~clipTimeline_clipboard = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
+				if(key == $n) { // ^n
+					"new!".debug;
+					self.eventLoop.pushList;
+					self.eventList = self.timeline_model.makeDefaultEventList;
+					self.eventLoop.pushList;
 				};
-				if(keycode == 55) { // ^v
+				if(key == $k) { // ^k
+					"clone!".debug;
+					self.eventLoop.pushList;
+					self.eventList = self.eventLoop.lists.first.clone;
+					self.eventLoop.pushList;
+				};
+				if(key == $d) { // ^d
+					"double!".debug;
+					self.eventLoop.pushList;
+					self.eventList = self.eventLoop.lists.first.clone.double;
+					self.eventLoop.pushList;
+				};
+				if(key == $c) { // ^c
+					var selnodes;
+					var cursor = self.timeline_model.cursor;
+					var startpos, endpos;
+					"copy!".debug;
+					selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
+					if(selnodes.size == 0) {
+						startpos = cursor.startPosition ? self.eventList.startTime;
+						endpos = cursor.endPosition ? self.eventList.endTime;
+						self.timeline.nodes.collect({ arg node;
+							var at = node.model[\absTime];
+							if(at >= startpos and: { at < endpos and: { node.selectable }} ) {
+								self.timeline.selectNode(node)
+							}
+						});
+						selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
+					};
+					if(selnodes.size > 0) {
+						~clipTimeline_clipboard = selnodes;
+					};
+				};
+				if(key == $v) { // ^v
+					"paste!".debug;
 					if(~clipTimeline_clipboard.notNil) {
 						var delta;
 						var first = ~clipTimeline_clipboard.as(Array).inject(nil, { arg a, b; 
@@ -2172,7 +2235,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 							};
 						});
 						first.debug("first");
-						delta = self.timeline.lastGridPos.x - first[\absTime];
+						delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
 						~clipTimeline_clipboard.debug("clipboard");
 						~clipTimeline_clipboard.do({ arg event;
 							var new;

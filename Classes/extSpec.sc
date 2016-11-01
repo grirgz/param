@@ -317,14 +317,24 @@ XNonFloatSpec { // maybe a parent for all others special spec to exclude them wh
 }
 
 XGateSpec : Spec {
+	var <default;
 	*new {
 		^super.new(0,1,\lin,1,0);
+	}
+
+	default_ { arg val;
+		default = val;
 	}
 }
 
 XTrigSpec : Spec {
+	var <default;
 	*new {
 		^super.new(0,1,\lin,1,0);
+	}
+
+	default_ { arg val;
+		default = val;
 	}
 }
 

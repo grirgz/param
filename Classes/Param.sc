@@ -5,6 +5,7 @@ Param {
 	var >label;  // why not in BaseParam ?
 	classvar <>defaultSpec;
 	classvar <>simpleControllers;
+	classvar <>userSimpleControllers;
 	classvar <>defaultUpdateMode = \dependants;
 	classvar <>defaultPollRate = 0.2;
 	classvar <>editFunction;
@@ -524,19 +525,42 @@ Param {
 
 	makeListener { arg action, obj; 
 		// helper method for external to listen to param value changes
+		// WARNING: caller is responsible for freeing the controller !
 		// action.(obj, param)
 		var cont;
 		cont = SimpleController.new(this.controllerTarget);
+		this.class.userSimpleControllers = this.class.userSimpleControllers.add(cont);
 		this.putListener(obj, cont, action);
 		^cont
 	}
 
+	// FIXME: too many methods for the same thing, with fuzzy semantics
+	onChange { arg action, view;
+		// if view is defined, automatically free the controller when closed
+		var cont;
+		cont = SimpleController.new(this.controllerTarget);
+		this.class.userSimpleControllers = this.class.userSimpleControllers.add(cont);
+		this.putListener(view, cont, { arg view, param;
+			if(view.isClosed) {
+				cont.remove;
+			} {
+				action.(view, param);
+			}
+		});
+		^cont
+	}
+
 	*freeAllSimpleControllers {
-		// used to free all controllers when something break in the GUI and you can't access it to remove the controller
+		// used to free all controllers when something break in the GUI and you can't access the controller anymore to remove it
 		simpleControllers.do { arg con;
 			con.remove
 		};
 		simpleControllers = List.new;
+
+		userSimpleControllers.do { arg con;
+			con.remove
+		};
+		userSimpleControllers = List.new;
 	}
 
 	stringGet { arg precision=6;
