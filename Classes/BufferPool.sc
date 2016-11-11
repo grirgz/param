@@ -1,11 +1,18 @@
 BufferPool {
 
 	classvar <counts,<annotations,<paths, <mono_paths, <wavetable_paths;
+	classvar bufferclass;
+
+	*initClass {
+		//bufferclass = BufDef;
+		bufferclass = Buffer;
+		this.reset;
+	}
 
 	*alloc { |client,name,numFrames,numChannels=1,server=nil|
 		var prev,buf;
 		server = server ?? Server.default;
-		buf = Buffer.alloc(server, numFrames, numChannels);
+		buf = bufferclass.alloc(server, numFrames, numChannels);
 		this.retain(buf,client,name);
 		^buf
 	}
@@ -13,7 +20,7 @@ BufferPool {
 	*read { |client,name,path, action=nil, server=nil|
 		var prev,buf;
 		server = server ?? Server.default;
-		buf = Buffer.read(server, path, 0, -1, action);
+		buf = bufferclass.read(server, path, 0, -1, action);
 		this.retain(buf,client,name);
 		^buf
 	}
@@ -21,7 +28,7 @@ BufferPool {
 	*read_mono { |client,name,path, action=nil, server=nil|
 		var prev,buf;
 		server = server ?? Server.default;
-		buf = Buffer.readChannel(server, path, 0, -1, [0], action); //FIXME: can't choose the channel
+		buf = bufferclass.readChannel(server, path, 0, -1, [0], action); //FIXME: can't choose the channel
 		this.retain(buf,client,name);
 		^buf
 	}
@@ -44,7 +51,7 @@ BufferPool {
 		// load signal in wavetable buffer 
 
 		// FIXME: action ?
-		buf = Buffer.alloc(server, size*2, 1);
+		buf = bufferclass.alloc(server, size*2, 1);
 		signal = signal.asWavetable;
 		buf.loadCollection(signal);
 
@@ -60,9 +67,9 @@ BufferPool {
 			f.numChannels;
 		});
 		if(numchan == 1) {
-			buf = Buffer.readChannel(server, path, 0, -1, [0,0], action);
+			buf = bufferclass.readChannel(server, path, 0, -1, [0,0], action);
 		} {
-			buf = Buffer.read(server, path, 0, -1, action); 
+			buf = bufferclass.read(server, path, 0, -1, action); 
 		};
 		this.retain(buf,client,name);
 		^buf
@@ -96,7 +103,6 @@ BufferPool {
 		^buf
 	}
 
-	//TODO: write get_stereo_sample using readChannel [0, 0] if sample is mono
 	*get_mono_sample { |client,path, action=nil, server=nil|
 		var buf = mono_paths.at(path); 
 		//mono_paths.debug("mono_paths");
@@ -167,9 +173,6 @@ BufferPool {
 		})
 	}
 
-	*initClass {
-		this.reset;
-	}
 	*reset {
 		if(counts.notNil,{
 			counts.contents.keysValuesDo({ |buf,count| buf.free });

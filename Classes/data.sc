@@ -121,6 +121,14 @@ ProtoClass : Event {
 		^this[\isEmpty].(this, * args)
 	}
 
+	isEmpty_ { arg ... args;
+		if(this[\isEmpty_].notNil) {
+			this[\isEmpty_].(this, * args)
+		} {
+			this[\isEmpty] = args[0]
+		}
+	}
+
 	render { arg ... args;
 		^this[\render].(this, * args)
 	}
@@ -628,7 +636,12 @@ BufDef {
 		if(path.isNil) {
 			// getter
 			if(all.at(name).isNil) {
-				^nil
+				if(name.asString.contains("/")) {
+					// special constructor with file path as name
+					^BufDef(name, name.asString)
+				} {
+					^nil
+				}
 			} {
 				var path = all.at(name);
 				if(path.isKindOf(Buffer)) {
@@ -641,6 +654,7 @@ BufDef {
 		} {
 			// setter
 			if(path.isKindOf(Number)) {
+				//// buffer in memory only
 				// path is in fact the frame count
 				if(all.at(name).isNil) {
 					var buf = Buffer.alloc(Server.default, path, channels);
@@ -648,10 +662,12 @@ BufDef {
 					all.put(name, buf);
 					^all.at(name);
 				} {
+					// already defined
 					^all.at(name);
 				}
 
 			} {
+				//// file buffer
 				if(all.at(name).isNil) {
 					// doesn't exists, define it
 					all.put(name, path);
@@ -732,15 +748,49 @@ WavetableDef : BufDef {
 
 }
 
-BusDef {
+BusDef : Bus {
 	
 	classvar <>client = \veco;
 	classvar <>all;
 	classvar <>root;
+	var <>key;
 
 	*initClass {
 		all = IdentityDictionary.new;
 		root = "~/Musique/sc/samplekit".standardizePath;
+	}
+
+	*control { arg server, numChannels=1;
+		var alloc;
+		server = server ? Server.default;
+		alloc = server.controlBusAllocator.alloc(numChannels);
+		if(alloc.isNil, {
+			error("Meta_Bus:control: failed to get a control bus allocated."
+				+ "numChannels:" + numChannels + "server:" + server.name);
+			^nil
+		});
+		^super.new(\control, alloc, numChannels, server)
+	}
+
+	*audio { arg server, numChannels=1;
+		var alloc;
+		server = server ? Server.default;
+		alloc = server.audioBusAllocator.alloc(numChannels);
+		if(alloc.isNil, {
+			error("Meta_Bus:audio: failed to get an audio bus allocated."
+			+ "numChannels:" + numChannels + "server:" + server.name);
+			^nil
+		});
+		^super.new(\audio, alloc, numChannels, server)
+	}
+
+	printOn { arg stream;
+		this.storeOn(stream)
+	}
+
+	storeOn { arg stream;
+		//stream << "BusDef(%%)".format("\\", this.key)
+		stream << "BusDef(%%)".format("\\", this.key)
 	}
 
 	*new { arg name, rate, channels;
@@ -760,7 +810,10 @@ BusDef {
 					channels = 1
 				};
 			};
-			bus = Bus.alloc(rate, Server.default, channels);
+			//rate.debug("BusDef.new:rate");
+			bus = super.alloc(rate, Server.default, channels);
+			//bus.debug("BusDef.new:bus");
+			bus.key = name;
 			this.watchServer(Server.default);
 			all.put(name, bus);
 		};
@@ -824,13 +877,25 @@ ParGroupDef : GroupDef {
 ///////////////////////// dont know where to put that
 
 + Buffer {
-	saveDialog { arg numFrames=( -1 ), startFrame=0;
+	saveDialog { arg numFrames=( -1 ), startFrame=0, fun;
 		Dialog.savePanel({ arg file;
 			var format = PathName(file).extension;
-			if(format == "") { format = "FLAC" };
+			if(format == "") { 
+				file = file ++ ".flac";
+				format = "FLAC"
+			};
 			format = format.toUpper;
 			this.write(file, format, numFrames:numFrames, startFrame:startFrame);
+			fun.(file, format);
 		});
+	}
+
+	asCompileString {
+		if(this.key.notNil) {
+			^"BufDef('%')".format(this.key)
+		} {
+			^super.asCompileString;
+		}
 	}
 
 	clear {

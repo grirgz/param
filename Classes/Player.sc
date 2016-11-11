@@ -71,18 +71,6 @@ PlayerWrapper  {
 	// label and key
 	// quant
 
-	quant {
-		^if(this.target.respondsTo(\quant)) {
-			this.target.quant;
-		}
-	}
-
-	quant_ { arg val;
-		if(this.target.respondsTo(\quant)) {
-			this.target.quant = val;
-		}
-	}
-
 	// *could be added
 	// pause
 	// record
@@ -213,8 +201,24 @@ PlayerWrapper_Base {
 		^Param(this.target, \out, XBusSpec()).get;
 	}
 
+	quant {
+		^if(this.target.respondsTo(\quant)) {
+			this.target.quant;
+		}
+	}
+
+	quant_ { arg val;
+		if(this.target.respondsTo(\quant)) {
+			this.target.quant = val;
+		}
+	}
+
 	doWithQuant { arg fun;
-		this.clock.schedAbs(this.clock.nextTimeOnGrid(this.quant), fun)
+		if(this.quant.isNil) {
+			fun.()
+		} {
+			this.clock.schedAbs(this.clock.nextTimeOnGrid(this.quant), fun)
+		}
 	}
 
 	clock {
@@ -331,6 +335,14 @@ PlayerWrapper_Event : PlayerWrapper_Base {
 PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 	// allow a protoclass to act as a PlayerWrapper
 
+	outBus_ { arg val;
+		Param(Message(this.target), \outBus, XBusSpec()).set(val);
+	}
+
+	outBus { arg val;
+		^Param(Message(this.target), \outBus, XBusSpec()).get;
+	}
+
 	play {
 		target.play;
 	}
@@ -343,8 +355,18 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 		^target.isPlaying
 	}
 
+	quant {
+		^this.target.quant;
+	}
+
+	quant_ { arg val;
+		this.target.quant = val;
+	}
+
 	stop {
-		target.stop;
+		this.doWithQuant {
+			target.stop;
+		}
 	}
 
 }

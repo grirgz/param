@@ -739,19 +739,22 @@ Param {
 		// FIXME: mapIndexPopUpMenu does not use updater
 		var pm = view;
 		[keys, this.spec, this.spec.labelList].debug("mapIndexPopUpMenu: whatXXX");
-		if(keys.isNil and: {this.spec.isKindOf(MenuSpec)}) {
-			[keys, this.spec, this.spec.labelList].debug("whatXXX");
-			keys = this.spec.labelList;
+		view.refreshChangeAction = { arg me;
+			if(keys.isNil and: {this.spec.isKindOf(MenuSpec)}) {
+				[keys, this.spec, this.spec.labelList].debug("whatXXX");
+				keys = this.spec.labelList;
+			};
+			if(keys.notNil) {
+				pm.items = keys.asArray; // because PopUpMenu doesn't accept List
+			};
+			me.value = this.get;
 		};
-		if(keys.notNil) {
-			pm.items = keys.asArray; // because PopUpMenu doesn't accept List
-		};
+		pm.refreshChange;
 		pm.action = {
 			this.set(pm.value);
 		};
-		pm.value = this.get; // init, FIXME: maybe should be handled in onChange ?
 		pm.onChange(this.controllerTarget, \set, { arg me;
-			me.value = this.get;
+			me.refreshChange;
 		});
 	}
 
@@ -760,9 +763,13 @@ Param {
 		// TODO: define a listener when the list change
 		var pm = view;
 		debug("mapValuePopUpMenu:1");
-		view.items = this.spec.labelList.asArray;
+		view.refreshChangeAction = {
+			[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
+			view.items = this.spec.labelList.asArray;
+			view.value = this.spec.unmapIndex(this.get);
+		};
+		view.refreshChange;
 		[this.spec, this.get].debug("mapValuePopUpMenu:2");
-		view.value = this.spec.unmapIndex(this.get);
 		view.value.debug("mapValuePopUpMenu:3");
 		pm.action = {
 			view.value.debug("mapValuePopUpMenu:4 (action)");
@@ -772,7 +779,7 @@ Param {
 		pm.onChange(this.controllerTarget, \set, { arg me;
 			// TODO: do not change the whole row when just one value is updated!
 			view.value.debug("mapValuePopUpMenu:6 (onchange)");
-			view.value = this.spec.unmapIndex(this.get);
+			view.refreshChange;
 			view.value.debug("mapValuePopUpMenu:7 (onchange)");
 		});
 	}
@@ -4051,6 +4058,18 @@ CachedBus : Bus {
 				fun.(* [this] ++ args);
 			};
 		});
+	}
+
+	refreshChangeAction_ { arg fun;
+		this.addHalo(\refreshChangeAction, fun)
+	}
+
+	refreshChangeAction {
+		^this.getHalo(\refreshChangeAction)
+	}
+
+	refreshChange {
+		this.getHalo(\refreshChangeAction).(this)
 	}
 }
 

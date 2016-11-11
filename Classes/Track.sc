@@ -60,6 +60,10 @@ TrackDef : ProtoClass {
 
 }
 
+ProtoDef : TrackDef {
+	// just another placeholder
+}
+
 FileSystemProject : TrackDef {
 	classvar <>defaultProject;
 	classvar <>paths;

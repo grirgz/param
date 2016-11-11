@@ -151,7 +151,8 @@ TimelineView : SCViewHolder {
 				npos = this.pixelPointToNormPoint(Point(px,py));
 				gpos = this.pixelPointToGridPoint(Point(px,py));
 				lastPixelPos = Point(px,py);
-				lastGridPos = gpos;
+				lastGridPos = gpos.trunc(quant.value);
+				this.changed(\lastGridPos);
 				[px, py, npos, gpos].debug("mouseDownAction_ px,py, npos, gpos");
 				chosennode = this.findNode(gpos.x, gpos.y);
 				[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
@@ -160,7 +161,7 @@ TimelineView : SCViewHolder {
 
 				case
 					{ mod.isCtrl and: { buttonNumber == 1 } } {
-						this.setEndPosition(gpos.x);
+						this.setEndPosition(gpos.x.trunc(quant.value.x));
 					}
 					{ mod.isCtrl and: { buttonNumber == 0 } } {
 						// create node mode
@@ -705,6 +706,10 @@ TimelineView : SCViewHolder {
 					);
 					this.refresh;
 				}
+			})
+			.put(\lastGridPos, {
+				lastGridPos = timeline.lastGridPos;
+				this.view.refresh;
 			})
 		;
 		// init

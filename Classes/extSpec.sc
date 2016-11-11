@@ -312,11 +312,12 @@ XEnvSpec : Spec {
 }
 
 
-XNonFloatSpec { // maybe a parent for all others special spec to exclude them when making a gui ?
+XNonFloatSpec : Spec { // maybe a parent for all others special spec to exclude them when making a gui ?
+	var <>default;
 
 }
 
-XGateSpec : Spec {
+XGateSpec : XNonFloatSpec {
 	var <default;
 	*new {
 		^super.new(0,1,\lin,1,0);
@@ -327,7 +328,7 @@ XGateSpec : Spec {
 	}
 }
 
-XTrigSpec : Spec {
+XTrigSpec : XNonFloatSpec {
 	var <default;
 	*new {
 		^super.new(0,1,\lin,1,0);
@@ -338,14 +339,14 @@ XTrigSpec : Spec {
 	}
 }
 
-XBufferSpec : Spec {
+XBufferSpec : XNonFloatSpec {
 	// arg: channel count
 
 	default { ^0 } // maybe return an empty buffer
 
 }
 
-XDoneActionSpec : Spec {
+XDoneActionSpec : XNonFloatSpec {
 
 }
 
@@ -357,7 +358,7 @@ XWavetableSpec : XBufferSpec {
 
 }
 
-XBusSpec : Spec {
+XBusSpec : XNonFloatSpec {
 	// arg: channel count
 
 }
@@ -370,7 +371,7 @@ XOutBusSpec : XBusSpec {
 
 }
 
-XBoolSpec : Spec {
+XBoolSpec : XNonFloatSpec {
 	*new { 
 		^super.new;
 	}
@@ -385,7 +386,7 @@ XBoolSpec : Spec {
 
 }
 
-MenuSpec : Spec {
+MenuSpec : XNonFloatSpec {
 	var <>labelList, <>valueList;
 
 	*new { arg list;
@@ -461,7 +462,7 @@ MenuSpec : Spec {
 
 }
 
-ListIndexSpec : Spec {
+ListIndexSpec : XNonFloatSpec {
 	var <>fun;
 	*new { arg fun;
 		^super.new.fun_(fun);
@@ -505,3 +506,4 @@ ListIndexSpec : Spec {
 // ~b.curves;
 // ~b.times;
 // ~b.isMonoSpec;
+

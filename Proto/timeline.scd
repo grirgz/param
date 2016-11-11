@@ -56,18 +56,18 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 
 	embed_event: { arg self, spawner, ev;
-		ev.debug("EMBED event");
+		//ev.debug("EMBED event");
 		if(ev.type == \pattern) {
 			ev = PatternEvent(ev); // because normal Event have embedInStream which replace parent by Event.default
-			ev.parent.keys.debug("EMBED event parent keys (pattern)");
-			spawner.par(ev.embedPattern.debug("embedPattern"));
+			//ev.parent.keys.debug("EMBED event parent keys (pattern)");
+			spawner.par(ev.embedPattern);
 			spawner.wait(ev.use {ev.dur}); // FIXME: use delta ?
 		} {
 			if(ev.type == \player) {
 				ev = PlayerEvent(ev);
-				ev.parent.keys.debug("EMBED event parent keys (player)");
+				//ev.parent.keys.debug("EMBED event parent keys (player)");
 			} {
-				ev.parent.keys.debug("EMBED event parent keys (normal)");
+				//ev.parent.keys.debug("EMBED event parent keys (normal)");
 			};
 			spawner.seq(Pseq([
 				ev
@@ -76,7 +76,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 
 	split_event: { arg self, val;
-		[val].debug("entering ~split_event");
+		//[val].debug("entering ~split_event");
 		if(val.notNil) {
 			val.use {
 				var suboffset = val[\event_dropdur] - (val[\previous_event_dropdur] ? 0);
@@ -125,6 +125,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 						previous_offset = current_offset;
 						current_offset = current_offset + val.dur; 
 						if(
+							// if last event cross the end line
 							current_offset <= drop_time and: {
 								( previous_offset + val.sustain ) > drop_time
 							}
@@ -176,7 +177,9 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 						]
 					).asStream;
 				} {
-					nil
+					//nil
+					"ERROR: Pembed: droptime % is longer than the stream".format(drop_time).postln;
+					Pseq([Event.silent(2)]);
 				}
 			}
 
@@ -908,6 +911,11 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		var eventlist = self.eventList;
 		// currentlty, startPosition and endPosition are in absolute time in the GUI, but will be relative to start event in futur
 		// this code translate absolute in relative (to start event)
+
+		// this is the time between first event absTime and asked start time
+		// because silence before first event can't be counted in Pembed
+		// if startPosition is before first event, relStartTime is negative, not handled by Pembed for the moment
+		
 		relStartTime = {
 			var sp = startPosition.value;
 			if(sp.isNil) {
@@ -916,26 +924,27 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				var xx;
 				xx = ( sp - self.eventList.firstTime ).clip(0,inf);
 				// now relStartTime is independent of start event
-				eventlist.relStartTime max: xx;
-				// now relStartTime is always after start event
+				self.eventList.firstTime max: xx;
+				// now relStartTime is always after first event
 			};
 
 		};
 
+		// total dur is absEnd - absStart (eventlist.totalDur is already that)
 		totalDur = {
-			var rst = relStartTime.value;
+			var absStart = relStartTime.value + self.eventList.firstTime;
 			var ep = endPosition.value;
 			var xx;
 			xx = if(ep.isNil) {
 				//totalDur = self.eventloop.list.totalDur - (startPosition - eventlist.startTime ).clip(0,inf);
-				self.eventloop.list.totalDur - rst;
+				self.eventLoop.list.totalDur;
 			} {
 				//totalDur = endPosition - (startPosition ? eventlist.startTime);
-				(ep - self.eventList.startTime) - rst;
+				(ep - absStart);
 			};
 			// prevent empty (infinite loop)
 			if(xx == 0) {
-				self.eventloop.list.totalDur - rst;
+				2;
 			} {
 				xx
 			}
@@ -1179,6 +1188,10 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			xtotalDur = totalDur.value ? eventlist.totalDur;
 
 			[xrelStartTime, xtotalDur].debug("clip xasPattern: plazy: relstart, totdur");
+			if(xtotalDur <= 0) {
+				"ERROR: totalDur is negative or zero".postln;
+				xtotalDur = 2
+			};
 
 			self.eventloop.list.changed(\cursor, \play);
 			Pfindur(xtotalDur, Pembed(
@@ -1348,6 +1361,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 
 	asPattern: { arg self, relStartTime, totalDur;
+		[relStartTime.value, totalDur.value].debug("relstart, totaldur");
 		// there is 3 kinds of call to asPattern:
 		// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
 		// - the live code: no startPosition given, defaulting to start event : asPattern
@@ -1368,6 +1382,14 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			//	Pn(self.eventloop.list, 1),
 			//	xrelStartTime
 			//));
+
+			[xrelStartTime, relStartTime.value, eventlist.relStartTime].debug("xrel, rel, evrel");
+			[xtotalDur, totalDur.value, eventlist.totalDur].debug("xrel, rel, evrel");
+
+			if(xtotalDur <= 0) {
+				"ERROR: totalDur is negative or zero".postln;
+				xtotalDur = 2
+			};
 
 			pat = Pfindur(xtotalDur, Pembed(
 				Pn(self.eventloop.list, 1),
@@ -1536,6 +1558,12 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 			[xrelStartTime, xtotalDur].debug("xasPattern: prout: relstart, totdur");
 
+			if(xtotalDur <= 0) {
+				"ERROR: totalDur is negative or zero".postln;
+				xtotalDur = 2
+			};
+
+
 			// FIXME: this should be an event
 			if(self.param.notNil and:{ self.param.target.isKindOf(Bus).not }) {
 				// FIXME: bus mode should be generic
@@ -1627,6 +1655,14 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		};
 	
 		self;
+	},
+
+	outBus: { arg self;
+		self.proxy.get(\out)
+	},
+	
+	outBus_: { arg self, val;
+		self.proxy.set(\out, val)
 	},
 
 	init: { arg self, kit;
@@ -1721,15 +1757,28 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			//	Pn(self.eventloop.list, 1),
 			//	xrelStartTime
 			//));
+			if(xtotalDur <= 0) {
+				"ERROR: totalDur is negative or zero".postln;
+				xtotalDur = 2
+			};
+
 
 			pat = Pfindur(xtotalDur, Pembed(
-				Pn(self.eventloop.list, 1),
+				Pn(self.eventloop.list.clone, 1),
 				xrelStartTime
 			));
 
 
 			if(self.kit.notNil and: {self.composeParamPattern == true}) {
 				pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
+				if(self.wrapper.postChain.notNil) {
+					"post!".debug;
+					pat = self.wrapper.postChain <> pat;
+				};
+				if(self.wrapper.preChain.notNil) {
+					"pre!".debug;
+					pat = pat <> self.wrapper.preChain;
+				};
 			};
 
 			//if(self.param.notNil and: {self.composeParamPattern == true}) {
@@ -1757,8 +1806,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		~kitTimelinePanelView.newView(self).makeLayout;
 	},
 
-	getPresetCompileString: { arg self;
-		"~kitTimeline.new(%).eventList = %".format(self.key.asCompileString, self.recorder.getPresetCompileString)
+	presetCompileString: { arg self;
+		"KitTimeline(%).eventList = %".format(self.key.asCompileString, self.recorder.presetCompileString)
 	},
 ));
 
@@ -1769,6 +1818,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 ///////////////////////////////////////////////////////////////////// timeline panel
 
+/////// base timeline panel view
 
 ~timelinePanelView = (
 	new: { arg self, eventloop;
@@ -2286,6 +2336,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		};
 	},
 );
+
+//////////////////
 
 ~clipEditor_OLD = (
 	new: { arg self, model, parent;
@@ -3105,7 +3157,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 ));
 
-//////////////////////////////// Views
+//////////////////////////////// Timeline Panel Views
 
 ~clipTimelinePanelView = (
 	parent: ~timelinePanelView,
@@ -3569,6 +3621,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				["Rec", Color.black, Color.white],
 				["Rec", Color.black, Color.red],
 			]),
+			BasicButton.new.string_("Edit kit").action_({ self.timeline_model.wrapper.edit }),
 		);
 		
 		self.header_layout;

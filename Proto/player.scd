@@ -18,11 +18,26 @@
 		self.parent_self.targets[self.index] = val;
 	},
 
+	preChain: { arg self;
+		self.parent_self.preChain
+	},
+
+	postChain: { arg self;
+		self.parent_self.postChain
+	},
+
 	play: { arg self;
 		if(self.target.notNil) {
 
 			if(self.stream.isNil) {
-				self.stream = self.target.asPattern.asStream;
+				var pat = self.target.asPattern;
+				if(self.preChain.notNil) {
+					pat = self.target.asPattern <> self.preChain;
+				};
+				if(self.postChain.notNil) {
+					pat = self.postChain <> self.target.asPattern;
+				};
+				self.stream = pat.asStream;
 			};
 			if(self.cur_ev.notNil) { // required for not overwriting player if already playing (too fast pushing)
 				self.cur_ev.release;
@@ -162,6 +177,20 @@
 	targets_: { arg self, val;
 		self[\targets] = val;
 		self.children.do({ arg x; x.reboot });
+	},
+
+	reboot: { arg self;
+		self.children.reject(_.isNil).do(_.reboot)
+	},
+
+	preChain_: { arg self, val;
+		self[\preChain] = val;
+		self.reboot;
+	},
+
+	postChain_: { arg self, val;
+		self[\postChain] = val;
+		self.reboot;
 	},
 
 	makeListener: { arg self, fun;
@@ -322,7 +351,7 @@
 		self.eventLoop.stopRec;
 	},
 
-	getPresetCompileStringPbind: { arg self;
+	presetCompileStringPbind: { arg self;
 		var ret = "";
 		var lists = (
 		);
@@ -373,7 +402,7 @@
 		ret;
 	},
 
-	getPresetCompileString: { arg self;
+	presetCompileString: { arg self;
 		var ret = "";
 		ret = self.eventList.collect({ arg ev;
 			"\t(%),\n".format(
