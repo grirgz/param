@@ -320,7 +320,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 
 
 		box.();
-		Pen.color = ParamView.color_ligth;
+		Pen.color = ParamViewToolBox.color_ligth;
 		Pen.fill;
 
 		box.();
@@ -426,6 +426,7 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 }
 
 MidinoteTimelineRulerView : TimelineView {
+	// the piano roll!
 	var <>mygrid; // debug
 	//var >virtualBounds;
 
@@ -445,6 +446,7 @@ MidinoteTimelineRulerView : TimelineView {
 	//	^this.view.bounds;
 	//}
 
+	// old draw function
 	drawFuncSimple {
 		var grid;
 		var bounds = this.bounds;
@@ -459,6 +461,7 @@ MidinoteTimelineRulerView : TimelineView {
 		Pen.stroke;
 	}
 
+	// deprecated by draw_piano_bar
 	drawFuncPiano {
 		var grid;
 		var bounds = this.bounds;
@@ -480,6 +483,19 @@ MidinoteTimelineRulerView : TimelineView {
 		Pen.stroke;
 	}
 
+}
+
+KitTimelineRulerView : TimelineView {
+	// simple y ruler for KitTimeline
+	var <>mygrid; // debug
+
+	*new { arg w, bounds; 
+		^super.new.specialInit;
+	}
+
+	specialInit { arg w, argbounds;
+		this.view.drawFunc = { TimelineDrawer.draw_quad_lines(this) };
+	}
 }
 
 
@@ -588,11 +604,50 @@ TimelineDrawer {
 		Pen.alpha = 1;
 	}
 
+	*draw_quad_lines { arg me;
+		var areasize = me.areasize;
+		//~drawme.(this, areasize);
+		//areasize.debug("drawme: drawFunc: areasize");
+		Pen.use {
+
+			areasize.y.do { arg py;
+				//[this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py))].debug("line");
+				if(py%32 >= 16) {
+
+					Pen.width = 1;
+					Pen.color = Color.gray(alpha:0.7);
+					Pen.fillRect(
+						Rect.fromPoints(
+							me.gridPointToPixelPoint(Point(0,py)),
+							me.gridPointToPixelPoint(Point(areasize.x, py+1))
+						)
+					);
+				};
+				if(py % 4 == 0) {
+					Pen.width = 1;
+					Pen.color = Color.black;
+				} {
+					Pen.width = 1;
+					Pen.color = Color.gray;
+				};
+				Pen.line(me.gridPointToPixelPoint(Point(0,py)),me.gridPointToPixelPoint(Point(areasize.x, py)));
+				Pen.stroke;
+			};
+		}
+	}
 }
 
 MidinoteTimelineView : TimelineView {
+	// this timeline is the same that the basic timeline, with piano background
 	drawGridY {
 		TimelineDrawer.draw_piano_bar(this, 0, 0.2);
+	}
+	
+}
+KitTimelineView : TimelineView {
+	// this timeline is the same that the basic timeline, with piano background
+	drawGridY {
+		TimelineDrawer.draw_quad_lines(this);
 	}
 	
 }

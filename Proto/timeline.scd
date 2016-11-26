@@ -3629,12 +3629,12 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 
 	timelineClass: { arg self;
-		MidinoteTimelineView;
+		KitTimelineView;
 	},
 
 	make_track_header: { arg self, timeline;
 		//self.track_header = View.new;
-		self.ruler_y = MidinoteTimelineRulerView.new;
+		self.ruler_y = KitTimelineRulerView.new;
 		self.track_header = self.ruler_y;
 		self.ruler_y.mimicTimeline(timeline);
 		self.ruler_y.view.minWidth_(50);

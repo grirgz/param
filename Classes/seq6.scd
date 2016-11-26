@@ -299,7 +299,7 @@ ParamProto.init;
 			self.last_pixelpos = Point(px,py);
 			if(chosennode.notNil) {
 				self.selected_event = chosennode.model;
-				edit_button.background_(ParamView.color_ligth)
+				edit_button.background_(ParamViewToolBox.color_ligth)
 			} {
 				self.selected_event = nil;
 				edit_button.background_(Color.white)

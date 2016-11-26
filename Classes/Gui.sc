@@ -1,6 +1,6 @@
 ////////////////////// Basic building blocks
 
-ParamView {
+ParamViewToolBox {
 
 	classvar <>color_dark;
 	classvar <>color_ligth;
@@ -57,7 +57,7 @@ ParamView {
 		);
 		view.layout.margins_(0);
 		view.addUniqueMethod(\mapParam, { arg view, param;
-			param.debug("ParamView.knob.mapParam");
+			param.debug("ParamViewToolBox.knob.mapParam");
 			control.mapParam(param);
 			val.mapParam(param);
 			view;
@@ -83,7 +83,7 @@ ParamView {
 			val
 		);
 		view.addUniqueMethod(\mapParam, { arg view, param;
-			param.debug("ParamView.knob.mapParam");
+			param.debug("ParamViewToolBox.knob.mapParam");
 			label.mapParamLabel(param).align_(\center);
 			control.mapParam(param);
 			val.mapParam(param).align_(\right);
@@ -221,7 +221,7 @@ ListParamLayout {
 			})
 			.states_([
 				["", Color.black, Color.white],
-				["", Color.black, ParamView.color_ligth],
+				["", Color.black, ParamViewToolBox.color_ligth],
 			]);
 		})
 	}
@@ -1373,8 +1373,8 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 			[xview, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			this.selectAction.(this, view);
 		});
-		view.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
-		view.addUniqueMethod(\labelView, { labelView }); // FIXME: why is button wrapped in a layout ?
+		view.addUniqueMethod(\button, { button });
+		view.addUniqueMethod(\labelView, { labelView });
 		view.addUniqueMethod(\selected, { arg me, x; this.selected });
 		view.addUniqueMethod(\selected_, { arg me, x; this.selected = x });
 		this.makeUpdater;

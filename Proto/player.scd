@@ -170,8 +170,20 @@
 	},
 
 	init: { arg self, list;
-		self.children = SparseArray.new;
 		self.targets = list;
+	},
+
+	children: { arg self;
+		self[\children] = SparseArray.new;
+		self[\children];
+	},
+
+	source_: { arg self, val;
+		self.targets = val;
+	},
+
+	source: { arg self;
+		self.targets;
 	},
 
 	targets_: { arg self, val;
@@ -417,3 +429,34 @@
 	},
 	
 ));
+
+~patKitDef = ProtoClass((
+	parent: ~parPlayerGroup,
+	all: { PresetDictionary.new(\patKitDef) },
+	new: { arg self, key, instrs;
+
+		if(self.all[key].isNil) {
+			self = self.deepCopy;
+			if(instrs.notNil) {
+				self.source = instrs;
+			};
+			self.key = key;
+			self.all[key] = self;
+		} {
+			self = self.all[key];
+			if(instrs.notNil) {
+				self.source = instrs;
+			};
+		};
+		
+		self;
+	},
+
+	clear: { arg self;
+		self.all[self.key] = nil;
+		nil;
+	},
+
+));
+
+
