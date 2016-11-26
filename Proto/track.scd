@@ -275,7 +275,7 @@
 			StaticText.new.string_(p.label).onChange(p, \changed, {
 				view.string_(p.label)
 			}),
-		).margins_(0)).background_(ParamView.color_ligth).maxSize_(200@30).mouseDownAction_({ 
+		).margins_(0)).background_(ParamViewToolBox.color_ligth).maxSize_(200@30).mouseDownAction_({ 
 			arg xview, x, y, modifiers, buttonNumber, clickCount;
 			[xview, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			self.select_hook;
@@ -293,15 +293,15 @@
 	selected_: { arg self, val;
 		self.pr_selected = val;
 		if(val == true) {
-			self.view.background_(ParamView.color_dark)
+			self.view.background_(ParamViewToolBox.color_dark)
 		} {
-			self.view.background_(ParamView.color_ligth)
+			self.view.background_(ParamViewToolBox.color_ligth)
 		}
 	},
 
 
 	select_hook: { arg self;
-		self.view.background_(ParamView.color_dark);
+		self.view.background_(ParamViewToolBox.color_dark);
 	},
 );
 

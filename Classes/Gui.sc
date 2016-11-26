@@ -264,7 +264,7 @@ ParamGroupLayout {
 
 	*block { arg label, pg;
 		^VLayout(
-			[StaticText.new.string_(label).background_(ParamView.color_dark), stretch:0],
+			[StaticText.new.string_(label).background_(ParamViewToolBox.color_dark), stretch:0],
 			[this.two_panes(pg, \property), stretch:1],
 		)
 	}
@@ -277,7 +277,7 @@ ParamGroupLayout {
 					views,
 					nil
 				).margins_(0)
-			).background_(ParamView.color_dark), stretch:0],
+			).background_(ParamViewToolBox.color_dark), stretch:0],
 			[this.two_panes(pg, \property), stretch:1],
 		);
 	}
@@ -940,7 +940,7 @@ StepListView : SCViewHolder {
 							myview.value = val;
 						} {
 							var color = view.color;
-							var newcolor = ParamView.color_ligth;
+							var newcolor = ParamViewToolBox.color_ligth;
 							if(color.isSequenceableCollection) {
 								color[0] = newcolor;
 							} {
@@ -1289,7 +1289,7 @@ PlayerWrapperView {
 		} {
 			^[
 				[ str ++ " ▶", Color.black, Color.white ],
-				[ str ++ " ||", Color.black, ParamView.color_ligth ],
+				[ str ++ " ||", Color.black, ParamViewToolBox.color_ligth ],
 			];
 		}
 	}
@@ -1342,8 +1342,8 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 	}
 
 	initPlayerWrapperSelectorView {
-		color_selected = ParamView.color_dark;
-		color_deselected = ParamView.color_ligth;
+		color_selected = ParamViewToolBox.color_dark;
+		color_deselected = ParamViewToolBox.color_ligth;
 	}
 
 	// FIXME: this is dirty, a layout is not a view
@@ -1368,7 +1368,7 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 			}).maxWidth_(50),
 			labelView,
 		);
-		view = View.new.layout_(lay.margins_(0)).background_(ParamView.color_ligth).maxSize_(200@30).mouseDownAction_({ 
+		view = View.new.layout_(lay.margins_(0)).background_(ParamViewToolBox.color_ligth).maxSize_(200@30).mouseDownAction_({ 
 			arg xview, x, y, modifiers, buttonNumber, clickCount;
 			[xview, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			this.selectAction.(this, view);
@@ -1437,7 +1437,7 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 		} {
 			^[
 				[ str ++ " ▶", Color.black, Color.white ],
-				[ str ++ " ||", Color.black, ParamView.color_ligth ],
+				[ str ++ " ||", Color.black, ParamViewToolBox.color_ligth ],
 			];
 		}
 	}

@@ -484,7 +484,7 @@
 	},
 
 	make_knob: { arg self, label;
-		ParamView.label_knob(label).maxWidth_(100);
+		ParamViewToolBox.label_knob(label).maxWidth_(100);
 	},
 
 	refresh_pads: { arg self;
@@ -492,7 +492,7 @@
 			if(self.drumrack.pad_is_empty(x)) {
 				view.background = Color.clear;
 			} {
-				view.background = ParamView.color_ligth;
+				view.background = ParamViewToolBox.color_ligth;
 			}
 		}
 	},

@@ -160,7 +160,7 @@
 				mute_button.label_(
 					"Unmute"
 				)
-				.background_(ParamView.color_ligth)
+				.background_(ParamViewToolBox.color_ligth)
 			} {
 				mute_button.label_(
 					"Mute"
@@ -513,7 +513,7 @@
 			self.last_pixelpos = Point(px,py);
 			if(chosennode.notNil) {
 				self.selected_event = chosennode.model;
-				edit_button.background_(ParamView.color_ligth);
+				edit_button.background_(ParamViewToolBox.color_ligth);
 				if(clickCount == 2) {
 					var ev = self.selected_event;
 					if(ev.notNil) {

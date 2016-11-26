@@ -3200,7 +3200,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	make_header: { arg self;
 		var mute_button = Button.new.states_([
 			[ "Mute", Color.black, Color.white ],
-			[ "Unmute", Color.black, ParamView.color_ligth ],
+			[ "Unmute", Color.black, ParamViewToolBox.color_ligth ],
 		]).onChange(self.track_selector, \selected_index, { arg view;
 			view.value = if(self.timeline_model.is_track_bypassed(self.track_selector.selected_index)) {
 				1
@@ -3902,14 +3902,14 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		View.new.layout_(
 
 			HLayout(
-				//player.asView, //.background_(ParamView.color_dark);
+				//player.asView, //.background_(ParamViewToolBox.color_dark);
 				~onoff.(player),
-				//StaticText.new.string_(name).background_(ParamView.color_dark),
+				//StaticText.new.string_(name).background_(ParamViewToolBox.color_dark),
 				StaticText.new.string_(name),
-				//mixparam.asSlider.orientation_(\horizontal).background_(ParamView.color_dark),
+				//mixparam.asSlider.orientation_(\horizontal).background_(ParamViewToolBox.color_dark),
 				mixparam.asSlider.orientation_(\horizontal),
 			).margins_(2),
-		).background_(ParamView.color_dark),
+		).background_(ParamViewToolBox.color_dark),
 		ParamGroupLayout.two_panes(pg, \property)
 	);
 };
@@ -3922,7 +3922,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		["On", Color.black, Color.white], 
 	] };
 	p.button.fixedSize = 30@20;
-	p.button.background_(ParamView.color_dark);
+	p.button.background_(ParamViewToolBox.color_dark);
 	view;
 };
 

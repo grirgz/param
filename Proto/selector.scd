@@ -2,8 +2,8 @@
 ~view_selector = (
 	// this view selector is based 
 	// this selector version added possibility to regenere the views if they have been removed
-	selected_color: ParamView.color_dark,
-	deselected_color: ParamView.color_ligth,
+	selected_color: ParamViewToolBox.color_dark,
+	deselected_color: ParamViewToolBox.color_ligth,
 	new: { arg self, selector_count=8, action, viewInit;
 		self = self.deepCopy;
 	

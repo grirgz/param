@@ -243,7 +243,7 @@
 							XSimpleButton.new
 								.background_({
 									if(self.selected == x) {
-										ParamView.color_ligth;
+										ParamViewToolBox.color_ligth;
 									} {
 										Color.white;
 									}
@@ -254,7 +254,7 @@
 									self.selected = x;
 
 									self.select_row_buttons[self.old_selected].background_(Color.white);
-									self.select_row_buttons[self.selected].background_(ParamView.color_ligth);
+									self.select_row_buttons[self.selected].background_(ParamViewToolBox.color_ligth);
 								})
 						); 
 						self.select_row_buttons.last,
@@ -264,9 +264,9 @@
 								var color = view.color;
 								val.debug("val");
 								color[0] = if(val.notNil and: {val > 0.5}) {
-									ParamView.color_dark;
+									ParamViewToolBox.color_dark;
 								} {
-									ParamView.color_ligth;
+									ParamViewToolBox.color_ligth;
 								}; 
 								view.color = color;
 							}, { arg view;
@@ -351,8 +351,8 @@
 			self.superlistview.mapStepList(self.superbank.current);
 			self.superlistview.addCursor({ arg view;
 				"-------------------popup cursor!!".debug;
-				//view.background = ParamView.color_ligth;
-				//view.stringColor = ParamView.color_ligth;
+				//view.background = ParamViewToolBox.color_ligth;
+				//view.stringColor = ParamViewToolBox.color_ligth;
 				view.font = Font.default.bold_(true)
 			}, { arg view;
 				"deselex-------------------popup cursor!!".debug;

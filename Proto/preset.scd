@@ -127,7 +127,7 @@ EventClass.presetListMorpherView = { arg pg, size=8, features;
 		// FIXME: use \presets signal of pg to update gui
 		var refresh_button = { arg but, i;
 			if(morpher.getPreset(i).notNil) {
-				but.background = ParamView.color_dark;
+				but.background = ParamViewToolBox.color_dark;
 			} {
 				but.background = Color.white;
 			}
@@ -137,7 +137,7 @@ EventClass.presetListMorpherView = { arg pg, size=8, features;
 			if(morpher.isEnabled(i)) {
 				but.background = Color.white;
 			} {
-				but.background = ParamView.color_ligth;
+				but.background = ParamViewToolBox.color_ligth;
 			}
 		};
 

@@ -903,7 +903,7 @@ Param {
 		var but = Button.new
 			.states_([
 				["", Color.black, Color.white],
-				["", Color.black, ParamView.color_ligth],
+				["", Color.black, ParamViewToolBox.color_ligth],
 			]);
 		but.mapParam(this);
 		^but;
@@ -3607,7 +3607,7 @@ CachedBus : Bus {
 
 }
 
-//SimpleParamView {
+//SimpleParamViewToolBox {
 	//
 	//			new {
 	//				var font;

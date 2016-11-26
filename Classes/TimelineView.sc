@@ -1431,7 +1431,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 
 		refresh = {
 			origin = Point(model[timeKey], model[this.posyKey] ? 0);
-			color = ParamView.color_ligth;
+			color = ParamViewToolBox.color_ligth;
 			outlineColor = outlineColor ? Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			//[spritenum, origin, extent, color].debug("node refresh");
@@ -1575,7 +1575,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 		refresh = {
 			origin = Point(model[timeKey], model[this.posyKey]);
-			color = ParamView.color_ligth;
+			color = ParamViewToolBox.color_ligth;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			label = model.use {  model.label } ? "unnamed";
@@ -1621,8 +1621,8 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		var labelheight = 20;
 		//var preview_background = Color.new255(101, 166, 62);
 		//var label_background = Color.new255(130, 173, 105);
-		var preview_background = ParamView.color_ligth;
-		var label_background = ParamView.color_dark;
+		var preview_background = ParamViewToolBox.color_ligth;
+		var label_background = ParamViewToolBox.color_dark;
 		var virtualBounds_rect;
 
 		pos = this.origin;
@@ -1730,7 +1730,7 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 
 		refresh = {
 			origin = Point(model[timeKey], model[this.posyKey]);
-			color = ParamView.color_ligth;
+			color = ParamViewToolBox.color_ligth;
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			label = model[\label] ? "unnamed";
