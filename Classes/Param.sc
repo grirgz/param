@@ -20,7 +20,7 @@ Param {
 	}
 
 	*new  { arg ...args;
-		"hehehe".debug;
+		//"hehehe".debug;
 		^super.new.init(args)
 	}
 
@@ -277,7 +277,7 @@ Param {
 				wrapper = FunctionParam(*args);
 			},
 			Builder: {
-				Builder.debug("newWrapper");
+				//Builder.debug("newWrapper");
 				wrapper = BuilderParam(*args);
 			},
 			Bus: {
@@ -738,10 +738,10 @@ Param {
 	mapIndexPopUpMenu { arg view, keys;
 		// FIXME: mapIndexPopUpMenu does not use updater
 		var pm = view;
-		[keys, this.spec, this.spec.labelList].debug("mapIndexPopUpMenu: whatXXX");
+		//[keys, this.spec, this.spec.labelList].debug("mapIndexPopUpMenu: whatXXX");
 		view.refreshChangeAction = { arg me;
 			if(keys.isNil and: {this.spec.isKindOf(MenuSpec)}) {
-				[keys, this.spec, this.spec.labelList].debug("whatXXX");
+				//[keys, this.spec, this.spec.labelList].debug("whatXXX");
 				keys = this.spec.labelList;
 			};
 			if(keys.notNil) {
@@ -762,25 +762,25 @@ Param {
 		// FIXME: mapIndexPopUpMenu does not use updater
 		// TODO: define a listener when the list change
 		var pm = view;
-		debug("mapValuePopUpMenu:1");
+		//debug("mapValuePopUpMenu:1");
 		view.refreshChangeAction = {
-			[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
+			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
 			view.items = this.spec.labelList.asArray;
 			view.value = this.spec.unmapIndex(this.get);
 		};
 		view.refreshChange;
-		[this.spec, this.get].debug("mapValuePopUpMenu:2");
-		view.value.debug("mapValuePopUpMenu:3");
+		//[this.spec, this.get].debug("mapValuePopUpMenu:2");
+		//view.value.debug("mapValuePopUpMenu:3");
 		pm.action = {
-			view.value.debug("mapValuePopUpMenu:4 (action)");
+			//view.value.debug("mapValuePopUpMenu:4 (action)");
 			this.set(this.spec.mapIndex(view.value));
-			this.get.debug("mapValuePopUpMenu:5 (action)");
+			//this.get.debug("mapValuePopUpMenu:5 (action)");
 		};
 		pm.onChange(this.controllerTarget, \set, { arg me;
 			// TODO: do not change the whole row when just one value is updated!
-			view.value.debug("mapValuePopUpMenu:6 (onchange)");
+			//view.value.debug("mapValuePopUpMenu:6 (onchange)");
 			view.refreshChange;
-			view.value.debug("mapValuePopUpMenu:7 (onchange)");
+			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
 		});
 	}
 
@@ -2658,7 +2658,7 @@ BuilderParam : StandardConstructorParam {
 	}
 
 	init { arg obj, meth, sp;
-		this.class.debug("init");
+		//this.class.debug("init");
 		target = obj;
 		property = meth;
 		spec = this.toSpec(sp);
@@ -2915,7 +2915,7 @@ ParamGroupDef {
 	loadArchive {
 		var archive;
 		var presets;
-		"load Archive".debug;
+		//"load Archive".debug;
 		archive = this.getArchive;
 		presets = archive[\presets];
 		presets.keysValuesDo { arg k,v;
@@ -2923,7 +2923,7 @@ ParamGroupDef {
 			v = v.collect { arg val;
 				//val.class.debug("val class");
 				if(val.class == Ndef) {
-					"val is a Ndef".debug;
+					//"val is a Ndef".debug;
 					val.server = Server.default;
 					val = val.asCompileString.interpret;
 				};
@@ -2934,7 +2934,7 @@ ParamGroupDef {
 		group.presets = presets;
 		group.morphers = archive[\presets];
 		this.changed(\presets);
-		"end load Archive".debug;
+		//"end load Archive".debug;
 	}
 
 	getArchive {
@@ -3501,20 +3501,20 @@ ParamCombinator {
 	mapModKnob { arg modknob;
 		modknob
 			.onChange(rangeParam.target, \set, { arg view;
-				debug("ranges changz");
+				//debug("ranges changz");
 				rangeParam.do { arg param, x;
-					modknob.set_range(x, param.get.debug("range change X"+x));
+					modknob.set_range(x, param.get);
 				};
 				modknob.refresh;
 			})
 			.onChange(baseParam.target, \set, { arg view;
-				debug("base changz");
+				//debug("base changz");
 				modknob.value = baseParam.normGet;
 			})
 			.onChange(targetParam.target, \set, { arg view;
 				var nval;
 				var gval;
-				debug("target changz");
+				//debug("target changz");
 				gval = targetParam.get;
 				if(gval.isKindOf(Number)) {
 					modknob.midi_value = targetParam.normGet;
@@ -3522,7 +3522,7 @@ ParamCombinator {
 				}
 			})
 			.action_({
-				debug("action changz");
+				//debug("action changz");
 				baseParam.normSet(modknob.value)
 			})
 		;
