@@ -7,41 +7,31 @@ PlayerEvent : Event {
 	*initClass {
 		//Class.initClassTree(Event);
 		var playfun = {
-			var method = ~method.value ? \play;
-			var stopmethod = ~stopMethod.value ? \stop;
+			var method = ~method.value ? \playNow;
+			var stopmethod = ~stopMethod.value ? \stopNow;
 			var args = ~arguments ? [];
 			var receiver = ~receiver.value(currentEnvironment); // should decide if envir style or proto style!
 			var quant;
 			[method, args, receiver, ~disableQuant].debug("player EventType: method, args, receiver");
-			if(~disableQuant != false) {
-				TempoClock.default.sched(0, {
-					// apparently, latency is not needed, but there is a little latency quand meme 
-					//TempoClock.default.sched(Server.default.latency, {
-					if(receiver.isKindOf(NodeProxy)) {
-						// problems with timelines, so stop only with Ndef which else doesn't restart from begining
-						receiver.perform(stopmethod, *args);
-					};
-					quant = receiver.tryPerform(\quant);
-					receiver.tryPerform(\quant_, 0);
-					receiver.quant.debug("receiver quant");
-					receiver.perform(method, *args);
-					receiver.tryPerform(\quant_, quant);
-					quant.debug("in zero quant: old quant");
-					if(method == \play) {
-						TempoClock.default.sched(~sustain.value(currentEnvironment), {
-							receiver.perform(stopmethod, *args);
-						}.inEnvir);
-					};
-				}.inEnvir);
-			} {
+			TempoClock.default.sched(0, {
+				// apparently, latency is not needed, but there is a little latency quand meme 
+				//TempoClock.default.sched(Server.default.latency, {
+				//if(receiver.isKindOf(NodeProxy)) {
+				//	// problems with timelines, so stop only with Ndef which else doesn't restart from begining
+				//	receiver.perform(stopmethod, *args);
+				//};
+				//quant = receiver.tryPerform(\quant);
+				//receiver.tryPerform(\quant_, 0);
+				//receiver.quant.debug("receiver quant");
 				receiver.perform(method, *args);
-				if(method == \play) {
+				//receiver.tryPerform(\quant_, quant);
+				//quant.debug("in zero quant: old quant");
+				if(method == \playNow or: { method == \play }) {
 					TempoClock.default.sched(~sustain.value(currentEnvironment), {
 						receiver.perform(stopmethod, *args);
 					}.inEnvir);
 				};
-			};
-
+			}.inEnvir);
 		};
 
 		Event.addEventType(\player, playfun);
@@ -144,11 +134,12 @@ PatternEvent : Event {
 				};
 			},
 			embedPattern: { arg self;
+				var sus = self.use { self.sustain };
 				if(self.timeline.notNil) {
-					self.timeline.asPattern;
+					Pfindur(sus, self.timeline.asPattern);
 				} {
 					// event_dropdur is the old key, should replace by startOffset
-					Pfindur(self.use {self.sustain}, Pembed(self.pattern, self.startOffset ? self.event_dropdur))
+					Pfindur(sus, Pembed(self.pattern, self.startOffset ? self.event_dropdur))
 				}
 			},
 			receiver: { arg self; // can be used like a \type:\player thanks to this method

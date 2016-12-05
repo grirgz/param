@@ -107,6 +107,14 @@ PlayerWrapper  {
 		wrapper.play;
 	}
 
+	stopNow {
+		wrapper.stopNow;
+	}
+
+	playNow {
+		wrapper.playNow;
+	}
+
 	label {
 		if(label.notNil) {
 			^label;
@@ -183,6 +191,14 @@ PlayerWrapper_Base {
 
 	play {
 		target.play;
+	}
+
+	stopNow {
+		target.stop
+	}
+
+	playNow {
+		target.play
 	}
 
 	togglePlay {
@@ -271,7 +287,6 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		this.target.initMonitor.out ? 0;
 	}
 
-
 	play {
 		// hack: Ndef now have same latency than Pdef
 		//{ // defer implemented in dereference_event
@@ -290,6 +305,28 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 			}
 		};
 		//}.defer(Server.default.latency)
+	}
+
+	playNow {
+		var bundle = MixedBundle.new;
+		if(target.homeServer.serverRunning.not) {
+			("server not running:" + this.homeServer).warn;
+			^this
+		};
+		if(target.bus.rate == \control) { "Can't monitor a control rate bus.".warn; target.monitor.stop; ^this };
+		target.playToBundle(bundle, nil, nil, nil, false, nil, 0, nil);
+		// homeServer: multi client support: monitor only locally
+		bundle.schedSend(target.homeServer, target.clock ? TempoClock.default, 0);
+		target.changed(\play);
+		target.send;
+	}
+
+	stopNow {
+		if(target.getHalo(\stopIsMute) != false) {
+			target.stop(target.fadeTime); // FIXME: how to configure ?
+		} {
+			target.free;
+		}
 	}
 
 	isPlaying {
@@ -319,7 +356,7 @@ PlayerWrapper_Event : PlayerWrapper_Base {
 	}
 
 	label {
-		^target.label ?? "-"
+		^target.label ?? {target.class}
 	}
 
 	isPlaying {

@@ -260,10 +260,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 			Prout({ arg inval;
 				original_eventlist.changed(\cursor, \play);
-				"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
-				"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
-				"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
-				"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
+				"============================= Pembed.embed_eventlist starting routine".debug;
 				crossing_line.collect({ arg x; 
 					x.debug("crossing_line list");
 					x.proto !? { x.proto.keys.debug("-proto") }
@@ -306,6 +303,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 
 
+//// BEGIN deprecated section
 ~dereference_event = { arg spawner, ev; 
 	[spawner, ev].debug("entering ~dereference_event");
 	[ev[\eventType], ev[\nodeType], ev[\type]].debug("eventype, nodetype, type");
@@ -674,50 +672,6 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	})
 };
 
-/////////////////////////////////////// /////////////////////////////////////// timeline utilities
-
-~zoom_fit = { arg timeline;
-	// TODO: use timeline.spec to get initial maxy and miny
-	var maxy=0, miny=127;
-	var range;
-	if(timeline.model.size < 3) { // if empty
-		// NOOP
-	} {
-
-		timeline.model.do { arg ev, x;
-			var midi = ev.use { ev.midinote };
-			[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
-			if(midi.notNil) {
-				[x, midi].debug("zoom_fit, notnil");
-				if(midi > maxy) {
-					maxy = midi;
-				};
-				if(midi < miny) {
-					miny = midi;
-				};
-			}
-		};
-
-		if(( maxy + 1 ) > timeline.areasize.y) {
-			timeline.areasize.y = maxy + 1;
-		};
-
-		[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
-		[timeline.areasize].debug("areasize");
-		range = (maxy-miny+1)/timeline.areasize.y;
-		timeline.viewport.top = (miny/timeline.areasize.y);
-		timeline.viewport.height = range.clip(0.1,1);
-		[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
-
-		//timeline.viewport.top = 42/128;
-		//timeline.viewport.height = ((54-42)/128);
-
-		timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
-
-		timeline.changed(\viewport);
-		timeline.refresh;
-	}
-};
 
 
 /////////////////////////////////////// /////////////////////////////////////// event types
@@ -873,6 +827,54 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		proto = proto.copy;
 		proto.putAll(event);
 		proto;
+	}
+};
+
+///// END deprecated section
+
+
+/////////////////////////////////////// /////////////////////////////////////// timeline utilities
+
+~zoom_fit = { arg timeline;
+	// TODO: use timeline.spec to get initial maxy and miny
+	var maxy=0, miny=127;
+	var range;
+	if(timeline.model.size < 3) { // if empty
+		// NOOP
+	} {
+
+		timeline.model.do { arg ev, x;
+			var midi = ev.use { ev.midinote };
+			[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
+			if(midi.notNil) {
+				[x, midi].debug("zoom_fit, notnil");
+				if(midi > maxy) {
+					maxy = midi;
+				};
+				if(midi < miny) {
+					miny = midi;
+				};
+			}
+		};
+
+		if(( maxy + 1 ) > timeline.areasize.y) {
+			timeline.areasize.y = maxy + 1;
+		};
+
+		[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
+		[timeline.areasize].debug("areasize");
+		range = (maxy-miny+1)/timeline.areasize.y;
+		timeline.viewport.top = (miny/timeline.areasize.y);
+		timeline.viewport.height = range.clip(0.1,1);
+		[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
+
+		//timeline.viewport.top = 42/128;
+		//timeline.viewport.height = ((54-42)/128);
+
+		timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
+
+		timeline.changed(\viewport);
+		timeline.refresh;
 	}
 };
 
@@ -1410,6 +1412,15 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		}).repeat(self.repeatCount);
 		self.proxy;
 	},
+
+	outBus: { arg self;
+		self.proxy.get(\out)
+	},
+	
+	outBus_: { arg self, val;
+		self.proxy.set(\out, val)
+	},
+
 
 	edit: { arg self;
 		var x = ~noteTimelinePanelView.new(self);
@@ -2804,14 +2815,21 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			},
 
 			editSelected: { arg self, model;
-				model.edit;
+				model.timeline.edit;
 			},
 
 			redefineClip: { arg me, curname, model;
+				"redefineClip1".debug;
 				PatternEvent.redefine(model);
-				model[\timeline] = { self.timeline.new(curname) };
+				"redefineClip2".debug;
+				model[\timeline] = { 
+					me.keys.debug("redefineClip3:me.new!!!!!");
+					me.className.new(curname)
+				};
+				"redefineClip3".debug;
 				//model.changed(\refresh);
 				self.parent_model.changed(\refresh);
+				"redefineClip4".debug;
 			},
 		);
 		self.clipFactories_timeline_parent = tl;
@@ -2819,25 +2837,31 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.clipFactories.noteTimeline = (
 			key: 'noteTimeline',
 			parent: tl,
-			className: { ~noteTimeline },
+			className: { topEnvironment[\noteTimeline] },
 		);
 
 		self.clipFactories.clipTimeline = (
 			key: 'clipTimeline',
 			parent: tl,
-			className: { ~clipTimeline },
+			className: { topEnvironment[\clipTimeline] },
 		);
 
 		self.clipFactories.envTimeline = (
 			key: 'envTimeline',
 			parent: tl,
-			className: { ~envTimeline },
+			className: { topEnvironment[\envTimeline] },
 		);
 
 		self.clipFactories.modStepTimeline = (
 			key: 'modStepTimeline',
 			parent: tl,
-			className: { ~modStepTimeline },
+			className: { topEnvironment[\modStepTimeline] },
+		);
+
+		self.clipFactories.kitTimeline = (
+			key: 'kitTimeline',
+			parent: tl,
+			className: { topEnvironment[\kitTimeline] },
 		);
 
 
@@ -2868,6 +2892,9 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 						},
 						\noteTimeline, {
 							clipkey = 'noteTimeline'
+						},
+						\kitTimeline, {
+							clipkey = 'kitTimeline'
 						},
 						\modStepTimeline, {
 							clipkey = 'modStepTimeline'

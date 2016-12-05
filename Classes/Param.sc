@@ -641,7 +641,7 @@ Param {
 	mapStaticText { arg view, precision=6;
 		this.makeSimpleController(view, {}, { arg view, param;
 			{
-				param.type.debug("mapStaticText: update!");
+				//param.type.debug("mapStaticText: update!");
 				view.string = param.stringGet(precision);
 			}.defer;
 		}, nil, nil)
@@ -2540,7 +2540,10 @@ StepEventParam : BaseParam {
 
 	getRaw {
 		var val;
-		val = target[property] ?? { this.default.debug("dddefault") };
+		val = target[property] ?? { 
+			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			this.default
+		};
 		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
 			val = Pdef.nestOff(val); 
 		};

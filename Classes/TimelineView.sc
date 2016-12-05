@@ -1567,6 +1567,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
+			var debug_action;
 			//[model, origin, extent].debug("node action before");
 			model[timeKey] = origin.x;
 			model[this.posyKey] = origin.y;
@@ -1574,6 +1575,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		};
 
 		refresh = {
+			var debug_refresh;
 			origin = Point(model[timeKey], model[this.posyKey]);
 			color = ParamViewToolBox.color_ligth;
 			outlineColor = Color.black;

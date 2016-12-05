@@ -626,10 +626,12 @@ BufDef {
 	classvar <>client = \veco;
 	classvar <>all;
 	classvar <>root;
+	classvar <>paths;
 
 	*initClass {
 		all = IdentityDictionary.new;
 		root = "~/Musique/sc/samplekit".standardizePath;
+		paths = List[root,"~/Musique/sc/reckit".standardizePath];
 	}
 
 	*new { arg name, path, channels=2;
@@ -638,7 +640,8 @@ BufDef {
 			if(all.at(name).isNil) {
 				if(name.asString.contains("/")) {
 					// special constructor with file path as name
-					^BufDef(name, name.asString)
+					name = this.abspath_to_relpath(name);
+					^BufDef(name.asSymbol, name.asString)
 				} {
 					^nil
 				}
@@ -712,10 +715,24 @@ BufDef {
 
 	*relpath_to_abspath { arg path;
 		if(PathName(path).isRelativePath) {
-			^(root +/+ path)
-		} {
-			^path
-		}
+			this.paths.do { arg folder;
+				var abspath = folder +/+ path;
+				if(PathName(abspath).isFile) {
+					^abspath;
+				}
+			}
+		};
+		^path
+	}
+
+	*abspath_to_relpath { arg path;
+		path = path.asString.standardizePath;
+		this.paths.do { arg folder;
+			if(path.beginsWith(folder)) {
+				^path.drop(folder.size+1);
+			};
+		};
+		^path;
 	}
 
 	*freeClient {

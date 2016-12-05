@@ -24,7 +24,16 @@
 		self.outbus = outbus;
 		self.numchannels = numchannels;
 		self.define_mixer;
-		self.asParam(\inbus).set(self.inbus)
+		self.asParam(\inbus).set(self.inbus);
+
+		self.stages = (
+			in: 0,
+			prefader: 1000,
+			prefx: 3000,
+			sends: 1100,
+			postfx: 2000,
+			postfader: 3000,
+		);
 	},
 
 	numChannels: { arg self;
@@ -40,13 +49,13 @@
 	define_mixer: { arg self;
 		//self.proxy = NodeProxy.new;
 		self.proxy = Ndef(\trackMixerDef_+++self.key);
-		self.proxy[0] = {
+		self.proxy[self.stages.in] = {
 			InFeedback.ar(\inbus.kr(self.inbus), self.numchannels);
 		};
-		self.proxy[1000] = \filter -> { arg in;
+		self.proxy[self.stages.prefader] = \filter -> { arg in;
 			in * \prefader.kr(0).dbamp;
 		};
-		self.proxy[2000] = \filter -> { arg in;
+		self.proxy[self.stages.postfader] = \filter -> { arg in;
 			in * \postfader.kr(0).dbamp;
 		};
 		self.proxy.addSpec(\inbus, XBusSpec());
@@ -99,7 +108,7 @@
 		var sendkey = \send+++idx;
 		// if proxy not playing, adding a source will create it on server, so set its group
 		self.proxy.addSpec(sendkey, \unipolar);
-		self.proxy.put(idx+1100, \filter -> { arg in;
+		self.proxy.put(idx+self.stages.sends, \filter -> { arg in;
 			Out.ar(( \sendbus+++idx ).kr(self.zerobus), in * sendkey.kr(0));
 			in;
 		}, now:false);

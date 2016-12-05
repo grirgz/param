@@ -242,6 +242,18 @@
 		};
 		child;
 	},
+	
+	presetCompileString: { arg self, varname="~ppg";
+	"%.targets = [\n%];".format(
+		varname,
+		self.targets.collect({ arg target, idx;
+			var res;
+			res = "\t%,\n".format(target.asCompileString);
+			res;
+		}).join
+	)
+};
+
 ));
 
 ~seqPlayerGroup = ProtoClass((
@@ -448,6 +460,11 @@
 				self.source = instrs;
 			};
 		};
+
+		// make default source for gui editing
+		if(self.source.isNil) {
+			self.source = SparseArray.new;
+		};
 		
 		self;
 	},
@@ -457,6 +474,9 @@
 		nil;
 	},
 
+	presetCompileString: { arg self, varname="~ppg";
+		self.parent[\presetCompileString].(self, "PatKitDef(%)".format(self.key))
+	}
 ));
 
 
