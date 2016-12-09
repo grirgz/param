@@ -126,11 +126,15 @@ FileSystemProject : TrackDef {
 		this.addPath(cwd);
 	}
 
+	*clearLoadingFiles {
+		loadingFiles = List.new;
+	}
+
 	*loadFileTillEnd { arg path;
 		var res = path;
 		var ret;
 		if(loadingFiles.includesEqual(path)) {
-			path.debug("Already loading this file, do nothing");
+			path.debug("Already loading this file, do nothing\nFileSystemProject.clearLoadingFiles; // to reset");
 			^nil;
 		} {
 			if(File.exists(res)) {
@@ -155,9 +159,10 @@ FileSystemProject : TrackDef {
 					thisProcess.nowExecutingPath = oldpath;
 				} { arg e;
 					thisProcess.nowExecutingPath = oldpath;
-					e.debug("ExC");
-					e.throw;
 					res.debug("Error when loading file");
+					e.debug("ExC");
+					loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }));
+					e.throw;
 				};
 				loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }))
 			} {
