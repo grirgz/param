@@ -8,6 +8,7 @@
 		"selector.scd",
 		"eventFactory.scd",
 		"player.scd",
+		"timeline_utils.scd",
 		"timeline.scd",
 		"drumrack.scd",
 		"stepeditor.scd",

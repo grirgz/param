@@ -1,883 +1,4 @@
 
-// "~/code/sc/seco/vlive/demo/param/lib/timeline.scd".standardizePath.load;
-
-
-// why has a gate ? it's time the important thing
-// time should be in seconds
-// maybe i used gate to be able to release early when pattern is stopped ?
-// gate is used because when event is cut by dropdur, the sustain is cut, but the slope should be the same
-	// ^ to verify
-//SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1, gate=1;
-//	var sig;
-//	var in = In.kr(out);
-//	sig = EnvGen.kr(Env([in,level], [time], curve),gate,doneAction:2);
-//	sig.poll(label:"env segment");
-//	Out.kr(out, sig);
-//}).add;
-
-SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
-	var sig;
-	var in = In.kr(out);
-	sig = EnvGen.kr(Env([in,level], [time], curve),1,doneAction:2);
-	sig.poll(label:"env segment");
-	Out.kr(out, sig);
-}).add;
-
-~pembed = ProtoClass((
-	// replace all following function by one class: Pembed, this is the prototype
-
-	new: { arg self, pat, start_offset, stop_offset;
-		// FIXME: stop_offset not used (user should use Pfindur instead)
-		if(pat.isKindOf(Pattern)) {
-			self.embed_pattern(pat, start_offset);
-		} {
-			Pspawner({ arg spawner;
-				self.embed_event(spawner, pat);
-			})
-		};
-		
-	},
-
-	embed_pattern: { arg self, pat, start_offset;
-		Pspawner({ arg spawner;
-			var stream = pat.asStream;
-			[pat, start_offset].debug("timeline_pattern: start");
-
-			stream = self.cut_stream(start_offset, stream);
-
-			if(stream.notNil) {
-				stream.do({ arg ev;
-					self.embed_event(spawner, ev);
-				}, Event.default)
-			};
-
-		})
-		
-	},
-
-	embed_event: { arg self, spawner, ev;
-		//ev.debug("EMBED event");
-		if(ev.type == \pattern) {
-			ev = PatternEvent(ev); // because normal Event have embedInStream which replace parent by Event.default
-			//ev.parent.keys.debug("EMBED event parent keys (pattern)");
-			spawner.par(ev.embedPattern);
-			spawner.wait(ev.use {ev.dur}); // FIXME: use delta ?
-		} {
-			if(ev.type == \player) {
-				ev = PlayerEvent(ev);
-				//ev.parent.keys.debug("EMBED event parent keys (player)");
-			} {
-				//ev.parent.keys.debug("EMBED event parent keys (normal)");
-			};
-			spawner.seq(Pseq([
-				ev
-			]))
-		};
-	},
-
-	split_event: { arg self, val;
-		//[val].debug("entering ~split_event");
-		if(val.notNil) {
-			val.use {
-				var suboffset = val[\event_dropdur] - (val[\previous_event_dropdur] ? 0);
-				if(suboffset == 0) {
-					// we are on a border, do nothing;
-					val.debug("we are on a border, do nothing; ");
-				} {
-					if( suboffset > val.sustain ) {
-						// we are on a rest
-						val[\sustain] = val.sustain - suboffset;
-						val[\dur] = val.dur - suboffset;
-						val[\isRest] = true;
-						val.debug("we are on a rest");
-					} {
-						// we are on a note
-						val[\sustain] = val.sustain - suboffset;
-						val[\dur] = val.dur - suboffset;
-						//val[\event_dropdur] = suboffset;
-						val.debug("we are on a note");
-					};
-				}
-			};
-		};
-	},
-
-	cut_stream: { arg self, drop_time, stream;
-		var current_offset = 0;
-		var previous_offset = 0;
-		var val;
-		var crossing_line = List.new;
-		[drop_time, stream].debug("entering ~stream_dropdur");
-		if(drop_time.notNil and: { drop_time != 0}) {
-
-			while (
-				{
-					current_offset <= drop_time and: {
-						val = stream.next(Event.default);
-						val.notNil;
-					}
-				},
-				{
-					val.use {
-						val[\previous_event_dropdur] = val[\event_dropdur]; // used by ~split_event to not substract sustain two times
-						val.debug("stream_dropdur: val");
-						[val.dur, val.sustain].debug("stream_dropdur: val: dur, sustain");
-						previous_offset = current_offset;
-						current_offset = current_offset + val.dur; 
-						if(
-							// if last event cross the end line
-							current_offset <= drop_time and: {
-								( previous_offset + val.sustain ) > drop_time
-							}
-						) {
-							val[\event_dropdur] = drop_time - previous_offset + (val[\event_dropdur] ? 0);
-							val.debug("stream_dropdur: added to crossing_line");
-							crossing_line.add(val);
-						};
-						[current_offset, previous_offset, val].debug("mangling");
-					}
-				}
-			);
-			// now current_offset point to the end of current event, ie: past the drop_time line
-
-
-			if(val.notNil) {
-				val[\event_dropdur] = drop_time - previous_offset + (val[\event_dropdur] ? 0);
-				val = self.split_event(val.copy);
-
-				crossing_line = crossing_line.collect({ arg ev; 
-					ev = self.split_event(ev.copy);
-					ev[\dur] = 0;
-					ev.debug("stream_dropdur: transformed crossing_line");
-				});
-
-				Pseq(
-					crossing_line ++
-					[
-						val,
-						stream
-					]
-				).asStream;
-			} {
-				// if there is only one event crossing the line but it's not the last to start 
-				// (meaning his dur < sustain), val will be nil, but not crossing_line
-				if(crossing_line.size > 0) {
-					val = crossing_line.pop;
-					val = self.split_event(val.copy);
-					crossing_line = crossing_line.collect({ arg ev; 
-						ev = self.split_event(ev.copy);
-						ev[\dur] = 0;
-						ev.debug("stream_dropdur: transformed crossing_line");
-					});
-					Pseq(
-						crossing_line 
-						++
-						[
-							val;
-						]
-					).asStream;
-				} {
-					//nil
-					"ERROR: Pembed: droptime % is longer than the stream".format(drop_time).postln;
-					Pseq([Event.silent(2)]);
-				}
-			}
-
-			// first yield all the splitted event concurrent with current val, then val, then remaining stream
-
-		} {
-			"~stream_dropdur: return original stream untouched".debug;
-			stream;
-		};
-	},
-
-	embed_eventlist: { arg self, eventlist;
-		// to enable reading before start event or after end event, add a flag to ignore start and end event
-		// will be set by toplevel timeline view
-		var current_offset = 0;
-		var previous_offset = 0;
-		var val;
-		var crossing_line = List.new;
-		var drop_time;
-		var original_eventlist = eventlist;
-		eventlist = eventlist.copy;
-		[eventlist].debug("entering ~eventlist_aspattern");
-
-		eventlist.do { arg ev;
-			if(ev[\type] == \start) {
-				drop_time = ev[\absTime]
-			};
-			if(ev[\playDur].notNil) {
-				ev[\dur] = ev[\playDur];
-			}
-		};
-
-		while (
-			{
-				val = eventlist.removeAt(0);
-				val = val.copy;
-				val.notNil and: {
-					val[\type] != \start;
-				}
-			},
-			{
-				val.use {
-					val.debug("eventlist_aspattern: val");
-					[val.dur, val.sustain].debug("eventlist_aspattern: val: dur, sustain");
-					previous_offset = current_offset;
-					current_offset = current_offset + val.dur; 
-					if(
-						val[\type] != \start and: {
-							val.sustain.notNil and: {
-								( previous_offset + val.sustain ) > drop_time
-							}
-						}
-					) {
-						val[\event_dropdur] = drop_time - previous_offset;
-						val.debug("eventlist_aspattern: added to crossing_line");
-						crossing_line.add(val);
-					};
-					[current_offset, previous_offset, val].debug("mangling");
-				}
-			}
-		);
-		// now current_offset point to the end of current event, ie: past the drop_time line
-		// now val is the start event
-
-
-		if(val.notNil) {
-
-			crossing_line = crossing_line.collect({ arg ev; 
-				ev = self.split_event(ev.copy);
-				ev[\dur] = 0; // every event start at the same time, \start event hold the delta to next event
-				ev.debug("eventlist_aspattern: transformed crossing_line");
-			});
-
-			val.use {
-				val = val.copy;
-				val[\type] = \rest;
-			};
-
-			Prout({ arg inval;
-				original_eventlist.changed(\cursor, \play);
-				"============================= Pembed.embed_eventlist starting routine".debug;
-				crossing_line.collect({ arg x; 
-					x.debug("crossing_line list");
-					x.proto !? { x.proto.keys.debug("-proto") }
-				});
-				[val].collect({ arg x; 
-					x.debug("val list");
-					x.proto !? { x.proto.keys.debug("-proto") }
-				});
-				eventlist.collect({ arg x; 
-					x.debug("eventlist list");
-					x.proto !? { x.proto.keys.debug("-proto") }
-				});
-				( original_eventlist.endTime - original_eventlist.startTime ).debug("handling end event in pfindur");
-				Pfindur(original_eventlist.endTime - original_eventlist.startTime, Pseq(
-					( crossing_line ++ [val] ++ eventlist ).collect({ arg x; Pev(x) })
-				)).embedInStream(inval);
-				//original_eventlist.changed(\cursor, \stop);
-			})
-		} {
-			"should never get there".throw;
-			// if there is only one event crossing the line but it's not the last to start 
-			// (meaning his dur < sustain), val will be nil, but not crossing_line
-			//if(crossing_line.size > 0) {
-			//	val = crossing_line.pop;
-			//	val = ~split_event.(val.copy);
-			//	crossing_line = crossing_line.collect({ arg ev; 
-			//		ev = ~split_event.(ev.copy);
-			//		ev[\dur] = 0;
-			//		ev.debug("eventlist_aspattern: transformed crossing_line");
-			//	});
-			//	Pseq(
-			//		crossing_line ++ [ val, ];
-			//	);
-			//} {
-			//	nil
-			//}
-		}
-	},
-));
-
-
-
-//// BEGIN deprecated section
-~dereference_event = { arg spawner, ev; 
-	[spawner, ev].debug("entering ~dereference_event");
-	[ev[\eventType], ev[\nodeType], ev[\type]].debug("eventype, nodetype, type");
-	switch(ev[\eventType] ? ev[\nodeType] ? ev[\type],
-		\pattern, {
-			var pat;
-			debug("dereference_event: sub pattern type");
-			pat = ev.pattern ?? (ev[\key] !? { Pdef(ev[\key]) } );
-			if(ev[\pattern].isNil) {
-				pat.debug("pat!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-			};
-			spawner.par(Pfindur(ev[\sustain], ~timeline_pattern.(pat, ev[\event_dropdur])));
-			spawner.wait(ev[\dur]);
-		},
-		\timeline, {
-			var sustain, timeline, event_dropdur, dur;
-			ev.use {
-				sustain = ev.sustain;
-				timeline = ev.timeline;
-				event_dropdur = ev.event_dropdur;
-				dur = ev.dur;
-			};
-			ev.debug("dereference_event: timeline!!!!");
-			spawner.par(Pfindur( sustain, timeline.xasPattern(event_dropdur) ));
-			spawner.wait(dur);
-		},
-		\eventlist, {
-			var sustain, eventlist, event_dropdur, dur;
-			ev.use {
-				sustain = ev.sustain;
-				eventlist = ev.eventlist;
-				event_dropdur = ev.event_dropdur;
-				dur = ev.dur;
-			};
-			ev.debug("dereference_event: eventlist!!!!");
-			//ev.sustain.debug("dereference_event: eventlist!!!! sustain");
-			//ev.eventlist.debug("dereference_event: eventlist!!!! eventlist");
-			//ev.event_dropdur.debug("dereference_event: eventlist!!!! event_dropdur");
-			//		~timeline_pattern.(
-			//			~eventlist_aspattern.(ev.eventlist),
-			//		).play;
-			//		"________".debug;
-			spawner.par(Pfindur(
-				sustain, 
-				~timeline_pattern.(
-					~eventlist_aspattern.(eventlist),
-					event_dropdur,
-				)
-			));
-			spawner.wait(dur);
-		},
-		\eventenv, {
-			var sustain, eventlist, event_dropdur, dur;
-			ev.use {
-				sustain = ev.sustain;
-				eventlist = ev.eventlist;
-				event_dropdur = ev.event_dropdur;
-				dur = ev.dur;
-			};
-			ev.debug("dereference_event: eventenv!!!!");
-			spawner.par(Pfindur(
-				sustain, 
-				~eventenv_aspattern.(eventlist, event_dropdur),
-			));
-			spawner.wait(dur);
-		},
-		//\player, {
-		//	spawner.seq(Pseq([
-		//		ev
-		//	]))
-		//},
-		{
-			debug("dereference_event: simple event type");
-			spawner.seq(Pseq([
-				ev
-			]))
-		}
-	);
-
-};
-
-~split_event = { arg val;
-	[val].debug("entering ~split_event");
-	val.use {
-		if(val.notNil) {
-			var suboffset = val[\event_dropdur] - (val[\previous_event_dropdur] ? 0);
-			if(suboffset == 0) {
-				// we are on a border, do nothing;
-				val.debug("we are on a border, do nothing; ");
-			} {
-				if( suboffset > val.sustain ) {
-					// we are on a rest
-					val[\sustain] = val.sustain - suboffset;
-					val[\dur] = val.dur - suboffset;
-					val[\isRest] = true;
-					val.debug("we are on a rest");
-				} {
-					// we are on a note
-					val[\sustain] = val.sustain - suboffset;
-					val[\dur] = val.dur - suboffset;
-					//val[\event_dropdur] = suboffset;
-					val.debug("we are on a note");
-				};
-			}
-		};
-	};
-};
-
-~stream_dropdur = { arg drop_time, stream;
-	var current_offset = 0;
-	var previous_offset = 0;
-	var val;
-	var crossing_line = List.new;
-	[drop_time, stream].debug("entering ~stream_dropdur");
-	if(drop_time.notNil and: { drop_time != 0}) {
-
-		while (
-			{
-				current_offset <= drop_time and: {
-					val = stream.next(Event.default);
-					val.notNil;
-				}
-			},
-			{
-				val.use {
-					val[\previous_event_dropdur] = val[\event_dropdur]; // used by ~split_event to not substract sustain two times
-					val.debug("stream_dropdur: val");
-					[val.dur, val.sustain].debug("stream_dropdur: val: dur, sustain");
-					previous_offset = current_offset;
-					current_offset = current_offset + val.dur; 
-					if(
-						current_offset <= drop_time and: {
-							( previous_offset + val.sustain ) > drop_time
-						}
-					) {
-						val[\event_dropdur] = drop_time - previous_offset + (val[\event_dropdur] ? 0);
-						val.debug("stream_dropdur: added to crossing_line");
-						crossing_line.add(val);
-					};
-					[current_offset, previous_offset, val].debug("mangling");
-				}
-			}
-		);
-		// now current_offset point to the end of current event, ie: past the drop_time line
-
-
-		if(val.notNil) {
-			val[\event_dropdur] = drop_time - previous_offset + (val[\event_dropdur] ? 0);
-			val = ~split_event.(val.copy);
-
-			crossing_line = crossing_line.collect({ arg ev; 
-				ev = ~split_event.(ev.copy);
-				ev[\dur] = 0;
-				ev.debug("stream_dropdur: transformed crossing_line");
-			});
-
-			Pseq(
-				crossing_line ++
-				[
-					val,
-					stream
-				]
-			).asStream;
-		} {
-			// if there is only one event crossing the line but it's not the last to start 
-			// (meaning his dur < sustain), val will be nil, but not crossing_line
-			if(crossing_line.size > 0) {
-				val = crossing_line.pop;
-				val = ~split_event.(val.copy);
-				crossing_line = crossing_line.collect({ arg ev; 
-					ev = ~split_event.(ev.copy);
-					ev[\dur] = 0;
-					ev.debug("stream_dropdur: transformed crossing_line");
-				});
-				Pseq(
-					crossing_line 
-					++
-					[
-						val;
-					]
-				).asStream;
-			} {
-				nil
-			}
-		}
-
-		// first yield all the splitted event concurrent with current val, then val, then remaining stream
-
-	} {
-		"~stream_dropdur: return original stream untouched".debug;
-		stream;
-	};
-};
-
-~eventlist_aspattern = { arg eventlist;
-	// used only by events of type \eventlist (so not timelines)
-	// to enable reading before start event or after end event, add a flag to ignore start and end event
-	// will be set by toplevel timeline view
-	var current_offset = 0;
-	var previous_offset = 0;
-	var val;
-	var crossing_line = List.new;
-	var drop_time;
-	var original_eventlist = eventlist;
-	eventlist = eventlist.copy;
-	[eventlist].debug("entering ~eventlist_aspattern");
-
-	eventlist.do { arg ev;
-		if(ev[\type] == \start) {
-			drop_time = ev[\absTime]
-		};
-		if(ev[\playDur].notNil) {
-			ev[\dur] = ev[\playDur];
-		}
-	};
-
-	while (
-		{
-			val = eventlist.removeAt(0);
-			val = val.copy;
-			val.notNil and: {
-				val[\type] != \start;
-			}
-		},
-		{
-			val.use {
-				val.debug("eventlist_aspattern: val");
-				[val.dur, val.sustain].debug("eventlist_aspattern: val: dur, sustain");
-				previous_offset = current_offset;
-				current_offset = current_offset + val.dur; 
-				if(
-					val[\type] != \start and: {
-						val.sustain.notNil and: {
-							( previous_offset + val.sustain ) > drop_time
-						}
-					}
-				) {
-					val[\event_dropdur] = drop_time - previous_offset;
-					val.debug("eventlist_aspattern: added to crossing_line");
-					crossing_line.add(val);
-				};
-				[current_offset, previous_offset, val].debug("mangling");
-			}
-		}
-	);
-	// now current_offset point to the end of current event, ie: past the drop_time line
-	// now val is the start event
-
-
-	if(val.notNil) {
-
-		crossing_line = crossing_line.collect({ arg ev; 
-			ev = ~split_event.(ev.copy);
-			ev[\dur] = 0; // every event start at the same time, \start event hold the delta to next event
-			ev.debug("eventlist_aspattern: transformed crossing_line");
-		});
-
-		val.use {
-			val = val.copy;
-			val[\type] = \rest;
-		};
-
-		Prout({ arg inval;
-			original_eventlist.changed(\cursor, \play);
-			"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
-			"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
-			"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
-			"============================= FUCKING OALAPLAY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".debug;
-			crossing_line.collect({ arg x; 
-				x.debug("crossing_line list");
-				x.proto !? { x.proto.keys.debug("-proto") }
-			});
-			[val].collect({ arg x; 
-				x.debug("val list");
-				x.proto !? { x.proto.keys.debug("-proto") }
-			});
-			eventlist.collect({ arg x; 
-				x.debug("eventlist list");
-				x.proto !? { x.proto.keys.debug("-proto") }
-			});
-			( original_eventlist.endTime - original_eventlist.startTime ).debug("handling end event in pfindur");
-			Pfindur(original_eventlist.endTime - original_eventlist.startTime, Pseq(
-				( crossing_line ++ [val] ++ eventlist ).collect({ arg x; Pev(x) })
-			)).embedInStream(inval);
-			//original_eventlist.changed(\cursor, \stop);
-		})
-	} {
-		"should never get there".throw;
-		// if there is only one event crossing the line but it's not the last to start 
-		// (meaning his dur < sustain), val will be nil, but not crossing_line
-		//if(crossing_line.size > 0) {
-		//	val = crossing_line.pop;
-		//	val = ~split_event.(val.copy);
-		//	crossing_line = crossing_line.collect({ arg ev; 
-		//		ev = ~split_event.(ev.copy);
-		//		ev[\dur] = 0;
-		//		ev.debug("eventlist_aspattern: transformed crossing_line");
-		//	});
-		//	Pseq(
-		//		crossing_line ++ [ val, ];
-		//	);
-		//} {
-		//	nil
-		//}
-	}
-};
-
-~eventenv_aspattern = { arg eventenv, relStartTime, property;
-	///////////// Abandoned construction site
-	"abandoned".throw;
-
-	//// drop_time is relative to start event
-	//// currently, doesnt support embedding others timelines or different event types
-	//var str;
-	//var first;
-	//var key;
-	////key = eventenv.param.target.class, eventenv.param.property
-	//property = property ? \midinote;
-	//relStartTime = relStartTime ? eventenv.relStartTime;
-	//str = ~stream_dropdur.(relStartTime, Pn(eventenv));
-	//first = str.next(Event.default);
-	//str = Prout({
-	//			Pbind(
-	//				\type, \bus,
-	//				\array, [1],
-	//				\dur, Pseq([0],1),
-	//				\out, BusDef(self.key, \control),
-	//			).embedInStream(inval);
-
-	//			pat = Pbind(
-	//				\instrument, \env_segment,
-	//				\time, Pfunc({ arg ev; ev.debug("ev!!!!!!!!!!!!!!!!!!"); ev[\dur] }),
-	//				\level, Pfunc({ arg ev; ev[property] ? default }),
-	//				\curve, 0,
-	//				\out, BusDef(self.key, \control),
-	//			).trace(prefix:"MAIIIIIIIIIIIIIIIIIIIIIIII") 
-	//			<> str;
-	//			pat.embedInStream(inval)
-	//			
-
-	//});
-	//Pfindur(eventenv.endTime, str);
-};
-
-
-~timeline_pattern = { arg pat, drop_time, model, is_toplevel=false;
-	// take a pattern in so no access to startTime
-	// cut and dereference events
-	// when dereferencing, the crossings patterns are cut again recursively
-	Pspawner({ arg spawner;
-		var stream = pat.asStream;
-		[pat, drop_time].debug("timeline_pattern: start");
-
-		stream = ~stream_dropdur.(drop_time, stream);
-
-		if(stream.notNil) {
-
-			//model.changed(\cursor, \play);
-			stream.do({ arg ev;
-				ev.debug("timeline_pattern");
-				~dereference_event.(spawner, ev);
-				//spawner.wait(ev[\dur]);
-			}, Event.default)
-		};
-
-	})
-};
-
-
-
-/////////////////////////////////////// /////////////////////////////////////// event types
-
-~event_get_label = { arg ev;
-	var label;
-	var receiver = ev[\receiver].value;
-	label = if(receiver.notNil) {
-		if(receiver.isKindOf(PlayerWrapper)) {
-			receiver = receiver.target;
-		};
-		if(
-			receiver.isKindOf(Ndef) or: {
-				receiver.isKindOf(Pdef)
-			}
-		) {
-			"% %".format(receiver.class, receiver.key);
-		} {
-			receiver.asCompileString; // FIXME: could be very long
-		}
-	} {
-		var type;
-		//type =  ev[\nodeType] ? ev[\type] ? ev[\eventType] ?
-		if(ev[\eventType] == \pattern) {
-			if(ev[\pattern].isKindOf(Pdef)) {
-				"% %".format(ev[\pattern].class, ev[\pattern].key);
-			} {
-				if(ev[\key].notNil) {
-					"Pdef %".format(ev[\key])
-				}
-			}
-		};
-		if(ev[\type] == \timeline) {
-			ev.timeline.label
-		}
-	};
-	label = label ?? { "No Name" };
-	label
-};
-
-~event_type_player = (
-	parent: Event.default,
-	label: ~event_get_label,
-	type: \player,
-);
-
-~event_type_timeline = (
-	parent: Event.default,
-	label: ~event_get_label,
-	type: \timeline,
-	eventlist: { arg self;
-		self.timeline.eventList
-	},
-);
-
-~event_type_pattern = (
-	parent: Event.default,
-	label: ~event_get_label,
-	eventType: \pattern,
-	type: \pattern,
-
-	key: { arg self;
-		if(self.receiver.notNil) {
-			self.receiver.value.key
-		}
-	},
-
-	pattern: { arg self;
-		if(self.key.notNil) {
-			Pdef(self.key);
-		};
-	},
-
-	isEmbeddable: true,
-
-	embedEvent: { arg self, inval;
-		self.pattern.embedInStream(inval);
-	}
-);
-
-~clear_event_type = { arg ev;
-	ev[\isEmbeddable] = nil;
-	ev[\embedEvent] = nil;
-	ev[\pattern] = nil;
-	ev[\key] = nil;
-	ev[\type] = nil;
-	ev[\eventType] = nil;
-	ev[\label] = nil;
-	ev[\eventlist] = nil;
-	ev;
-};
-
-~event_type_eventlist = (
-	parent: Event.default,
-	label: ~event_get_label,
-	type: \eventlist,
-	nodeType: \eventlist,
-
-	eventlist: { arg self;
-		self.eventloop.list;
-	},
-
-	pattern: { arg self;
-		~eventlist_aspattern.(self.eventlist);
-	},
-
-	isEmbeddable: true,
-
-	embedEvent: { arg self, inval;
-		self.pattern.embedInStream(inval);
-	}
-);
-
-~event_type_eventenv = ~event_type_eventlist.copy.putAll((
-	nodeType: \eventenv,
-	pattern: { arg self;
-		~eventenv_aspattern.(self.eventlist);
-	},
-));
-
-//~event_type_eventenv = (
-//	// not used, ~event_type_eventlist used currently
-//	parent: Event.default,
-//	label: ~event_get_label,
-//	type: \bus,
-//	nodeType: \eventlist,
-//
-//	eventlist: { arg self;
-//		self.eventloop.list;
-//	},
-//
-//	pattern: { arg self;
-//		~eventlist_aspattern.(self.eventlist);
-//	},
-//
-//	isEmbeddable: true,
-//
-//	embedEvent: { arg self, inval;
-//		self.pattern.embedInStream(inval);
-//	}
-//);
-
-//Event.partialEvents.keys
-
-
-~mkevent = { arg event;
-	var proto = event.proto;
-	if(proto.isNil) {
-		event
-	} {
-		event = event.copy;
-		event[\proto] = nil;
-		proto = proto.copy;
-		proto.putAll(event);
-		proto;
-	}
-};
-
-///// END deprecated section
-
-
-/////////////////////////////////////// /////////////////////////////////////// timeline utilities
-
-~zoom_fit = { arg timeline;
-	// TODO: use timeline.spec to get initial maxy and miny
-	var maxy=0, miny=127;
-	var range;
-	if(timeline.model.size < 3) { // if empty
-		// NOOP
-	} {
-
-		timeline.model.do { arg ev, x;
-			var midi = ev.use { ev.midinote };
-			[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
-			if(midi.notNil) {
-				[x, midi].debug("zoom_fit, notnil");
-				if(midi > maxy) {
-					maxy = midi;
-				};
-				if(midi < miny) {
-					miny = midi;
-				};
-			}
-		};
-
-		if(( maxy + 1 ) > timeline.areasize.y) {
-			timeline.areasize.y = maxy + 1;
-		};
-
-		[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
-		[timeline.areasize].debug("areasize");
-		range = (maxy-miny+1)/timeline.areasize.y;
-		timeline.viewport.top = (miny/timeline.areasize.y);
-		timeline.viewport.height = range.clip(0.1,1);
-		[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
-
-		//timeline.viewport.top = 42/128;
-		//timeline.viewport.height = ((54-42)/128);
-
-		timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
-
-		timeline.changed(\viewport);
-		timeline.refresh;
-	}
-};
-
 ///////////////////////////////////////////////////////////////////// timeline objects
 
 
@@ -1075,6 +196,64 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		))
 		
 	},
+
+	refCompileString: { arg self, name;
+		"to be overloaded"	
+	},
+
+	presetCompileString: { arg self;
+		"%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList_presetCompileString(self.eventList))
+	},
+
+	eventList_presetCompileString: { arg self, eventList;
+		var ret = "";
+		ret = eventList.collect({ arg ev;
+			"\t(%),\n".format(
+				// ev.asCompileString return stuff from parent event, so looping manually
+				ev.keys.as(Array).sort.collect({ arg key;
+					"%%: %, ".format("\\",key, ev[key].asCompileString)
+				}).join
+			)
+		}).join;
+		ret = "XEventList.newFrom([\n%]);".format(ret);
+		ret;
+	},
+
+	savePresetCompileString: { arg self, path, action, force_dialog=false;
+		var save_it = { arg mypath;
+			mypath = FileSystemProject.resolve(mypath).fullPath;
+			"Trying to write preset to file %".format(mypath.asCompileString).postln;
+			File.use(mypath, "w", { arg file;
+				var relpath = FileSystemProject.unresolve(mypath);
+				var preset;
+				self.presetCompileStringSavePath = relpath;
+				file.write("%.presetCompileStringSavePath = %;\n\n".format(self.refCompileString, relpath.asCompileString));
+				
+				preset = self.presetCompileString;
+				if(preset.isNil) {
+					"ERROR: no preset found for this object".postln;
+				} {
+					file.write(preset);
+				};
+			});
+			action.()
+		};
+		if(path.notNil) {
+			save_it.(path)
+		} {
+			if(self.presetCompileStringSavePath.notNil and: { force_dialog==false }) {
+				save_it.(self.presetCompileStringSavePath)
+			} {
+				Dialog.savePanel({ arg mypath;
+					//path.postln;
+					save_it.(mypath)
+				},{
+					//"cancelled".postln;
+				});
+			}
+
+		};
+	},
 ));
 
 //if(~clipTimeline_all.isNil) {
@@ -1214,6 +393,12 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		~clipTimelinePanelView.newView(self).makeLayout;
 	},
 
+	refCompileString: { arg self, name;
+		if(name.isNil) {
+			name = self.key.asCompileString
+		};
+		"ClipTimeline(%)".format(name)
+	},
 ));
 
 ~trackTimeline = ProtoClass((
@@ -1289,6 +474,13 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		~trackTimelinePanelView.newView(self).makeLayout;
 	},
 
+
+	refCompileString: { arg self, name;
+		if(name.isNil) {
+			name = self.key.asCompileString
+		};
+		"TrackTimeline(%)".format(name)
+	},
 ));
 
 //if(~noteTimeline_all.isNil) {
@@ -1327,6 +519,10 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.eventFactory.mode = \note;
 		self.eventFactory.playmode = \gate;
 		self.eventFactory.fullrecord = false;
+
+		// TODO: make a recorder and deprecate eventFactory
+		//self.recorder = ~playerGroupRecorder.new(self.wrapper);
+		//self.recorder.eventLoop = self.eventLoop;
 
 		// note: this is grid quant, not playing quant
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
@@ -1399,7 +595,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			));
 
 			if(self.param.notNil and: {self.composeParamPattern == true}) {
-				if(self.eventFactory.mode == \event) {
+				if(self.eventFactory.notNil and: {self.eventFactory.mode == \event}) {
 					"Event mode!".debug;
 					pat = self.param.target <> pat;
 				} {
@@ -1431,8 +627,17 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	asView: { arg self;
 		~noteTimelinePanelView.newView(self).makeLayout;
 	},
+
+	refCompileString: { arg self, name;
+		if(name.isNil) {
+			name = self.key.asCompileString
+		};
+		"NoteTimeline(%)".format(name)
+	},
+
 ));
 
+// why not name it ParamTimeline ????
 ~envTimeline = ProtoClass((
 	parent: ~eventTimeline,
 	all: { PresetDictionary.new(\envTimeline) },
@@ -1646,6 +851,12 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		~envTimelinePanelView.newView(self).makeLayout;
 	},
 
+	refCompileString: { arg self, name;
+		if(name.isNil) {
+			name = self.key.asCompileString
+		};
+		"ParamTimeline(%)".format(name)
+	},
 ));
 
 ~kitTimeline = ProtoClass((
@@ -1818,8 +1029,17 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 
 	presetCompileString: { arg self;
-		"KitTimeline(%).eventList = %".format(self.key.asCompileString, self.recorder.presetCompileString)
+		"%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.recorder.presetCompileString)
 	},
+
+
+	refCompileString: { arg self, name;
+		if(name.isNil) {
+			name = self.key.asCompileString
+		};
+		"KitTimeline(%)".format(name)
+	},
+
 ));
 
 //////////////////////////////////////////// loading archived data
@@ -1829,526 +1049,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 ///////////////////////////////////////////////////////////////////// timeline panel
 
-/////// base timeline panel view
-
-~timelinePanelView = (
-	new: { arg self, eventloop;
-		"timelinePanelView".debug("init");
-		self = self.deepCopy;
-
-		self.eventloop = eventloop;
-		self.areasize = 10@1;
-		self.quant_ref = Ref(Point(1/8,1));
-
-		//self.definePattern;
-
-		"timelinePanelView".debug("end init");
-		self;
-	},
-
-	areasize: { arg self;
-		if(self.timeline.notNil) {
-			self.timeline.areasize 
-		} {
-			self.pr_areasize;
-		}
-	},
-
-	areasize_: { arg self, val;
-		if(self.timeline.notNil) {
-			self.timeline.areasize = val;
-		};
-		self.pr_areasize = val;
-	},
-
-	makeRulerY: { arg self, timeline;
-		//self.ruler_y = MidinoteTimelineRulerView.new;
-		//self.ruler_y.mimicTimeline(timeline);
-		//self.ruler_y;
-		nil
-	},
-
-	make_stop_button: { arg self;
-		XSimpleButton.new.label_("[]").action_({
-			self.cursor.startPosition = nil;
-			self.cursor.endPosition = nil;
-			PlayerWrapper(self.timeline_model).stop;
-			self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
-		});
-	},
-
-	make_quant_popup: { arg self;
-		var quant_popup;
-		var quant_spec;
-		quant_spec = MenuSpec([
-			"0",
-			"1/32",
-			"1/16",
-			"1/8",
-			"1/4",
-			"1/2",
-			"1",
-			"2",
-			"4",
-			"8",
-			"16",
-		].collect({ arg x; x -> x.interpret }));
-
-		self.quant_param = Param({ self.get_xquant }, { arg val; self.set_xquant(val) }, quant_spec);
-		quant_popup = self.quant_param.asPopUpMenu;
-		self.quant_popup = quant_popup;
-		self.quant_popup;
-	}, 
-
-	make_header: { arg self;
-
-		//self.header_layout = HLayout(
-		//	PlayerWrapperView(Pdef(self.eventloop.key)).view,
-		//	self.make_stop_button,
-		//	XSimpleButton.new.label_("Add track").action_({
-		//		self.add_track;
-		//	}),
-		//	self.make_quant_popup,
-		//);
-		//
-		//self.header_layout;
-		View.new;
-	},
-
-	//definePattern: { arg self;
-	//	// FIXME: why this is in a view class ??
-	//	Pdef(self.eventloop.key, Plazy({
-	//		//PtimeGatePunch(self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"))
-	//		var start, end;
-	//		var eventlist = self.eventloop.list;
-	//		if(self.cursor.notNil) {
-	//			start = self.cursor.startPosition - eventlist.startTime;
-	//			if(self.cursor.endPosition.notNil) {
-	//				end = self.cursor.endPosition - eventlist.endTime;
-	//			}
-	//		};
-	//		~timeline_pattern.(
-	//			~eventlist_aspattern.(
-	//				self.eventloop.list
-	//			).trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"),
-	//			start, end
-	//		);
-	//		//self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx")
-	//	}));
-	//},
-
-	makeWindow: { arg self;
-		//var window = Window.new;
-		WindowDef("%_%".format(self.timeline_model.eventType, self.key).asSymbol, { arg me;
-			var layout;
-			me.window.onClose_({
-				self.save_timeline_properties;
-			});
-			layout = self.makeLayout;
-			//window.layout = layout;
-			//window.alwaysOnTop = true;
-			//window.front;	
-			layout
-		}).front
-	},
-
-	add_track: { arg self;
-		self.areasize = Point(self.areasize.x, self.areasize.y+1 );
-		self.timeline.refreshEventList;
-		self.timeline.refresh;
-		self.update_track_header;
-	},
-
-	zoom_fit: { arg self;
-		[self.areasize, self.timeline.areasize].debug("1");
-		~zoom_fit.(self.timeline);
-		[self.areasize, self.timeline.areasize].debug("2");
-		self.areasize = self.timeline.areasize;
-		[self.areasize, self.timeline.areasize].debug("4");
-	},
-
-	update_track_header: { arg self;
-		var track_count = self.areasize.y.asInteger;
-		var track_header_block = { arg x;
-			var res = View.new.layout_(
-				HLayout(
-					//XSimpleButton.new.label_("track %".format(x)).
-					self.track_selector.views[track_count - 1 - x]
-				)
-			);
-			//res.background_(Color.blue);
-			res;
-		};
-		self.track_selector = ~view_selector.new(track_count, {}, { arg view, x; 
-			//x = track_count - x;
-			if(self.timeline_model.is_track_bypassed(x)) {
-				view.label_("[track %]".format(x));
-			} {
-				view.label_("track %".format(x));
-			}
-		});
-		self.track_header.canvas_(
-			self.track_header_view = View.new.layout_(
-				VLayout(*
-					track_count.collect { arg x;
-						[
-							track_header_block.(x),
-							align: \top,
-						]
-					}
-				).spacing_(0).margins_(0)
-			);
-			self.track_header_view
-		).maxWidth_(100);
-		self.update_track_header_size;
-		self.track_header.onResize = { self.update_track_header_size };
-		if(self.track_header_controller.notNil) {
-			self.track_header_controller.remove;
-		};
-		self.track_header_controller = SimpleController(self.timeline)
-		.put(\viewport, {
-			"update_track_header_size: viewport".debug;
-			//TODO: remove controller
-			self.update_track_header_size;
-		})
-		.put(\areasize, {
-			"update_track_header_size: areasize".debug;
-			self.update_track_header_size;
-			//self.update_track_header;
-		})
-		;
-	},
-
-	update_track_header_size: { arg self;
-		//self.vrange.view.doAction;
-		if(self.vrange.notNil) {
-			self.vrange_track_header_action(self.vrange.view)
-		} {
-			if(self.timeline.notNil) {
-				"update_track_header_size: real updating now!".debug;
-				[self.timeline.bounds.height, self.timeline.viewport.height].debug("bh, vh");
-				self.track_header_view.fixedHeight = self.timeline.bounds.height / self.timeline.viewport.height;
-				self.track_header.visibleOrigin = Point(0,(1-self.timeline.viewport.bottom) * self.track_header.bounds.height);
-				self.timeline.viewport.top.debug("top");
-				[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height].debug("[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height]");
-				self.track_header.visibleOrigin.debug("update_track_header_size: visibleOrigin");
-			}
-		}
-	},
-
-	set_xquant: { arg self, quant;
-		self.quant_ref.value = Point(quant, self.quant_ref.value.y);
-	},
-
-	get_xquant: { arg self;
-		self.quant_ref.value.x;
-	},
-
-	set_yquant: { arg self, quant;
-		self.quant_ref.value = Point(self.quant_ref.value.x, quant);
-	},
-
-	get_yquant: { arg self;
-		self.quant_ref.value.y;
-	},
-
-	make_track_header: { arg self;
-		var track_header;
-		track_header = ScrollView.new;
-		track_header.hasBorder = false;
-		track_header.hasVerticalScroller = false;
-		track_header.hasHorizontalScroller = false;
-		self.track_header = track_header;
-
-		self.vrange_track_header_action = { arg self, slider;
-			self.track_header_view.fixedHeight = 1/slider.range * track_header.bounds.height;
-			( 1/slider.range * track_header.bounds.height ).debug("vrange.view.action: fixedHeight");
-			track_header.visibleOrigin = Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height;
-			( Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height ).debug("vrange.view.action: visibleOrigin");
-		};
-
-		self.vrange.view.addAction({ arg slider;
-			self.vrange_track_header_action.(slider)
-		});
-
-		self.update_track_header;
-
-		//self.vrange.view.activeLo = self.vrange.view.lo; // trigger action
-
-		self.track_header;
-	},
-
-	makeTimelineView: { arg self;
-		self.timelineClass.new
-	},
-
-	eventLoop: { arg self;
-		self.timeline_model.eventLoop;
-	},
-
-	eventLoop_: { arg self, val;
-		self.timeline_model.eventLoop = val;
-	},
-
-	eventList: { arg self;
-		self.timeline_model.eventList;
-	},
-
-	eventList_: { arg self, val;
-		self.timeline_model.eventList = val;
-	},
-
-	makeLayout: { arg self;
-		var layout;
-		var tl_layout;
-		var vlayout, timeline, vrange, hrange, size;
-		var eventloop = self.eventloop;
-		var ruler_x, ruler_y, sizer;
-		var locatorbar;
-		var sizer_action;
-		var cursor_timeline;
-		var track_header;
-		var track_header_view;
-		var quant_popup;
-		"AZE".debug;
-		layout = HLayout.new;
-		self.layout = layout;
-		vlayout = VLayout.new;
-		layout.add(vlayout);
-
-		self.save_timeline_properties;
-		timeline = self.makeTimelineView;
-		self.timeline = timeline;
-		self.load_timeline_properties;
-		//timeline.areasize = self.pr_areasize.debug("==================seting areasize");
-		~mytl = timeline;
-		timeline.mouseDownAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
-			if(clickCount == 2) {
-				if(chosennode.notNil) {
-					self.clipEditorNew(chosennode.model, self.eventloop.list)
-				};
-			}
-		};
-
-		timeline.quant = self.quant_ref;
-
-		//self.cursor = CursorTimeline.new;
-		//self.cursor.startPosition = self.eventloop.list.startTime;
-
-		cursor_timeline = CursorTimelineView.new;
-		~cursor_timeline = cursor_timeline;
-		self.cursor_timeline = cursor_timeline;
-		cursor_timeline.mapCursor(self.cursor);
-		cursor_timeline.quant = self.quant_ref;
-
-
-		ruler_x = TimelineRulerView.new;
-		ruler_x.mapCursor(self.cursor);
-		ruler_x.quant = self.quant_ref;
-		self.ruler_x = ruler_x;
-		locatorbar = TimelineLocatorBarView.new;
-		self.locatorbar = locatorbar;
-
-		locatorbar.quant = self.quant_ref;
-
-		ruler_x.mimicTimeline(timeline);
-		locatorbar.mimicTimeline(timeline);
-		cursor_timeline.mimicTimeline(timeline);
-
-		hrange = TimelineScroller.new;
-		hrange.orientation = \horizontal;
-		hrange.mapTimeline(timeline);
-		vrange = TimelineScroller.new;
-		vrange.orientation = \vertical;
-		vrange.mapTimeline(timeline);
-		self.vrange = vrange;
-
-		sizer = 
-		HLayout(
-			XSimpleButton.new.label_("<").action_({
-				var point = Point(2,1);
-				//self.areasize = self.areasize - point;
-				self.areasize = self.areasize / point;
-				timeline.refresh;
-			}).fixedSize_(Point(10,20)),
-			XSimpleButton.new.label_(">").action_({
-				var point = Point(2,1);
-				self.areasize = self.areasize * point;
-				timeline.refresh;
-			}).fixedSize_(Point(10,20)),
-		).spacing_(0)
-		;
-
-
-		// FIXME: created even if disabled, sometime not what we want
-		track_header = self.make_track_header(timeline);
-
-
-		tl_layout = GridLayout.rows(
-			[
-				nil,
-				VLayout(
-					locatorbar.view,
-					ruler_x.view,
-				),
-				XSimpleButton.new.label_("z")
-					.maxWidth_(10)
-					.action_({
-						self.zoom_fit;
-					})
-			],
-			[
-				if(self.disable_track_header != true) {track_header},
-				StackLayout(
-					cursor_timeline.view,
-					timeline.view,
-				).mode_(1),
-				vrange.view,
-			],
-			[
-				nil,
-				if(self.disable_hrange != true) {hrange.view},
-				if(self.disable_hrange != true) {sizer},
-			]
-		);
-		tl_layout.spacing = 0;
-
-		layout = VLayout(
-			self.make_header,
-			tl_layout,
-		);
-
-		size = self.areasize;
-		size.debug("size!!!");
-
-		timeline.areasize = size;
-
-		ruler_x.view.minSize = Point(10,10);
-		//ruler_y.view.minSize = Point(40,10);
-		locatorbar.view.minSize = Point(10,15);
-
-		timeline.mapEventList(eventloop.list);
-		cursor_timeline.mapEventList(eventloop.list);
-		locatorbar.mapEventList(eventloop.list);
-
-		self.timeline = timeline;
-		self.layout = layout;
-		"iiAZE".debug;
-
-
-		//self.zoom_fit;
-
-		self.timeline.keyDownAction = ({ arg me, key, modifiers, unicode, keycode;
-			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
-			if(modifiers.isCtrl) {
-				if(key == $n) { // ^n
-					"new!".debug;
-					self.eventLoop.pushList;
-					self.eventList = self.timeline_model.makeDefaultEventList;
-					self.eventLoop.pushList;
-				};
-				if(key == $k) { // ^k
-					"clone!".debug;
-					self.eventLoop.pushList;
-					self.eventList = self.eventLoop.lists.first.clone;
-					self.eventLoop.pushList;
-				};
-				if(key == $d) { // ^d
-					"double!".debug;
-					self.eventLoop.pushList;
-					self.eventList = self.eventLoop.lists.first.clone.double;
-					self.eventLoop.pushList;
-				};
-				if(key == $c) { // ^c
-					var selnodes;
-					var cursor = self.timeline_model.cursor;
-					var startpos, endpos;
-					"copy!".debug;
-					selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
-					if(selnodes.size == 0) {
-						startpos = cursor.startPosition ? self.eventList.startTime;
-						endpos = cursor.endPosition ? self.eventList.endTime;
-						self.timeline.nodes.collect({ arg node;
-							var at = node.model[\absTime];
-							if(at >= startpos and: { at < endpos and: { node.selectable }} ) {
-								self.timeline.selectNode(node)
-							}
-						});
-						selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
-					};
-					if(selnodes.size > 0) {
-						~clipTimeline_clipboard = selnodes;
-					};
-				};
-				if(key == $v) { // ^v
-					"paste!".debug;
-					if(~clipTimeline_clipboard.notNil) {
-						var delta;
-						var first = ~clipTimeline_clipboard.as(Array).inject(nil, { arg a, b; 
-							if(a.isNil) {
-								b
-							} {
-								if(a[\absTime] < b[\absTime]) {
-									a
-								} {
-									b
-								}
-							};
-						});
-						first.debug("first");
-						delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
-						~clipTimeline_clipboard.debug("clipboard");
-						~clipTimeline_clipboard.do({ arg event;
-							var new;
-							new = event.copy;
-							[new, delta].debug("new, delta");
-							new[\absTime] = new[\absTime] + delta;
-							self.timeline.model.addEvent(new);
-						});
-						//self.timeline.model.changed(\refresh);
-						self.timeline.model.reorder;
-					}
-				}
-			}
-		});
-
-		layout;
-	},
-
-	asPattern: { arg self;
-		// TODO
-		Pfunc({})
-	},
-
-	refresh: { arg self;
-		self.timeline.mapEventList(self.eventloop.list);
-		self.cursor_timeline.mapEventList(self.eventloop.list);
-		self.locatorbar.mapEventList(self.eventloop.list);
-	},
-
-	save_timeline_properties: { arg self;
-		var tl = self;
-		if(tl.timeline.notNil) {
-			tl.timeline_model.addHalo(\viewport, tl.timeline.viewport);
-			tl.timeline_model.addHalo(\areasize, tl.timeline.areasize);
-		}
-	},
-
-	load_timeline_properties: { arg self;
-		var tl = self;
-		var cur;
-		cur = tl.timeline_model.getHalo(\viewport);
-		if(cur.notNil) {
-			tl.timeline.viewport = cur;
-		};
-		cur = tl.timeline_model.getHalo(\areasize) ? self.pr_areasize;
-		if(cur.notNil) {
-			tl.timeline.areasize = cur;
-		};
-	},
-);
-
-//////////////////
+////////////////// clip editor (really: clip chooser/selector)
 
 ~clipEditor_OLD = (
 	new: { arg self, model, parent;
@@ -2819,13 +1520,17 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			},
 
 			redefineClip: { arg me, curname, model;
+				var tlobj;
 				"redefineClip1".debug;
 				PatternEvent.redefine(model);
 				"redefineClip2".debug;
-				model[\timeline] = { 
-					me.keys.debug("redefineClip3:me.new!!!!!");
-					me.className.new(curname)
-				};
+
+				tlobj = ( "{ " ++ me.className.new(curname).refCompileString ++ " }" ).interpret;
+				model[\timeline] = tlobj;
+				//model[\timeline] = { 
+				//	me.keys.debug("redefineClip3:me.new!!!!!");
+				//	me.className.new(curname)
+				//};
 				"redefineClip3".debug;
 				//model.changed(\refresh);
 				self.parent_model.changed(\refresh);
@@ -3186,6 +1891,764 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 //////////////////////////////// Timeline Panel Views
 
+/////// base timeline panel view
+
+~timelinePanelView = (
+	new: { arg self, eventloop;
+		"timelinePanelView".debug("init");
+		self = self.deepCopy;
+
+		self.eventloop = eventloop;
+		self.areasize = 10@1;
+		self.quant_ref = Ref(Point(1/8,1));
+
+		//self.definePattern;
+
+		"timelinePanelView".debug("end init");
+		self;
+	},
+
+	areasize: { arg self;
+		if(self.timeline.notNil) {
+			self.timeline.areasize 
+		} {
+			self.pr_areasize;
+		}
+	},
+
+	areasize_: { arg self, val;
+		if(self.timeline.notNil) {
+			self.timeline.areasize = val;
+		};
+		self.pr_areasize = val;
+	},
+
+	makeRulerY: { arg self, timeline;
+		//self.ruler_y = MidinoteTimelineRulerView.new;
+		//self.ruler_y.mimicTimeline(timeline);
+		//self.ruler_y;
+		nil
+	},
+
+	make_stop_button: { arg self;
+		XSimpleButton.new.label_("[]").action_({
+			self.cursor.startPosition = nil;
+			self.cursor.endPosition = nil;
+			PlayerWrapper(self.timeline_model).stop;
+			self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
+		});
+	},
+
+	make_quant_popup: { arg self;
+		var quant_popup;
+		var quant_spec;
+		quant_spec = MenuSpec([
+			"0",
+			"1/32",
+			"1/16",
+			"1/8",
+			"1/4",
+			"1/2",
+			"1",
+			"2",
+			"4",
+			"8",
+			"16",
+		].collect({ arg x; x -> x.interpret }));
+
+		self.quant_param = Param({ self.get_xquant }, { arg val; self.set_xquant(val) }, quant_spec);
+		quant_popup = self.quant_param.asPopUpMenu;
+		self.quant_popup = quant_popup;
+		self.quant_popup;
+	}, 
+
+	make_saveas_button: { arg self;
+		BasicButton.new
+			.action_({ arg me;
+				if(self.timeline_model.presetCompileStringSavePath.notNil) {
+					var dialog;
+					dialog = Window.new("Save").layout_(
+						VLayout(
+							StaticText.new.string_("Save this object to the file % ?".format(self.timeline_model.presetCompileStringSavePath.asCompileString)),
+							HLayout(
+								nil,
+								BasicButton.new.string_("OK").action_({ 
+									self.timeline_model.savePresetCompileString;
+									me.refreshChange;
+									dialog.close;
+								}),
+								BasicButton.new.string_("Cancel").action_({
+									dialog.close;
+								}),
+							)
+						)
+					).setInnerExtent(600,140).front;
+				} {
+					self.timeline_model.savePresetCompileString(nil, {
+						me.refreshChange;
+					}, false);
+				};
+			})
+			.mouseUpAction_({ arg me, x, y, mod, but;
+				//[a,b,c,but].debug("but");
+				if(but == 1) { // right click
+					self.timeline_model.savePresetCompileString(nil, {
+						me.refreshChange;
+					}, true)
+				}
+			})
+			.refreshChangeAction_({ arg me;
+				if(self.timeline_model.presetCompileStringSavePath.notNil) {
+					me.string = "Save"
+				} {
+					me.string = "Save as"
+				};
+			})
+			.refreshChange
+		;
+	},
+
+	make_header: { arg self;
+
+		//self.header_layout = HLayout(
+		//	PlayerWrapperView(Pdef(self.eventloop.key)).view,
+		//	self.make_stop_button,
+		//	XSimpleButton.new.label_("Add track").action_({
+		//		self.add_track;
+		//	}),
+		//	self.make_quant_popup,
+		//);
+		//
+		//self.header_layout;
+		View.new;
+	},
+
+	//definePattern: { arg self;
+	//	// FIXME: why this is in a view class ??
+	//	Pdef(self.eventloop.key, Plazy({
+	//		//PtimeGatePunch(self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"))
+	//		var start, end;
+	//		var eventlist = self.eventloop.list;
+	//		if(self.cursor.notNil) {
+	//			start = self.cursor.startPosition - eventlist.startTime;
+	//			if(self.cursor.endPosition.notNil) {
+	//				end = self.cursor.endPosition - eventlist.endTime;
+	//			}
+	//		};
+	//		~timeline_pattern.(
+	//			~eventlist_aspattern.(
+	//				self.eventloop.list
+	//			).trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"),
+	//			start, end
+	//		);
+	//		//self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx")
+	//	}));
+	//},
+
+	makeWindow: { arg self;
+		//var window = Window.new;
+		WindowDef("%_%".format(self.timeline_model.eventType, self.key).asSymbol, { arg me;
+			var layout;
+			me.window.onClose_({
+				self.save_timeline_properties;
+			});
+			layout = self.makeLayout;
+			//window.layout = layout;
+			//window.alwaysOnTop = true;
+			//window.front;	
+			layout
+		}).front
+	},
+
+	add_track: { arg self;
+		self.areasize = Point(self.areasize.x, self.areasize.y+1 );
+		self.timeline.refreshEventList;
+		self.timeline.refresh;
+		self.update_track_header;
+	},
+
+	zoom_fit: { arg self;
+		[self.areasize, self.timeline.areasize].debug("1");
+		~zoom_fit.(self.timeline);
+		[self.areasize, self.timeline.areasize].debug("2");
+		self.areasize = self.timeline.areasize;
+		[self.areasize, self.timeline.areasize].debug("4");
+	},
+
+	update_track_header: { arg self;
+		var track_count = self.areasize.y.asInteger;
+		var track_header_block = { arg x;
+			var res = View.new.layout_(
+				HLayout(
+					//XSimpleButton.new.label_("track %".format(x)).
+					self.track_selector.views[track_count - 1 - x]
+				)
+			);
+			//res.background_(Color.blue);
+			res;
+		};
+		self.track_selector = ~view_selector.new(track_count, {}, { arg view, x; 
+			//x = track_count - x;
+			if(self.timeline_model.is_track_bypassed(x)) {
+				view.label_("[track %]".format(x));
+			} {
+				view.label_("track %".format(x));
+			}
+		});
+		self.track_header.canvas_(
+			self.track_header_view = View.new.layout_(
+				VLayout(*
+					track_count.collect { arg x;
+						[
+							track_header_block.(x),
+							align: \top,
+						]
+					}
+				).spacing_(0).margins_(0)
+			);
+			self.track_header_view
+		).maxWidth_(100);
+		self.update_track_header_size;
+		self.track_header.onResize = { self.update_track_header_size };
+		if(self.track_header_controller.notNil) {
+			self.track_header_controller.remove;
+		};
+		self.track_header_controller = SimpleController(self.timeline)
+		.put(\viewport, {
+			"update_track_header_size: viewport".debug;
+			//TODO: remove controller
+			self.update_track_header_size;
+		})
+		.put(\areasize, {
+			"update_track_header_size: areasize".debug;
+			self.update_track_header_size;
+			//self.update_track_header;
+		})
+		;
+	},
+
+	update_track_header_size: { arg self;
+		//self.vrange.view.doAction;
+		if(self.vrange.notNil) {
+			self.vrange_track_header_action(self.vrange.view)
+		} {
+			if(self.timeline.notNil) {
+				"update_track_header_size: real updating now!".debug;
+				[self.timeline.bounds.height, self.timeline.viewport.height].debug("bh, vh");
+				self.track_header_view.fixedHeight = self.timeline.bounds.height / self.timeline.viewport.height;
+				self.track_header.visibleOrigin = Point(0,(1-self.timeline.viewport.bottom) * self.track_header.bounds.height);
+				self.timeline.viewport.top.debug("top");
+				[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height].debug("[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height]");
+				self.track_header.visibleOrigin.debug("update_track_header_size: visibleOrigin");
+			}
+		}
+	},
+
+	set_xquant: { arg self, quant;
+		self.quant_ref.value = Point(quant, self.quant_ref.value.y);
+	},
+
+	get_xquant: { arg self;
+		self.quant_ref.value.x;
+	},
+
+	set_yquant: { arg self, quant;
+		self.quant_ref.value = Point(self.quant_ref.value.x, quant);
+	},
+
+	get_yquant: { arg self;
+		self.quant_ref.value.y;
+	},
+
+	make_track_header: { arg self;
+		var track_header;
+		track_header = ScrollView.new;
+		track_header.hasBorder = false;
+		track_header.hasVerticalScroller = false;
+		track_header.hasHorizontalScroller = false;
+		self.track_header = track_header;
+
+		self.vrange_track_header_action = { arg self, slider;
+			self.track_header_view.fixedHeight = 1/slider.range * track_header.bounds.height;
+			( 1/slider.range * track_header.bounds.height ).debug("vrange.view.action: fixedHeight");
+			track_header.visibleOrigin = Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height;
+			( Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height ).debug("vrange.view.action: visibleOrigin");
+		};
+
+		self.vrange.view.addAction({ arg slider;
+			self.vrange_track_header_action.(slider)
+		});
+
+		self.update_track_header;
+
+		//self.vrange.view.activeLo = self.vrange.view.lo; // trigger action
+
+		self.track_header;
+	},
+
+	makeTimelineView: { arg self;
+		self.timelineClass.new
+	},
+
+	eventLoop: { arg self;
+		self.timeline_model.eventLoop;
+	},
+
+	eventLoop_: { arg self, val;
+		self.timeline_model.eventLoop = val;
+	},
+
+	eventList: { arg self;
+		self.timeline_model.eventList;
+	},
+
+	eventList_: { arg self, val;
+		self.timeline_model.eventList = val;
+	},
+
+	getTimelineKeyDownAction: { arg self;
+		//Window.keyDownActionTest
+		({ arg me, key, modifiers, unicode, keycode;
+			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
+			self.getTimelineKeyDownActionForNodeMove.(me, key, modifiers, unicode, keycode);
+			if(modifiers.isCtrl) {
+				if(key == $n) { // ^n
+					"new!".debug;
+					self.eventLoop.pushList;
+					self.eventList = self.timeline_model.makeDefaultEventList;
+					self.eventLoop.pushList;
+				};
+				if(key == $k) { // ^k
+					"clone!".debug;
+					self.eventLoop.pushList;
+					self.eventList = self.eventLoop.lists.first.clone;
+					self.eventLoop.pushList;
+				};
+				if(key == $d) { // ^d
+					"double!".debug;
+					self.eventLoop.pushList;
+					self.eventList = self.eventLoop.lists.first.clone.double;
+					self.eventLoop.pushList;
+				};
+				if(key == $c) { // ^c
+					var selnodes;
+					var cursor = self.timeline_model.cursor;
+					var startpos, endpos;
+					"copy!".debug;
+					selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
+					if(selnodes.size == 0) {
+						startpos = cursor.startPosition ? self.eventList.startTime;
+						endpos = cursor.endPosition ? self.eventList.endTime;
+						self.timeline.nodes.collect({ arg node;
+							var at = node.model[\absTime];
+							if(at >= startpos and: { at < endpos and: { node.selectable }} ) {
+								self.timeline.selectNode(node)
+							}
+						});
+						selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
+					};
+					if(selnodes.size > 0) {
+						~clipTimeline_clipboard = selnodes;
+					};
+				};
+				if(key == $v) { // ^v
+					"paste!".debug;
+					if(~clipTimeline_clipboard.notNil) {
+						var delta;
+						var first = ~clipTimeline_clipboard.as(Array).inject(nil, { arg a, b; 
+							if(a.isNil) {
+								b
+							} {
+								if(a[\absTime] < b[\absTime]) {
+									a
+								} {
+									b
+								}
+							};
+						});
+						first.debug("first");
+						delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
+						~clipTimeline_clipboard.debug("clipboard");
+						~clipTimeline_clipboard.do({ arg event;
+							var new;
+							new = event.copy;
+							[new, delta].debug("new, delta");
+							new[\absTime] = new[\absTime] + delta;
+							self.timeline.model.addEvent(new);
+						});
+						//self.timeline.model.changed(\refresh);
+						self.timeline.model.reorder;
+					}
+				}
+			} {
+				// no modifier
+
+			}
+		});
+	},
+
+	getTimelineKeyDownActionForNodeMove: { arg self;
+		var reorderButKeepSelection = {
+			// FIXME: this is ugly, should integrate in TimelineView with a clean algo
+			var selmodels = IdentitySet.new;
+			var selnodes = List.new;
+			self.timeline.selNodes.do { arg node;
+				selmodels.add(node.model);
+			};
+			self.timeline.model.reorder;
+			self.timeline.model.changed(\refresh);
+			self.timeline.nodes.do { arg node;
+				if(selmodels.matchItem(node.model)) {
+					selnodes.add(node)
+				}
+			};
+			self.timeline.selectNodes(selnodes);
+		};
+		var handleMove = { arg distance, keycode;
+			if(keycode == 65364) { // down key
+				self.timeline.selNodes.do{ arg node;
+					node.model[node.posyKey] = node.model[node.posyKey]-distance.y;
+					node.model.changed(\refresh);
+				}
+			};
+			if(keycode == 65362) { // up key
+				self.timeline.selNodes.do{ arg node;
+					node.model[node.posyKey] = node.model[node.posyKey]+distance.y;
+					node.model.changed(\refresh);
+				}
+			};
+			if(keycode == 65361) { // left key
+				self.timeline.selNodes.do{ arg node;
+					node.model[node.timeKey] = node.model[node.timeKey]-distance.x;
+				};
+				reorderButKeepSelection.();
+			};
+			if(keycode == 65363) { // right key
+				self.timeline.selNodes.do{ arg node;
+					node.model[node.timeKey] = node.model[node.timeKey]+distance.x;
+				};
+				reorderButKeepSelection.();
+			};
+		};
+		({ arg me, key, modifiers, unicode, keycode;
+			//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
+			if(modifiers.isCtrl) {
+				handleMove.(
+					Point(
+						self.quant_ref.value.x * self.node_move_multiplier_x,
+						self.quant_ref.value.y * self.node_move_multiplier_y,
+					),
+					keycode,
+				)
+			} {
+				// no modifier
+				handleMove.(self.quant_ref.value, keycode)
+			}
+		});
+
+	},
+
+	node_move_multiplier_x: 8,
+	node_move_multiplier_y: 8,
+
+	timelineInstrumentParamGroup: { arg self;
+		var target;
+		if(self.param.isNil) {
+			ParamGroup()
+		} {
+			target = self.param.target;
+			target.asParamGroup
+				.add( Param(target, \velocity, ControlSpec(0,127,\lin,0,64)) )
+				.add( Param(target, \sustain) )
+				.reject({ arg x; x.property == \legato })
+			;
+		}
+	},
+
+	makeVelocityView: { arg self;
+		var keyspec;
+		self.velocityTimeline = VelocityTimelineView.new;
+		self.velocityTimeline.fixedHeight = 150;
+		self.velocityTimeline.mimicTimeline(self.timeline, \horizontal);
+		self.velocityTimeline.mimicNodeSelection(self.timeline);
+		//self.velocityTimeline.mapParam(Param(self.param.target, \velocity, ControlSpec(0,127,\lin,0,64)));
+		self.velocityTimeline.quant = Point(0,0);
+		self.velocityTimeline.forbidHorizontalNodeMove = true;
+
+
+		self.velocityValue = StaticText.new;
+		self.velocityValue.fixedWidth = 50;
+		self.velocityValue.font = Font.default.size_(10);
+		//self.velocityValue.string = "XXX";
+
+		self.refreshPosyValue = {
+			var node;
+			"---------------heyyyyyyyyyyyyyyy".debug;
+			"heyyyyyyyyyyyyyyy".debug;
+			"heyyyyyyyyyyyyyyy".debug;
+			node = self.velocityTimeline.chosennode;
+			if(node.notNil and: { node.model.notNil }) {
+				var val =   node.model[node.posyKey];
+				if(val.notNil) {
+					val = val.round(0.001)
+				};
+				self.velocityValue.string = val;
+			}
+
+		};
+		self.velocityValue.onChange(self.velocityTimeline, \nodeMoved, {
+			self.refreshPosyValue;
+		});
+		self.velocityValue.onChange(self.velocityTimeline, \selectedNodes, {
+			self.refreshPosyValue;
+		});
+
+		self.velocityTimeline.visible = false; // not visible by default, FIXME: should be remembered
+		self.velocityShowButton = BasicButton.new.string_(">")
+			.fixedWidth_(20)
+			.action_({ arg me;
+				if(self.velocityTimeline.visible) {
+					me.string = ">";
+					self.velocityTimeline.visible = false;
+				} {
+					me.string = "^";
+					self.velocityTimeline.visible = true;
+				}
+			})
+		;
+		
+		self.velocityPopUp = PopUpMenu.new;
+		self.velocityPopUp.action_({ arg me;
+			"velocityPopUp.action".debug;
+			"velocityPopUp.actio3n".postln;
+			self.velocityTimeline.mapParam(self.timelineInstrumentParamGroup[me.value]);
+			self.velocityTimeline.param.debug("new param!!!");
+		}).items_(
+			self.timelineInstrumentParamGroup.collect({ arg x; 
+				x.property;
+			})
+		);
+		if(self.timelineInstrumentParamGroup.size>0) {
+			self.velocityPopUp.valueAction = 0;
+		};
+		//self.velocityPopUp.mapParam(Param(Message(self.velocityTimeline), \valueKey, keyspec));
+	},
+
+	makeLayout: { arg self;
+		var layout;
+		var tl_layout;
+		var vlayout, timeline, vrange, hrange, size;
+		var eventloop = self.eventloop;
+		var ruler_x, ruler_y, sizer;
+		var locatorbar;
+		var sizer_action;
+		var cursor_timeline;
+		var track_header;
+		var track_header_view;
+		var quant_popup;
+		"AZE".debug;
+		layout = HLayout.new;
+		self.layout = layout;
+		vlayout = VLayout.new;
+		layout.add(vlayout);
+
+		self.save_timeline_properties;
+		timeline = self.makeTimelineView;
+		self.timeline = timeline;
+		self.load_timeline_properties;
+		//timeline.areasize = self.pr_areasize.debug("==================seting areasize");
+		~mytl = timeline;
+		timeline.mouseDownAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
+			if(clickCount == 2) {
+				if(chosennode.notNil) {
+					self.clipEditorNew(chosennode.model, self.eventloop.list)
+				};
+			}
+		};
+
+		timeline.quant = self.quant_ref;
+
+		self.makeVelocityView;
+
+		//self.cursor = CursorTimeline.new;
+		//self.cursor.startPosition = self.eventloop.list.startTime;
+
+		cursor_timeline = CursorTimelineView.new;
+		~cursor_timeline = cursor_timeline;
+		self.cursor_timeline = cursor_timeline;
+		cursor_timeline.mapCursor(self.cursor);
+		cursor_timeline.quant = self.quant_ref;
+
+
+		ruler_x = TimelineRulerView.new;
+		ruler_x.mapCursor(self.cursor);
+		ruler_x.quant = self.quant_ref;
+		self.ruler_x = ruler_x;
+		locatorbar = TimelineLocatorBarView.new;
+		self.locatorbar = locatorbar;
+
+		locatorbar.quant = self.quant_ref;
+
+		ruler_x.mimicTimeline(timeline);
+		locatorbar.mimicTimeline(timeline);
+		cursor_timeline.mimicTimeline(timeline);
+
+		hrange = TimelineScroller.new;
+		hrange.orientation = \horizontal;
+		hrange.mapTimeline(timeline);
+		vrange = TimelineScroller.new;
+		vrange.orientation = \vertical;
+		vrange.mapTimeline(timeline);
+		self.vrange = vrange;
+
+		sizer = 
+		HLayout(
+			XSimpleButton.new.label_("<").action_({
+				var point = Point(2,1);
+				//self.areasize = self.areasize - point;
+				self.areasize = self.areasize / point;
+				timeline.refresh;
+			}).fixedSize_(Point(10,20)),
+			XSimpleButton.new.label_(">").action_({
+				var point = Point(2,1);
+				self.areasize = self.areasize * point;
+				timeline.refresh;
+			}).fixedSize_(Point(10,20)),
+		).spacing_(0)
+		;
+
+
+		// FIXME: created even if disabled, sometime not what we want
+		track_header = self.make_track_header(timeline);
+
+
+		tl_layout = GridLayout.rows(*
+			[
+				[
+					nil,
+					VLayout(
+						locatorbar.view,
+						ruler_x.view,
+					),
+					XSimpleButton.new.label_("z")
+						.maxWidth_(10)
+						.action_({
+							self.zoom_fit;
+						})
+				],
+				[
+					if(self.disable_track_header != true) {track_header},
+					StackLayout(
+						cursor_timeline.view,
+						timeline.view,
+					).mode_(1),
+					vrange.view,
+				],
+			] 
+			++ if(self.velocityTimeline.notNil) {
+				[
+					[
+						nil,
+						self.velocityTimeline.view,
+						nil,
+					],
+				]
+			} { [] }
+			++ if(self.disable_hrange != true) {
+				[
+					[
+						nil,
+						if(self.disable_hrange != true) {hrange.view},
+						if(self.disable_hrange != true) {sizer},
+					]
+				]
+			} { [] }  
+		);
+		tl_layout.spacing = 0;
+
+		layout = VLayout(*
+			[
+				self.make_header,
+				tl_layout,
+			] ++ 
+			if(self.velocityTimeline.notNil) { // hide if velocityView is disabled
+				[
+					HLayout(
+						self.velocityShowButton,
+						self.velocityPopUp,
+						//StaticText.new.string_("Velocity: ")
+						//	.font_(Font.default.size_(10))
+						//,
+						self.velocityValue,
+						nil,
+					)
+				]
+			} {
+				[]
+			}
+		);
+
+		size = self.areasize;
+		size.debug("size!!!");
+
+		timeline.areasize = size;
+
+		ruler_x.view.minSize = Point(10,10);
+		//ruler_y.view.minSize = Point(40,10);
+		locatorbar.view.minSize = Point(10,15);
+
+		self.refresh; // map eventlist to timelines
+
+		self.timeline = timeline;
+		self.layout = layout;
+		"iiAZE".debug;
+
+
+		//self.zoom_fit;
+
+		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
+
+		layout;
+	},
+
+	asPattern: { arg self;
+		// TODO
+		Pfunc({})
+	},
+
+	refresh: { arg self;
+		self.timeline.mapEventList(self.eventloop.list);
+		self.cursor_timeline.mapEventList(self.eventloop.list);
+		self.locatorbar.mapEventList(self.eventloop.list);
+		if(self.velocityTimeline.notNil) {
+			self.velocityTimeline.mapEventList(self.eventloop.list);
+		}
+	},
+
+	save_timeline_properties: { arg self;
+		var tl = self;
+		if(tl.timeline.notNil) {
+			tl.timeline_model.addHalo(\viewport, tl.timeline.viewport);
+			tl.timeline_model.addHalo(\areasize, tl.timeline.areasize);
+		}
+	},
+
+	load_timeline_properties: { arg self;
+		var tl = self;
+		var cur;
+		cur = tl.timeline_model.getHalo(\viewport);
+		if(cur.notNil) {
+			tl.timeline.viewport = cur;
+		};
+		cur = tl.timeline_model.getHalo(\areasize) ? self.pr_areasize;
+		if(cur.notNil) {
+			tl.timeline.areasize = cur;
+		};
+	},
+);
+
+/////// derivatives
+
 ~clipTimelinePanelView = (
 	parent: ~timelinePanelView,
 
@@ -3272,6 +2735,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		"clipTimelinePanelView.makeLayout: part 0.2".debug;
 		self.clipEditor.clearEditor;
 		"clipTimelinePanelView.makeLayout: part 1".debug;
+		self[\makeVelocityView] = {}; // disable velocity view
 		self.layout = VLayout(
 			//HLayout(
 			//	PlayerWrapperView(Pdef(self.eventloop.key)).view,
@@ -3473,7 +2937,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			Button.new.mapParam(Param(Message(self.timeline_model.eventFactory), \isRecording, XBoolSpec())).states_([
+			Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
 				["Rec", Color.black, Color.white],
 				["Rec", Color.black, Color.red],
 			]),
@@ -3481,6 +2945,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 
 	makeLayout: { arg self;
+		self[\makeVelocityView] = {}; // disable velocity view
 		self.layout = VLayout(
 			//HLayout(
 			//	PlayerWrapperView(Pdef(self.eventloop.key)).view,
@@ -3527,6 +2992,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self;
 	},
 
+	node_move_multiplier_y: 12,
+
 	cursor: { arg self;
 		self.timeline_model.cursor;
 	},
@@ -3544,11 +3011,12 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
+			self.make_saveas_button,
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			Button.new.mapParam(Param(Message(self.timeline_model.eventFactory), \isRecording, XBoolSpec())).states_([
+			Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
 				["Rec", Color.black, Color.white],
 				["Rec", Color.black, Color.red],
 			]),
@@ -3632,6 +3100,10 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.timeline_model.param;
 	},
 
+	kit: { arg self;
+		self.timeline_model.kit;
+	},
+
 	makeTimelineView: { arg self;
 		self.timelineClass.new(\kitIndex).viewport_(Rect(0,0,1,1/4))
 	},
@@ -3640,6 +3112,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
+			self.make_saveas_button,
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
@@ -3667,6 +3140,29 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		self.ruler_y.view.minWidth_(50);
 	},
 
+	timelineInstrumentParamGroup: { arg self;
+		var target;
+		if(self.kit.isNil) {
+			ParamGroup()
+		} {
+			var set, group;
+			set = Set.new;
+			PatKitDef(\barlok1).source.reject(_.isNil).do({ arg pat; 
+				pat.asParamGroup.do({ arg param;
+					if(param.type == \scalar) {
+						set.add(param.property)
+					}
+				})
+			});
+			target = Param(PatKitDef(\barlok1).source.reject(_.isNil)).first.target;	
+			group = set.as(List).collect({ arg key;
+				Param(target, key)
+			});
+			ParamGroup(group);
+		}
+	},
+
+
 	makeLayout: { arg self;
 		"noteTimelinePanelView.makeLayout".debug;
 		self.layout = VLayout(
@@ -3692,411 +3188,3 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 
 );
-
-/////////////////////////////////////////////////////////////////////
-
-
-~remove_envlist_duplicate = { arg eventlist;
-	var prev;
-	var to_remove = List.new;
-	eventlist.do { arg ev;
-		if(prev.notNil) {
-			if (prev[\level].notNil and: { prev[\level] == ev[\level] and: { prev[\dur] == 0 } }) {
-				to_remove.add(prev)
-			}
-		};
-		prev = ev;
-	};
-	to_remove.do { arg ev;
-		eventlist.remove(ev)
-	};
-};
-
-~compute_eventenv_sustain = { arg eventlist;
-	var previous;
-	var el = eventlist.copy;
-	eventlist.do { arg ev;
-		if([\start, \end].includes(ev.type)) {
-			// noop
-		} {
-			if(previous.notNil) {
-				if(previous[\dur] != 0) {
-					// why ?? legato should always be one, no ?
-					// but legato is not used, env_segment use time to know the length
-					//previous[\legato] = ( ev[\absTime] - previous[\absTime] ) / previous[\dur];  
-					//previous[]
-					// sustain is in beats
-				};
-				previous[\sustain] = ( ev[\absTime] - previous[\absTime] ); // abstime is in beats, sustain is in beats
-				//previous[\legato] = 1; // 
-				previous[\next_level] = ev[\level];  
-				previous[\next_absTime] = ev[\absTime]; // this is a bit useless, time can be computed from dur / tempo 
-			};
-			previous = ev;
-
-		}
-	};
-	
-};
-
-~eventlist_to_envpattern = { arg eventlist, start;
-	//var el = eventlist.copy;
-	////var startev = eventlist.
-	//var endlist = List.new;
-	//var previous;
-	//var start_level;
-	//var bus_event;
-	//~compute_eventenv_sustain.(eventlist);
-	//block { arg break;
-	//	eventlist.do { arg ev;
-	//		if(ev[\type] == \start) {
-	//			if(ev.dur == 0 or: { ev.delta == 0 }) {
-	//				el.removeAt(0);
-	//			};
-	//			break.value;
-	//		} {
-	//			previous = el.removeAt(0);
-	//		}
-	//	};
-	//};
-	//if(previous.notNil) {
-	//	var level = val.use { val.level };
-	//	var busev = val.copy;
-	//	var next_level, next_absTime;
-	//	next_level = val[\next_level];
-	//	next_absTime = val[\next_absTime];
-	//	level = 
-	//		( next_level - busev.level ) * busev.event_dropdur 
-	//		/ (next_absTime - busev.absTime) 
-	//		+ busev.level
-	//	;
-	//	bus_event = (
-	//		type: \bus,
-	//		array: [level]
-	//	)
-
-	//};
-};
-
-~pattern_to_envpattern = { arg pattern;
-	Prout({ arg inval;
-		var str = pattern.asStream;
-		var val;
-		var first = true;
-		var previous_val;
-		var nextval; // ugly hack (FIXME: for what ?)
-		
-		block { arg break;
-			while({
-				if(nextval.notNil) {
-					val = nextval;
-				} {
-					val = str.next(Event.default);
-				};
-				val.notNil;
-			}, {
-				var is_rest = { arg val;
-					val.type == \rest or: { val.type == \start or: { val.type == \end } };
-				};
-				val.debug("pattern_to_envpattern");
-				if(first == true) {
-					if(is_rest.(val)) {
-						val.type.debug("pattern_to_envpattern: start/end");
-						previous_val = val;
-						previous_val.yield;
-					} {
-						var level = val.use { val.level };
-						var busev = val.copy;
-						var next_level, next_absTime;
-						level.debug("pattern_to_envpattern: first");
-						if(busev[\event_dropdur].notNil) {
-							next_level = val[\next_level];
-							next_absTime = val[\next_absTime];
-							[ next_level, next_absTime, busev ].debug("nlevel, nabstime, busev");
-							level = 
-								( next_level - busev.level ) * busev.event_dropdur 
-								/ (next_absTime - busev.absTime) 
-								+ busev.level
-							;
-						};
-						level.debug("pattern_to_envpattern: first: altered level");
-						busev.putAll(
-							(
-								type: \bus,
-								array: [level],
-								delta: 0,
-							)
-						);
-						busev.yield;
-						previous_val = val;
-						first = false;
-					}
-				} {
-					if(previous_val.use { previous_val.time } <= 0) {
-						previous_val[\array] = [previous_val[\next_level]];
-						previous_val[\type] = \bus;
-					} {
-						previous_val[\level] = previous_val[\next_level];
-						previous_val.debug("pattern_to_envpattern: yield previous");
-					};
-					previous_val.yield;
-					previous_val = val;
-				};
-			});
-		};
-		//previous_val[\type] = \rest; // this seems to be the cause to the last segment is rest
-		if(previous_val.use { previous_val.time } <= 0) {
-			previous_val[\array] = [previous_val[\next_level]];
-			previous_val[\type] = \bus;
-		} {
-			previous_val[\level] = previous_val[\next_level];
-			previous_val.debug("pattern_to_envpattern: yield previous");
-		};
-		previous_val.yield;
-	})
-
-};
-
-
-~eventlist_asArchiveData = { arg eventlist;
-	var el = eventlist.collect({ arg ev;
-		if(ev[\asArchiveData].notNil) {
-			ev = ev.asArchiveData;
-		} {
-			ev = ev.copy;
-			if(ev.use({ev.type}) == \timeline) {
-				var tl = ev.use({ev.timeline});
-				ev[\timeline]  = tl.asRefArchiveData;
-			};
-		};
-		ev;
-	});
-	(
-		eventlist: el,
-		load: { arg self;
-			~eventlist_loadArchiveData.(self)
-		},
-	);
-};
-
-~eventlist_loadArchiveData = { arg eventlist_data;
-	var el = eventlist_data[\eventlist].collect({ arg ev;
-		if(ev[\load].notNil) {
-			ev = ev.load;
-		} {
-			ev = ev.copy;
-			if(ev.use({ev.type}) == \timeline) {
-				var tl = ev.use({ev.timeline});
-				ev[\timeline]  = tl.load;
-			};
-		};
-		ev;
-	});
-	XEventList.newFrom(el);
-};
-
-~eventloop_asArchiveData = { arg eventloop;
-	(list: ~eventlist_asArchiveData.(eventloop.list), key: eventloop.key)
-};
-
-~eventloop_loadArchiveData = { arg eventloop_data;
-	var loop;
-	var list;
-	"eventloop_loadArchiveData".debug;
-	loop = XEventLoop.newInstance;
-	"eventloop_loadArchiveData y".debug;
-
-	loop.list = if(eventloop_data.notNil) { // FIXME: don't know why could be nil
-		~eventlist_loadArchiveData.(eventloop_data.list)
-	} {
-		XEventList.new.start.finish(1);
-	};
-	//loop.addList(list);
-	"eventloop_loadArchiveData x".debug;
-	//loop.setList(0);
-	"eventloop_loadArchiveData END".debug;
-	loop;
-};
-
-/////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-// To be converted in class in Gui.sc
-~fxblock = { arg name, player, mixparam, pg;
-	VLayout(
-		View.new.layout_(
-
-			HLayout(
-				//player.asView, //.background_(ParamViewToolBox.color_dark);
-				~onoff.(player),
-				//StaticText.new.string_(name).background_(ParamViewToolBox.color_dark),
-				StaticText.new.string_(name),
-				//mixparam.asSlider.orientation_(\horizontal).background_(ParamViewToolBox.color_dark),
-				mixparam.asSlider.orientation_(\horizontal),
-			).margins_(2),
-		).background_(ParamViewToolBox.color_dark),
-		ParamGroupLayout.two_panes(pg, \property)
-	);
-};
-
-~onoff = { arg player;
-	var p = PlayerWrapperView(player);
-	var view = p.view;
-	p.states = { [
-		["Off", Color.gray, Color.white],
-		["On", Color.black, Color.white], 
-	] };
-	p.button.fixedSize = 30@20;
-	p.button.background_(ParamViewToolBox.color_dark);
-	view;
-};
-
-if( ~iProxyChain_all.isNil) { 
-	~iProxyChain_all = IdentityDictionary.new; 
-};
-~iProxyChain = (
-	all: { ~iProxyChain_all },
-	new: { arg self, name, slots, inKey=\inBus;
-
-		if(self.all[name].notNil) {
-			self = self.all[name];
-		} {
-			self = self.deepCopy;
-			self.init(slots, inKey).prAdd(name);
-		};
-	
-		self;
-	},
-
-	label: { arg self;
-		self.name;	
-	},
-
-	prAdd: { arg self, name;
-		self.name = name;
-		self.all[name] = self;
-	},
-
-	init: { arg self, slots, inKey;
-		self.slots = slots;
-		self.inKey = inKey;
-		self.isEnabled = 1 ! self.slots.size;
-		self.monitor = NodeProxy.new.source_({ arg inBus; InFeedback.ar(inBus, 2); });
-
-		self.resetOrder;
-		//self.updateRouting;
-		//self.busses = { Bus.audio(s,2) } ! self.slots.size;
-
-		self;
-		
-	},
-
-	proxyGroup: { arg self;
-		GroupDef(self.name);
-	},
-
-	updateRouting: { arg self;
-		var in = self.inBus;
-		var out;
-		if(in.notNil) {
-			self.proxyOrder.do { arg slot_idx, i;
-				var slot;
-				slot_idx.debug("slot_idx");
-				slot = self.slots[slot_idx];
-				if(slot.notNil and: { self.isEnabled[slot_idx] != 0 }) {
-					[slot_idx, in, i].debug("in!!!");
-					slot.xset(self.inKey, in.asControlInput);
-					//slot.parentGroup = self.proxyGroup;
-					//self.proxyGroup.moveNodeToTail(slot.group);
-					//slot.play;
-					slot.send;
-					in = slot.bus;
-				}
-			};
-			self.lastIn = in;
-			//self.proxyOrder.asArray.reverse.do { arg slot_idx;
-			//	var slot;
-			//	slot_idx.debug("slot_idx2");
-			//	slot = self.slots[slot_idx];
-			//	if(slot.notNil and: { self.isEnabled[slot_idx] != 0 }) {
-			//		slot.play(self.inBus.asControlInput, 2);
-			//		slot.set(self.inKey, self.inBus.asControlInput);
-			//	}
-			//};
-
-			[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!!");
-			self.monitor.xset(\inBus, in);
-			[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!! after");
-			//self.proxyGroup.moveNodeToHead(self.monitor.group);
-			//self.monitor.group.moveNodeToTail(Group(s));
-			//self.slots[self.proxyOrder.asArray.last].play(0)
-		};
-	},
-
-	eventPlay: { arg self;
-		self.updateRouting;
-		self.monitor.play;
-	},
-
-	eventStop: { arg self;
-		self.monitor.xset(\inBus, self.inBus);
-		self.monitor.play;
-	},
-
-	eventIsPlaying: { arg self;
-		self.monitor.monitor.isPlaying and: { 
-			self.monitor.get(\inBus) != self.inBus
-		};
-	},
-
-	enableLink: { arg self, x, onezero=1;
-		self.isEnabled[x] = onezero;
-		self.updateRouting;
-	},
-
-	enabledLinkParam: { arg self, x;
-		Param({ self.isEnabled[x] }, { arg val; self.enableLink(x, val) }, ControlSpec(0,1,\lin,1));
-	},
-
-	resetOrder: { arg self;
-		self.proxyOrder = (0..self.slots.size-1);
-	},
-
-	proxyOrder_: { arg self, seq;
-		self[\proxyOrder] = OrderedIdentitySet.newFrom(seq.asArray.keep(self.slots.size));
-		self.updateRouting;
-	},
-
-	xadd: { arg self, proxy;
-		self.slots.add(proxy);
-		self.isEnabled.add(1);
-		self.proxyOder.add(self.slots.size-1);
-		self.updateRouting;
-	},
-
-	xput: { arg self, i, proxy;
-		self.slots.put(i, proxy);
-		self.isEnabled.put(i, 1);
-		self.updateRouting;
-		//self.order.pu(self.slots.size-1);
-	},
-
-	xinsert: { arg self, i, proxy;
-		self.slots.insert(i, proxy);
-		self.isEnabled.insert(i, 1);
-		self.updateRouting;
-		//self.order.pu(self.slots.size-1);
-	},
-
-	removeAt: { arg self, idx;
-		self.slots.removeAt(idx);
-		self.isEnabled.removeAt(idx);
-		self.proxyOrder.remove(idx);
-		self.updateRouting;
-	}
-
-);
-
-

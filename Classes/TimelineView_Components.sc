@@ -542,6 +542,10 @@ TimelineLocatorPropertiesView {
 
 TimelineDrawer {
 	// Toolbox class for drawing
+
+	*draw_dynamic_vertical_lines {
+		// see TimelineView.drawGridY
+	}
 	
 	*draw_piano_bar { arg timeline, roll_start_x_fac=(2/3), alpha=0.7;
 		var grid;
@@ -615,7 +619,7 @@ TimelineDrawer {
 				if(py%32 >= 16) {
 
 					Pen.width = 1;
-					Pen.color = Color.gray(alpha:0.7);
+					Pen.color = Color.gray(alpha:0.3);
 					Pen.fillRect(
 						Rect.fromPoints(
 							me.gridPointToPixelPoint(Point(0,py)),
@@ -635,6 +639,41 @@ TimelineDrawer {
 			};
 		}
 	}
+
+	*draw_quad_lines_factor { arg me, factor=1;
+		var areasize = me.areasize;
+		//~drawme.(this, areasize);
+		//areasize.debug("drawme: drawFunc: areasize");
+		Pen.use {
+
+			areasize.y.do { arg py;
+				//[this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py))].debug("line");
+				if(py % ( 1/factor ) == 0) {
+
+					if(py * factor %32 >= 16) {
+
+						Pen.width = 1;
+						Pen.color = Color.gray(alpha:0.3);
+						Pen.fillRect(
+							Rect.fromPoints(
+								me.gridPointToPixelPoint(Point(0,py)),
+								me.gridPointToPixelPoint(Point(areasize.x, py+1))
+							)
+						);
+					};
+					if(py * factor % 4 == 0) {
+						Pen.width = 1;
+						Pen.color = Color.black;
+					} {
+						Pen.width = 1;
+						Pen.color = Color.gray;
+					};
+					Pen.line(me.gridPointToPixelPoint(Point(0,py)),me.gridPointToPixelPoint(Point(areasize.x, py)));
+					Pen.stroke;
+				}
+			};
+		}
+	}
 }
 
 MidinoteTimelineView : TimelineView {
@@ -642,10 +681,10 @@ MidinoteTimelineView : TimelineView {
 	drawGridY {
 		TimelineDrawer.draw_piano_bar(this, 0, 0.2);
 	}
-	
 }
+
 KitTimelineView : TimelineView {
-	// this timeline is the same that the basic timeline, with piano background
+	// this timeline is the same that the basic timeline, with grouping rows by 4
 	drawGridY {
 		TimelineDrawer.draw_quad_lines(this);
 	}

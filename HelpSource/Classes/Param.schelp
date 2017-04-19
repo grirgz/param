@@ -9,7 +9,7 @@ The documentation is not finished yet, please read the link::Tutorials/Param tut
 
 CLASSMETHODS::
 
-METHOD:: new
+METHOD:: new 
 Create a new Param instance
 
 code::
@@ -26,7 +26,7 @@ Ndef(\ndef_scalar, { arg freq=200, pan=0, amp=0.1;
 ~p.set(300);
 ::
 
-ARGUMENT:: object
+ARGUMENT:: target
 An object to control
 
 ARGUMENT:: property
@@ -39,6 +39,37 @@ An optional spec used to map the value from MIDI or GUI to the range of the para
 
 returns:: A Param instance
 
+METHOD:: lastTweaked
+Some GUI have only Knobs and no label to display the value of the knobs, to gain space. Instead, there is only one label (a status bar for example) displaying the value of the knob you are currently tweaking. This can be achieved with Param thanks to this method which return the last Param tweaked. a signal (CODE::Param.changed(\lastTweaked)::) is also sent when it change.
+returns:: a Param
+
+METHOD:: freeAllSimpleControllers
+SimpleController are used to track changes of parameters and display them in GUI.
+Sometime, something goes wrong and a controller continue to exists despite the GUI is closed. You can free it with this method.
+
+METHOD:: defaultSpec
+When no spec is found for a parameter, this spec is used in last resort.
+
+METHOD:: defaultUpdateMode
+There is two kind of update mode: \dependents and \poll. With \dependents, each time a parameter is tweaked, the change is immediatly reflected on the GUI. With \poll, the GUI is updated at regular interval (determined by Link::Classes/Param#*defaultPollRate::). Polling seems less reactive, but \dependents is more CPU intensive when lot of parameters are tweaked at high speed.
+
+METHOD:: defaultPollRate
+The rate at which the GUI is updated when using \poll update mode. For example, when set to 3, the update is done every 3 seconds.
+
+METHOD:: editFunction
+You can set a custom function when calling Link::Classes/Param#-edit::
+
+METHOD:: unmapView
+this remove the mapping between the param and the view object.
+The other methods like unmapSlider are not really necessary, unmapView can be called for any view class.
+ARGUMENT:: view
+a view, for example a Knob a Slider
+
+
+METHOD:: unmapSlider
+this remove the mapping between the param and this slider
+ARGUMENT:: slider
+a Slider
 
 
 INSTANCEMETHODS::
@@ -53,3 +84,192 @@ METHOD:: get
 Get the value of the pointed sound object parameter
 
 returns:: the value
+
+
+METHOD:: normGet
+This is the same as LINK::Classes/Param#-get:: but normalize the returned value by scaling it to the range 0 to 1. This is useful because lot of GUI components accept only this range. The scaling is done using the spec set for this Param
+
+returns:: the value scaled between 0 and 1
+
+METHOD:: normSet
+This is the same as LINK::Classes/Param#-set:: but accept a value in the range 0 to 1. This is useful because lot of GUI components output only this range. The scaling is done using the spec set for this Param
+
+ARGUMENT:: val
+A value between 0 and 1 which will be scaled to the real value before setting the value of the target object
+
+
+METHOD:: target
+returns:: Return the target object, the first argument of Param constructor
+
+METHOD:: property
+returns:: Return the property of the object which is controlled by the Param (the second argument of Param constructor)
+
+METHOD:: spec
+If the spec is not specified at the creation of Param, it is determined automatically from the spec associated with the target object or the name of the property
+returns:: Return the spec (the third argument of Param constructor)
+
+METHOD:: at
+when the param point to an array, you can access the individual slots of the array.
+
+ARGUMENT:: idx
+an Integer, the index of the array slot to control
+
+returns:: a Param controlling only an individual slot of the array
+
+
+SUBSECTION:: Informations
+
+METHOD:: key
+the key of the target. For example CODE::Param(Pdef(\bass), \freq).key:: return CODE::\bass::
+returns:: a Symbol
+
+METHOD:: numChannels
+if the parameter is an array, return the size of the array. Else return 1
+returns:: an Integer
+
+METHOD:: type
+return a symbol representing the type of the parameter (by looking at the spec). \array for an array, \env for an envelope, \scalar for simple value, \other for the rest (buffers, gate, doneAction, ...)
+returns:: a Symbol
+
+METHOD:: asCompileString
+return the compile string of the Param
+returns:: a String
+
+METHOD:: asLabel
+same as LINK::Classes/Param#-label:: .
+returns:: a String
+
+SUBSECTION:: Others
+
+METHOD:: asParam
+Return itself.
+
+returns:: a Param
+
+SUBSECTION:: Settings
+
+METHOD:: setBusMode
+When you have a Param pointing to a pattern parameter, the value is updated only once for each event. If the parameter is set to a bus, the value is updated in real-time. When you call this method, a bus is created and put inside the parameter. Param.get and set will return the bus value instead of the bus object itself, so it's totally transparent.
+
+ARGUMENT:: enable
+a Boolean
+
+ARGUMENT:: free
+a Boolean. If you disable bus mode with this flag set to true, the bus is also freed
+
+
+
+
+SUBSECTION:: Create GUI
+
+You can easily transform a Param into a view object. Then you can put it in a layout.
+
+METHOD:: edit
+This create and show a window with the param.asView inside. Useful for quicly testing and tweaking a param.
+
+METHOD:: asView
+Create the apropriate GUI component to display the param and map the param to it. This is determined by the spec of the param.
+If the param is an envelope (XEnvSpec), call asEnvelopeView.
+If the param is an array (XArraySpec), call asMultiSlider.
+If the param is an item from a list (MenuSpec), call asPopUpMenu.
+If the param is a buffer (XBufferSpec), use SampleChooserView.
+Else, call asKnob.
+
+returns:: a subclass of View
+
+
+METHOD:: asMultiSlider
+Create a MultiSliderView and map the param to it
+
+returns:: a MultiSliderView
+
+METHOD:: asEnvelopeView
+Create an EnvlopeView and map the param to it
+
+returns:: an EnvlopeView
+
+METHOD:: asStaticTextLabel
+Create a StaticText and map the param property name to it.
+
+returns:: a StaticText
+
+METHOD:: asStaticText
+Create a StaticText and map the param value to it.
+
+returns:: a StaticText
+
+METHOD:: asKnob
+Create a Knob and map the param to it.
+
+returns:: a Knob
+
+METHOD:: asSlider
+Create a Slider and map the param to it.
+
+returns:: a Slider
+
+METHOD:: asTextField
+Create a TextField and map the param value to it.
+
+returns:: a TextField
+
+METHOD:: asEZKnob
+
+METHOD:: asEZSlider
+
+METHOD:: asNumberBox
+
+METHOD:: asButton
+When clicked, it set the param to the max value of the range of the spec, then at next click, it set to the min value.
+
+METHOD:: asPopUpMenu
+When selecting the second entry of the popup menu, this set the param with the value of the second entry of the popup menu.
+
+METHOD:: asIndexPopUpMenu
+When selecting the second entry of the popup menu, this set the param with the index of the second entry of the popup menu (ie. CODE::1::).
+
+
+
+
+SUBSECTION:: Map to GUI
+
+If you have already created a GUI component, you can map a param to it with theses methods. You can also add an action function to be run when the GUI is actionned.
+
+METHOD:: mapTextField
+Map the param to a TextField.
+ARGUMENT:: view
+The TextField object you want to map param to.
+ARGUMENT:: action
+A function. When pushing Enter, the param target is updated, but this also call this function.
+
+METHOD:: mapStaticTextLabel
+Map the param property name to a StaticText.
+ARGUMENT:: view
+a StaticText
+
+METHOD:: mapSlider
+ARGUMENT:: slider
+ARGUMENT:: action
+
+METHOD:: mapStaticText
+Map the param value to a StaticText.
+ARGUMENT:: view
+a StaticText
+ARGUMENT:: precision
+you can round the value displayed, for example STRONG::6:: mean display only 6 digits.
+
+
+METHOD:: mapButton
+ARGUMENT:: view
+ARGUMENT:: action
+
+
+
+SUBSECTION:: Internal
+
+Not to be used, internal only
+
+METHOD:: wrapper
+Return the wrapper Param class to interface
+
+returns:: a param wrapper class

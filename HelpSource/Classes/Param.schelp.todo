@@ -68,13 +68,6 @@ ARGUMENT::  ... args
 
 returns:: (describe returnvalue here)
 
-METHOD:: unmapSlider
-(describe method here)
-
-ARGUMENT:: slider
-(describe argument here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: toNdefSpec
 (describe method here)
@@ -102,14 +95,6 @@ ARGUMENT:: argName
 (describe argument here)
 
 ARGUMENT:: defname
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: unmapView
-(describe method here)
-
-ARGUMENT:: view
 (describe argument here)
 
 returns:: (describe returnvalue here)
@@ -158,61 +143,11 @@ ARGUMENT:: blockmode
 
 returns:: (describe returnvalue here)
 
-METHOD:: asStaticTextLabel
-(describe method here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: newWrapper
 (describe method here)
 
 ARGUMENT:: args
 (describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: normGet
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: key
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: asStaticText
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: asKnob
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: numChannels
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: type
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: asView
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: asCompileString
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: property
-(describe method here)
 
 returns:: (describe returnvalue here)
 
@@ -241,87 +176,6 @@ METHOD:: asString
 
 returns:: (describe returnvalue here)
 
-METHOD:: asLabel
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: asSlider
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: mapStaticText
-(describe method here)
-
-ARGUMENT:: view
-(describe argument here)
-
-ARGUMENT:: precision
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: mapButton
-(describe method here)
-
-ARGUMENT:: view
-(describe argument here)
-
-ARGUMENT:: action
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: setBusMode
-(describe method here)
-
-ARGUMENT:: enable
-(describe argument here)
-
-ARGUMENT:: free
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: target
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: wrapper
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: asTextField
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: asParam
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: edit
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: at
-(describe method here)
-
-ARGUMENT:: idx
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: spec
-(describe method here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: unmap
 (describe method here)
 
@@ -342,47 +196,10 @@ ARGUMENT:: blockmode
 
 returns:: (describe returnvalue here)
 
-METHOD:: normSet
-(describe method here)
-
-ARGUMENT:: val
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: asMultiSlider
-(describe method here)
-
-returns:: (describe returnvalue here)
-
 METHOD:: ==
 (describe method here)
 
 ARGUMENT:: param
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: asEnvelopeView
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: mapTextField
-(describe method here)
-
-ARGUMENT:: view
-(describe argument here)
-
-ARGUMENT:: action
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: mapStaticTextLabel
-(describe method here)
-
-ARGUMENT:: view
 (describe argument here)
 
 returns:: (describe returnvalue here)
@@ -396,13 +213,3 @@ ARGUMENT:: stream
 
 returns:: (describe returnvalue here)
 
-METHOD:: mapSlider
-(describe method here)
-
-ARGUMENT:: slider
-(describe argument here)
-
-ARGUMENT:: action
-(describe argument here)
-
-returns:: (describe returnvalue here)

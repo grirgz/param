@@ -50,12 +50,18 @@ ProtoClass : Event {
 		^inst;
 	}
 
+	printOn { arg stream;
+		this.storeOn(stream)
+	}
+
 	storeOn { arg stream;
-		//if(protoclass_event.)
-		//^init_args
-		stream << "Param.new(";
-		super.storeOn(stream);
-		stream << ")";
+		if(this[\refCompileString].notNil) {
+			stream << this[\refCompileString].(this);
+		} {
+			stream << "ProtoClass(";
+			super.storeOn(stream);
+			stream << ")";
+		}
 	}
 
 	asPattern { arg ... args;

@@ -1,4 +1,6 @@
+/////////// individuals
 
+// produce an event play an event from a pattern for each .play call 
 ~streamPlayer = ProtoClass((
 	new: { arg self, parent, x;
 		self = self.deepCopy;
@@ -15,7 +17,7 @@
 	},
 
 	target_: { arg self, val;
-		self.parent_self.targets[self.index] = val;
+		self.parent_self.setTarget(self.index, val);
 	},
 
 	preChain: { arg self;
@@ -91,6 +93,7 @@
 
 ));
 
+// follow a pattern but note is given by the caller
 ~notePlayer = ProtoClass((
 	new: { arg self, parent, x, stream, pre_event, post_event;
 		self = self.deepCopy;
@@ -160,6 +163,8 @@
 
 ));
 
+////////// collectives
+
 ~parPlayerGroup = ProtoClass((
 	new: { arg self, list;
 		self = self.deepCopy;
@@ -189,6 +194,13 @@
 	targets_: { arg self, val;
 		self[\targets] = val;
 		self.children.do({ arg x; x.reboot });
+	},
+
+	setTarget: { arg self, idx, val;
+		if(self[\targets].size <= idx) {
+			self[\targets].tryPerform(\extend, idx+1)
+		};
+		self[\targets][idx] = val;
 	},
 
 	reboot: { arg self;
@@ -474,9 +486,49 @@
 		nil;
 	},
 
+	refCompileString: { arg self, name;
+		"PatKitDef(%)".format(name ? self.key.asCompileString)
+	},
+
 	presetCompileString: { arg self, varname="~ppg";
-		self.parent[\presetCompileString].(self, "PatKitDef(%)".format(self.key))
-	}
+		self.parent[\presetCompileString].(self, self.refCompileString)
+	},
+
+	savePresetCompileString: { arg self, path, action, force_dialog=false;
+		var save_it = { arg mypath;
+			mypath = FileSystemProject.resolve(mypath).fullPath;
+			"Trying to write preset to file %".format(mypath.asCompileString).postln;
+			File.use(mypath, "w", { arg file;
+				var relpath = FileSystemProject.unresolve(mypath);
+				var preset;
+				self.presetCompileStringSavePath = relpath;
+				file.write("%.presetCompileStringSavePath = %;\n\n".format(self.refCompileString, relpath.asCompileString));
+				
+				preset = self.presetCompileString;
+				if(preset.isNil) {
+					"ERROR: no preset found for this object".postln;
+				} {
+					file.write(preset);
+				};
+			});
+			action.()
+		};
+		if(path.notNil) {
+			save_it.(path)
+		} {
+			if(self.presetCompileStringSavePath.notNil and: { force_dialog==false }) {
+				save_it.(self.presetCompileStringSavePath)
+			} {
+				Dialog.savePanel({ arg mypath;
+					//path.postln;
+					save_it.(mypath)
+				},{
+					//"cancelled".postln;
+				});
+			}
+
+		};
+	},
 ));
 
 

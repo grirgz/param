@@ -1384,7 +1384,7 @@ NdefParam : BaseParam {
 			// workaround when a Bus ("c0") is mapped to the parameter
 			^0
 		} {
-			^this.spec.unmap(this.get)
+			^this.spec.unmap(val)
 		}
 	}
 
@@ -1404,6 +1404,13 @@ NdefParam : BaseParam {
 			// update only if concerned key is set
 			// FIXME: may break if property is an association :(
 			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+
+			// debug variables
+			var property = param.property;
+			var target = param.target;
+			var spec = param.spec;
+
+			// action
 			if(args[2].any({ arg x; x == param.property })) {
 				action.(view, param);
 			}
@@ -3836,15 +3843,22 @@ CachedBus : Bus {
 			//^nil
 			list = List.new;
 		} {
+			var synthdesc;
 			exclude = exclude ? [\out, \gate, \doneAction, \bufnum];
 
-			list = SynthDescLib.global.synthDescs[instrument].controls.reject({ arg con; 
-				con.name == '?' or: {
-					exclude.includes(con.name)
-				}
-			}).collect({ arg con;
-				Param( this, con.name );
-			});
+			synthdesc = SynthDescLib.global.synthDescs[instrument];
+			if(synthdesc.isNil) {
+				"ERROR: Pdef:asParamGroup: Can't create paramGroup: no synthdesc for this instrument: %".format(instrument).debug;
+				list = List.new;
+			} {
+				list = synthdesc.controls.reject({ arg con; 
+					con.name == '?' or: {
+						exclude.includes(con.name)
+					}
+				}).collect({ arg con;
+					Param( this, con.name );
+				});
+			}
 
 		};
 		if(notes) {

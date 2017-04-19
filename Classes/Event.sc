@@ -1,6 +1,6 @@
 
 PlayerEvent : Event {
-	classvar <>myevent; // debug: replace without rebooting
+	classvar <>myevent; // for debug: replace without rebooting
 	classvar <>defaultParent;
 
 

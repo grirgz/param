@@ -30,6 +30,10 @@ TimelineView : SCViewHolder {
 	var background, fillcolor;
 	var nodeCount, shape;
 	var startSelPoint, endSelPoint, refPoint, refWidth;
+
+	var refPoint; // grid_clicked_point
+	var chosennode_old_origin; // in grid units
+
 	var <>lastPixelPos;
 	var <>lastGridPos;
 	var <selNodes, outlinecolor, selectFillColor, selectStrokeColor;
@@ -39,16 +43,17 @@ TimelineView : SCViewHolder {
 
 	var <>nodeAlign=\debug;
 	
-	var refresh 			= true;	// false during 'reconstruct'
-	var refreshDeferred	= false;
+	//var refresh 			= true;	// deprecated
+	var <>refreshDeferred	= false;
 	var lazyRefreshFunc;
-	var refreshEnabled = true;
+	var <>refreshEnabled = true;
 
 	var action;
 	var makeUpdater;
 	var <model;
 	var controller;
 	var timeline_controller;
+	var node_selection_controller;
 
 	var endEvent;
 	var mouseButtonNumber;
@@ -57,8 +62,10 @@ TimelineView : SCViewHolder {
 	var createNodeDeferedAction;
 
 	var >eventFactory;
-	var <>posyKey = \midinote;
+	var <>valueKey = \midinote;
 
+
+	var <>forbidHorizontalNodeMove = false;
 	
 	*new { arg posyKey; 
 		^super.new.initParaSpace(posyKey);
@@ -69,11 +76,13 @@ TimelineView : SCViewHolder {
 	}
 
 	initParaSpace { arg xposyKey;
-		var a, b, rect, relX, relY, pen;
+		var pen;
 		//bounds = argbounds ? Rect(20, 20, 400, 200);
 		//bounds = Rect(bounds.left + 0.5, bounds.top + 0.5, bounds.width, bounds.height);
 
-		posyKey = xposyKey ? \midinote;
+		this.refreshEnabled = false; // should disable refresh because not initialzed yet
+		this.valueKey = xposyKey ? \midinote;
+		this.refreshEnabled = true;
 
 		//if((win= w).isNil, {
 		//	win = GUI.window.new("ParaSpace",
@@ -88,7 +97,7 @@ TimelineView : SCViewHolder {
 			model.reorder;
 		};
 
-		selNodes = Set.new;
+		selNodes = IdentitySet.new;
 		//mouseTracker = UserView.new(win, Rect(bounds.left, bounds.top, bounds.width, bounds.height));
 		quant = Point(1/8,1);
 		viewport = viewport ?? Rect(0,0,1,1);
@@ -110,7 +119,7 @@ TimelineView : SCViewHolder {
 		nodeCount = 0;
 		startSelPoint = 0@0;
 		endSelPoint = 0@0;
-		refPoint = 0@0;
+		refPoint = 0@0; // in grid units
 		refWidth = 0;
 		shape = "rect";
 		conFlag = false;
@@ -119,264 +128,29 @@ TimelineView : SCViewHolder {
 		fontColor = Color.black;
 		pen	= GUI.pen;
 
-
 		mouseTracker
 			.canFocus_(true)
 			.focusColor_(Color.clear.alpha_(0.0))
 			//.relativeOrigin_(false)
 
-			.mouseWheelAction_({ arg view, x, y, modifiers, xDelta, yDelta;
-				var newport;
-				var oldport;
-				var top;
-				oldport = this.viewport;
-				top = ( oldport.top + ( yDelta/this.virtualBounds.height ) ).clip(0,1-oldport.height);
-				newport = Rect(oldport.left, top, oldport.width, oldport.height);
-				[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
-				this.viewport = newport;
-				this.refresh;
+			.mouseUpAction_({|me, x, y, mod|
+				this.mouseUpActionBase(me, x, y, mod)
 			})
+
 			.mouseDownAction_({|me, px, py, mod, buttonNumber, clickCount|
-
-				// select clicked node, or unselect all node is none is clicked, add connection if c is pushed
-
-				var bounds = this.bounds;
-				var npos;
-				var gpos;
-				var nquant = this.gridPointToNormPoint(quant.value);
-
-				mouseButtonNumber = buttonNumber;
-				mouseClickCount = clickCount;
-
-				npos = this.pixelPointToNormPoint(Point(px,py));
-				gpos = this.pixelPointToGridPoint(Point(px,py));
-				lastPixelPos = Point(px,py);
-				lastGridPos = gpos.trunc(quant.value);
-				this.changed(\lastGridPos);
-				[px, py, npos, gpos].debug("mouseDownAction_ px,py, npos, gpos");
-				chosennode = this.findNode(gpos.x, gpos.y);
-				[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
-				[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
-				mouseDownAction.(me, px, py, mod, buttonNumber, clickCount, chosennode);
-
-				case
-					{ mod.isCtrl and: { buttonNumber == 1 } } {
-						this.setEndPosition(gpos.x.trunc(quant.value.x));
-					}
-					{ mod.isCtrl and: { buttonNumber == 0 } } {
-						// create node mode
-
-						//var nodesize = Point(1,1);
-						var newpos;
-						var newevent;
-
-						debug("---------mouseDownAction: create node mode");
-
-						//nodesize = this.gridPointToNormPoint(nodesize);
-
-						if(enableQuant) {
-							newpos = gpos.trunc(quant.value); 
-						} {
-							newpos = gpos; 
-						};
-
-						"mouseDownAction: 1".debug;
-						newevent = this.eventFactory(newpos);
-						chosennode = this.addEvent(newevent);
-						newevent.debug("mouseDownAction: 2");
-
-						createNodeDeferedAction = {
-							debug("mouseDownAction: 3");
-							model.addEvent(newevent);
-							debug("mouseDownAction: 4");
-							model.reorder;
-							debug("mouseDownAction: 5");
-							model.changed(\refresh);
-							debug("mouseDownAction: 6");
-						};
-
-						[chosennode.posyKey, chosennode.model, chosennode.origin].debug("posy, model, origin");
-						[chosennode.width].debug("pppp");
-						refPoint = newpos; // var used here for reference in trackfunc
-						refWidth = chosennode.width;
-
-						chosennode.debug("mouseDownAction: chosennode!");
-					}
-					{ mod.isShift and: { buttonNumber == 0 } } {
-						if(chosennode !=nil) { // a node is selected
-							debug("---------mouseDownAction: prepare for resizing mode");
-							refPoint = gpos; // var used here for reference in trackfunc
-							refWidth = chosennode.width;
-						}
-					}
-					{
-						if(chosennode !=nil, { // a node is selected
-							refPoint = gpos; // var used here for reference in trackfunc
-							
-							if(conFlag == true, { // if selected and "c" then connection is possible
-								paraNodes.do({arg node, i; 
-									if(node === chosennode, {
-										a = i;
-									});
-								});
-								selNodes.do({arg selnode, j; 
-									paraNodes.do({arg node, i; 
-										if(node === selnode, {
-											b = i;
-											//if(a != b) {
-												this.createConnection(a, b);
-											//}
-										});
-									});
-								});
-							});
-
-							if(selNodes.size < 2) {
-								debug("---------mouseDownAction: deselect all and select clicked node");
-								this.deselectAllNodes(chosennode);
-							};
-							this.selectNode(chosennode);
-
-							downAction.value(chosennode);
-						}, { // no node is selected
-							debug("---------mouseDownAction: deselect all and draw selrect");
-							paraNodes.do({arg node; // deselect all nodes
-								this.deselectNode(node);
-							});
-							startSelPoint = npos;
-							endSelPoint = npos;
-							this.refresh;
-						});
-					};
+				this.mouseDownActionBase(me, px, py, mod, buttonNumber, clickCount)
 			})
 
 			.mouseMoveAction_({|me, px, py, mod|
+				this.mouseMoveActionBase(me, px, py, mod)
+			})
 
-				// if a node is clicked, move all selected nodes, else draw a selection rectangle
-
-				var bounds = this.bounds;
-				var x,y;
-				var npos = this.pixelPointToNormPoint(Point(px,py));
-				var gpos = this.pixelPointToGridPoint(Point(px,py));
-				var nquant = this.gridPointToNormPoint(quant.value);
-				var newpos;
-				var buttonNumber = mouseButtonNumber;
-				var clickCount = mouseClickCount;
-
-				[buttonNumber, clickCount].debug("mouseMoveAction");
-
-				newpos = { arg node;
-					var res;
-					res = node.refloc + (gpos - refPoint);
-					if ( enableQuant ) {
-						res = res.round(quant.value);
-					};
-					res.x = res.x.clip(0,this.areasize.x-quant.value.x); // FIXME: not sure if -1 should be scaled to something
-					res.y = res.y.clip(0,this.areasize.y-quant.value.y);
-					res;
-				};
-
-
-				mouseMoveAction.(me, px, py, mod);
-
-				case
-					{ (mod.isShift or: mod.isCtrl)  and: { buttonNumber == 0 } } {
-						// resize mode
-						if(chosennode != nil) { // a node is selected
-							var newwidth;
-							debug("---------mouseMoveAction: resize mode");
-							newwidth = refWidth + (gpos.x - refPoint.x);
-							if( enableQuant ) {
-								newwidth = newwidth.round(quant.value.x);
-								newwidth = newwidth.max(quant.value.x);
-							} {
-								newwidth = newwidth.max(0);
-							};
-							chosennode.width = newwidth;
-
-							//resizeMode = true;
-							//"resize mode!!!!".debug;
-							trackAction.value(chosennode, chosennode.spritenum, this.normPointToGridPoint(chosennode.nodeloc));
-							this.refresh;
-						}
-
-
-					} {
-						// move node
-						if( buttonNumber == 0 ) {
-
-							if(chosennode != nil) { // a node is selected
-								debug("---------mouseMoveAction: move mode");
-								// FIXME: chosennode seems to be moved and signaled two times
-								debug("======= selected nodes will be moved!!!");
-								//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
-								chosennode.setLoc(newpos.(chosennode));
-								block {|break|
-									selNodes.do({arg node; 
-										if(node === chosennode,{ // if the mousedown box is one of selected
-											break.value( // then move the whole thing ...
-												selNodes.do({arg node; // move selected boxes
-													node.setLoc(
-														newpos.(node)
-													);
-													trackAction.value(node, node.spritenum, this.normPointToGridPoint(node.nodeloc));
-												});
-											);
-										}); 
-									});
-								};
-								trackAction.value(chosennode, chosennode.spritenum, this.normPointToGridPoint(chosennode.nodeloc));
-								debug("======= selected nodes was moved!!!");
-								//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes was moved!!!");
-								model.print; 
-							} { // no node is selected
-								if( startSelPoint.debug("startSelPoint") != Point(0,0) ) {
-									endSelPoint = npos;
-								}
-							};
-							this.refresh;
-						}
-					};
+			.mouseWheelAction_({ arg view, x, y, modifiers, xDelta, yDelta;
+				this.mouseWheelActionBase(view, x, y, modifiers, xDelta, yDelta)
 			})
 
 			.mouseOverAction_({arg me, x, y;
-				var bounds = this.bounds;
-				chosennode = this.findNode(x, y);
-				if(chosennode != nil, {  
-					overAction.value(chosennode);
-				});
-			})
-
-			.mouseUpAction_({|me, x, y, mod|
-
-				// if a node was clicked (chosennode), reset refloc (why ?), else select all nodes inside the selection rect
-
-				var bounds = this.bounds;
-				mouseUpAction.(me, x, y, mod);
-				selNodes.debug("-------------- mouseUpAction: selNodes");
-				chosennode.debug("mouseUpAction: chosennode");
-				if(chosennode !=nil, { // a node is selected
-					createNodeDeferedAction.value; // function defined when a new node is created
-					createNodeDeferedAction = nil;
-					upAction.value(chosennode);
-					paraNodes.do({arg node; 
-						node.refloc = node.nodeloc;
-					});
-					this.refresh;
-				},{ // no node is selected
-					// find which nodees are selected
-					var rect;
-					rect = this.normRectToGridRect(Rect.fromPoints(startSelPoint, endSelPoint));
-					selNodes = Set.new;
-					this.findNodes(rect).do({ arg x;  this.selectNode(x) });
-					startSelPoint = 0@0;
-					endSelPoint = 0@0;
-					this.refresh;
-				});
-			})
-
-			.drawFunc_({		
-				this.drawFunc;
+				this.mouseOverActionBase(me, x, y)
 			})
 
 			.keyDownAction_({ |me, key, modifiers, unicode, keycode |
@@ -384,15 +158,309 @@ TimelineView : SCViewHolder {
 			})
 
 			.keyUpAction_({ |me, key, modifiers, unicode |
-				if(unicode == 99, {conFlag = false;}); // c is for connecting
+				this.keyUpActionBase(me, key, modifiers, unicode )
+			})
 
-			});
+			.drawFunc_({		
+				this.drawFunc;
+			})
+		;
 
-			this.specialInit;
+		this.specialInit;
 	}
 
 	specialInit {
 		// to be overriden
+	}
+
+	///////////////////////////////////////////////////////// input events handling
+
+	mouseDownActionBase {|me, px, py, mod, buttonNumber, clickCount|
+		// select clicked node, or unselect all node is none is clicked, add connection if c is pushed
+
+		var a, b;
+		var bounds = this.bounds;
+		var npos;
+		var gpos;
+		var nquant = this.gridPointToNormPoint(quant.value);
+
+		mouseButtonNumber = buttonNumber;
+		mouseClickCount = clickCount;
+
+		npos = this.pixelPointToNormPoint(Point(px,py));
+		gpos = this.pixelPointToGridPoint(Point(px,py));
+		lastPixelPos = Point(px,py);
+		lastGridPos = gpos.trunc(quant.value);
+		this.changed(\lastGridPos);
+		[px, py, npos, gpos].debug("mouseDownAction_ px,py, npos, gpos");
+		chosennode = this.findNode(gpos.x, gpos.y);
+		[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
+		[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
+		mouseDownAction.(me, px, py, mod, buttonNumber, clickCount, chosennode);
+
+		case
+		{ mod.isCtrl and: { buttonNumber == 1 } } {
+			this.setEndPosition(gpos.x.trunc(quant.value.x));
+		}
+		{ mod.isCtrl and: { buttonNumber == 0 } } {
+			// create node mode
+
+			//var nodesize = Point(1,1);
+			var newpos;
+			var newevent;
+
+			debug("---------mouseDownAction: create node mode");
+
+			//nodesize = this.gridPointToNormPoint(nodesize);
+
+			if(enableQuant) {
+				newpos = gpos.trunc(quant.value); 
+			} {
+				newpos = gpos; 
+			};
+
+			"mouseDownAction: 1".debug;
+			newevent = this.eventFactory(newpos);
+			chosennode = this.addEvent(newevent);
+			newevent.debug("mouseDownAction: 2");
+
+			createNodeDeferedAction = {
+				debug("mouseDownAction: 3");
+				model.addEvent(newevent);
+				debug("mouseDownAction: 4");
+				model.reorder; // reorder lose node selection
+				debug("mouseDownAction: 5");
+				//model.changed(\refresh); // commented because refresh is already called in mouseUp
+				debug("mouseDownAction: 6");
+				chosennode = nil; // chosennode was set to know which node to resize with mouseMove, but is not really selected
+			};
+
+			[chosennode.posyKey, chosennode.model, chosennode.origin].debug("posy, model, origin");
+			[chosennode.width].debug("pppp");
+			refPoint = newpos; // var used here for reference in trackfunc
+			refWidth = chosennode.width;
+
+			chosennode.debug("mouseDownAction: chosennode!");
+		}
+		{ mod.isShift and: { buttonNumber == 0 } } {
+			if(chosennode !=nil) { // a node is selected
+				debug("---------mouseDownAction: prepare for resizing mode");
+				refPoint = gpos; // var used here for reference in trackfunc
+				refWidth = chosennode.width;
+			}
+		}
+		{
+			if(chosennode !=nil, { // a node is selected
+				refPoint = gpos; // var used here for reference in trackfunc
+				chosennode_old_origin = chosennode.origin; // used for reference when moving chosennode
+
+				if(conFlag == true, { // if selected and "c" then connection is possible
+					paraNodes.do({arg node, i; 
+						if(node === chosennode, {
+							a = i;
+						});
+					});
+					selNodes.do({arg selnode, j; 
+						paraNodes.do({arg node, i; 
+							if(node === selnode, {
+								b = i;
+								//if(a != b) {
+								this.createConnection(a, b);
+								//}
+							});
+						});
+					});
+				});
+
+				if(selNodes.size < 2) {
+					debug("---------mouseDownAction: deselect all and select clicked node");
+					this.deselectAllNodes(chosennode);
+				};
+				this.selectNode(chosennode);
+
+				downAction.value(chosennode);
+			}, { // no node is selected
+				debug("---------mouseDownAction: deselect all and draw selrect");
+				this.deselectAllNodes;
+				startSelPoint = npos;
+				endSelPoint = npos;
+				this.refresh;
+			});
+		};
+	}
+
+	mouseUpActionBase {|me, x, y, mod|
+		// if a node was clicked (chosennode), reset refloc (for moving nodes), else select all nodes inside the selection rect
+
+		var bounds = this.bounds;
+		mouseUpAction.(me, x, y, mod);
+		selNodes.debug("-------------- mouseUpAction: selNodes");
+		chosennode.debug("mouseUpAction: chosennode");
+		if(chosennode != nil, { // a node is selected
+			createNodeDeferedAction.value; // function defined when a new node is created
+			createNodeDeferedAction = nil;
+			upAction.value(chosennode);
+			selNodes.do({arg node; 
+				node.refloc = node.nodeloc;
+			});
+			this.refresh;
+		},{ // no node is selected
+			// find which nodes are selected
+			var rect;
+			rect = this.normRectToGridRect(Rect.fromPoints(startSelPoint, endSelPoint));
+			selNodes = IdentitySet.new;
+			this.selectNodes(this.findNodes(rect));
+			startSelPoint = 0@0;
+			endSelPoint = 0@0;
+			this.refresh;
+		});
+	}
+
+	mouseMoveActionBase {|me, px, py, mod|
+		// if a node is clicked, move all selected nodes, else draw a selection rectangle
+
+		var bounds = this.bounds;
+		var x,y;
+		var ppos = Point(px,py);
+		var npos = this.pixelPointToNormPoint(ppos);
+		var gpos = this.pixelPointToGridPoint(ppos);
+		var nquant = this.gridPointToNormPoint(quant.value);
+		var newpos;
+		var buttonNumber = mouseButtonNumber;
+		var clickCount = mouseClickCount;
+
+		[buttonNumber, clickCount].debug("mouseMoveAction");
+
+		// old move algo
+		//newpos = { arg node;
+		//	// gpos is the mouse position in grid units
+		//	// (gpos - refPoint) is the distance from old point position to mouse position
+		//	var res;
+		//	res = node.refloc + (gpos - refPoint);
+		//	if ( enableQuant ) {
+		//		res = res.round(quant.value);
+		//	};
+		//	if(this.forbidHorizontalNodeMove == true) {
+		//		res.x = node.refloc.x;
+		//	};
+		//	res = this.clipGridPoint(res);
+		//	res;
+		//};
+
+
+		mouseMoveAction.(me, px, py, mod);
+
+		case
+		{ (mod.isShift or: mod.isCtrl)  and: { buttonNumber == 0 } } {
+			// resize mode
+			if(chosennode != nil) { // a node is selected
+				var newwidth;
+				debug("---------mouseMoveAction: resize mode");
+				newwidth = refWidth + (gpos.x - refPoint.x);
+				if( enableQuant ) {
+					newwidth = newwidth.round(quant.value.x);
+					newwidth = newwidth.max(quant.value.x);
+				} {
+					newwidth = newwidth.max(0);
+				};
+				chosennode.width = newwidth;
+
+				//resizeMode = true;
+				//"resize mode!!!!".debug;
+				trackAction.value(chosennode, chosennode.spritenum, this.normPointToGridPoint(chosennode.nodeloc));
+				this.refresh;
+			}
+
+
+		} {
+			// move node
+			if( buttonNumber == 0 ) {
+
+				if(chosennode != nil) { // a node is selected
+					var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
+					debug("---------mouseMoveAction: move mode");
+					debug("======= selected nodes will be moved!!!");
+					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
+
+					// old move algo
+					//if(selNodes.matchItem(chosennode)) {// if the mousedown box is one of selected
+					//	selNodes.do({arg node; // move selected boxes
+					//		node.setLoc(
+					//			newpos.(node)
+					//		);
+					//		trackAction.value(node, node.spritenum, this.normPointToGridPoint(node.nodeloc));
+					//	});
+					//};
+
+					// ----------new algo
+					// - pixel_click_offset = determine diff in pixel from clicked point to origin point of chosennode (chosennode_old_origin)
+					// - the new location of node is the point where the mouse has moved (newpos) minus the pixel_click_offset
+					// - then convert it to grid unit and quantize it
+					// - now determine the diff between old node location and new node location (grid_diff) and apply this change to all selected nodes
+					// - since the function is called continously, chosennode_old_origin should be fixed to the first position of node (refloc), and not his
+					//		position changing continuously
+
+					chosennode_old_origin = chosennode.refloc;
+					pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
+					pixel_newpos_point = ppos;
+					pixel_click_offset = pixel_clicked_point - this.gridPointToPixelPoint(chosennode_old_origin);
+					chosennode_new_origin = this.pixelPointToGridPoint(pixel_newpos_point - pixel_click_offset);
+					chosennode_new_origin = this.quantizeGridPoint(chosennode_new_origin);
+
+					if(this.forbidHorizontalNodeMove == true) {
+						chosennode_new_origin.x = chosennode_old_origin.x;
+					};
+
+					chosennode.setLoc(chosennode_new_origin);
+					grid_diff = chosennode_new_origin - chosennode_old_origin;
+
+					selNodes.do { arg node;
+						node.setLoc(node.refloc + grid_diff)
+					};
+
+					// ----------debug algo
+					//pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
+					//pixel_newpos_point = ppos;
+					//pixel_click_offset = pixel_clicked_point - this.gridPointToPixelPoint(chosennode_old_origin);
+					//chosennode_new_origin = this.pixelPointToGridPoint(pixel_newpos_point - pixel_click_offset);
+
+					//chosennode.setLoc(chosennode_new_origin);
+
+					//-----------
+
+
+					this.changed(\nodeMoved);
+					debug("======= selected nodes was moved!!!");
+					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes was moved!!!");
+					//model.print;  // debug
+				} { // no node is selected
+					if( startSelPoint.debug("startSelPoint") != Point(0,0) ) {
+						endSelPoint = npos;
+					}
+				};
+				this.refresh;
+			}
+		};
+	}
+
+	mouseWheelActionBase { arg view, x, y, modifiers, xDelta, yDelta;
+		var newport;
+		var oldport;
+		var top;
+		oldport = this.viewport;
+		top = ( oldport.top + ( yDelta/this.virtualBounds.height ) ).clip(0,1-oldport.height);
+		newport = Rect(oldport.left, top, oldport.width, oldport.height);
+		[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
+		this.viewport = newport;
+		this.refresh;
+	}
+
+	mouseOverActionBase {arg me, x, y;
+		var bounds = this.bounds;
+		chosennode = this.findNode(x, y);
+		if(chosennode != nil, {  
+			overAction.value(chosennode);
+		});
 	}
 
 	keyDownActionBase { |me, key, modifiers, unicode, keycode |
@@ -402,7 +470,7 @@ TimelineView : SCViewHolder {
 
 		if(unicode == 127, {
 			selNodes.copy.do({arg node; 
-				this.deleteNode(node)
+				this.deleteNode(node, false)
 			});
 		});
 
@@ -423,10 +491,72 @@ TimelineView : SCViewHolder {
 
 		if(unicode == 99, {conFlag = true;}); // c is for connecting
 
+		// refresh
+
+		if(key == $r) {
+			this.refreshEventList;
+		};
+
 		// hook
 
 		keyDownAction.value(me, key, modifiers, unicode, keycode);
 		this.refresh;
+	}
+
+	keyUpActionBase { |me, key, modifiers, unicode |
+		if(unicode == 99, {conFlag = false;}); // c is for connecting
+	}
+
+	///////////////////////////////////////////////////////// custom input events handling
+
+	nodeDownAction_ { arg func;
+		downAction = func;
+	}
+	
+	nodeUpAction_ { arg func;
+		upAction = func;
+	}
+	
+	nodeTrackAction_ { arg func;
+		trackAction = func;
+	}
+	
+	nodeOverAction_ { arg func;
+		overAction = func;
+		win.acceptsMouseOver = true;
+	}
+	
+	connectAction_ {arg func;
+		connAction = func;
+	}
+	
+	setMouseOverState_ {arg state;
+		win.acceptsMouseOver = state;
+	}
+	
+	keyDownAction_ {arg func;
+		keyDownAction = func;
+	}
+
+	action {
+		action.();
+	}
+
+	action_ { arg fun;
+		action = fun;
+	}
+
+
+	//////////////////////////////////
+
+	quantizeGridPoint { arg point;
+		var newpoint;
+		newpoint = point;
+		if ( enableQuant ) {
+			newpoint = newpoint.round(quant.value);
+		};
+		newpoint = this.clipGridPoint(newpoint);
+		^newpoint;
 	}
 
 	setEndPosition { arg time;
@@ -446,7 +576,37 @@ TimelineView : SCViewHolder {
 		}
 	}
 
+	///////////////////////////////////////////////////////// Drawing
+	
+	drawGridY {
+		// this draw horizontal lines along the Y axis
+		// should move to TimelineDrawer, but need to check file dependency graph
+
+		var y_lines_count;
+		var y_lines_factor;
+		Pen.alpha = 0.5;
+		Pen.color = Color.black;
+
+		y_lines_count = areasize.y;
+
+		// naive way to reduce number of lines
+		7.do {
+			if(y_lines_count > 128) {
+				y_lines_count = y_lines_count / 2;
+			};
+		};
+		y_lines_factor = areasize.y / y_lines_count;
+
+		y_lines_count.do { arg py;
+			py = py * y_lines_factor;
+			Pen.line(this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py)));
+		};
+		Pen.stroke;
+		Pen.alpha = 1;
+	}
+
 	drawGridX {
+		// this draw vertical lines along the X axis
 		var grid;
 		mygrid.debug("===============mygrid");
 		grid = mygrid.(this.virtualBounds, this.areasize, this.viewport);
@@ -466,7 +626,8 @@ TimelineView : SCViewHolder {
 				Pen.stroke;
 			});
 
-		}
+		};
+		Pen.alpha = 1;
 		
 		//DrawGrid(
 		//	Rect(
@@ -547,31 +708,6 @@ TimelineView : SCViewHolder {
 		pen.strokeRect(bounds); 
 
 	}
-	
-	drawGridY {
-
-		var y_lines_count;
-		var y_lines_factor;
-		Pen.alpha = 0.5;
-		Pen.color = Color.black;
-
-		y_lines_count = areasize.y;
-
-		// naive way to reduce number of lines
-		7.do {
-			if(y_lines_count > 128) {
-				y_lines_count = y_lines_count / 2;
-			};
-		};
-		y_lines_factor = areasize.y / y_lines_count;
-
-		y_lines_count.do { arg py;
-			py = py * y_lines_factor;
-			Pen.line(this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py)));
-		};
-		Pen.stroke;
-		Pen.alpha = 1;
-	}
 
 
 	drawNodes {
@@ -585,14 +721,18 @@ TimelineView : SCViewHolder {
 		paraNodes.do({arg node;
 			//[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
 			//[node.rect, this.gridRectToNormRect(node.rect), this.gridRectToPixelRect(node.rect)].debug("drawNodes:rect, norm, pixel");
-			if(node.class == TimelineViewLocatorLineNode) {
-				defered_nodes.add(node)
-			} {
-				if(first) { // for env timelines
-					Pen.moveTo(this.gridPointToPixelPoint(node.origin));
-					first = false;
-				};
-				node.draw;
+
+			// is Set.contains quick enough with big selection ?
+			if(node.visible) {
+				if(node.class == TimelineViewLocatorLineNode or: { selNodes.matchItem(node) }) {
+					defered_nodes.add(node)
+				} {
+					if(first) { // for env timelines
+						Pen.moveTo(this.gridPointToPixelPoint(node.origin));
+						first = false;
+					};
+					node.draw;
+				}
 			}
 		});
 		defered_nodes.do { arg node;
@@ -613,6 +753,13 @@ TimelineView : SCViewHolder {
 		}
 
 	}
+	
+	setBackgrDrawFunc_ { arg func;
+		backgrDrawFunc = func;
+		this.refresh;
+	}
+
+	/////////////////////////////////////////////////////////
 
 	bounds { 
 		^this.view.bounds
@@ -621,14 +768,6 @@ TimelineView : SCViewHolder {
 	virtualBounds {
 		// virtualBounds use screen coordinates
 		^(virtualBounds ? Rect(0,0,this.bounds.width, this.bounds.height));
-	}
-
-	action {
-		action.();
-	}
-
-	action_ { arg fun;
-		action = fun;
 	}
 
 	makeUpdater {
@@ -718,6 +857,42 @@ TimelineView : SCViewHolder {
 
 	}
 
+	mimicNodeSelection { arg timeline;
+		if(node_selection_controller.notNil) {node_selection_controller.remove};
+		node_selection_controller = SimpleController(timeline)
+			.put(\selectedNodes, {
+				if(this.view.isClosed) {
+					timeline_controller.remove;
+				} {
+					var to_select = List.new;
+					[this].debug("refresh selection because mimicNodeSelection!!");
+					// FIXME: this is inneficient
+					this.nodes.do { arg node;
+						timeline.selectedNodes.do { arg selnode;
+							if( node.model === selnode.model ) {
+								to_select.add(node)
+							};
+						};
+					};
+					if( timeline.chosennode.isNil ) {
+						chosennode = nil;
+					} {
+						this.nodes.do { arg node;
+							if( node.model === timeline.chosennode.model ) {
+								chosennode = node;
+							};
+						};
+					};
+					this.deselectAllNodes;
+					this.selectNodes(to_select);
+					this.refresh;
+				}
+			})
+		;
+		// init
+		timeline.changed(\selectedNodes);
+	}
+
 	areasize_ { arg val;
 		areasize = val;
 		this.changed(\areasize);
@@ -729,6 +904,14 @@ TimelineView : SCViewHolder {
 	}
 
 	///////////////// coordinates conversion
+
+	clipGridPoint { arg point;
+		// FIXME: this prevent negative y values
+		var x, y;
+		x = point.x.clip(0,this.areasize.x-quant.value.x); // FIXME: not sure if -1 should be scaled to something
+		y = point.y.clip(0,this.areasize.y-quant.value.y);
+		^Point(x,y);
+	}
 
 	normRectToPixelRect_old { arg rect; //////////// OLD
 		// 
@@ -903,29 +1086,51 @@ TimelineView : SCViewHolder {
 
 	///////////////// 
 
+	selectedNodes {
+		// better name
+		^selNodes
+	}
+
 	selectNode { arg node;
 		node.selectNode;
 		selNodes.add(node);
+		this.changed(\selectedNodes)
+	}
+
+	selectNodes { arg nodes;
+		// method for sending only one changed signal when multiple nodes are selected
+		nodes.do { arg node;
+			node.selectNode;
+		};
+		selNodes.addAll(nodes);
+		this.changed(\selectedNodes)
 	}
 
 	deselectNode { arg node;
 		node.deselectNode;
 		selNodes.remove(node);
+		this.changed(\selectedNodes)
+	}
+
+	deselectNodes { arg nodes;
+		nodes.do { arg node;
+			node.deselectNode;
+		};
+		selNodes.removeAll(nodes);
+		this.changed(\selectedNodes)
 	}
 
 	deselectAllNodes { arg chosennode;
-		paraNodes.do({arg node; 
-			if(node !== chosennode) {
-				this.deselectNode(node);
-			}
-		});
+		// deselect all but chosennode
+		// should use selNodes, but at least we are sure there are no more selected nodes
+		this.deselectNodes(paraNodes.reject({ arg x; x === chosennode }))
 	}
 	
 	clearSpace {
 		paraNodes.do { arg node;
 			node.free;
 		};
-		selNodes = Set.new;
+		selNodes = IdentitySet.new;
 		paraNodes = List.new;
 		connections = List.new;
 		nodeCount = 0;
@@ -1047,6 +1252,104 @@ TimelineView : SCViewHolder {
 		if(refresh == true, {this.refresh});
 	}
 	
+	reconstruct { arg aFunc;
+		refreshEnabled = false;
+		aFunc.value( this );
+		refreshEnabled = true;
+		this.refresh;
+	}
+
+	refresh {
+		if( this.refreshEnabled, { {mouseTracker.refresh}.defer; });
+	}
+
+	lazyRefresh {
+		if( refreshDeferred.not, {
+			AppClock.sched( 0.02, lazyRefreshFunc );
+			refreshDeferred = true;
+		});
+	}
+
+	
+	// local function
+	findNode {arg x, y;
+		// findNode take x and y in grid coordinates, because TimelineNode.rect is in grid coordinates
+		var point = Point.new(x,y);
+		if(chosennode.notNil and: {chosennode.rect.containsPoint(point)}) {
+			// priority to the already selected node
+			^chosennode;
+		};
+		paraNodes.reverse.do({arg node; 
+			node.spritenum.debug("spritnum");
+			[node.rect, point].debug("findNode");
+			if(node.selectable and: {node.rect.containsPoint(point)}, {
+				[node.rect, point].debug("findNode: found!!");
+				^node;
+			});
+		});
+		^nil;
+	}
+
+	findNodes { arg rect;
+		^paraNodes.collect({arg node; 
+			var point = node.origin;
+			node.spritenum.debug("spritnum");
+			[rect, point].debug("findNodes");
+			if(node.selectable and: {rect.containsPoint(point)}, {
+				[node.rect, point].debug("findNode: found!!");
+				node;
+			});
+		}).select(_.notNil);
+	}
+
+	free {
+		paraNodes.reverse.do { arg node;
+			node.free;
+		};
+		controller.remove;
+	}
+
+
+	////////////////////////////// To review
+	// theses are old methods to review, rename or refactorize
+	// all theses setXXX methods are ugly
+
+				
+	setNodeSize_ {arg index, size, refresh=true;
+		paraNodes[index].extent_(size);
+		if(refresh == true, {this.refresh});
+	}
+
+	getNodeSize {arg index;
+		^paraNodes[index].extent;
+	}
+	
+	setNodeColor_ {arg index, color, refresh=true;
+		paraNodes[index].setColor_(color);
+		if(refresh == true, {this.refresh});
+	}
+	
+	getNodeColor {arg index;
+		^paraNodes[index].getColor;	
+	}
+	
+	setFont_ {arg f;
+		font = f;
+	}
+	
+	setFontColor_ {arg fc;
+		fontColor = fc;
+	}
+	
+	setNodeString_ {arg index, string;
+		paraNodes[index].string = string;
+		this.refresh;		
+	}
+	
+	getNodeString {arg index;
+		^paraNodes[index].string;
+	}
+	
 	setNodeLoc_ {arg index, argX, argY, refresh=true;
 		//var x, y;
 		//x = argX+bounds.left;
@@ -1165,127 +1468,6 @@ TimelineView : SCViewHolder {
 		shape = argshape;
 		if(refresh == true, {this.refresh});
 	}
-	
-	reconstruct { arg aFunc;
-		refresh = false;
-		aFunc.value( this );
-		refresh = true;
-		this.refresh;
-	}
-
-	refresh {
-		if( refresh, { {mouseTracker.refresh}.defer; });
-	}
-
-	lazyRefresh {
-		if( refreshDeferred.not, {
-			AppClock.sched( 0.02, lazyRefreshFunc );
-			refreshDeferred = true;
-		});
-	}
-				
-	setNodeSize_ {arg index, size, refresh=true;
-		paraNodes[index].extent_(size);
-		if(refresh == true, {this.refresh});
-	}
-
-	getNodeSize {arg index;
-		^paraNodes[index].extent;
-	}
-	
-	setNodeColor_ {arg index, color, refresh=true;
-		paraNodes[index].setColor_(color);
-		if(refresh == true, {this.refresh});
-	}
-	
-	getNodeColor {arg index;
-		^paraNodes[index].getColor;	
-	}
-	
-	setFont_ {arg f;
-		font = f;
-	}
-	
-	setFontColor_ {arg fc;
-		fontColor = fc;
-	}
-	
-	setNodeString_ {arg index, string;
-		paraNodes[index].string = string;
-		this.refresh;		
-	}
-	
-	getNodeString {arg index;
-		^paraNodes[index].string;
-	}
-	// PASSED FUNCTIONS OF MOUSE OR BACKGROUND
-	nodeDownAction_ { arg func;
-		downAction = func;
-	}
-	
-	nodeUpAction_ { arg func;
-		upAction = func;
-	}
-	
-	nodeTrackAction_ { arg func;
-		trackAction = func;
-	}
-	
-	nodeOverAction_ { arg func;
-		overAction = func;
-		win.acceptsMouseOver = true;
-	}
-	
-	connectAction_ {arg func;
-		connAction = func;
-	}
-	
-	setMouseOverState_ {arg state;
-		win.acceptsMouseOver = state;
-	}
-	
-	keyDownAction_ {arg func;
-		keyDownAction = func;
-	}
-	
-	setBackgrDrawFunc_ { arg func;
-		backgrDrawFunc = func;
-		this.refresh;
-	}
-	
-	// local function
-	findNode {arg x, y;
-		// findNode take x and y in grid coordinates, because TimelineNode.rect is in grid coordinates
-		var point = Point.new(x,y);
-		paraNodes.reverse.do({arg node; 
-			node.spritenum.debug("spritnum");
-			[node.rect, point].debug("findNode");
-			if(node.selectable and: {node.rect.containsPoint(point)}, {
-				[node.rect, point].debug("findNode: found!!");
-				^node;
-			});
-		});
-		^nil;
-	}
-
-	findNodes { arg rect;
-		^paraNodes.collect({arg node; 
-			var point = node.origin;
-			node.spritenum.debug("spritnum");
-			[rect, point].debug("findNodes");
-			if(node.selectable and: {rect.containsPoint(point)}, {
-				[node.rect, point].debug("findNode: found!!");
-				node;
-			});
-		}).select(_.notNil);
-	}
-
-	free {
-		paraNodes.reverse.do { arg node;
-			node.free;
-		};
-		controller.remove;
-	}
 }
 
 //////////////////////////////// preview
@@ -1309,7 +1491,7 @@ TimelinePreview_Env : TimelineEnvView {
 }
 
 
-////////////////////////////////
+//////////////////////////////// Nodes
 
 
 //// dispatcher
@@ -1377,9 +1559,11 @@ TimelineViewNodeBase {
 	var <>refreshAction;
 	var <>timeKey = \absTime;
 	var >posyKey = \midinote;
+	var <>defaultPosyValue = 0;
 	var <>lenKey = \sustain;
 	var <>origin;
 	var <>extent;
+	var <>defaultHeight = 1;
 	var <>color, <>outlineColor;
 	var <>parent;
 	var <>action;
@@ -1387,6 +1571,7 @@ TimelineViewNodeBase {
 	var <>controller;
 	var <>selectable = true; // to be or not ignored by findNode
 	var <>deletable = true;
+	var <>visible = true;
 	*new {
 		^super.new
 	}
@@ -1408,8 +1593,8 @@ TimelineViewEventNode : TimelineViewNodeBase {
 	}
 
 	posyKey {
-		if(parent.notNil) {
-			^parent.posyKey
+		if(parent.valueKey.notNil) {
+			^parent.valueKey
 		} {
 			^posyKey
 		}
@@ -1420,7 +1605,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		spritenum = nodeidx;
 		model = event;
 
-		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
 			//[model, origin, extent].debug("node action before");
@@ -1430,10 +1615,10 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		};
 
 		refresh = {
-			origin = Point(model[timeKey], model[this.posyKey] ? 0);
+			origin = Point(model[timeKey], model[this.posyKey] ? this.defaultPosyValue);
 			color = ParamViewToolBox.color_ligth;
 			outlineColor = outlineColor ? Color.black;
-			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
+			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, this.defaultHeight); // * tempo ?
 			//[spritenum, origin, extent, color].debug("node refresh");
 		};
 
@@ -1516,7 +1701,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		Pen.color = this.color;
 		pos = this.origin;
 		rect = parent.gridRectToPixelRect(this.rect);
-		//[spritenum, rect].debug("draw");
+		[spritenum, rect, this.class].debug("draw");
 		Pen.fillRect(rect);
 		Pen.color = this.outlineColor;
 		Pen.strokeRect(rect);
@@ -1540,7 +1725,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 //// children
 
 TimelineViewEventListNode : TimelineViewEventNode {
-	// is used for Ndef, Pdef, TrackDef and timelines
+	// is used for representing Ndef, Pdef, TrackDef and timelines as a node in a bigger timeline
 	// that is player and pattern event types
 	// if timeline, can display content of timeline
 	var <>label;
@@ -1701,15 +1886,13 @@ TimelineViewEventListNode : TimelineViewEventNode {
 }
 
 TimelineViewEventEnvNode : TimelineViewEventListNode {
-
 	timelinePreviewClass {
 		^TimelinePreview_Env
 	}
-
-
 }
 
 
+// node for EventLoop instead of EventList
 // FIXME: lot of common code with TimelineViewEventListNode, not maintened currently
 TimelineViewEventLoopNode : TimelineViewEventListNode {
 
@@ -1765,11 +1948,11 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 
 
 
-////////////////////////////////
+//////////////////////////////// Env and Env node
 
 TimelineEnvView : TimelineView {
 	var valueKey = \midinote;
-	var <>param;
+	var <param;
 
 	gridPointToNormPoint { arg point;
 		if(param.notNil) {
@@ -1813,12 +1996,12 @@ TimelineEnvView : TimelineView {
 
 	valueKey_ { arg val;
 		valueKey = val;
-		paraNodes.do { arg node;
-			if(node.isKindOf(TimelineEnvViewNode)) {
-				node.posyKey = val;
-				node.refresh;
-			}
-		};
+		//paraNodes.do { arg node;
+		//	if(node.isKindOf(TimelineEnvViewNode)) {
+		//		node.posyKey = val;
+		//		node.refresh;
+		//	}
+		//};
 		this.refreshEventList;
 	}
 
@@ -1877,7 +2060,14 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		};
 
 		refresh = {
-			var posy = model[this.posyKey] ? (
+			//var posy = model[this.posyKey] ? (
+			//	if(parent.param.notNil) {
+			//		parent.param.default.debug("dd====================");
+			//	} {
+			//		0
+			//	}
+			//);
+			var posy = model.use { model[this.posyKey].value(model) } ? (
 				if(parent.param.notNil) {
 					parent.param.default.debug("dd====================");
 				} {
@@ -1893,7 +2083,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 
 		this.makeUpdater;
 		this.refresh;
-		this.action;
+		//this.action;
 	}
 
 	draw {
@@ -1901,9 +2091,9 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		var pos;
 		pos = this.origin;
 		point = parent.gridPointToPixelPoint(this.origin);
-		//[spritenum, point].debug("draw");
+		[spritenum, point, this.class].debug("draw");
 
-		Pen.color = this.color;
+		Pen.color = ParamViewToolBox.color_ligth;
 		Pen.lineTo(point);
 		Pen.stroke;
 
@@ -1943,10 +2133,121 @@ TimelineEnvViewNode : TimelineViewEventNode {
 }
 
 
+//////////////////////////////// Velocity Timeline
+
+VelocityTimelineView : TimelineEnvView {
+	var valueKey = \velocity;
+
+	nodeClass {
+		^VelocityTimelineViewNode
+	}
+
+	clipGridPoint { arg point;
+		var x, y;
+		x = point.x.clip(0,this.areasize.x-quant.value.x); // FIXME: not sure if -1 should be scaled to something
+		y = point.y.clip(param.spec.clipLo,param.spec.clipHi-quant.value.y);
+		^Point(x,y);
+	}
+
+	//drawGridY {
+	//	TimelineDrawer.draw_quad_lines_factor(this, 1/4);
+	//}
+
+	deleteNode { arg node, refresh=true;
+		var del;
+		var nodenr = node.spritenum;
+		if(node.deletable.not) { ^this };
+		node.model.removeAt(node.posyKey);
+		deleteNodeHook.(node, nodenr);
+		if(refresh == true, {this.refreshEventList; this.refresh});
+	}
+	
+
+}
+
+VelocityTimelineViewNode : TimelineEnvViewNode {
+	var <>radius = 8;
+
+	//*new { arg parent, nodeidx, event;
+	//	switch(event[\type],
+	//		\start, {
+	//			^TimelineViewLocatorLineNode.new(parent, nodeidx, event);
+	//		},
+	//		\end, {
+	//			^TimelineViewLocatorLineNode.new(parent, nodeidx, event);
+	//		},
+	//		{
+	//			^super.new(parent, nodeidx, event).baseInit;
+	//		}
+	//	);
+	//}
+
+	drawTriangle {
+
+	}
+
+	//visible {
+	//	^[\rest, \start, \end].includes(this.model[\type]).not
+	//}
+
+	//defaultPosyValue {
+	//	if(parent.param.notNil) {
+	//		^parent.param.default
+	//	} {
+	//		^64
+	//	}
+	//}
+
+	//defaultHeight {
+	//	//^parent.pixelPointToGridPoint(Point(1000,1000)).x; // bug with areasize initialisation order
+	//	^4
+	//}
+
+	//draw {
+	//	var rect;
+	//	var pos;
+	//	Pen.color = this.color;
+	//	pos = this.origin;
+	//	rect = parent.gridRectToPixelRect(this.rect);
+	//	//[spritenum, rect].debug("draw");
+	//	Pen.fillRect(rect);
+	//	Pen.color = this.outlineColor;
+	//	Pen.strokeRect(rect);
+	//	//Pen.stroke;
+	//}
+
+	draw {
+		var point;
+		var pos;
+		pos = this.origin;
+		point = parent.gridPointToPixelPoint(this.origin);
+		[spritenum, point, this.class].debug("draw");
+
+		Pen.color = this.color;
+		Pen.moveTo(Point(point.x, parent.virtualBounds.height));
+		Pen.lineTo(point);
+		Pen.stroke;
+
+		Pen.color = this.outlineColor;
+		Pen.addArc(point, radius, 0, 2*pi);
+		//Pen.strokeRect(this.pixelRect);
+		Pen.stroke;
+
+		Pen.color = Color(0.8,0.8,0.8);
+		Pen.addArc(point, radius-1, 0, 2*pi);
+		//Pen.strokeRect(this.pixelRect);
+		Pen.stroke;
+
+		Pen.color = this.color;
+		Pen.moveTo(point);
+
+	}
+
+}
 
 //////////////////////////////// utilities
 
-
+// not used anymore, use TimelineDrawer 
 DenseGridLines : GridLines {
 	var <>density = 1;
 	var <>labelDensity = 1;
@@ -1977,6 +2278,7 @@ DenseGridLines : GridLines {
 	}
 }
 
+// not used anymore, use TimelineDrawer 
 MidinoteGridLines : GridLines {
 	
 	var <>density = 1;

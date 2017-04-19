@@ -60,7 +60,15 @@ TrackDef : ProtoClass {
 
 }
 
+TrackTemplateDef : TrackDef {
+	// just another placeholder
+}
+
 ProtoDef : TrackDef {
+	// just another placeholder
+}
+
+ProtoTemplateDef : ProtoDef {
 	// just another placeholder
 }
 
@@ -205,7 +213,11 @@ FileSystemProject : TrackDef {
 
 	*resolve { arg val;
 		// note: return a pathname
+		// FIXME: why a pathname ???
 		val = val.standardizePath;
+		if(PathName(val).isAbsolutePath) {
+			^PathName(val)
+		};
 		( [ this.cwd ] ++ paths ).do({ arg path;
 			var pn;
 			[path, val].debug("try resolve");
@@ -224,6 +236,19 @@ FileSystemProject : TrackDef {
 			}
 		});
 		^nil;
+	}
+
+	*unresolve { arg val;
+		// asRelativePath
+		// FIXME: what to do if two candidates ?
+		paths.do({ arg path;
+			var pn;
+			[path, val].debug("try unresolve");
+			if(val.beginsWith(path)) {
+				^val[( path.size )..]
+			}
+		});
+		^val;
 	}
 
 	*new { arg key, val;

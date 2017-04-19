@@ -21,11 +21,6 @@
 	},
 
 	init: { arg self, key, numchannels, outbus;
-		self.outbus = outbus;
-		self.numchannels = numchannels;
-		self.define_mixer;
-		self.asParam(\inbus).set(self.inbus);
-
 		self.stages = (
 			in: 0,
 			prefader: 1000,
@@ -34,6 +29,12 @@
 			postfx: 2000,
 			postfader: 3000,
 		);
+
+		self.outbus = outbus;
+		self.numchannels = numchannels;
+		self.define_mixer;
+		self.asParam(\inbus).set(self.inbus);
+
 	},
 
 	numChannels: { arg self;
@@ -106,12 +107,12 @@
 
 	build_sender: { arg self, idx;
 		var sendkey = \send+++idx;
-		// if proxy not playing, adding a source will create it on server, so set its group
 		self.proxy.addSpec(sendkey, \unipolar);
 		self.proxy.put(idx+self.stages.sends, \filter -> { arg in;
 			Out.ar(( \sendbus+++idx ).kr(self.zerobus), in * sendkey.kr(0));
 			in;
-		}, now:false);
+		}, now:self.proxy.isPlaying);
+		// if proxy not playing, adding a source will create it on server, so set its group
 		//self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter); 
 	},
 

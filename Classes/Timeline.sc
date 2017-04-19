@@ -2,27 +2,34 @@
 KitTimeline {
 	*new { arg ... args;
 		ParamProto.init;
-		^~kitTimeline.new(*args)
+		^topEnvironment[\kitTimeline].new(*args); // FIXME: should maybe use ProtoDef(\kitTimeline)
 	}
 }
 
 NoteTimeline {
 	*new { arg ... args;
 		ParamProto.init;
-		^~noteTimeline.new(*args)
+		^topEnvironment[\noteTimeline].new(*args)
+	}
+}
+
+ParamTimeline {
+	*new { arg ... args;
+		ParamProto.init;
+		^topEnvironment[\envTimeline].new(*args)
 	}
 }
 
 ClipTimeline {
 	*new { arg ... args;
 		ParamProto.init;
-		^~clipTimeline.new(*args)
+		^topEnvironment[\clipTimeline].new(*args)
 	}
 }
 
 TrackTimeline {
 	*new { arg ... args;
 		ParamProto.init;
-		^~trackTimeline.new(*args)
+		^topEnvironment[\trackTimeline].new(*args)
 	}
 }
