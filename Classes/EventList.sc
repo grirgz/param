@@ -325,6 +325,32 @@ XEventList : List {
 		this.reorder;
 	}
 
+	presetCompileString {
+		var ret;
+		ret = this.collect({ arg ev;
+			var evstring;
+			evstring = case
+				{ ev.type == \pattern } {
+					"\tPatternEvent((%)),\n"
+				}
+				{ ev.type == \player } {
+					"\tPlayerEvent((%)),\n"
+				}
+				{
+					"\t(%),\n"
+				}
+			;
+			evstring.format(
+				// ev.asCompileString return stuff from parent event, so looping manually
+				ev.keys.as(Array).sort.collect({ arg key;
+					"%%: %, ".format("\\",key, ev[key].asCompileString)
+				}).join
+			)
+		}).join;
+		ret = "%.newFrom([\n%]);".format(this.class.asString, ret);
+		^ret
+	}
+
 }
 
 

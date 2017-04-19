@@ -57,6 +57,13 @@ TrackDef : ProtoClass {
 		this[\do].(this, *args)
 	}
 
+	printOn { arg stream;
+		this.storeOn(stream)
+	}
+
+	storeOn { arg stream;
+		stream << "%(%)".format(this.class.asString, this.key.asCompileString);
+	}
 
 }
 

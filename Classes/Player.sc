@@ -5,6 +5,7 @@
 PlayerWrapper  {
 	var <>wrapper;
 	var >label;
+	var init_args;
 
 	*new { arg target;
 		^super.new.initWrapper(target);
@@ -12,6 +13,7 @@ PlayerWrapper  {
 
 	initWrapper { arg target;
 		// FIXME: handle when not a kind of wrapper in list, and handle GUI when wrapper is nil
+		init_args = [target];
 		wrapper = case 
 			{ target.isNil } {
 				//"WARNING: PlayerWrapper: target is nil".debug;
@@ -135,7 +137,7 @@ PlayerWrapper  {
 
 	asPlayerEvent {
 		^PlayerEvent((
-			receiver: Ref(this)
+			receiver: {this}
 		))
 	}
 
@@ -149,6 +151,15 @@ PlayerWrapper  {
 		^controller
 	}
 	//TODO: asPatternEvent which detect if it's a pattern
+
+	printOn { arg stream;
+		this.storeOn(stream); // storeOn call storeArgs
+	}
+
+	storeArgs { arg stream;
+		^init_args
+		//stream << ("Param.new(" ++ init_args.asCompileString ++ ")");
+	}
 }
 
 PlayerWrapper_Base {

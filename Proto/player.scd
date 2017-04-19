@@ -440,15 +440,7 @@
 
 	presetCompileString: { arg self;
 		var ret = "";
-		ret = self.eventList.collect({ arg ev;
-			"\t(%),\n".format(
-				// ev.asCompileString return stuff from parent event, so looping manually
-				ev.keys.as(Array).sort.collect({ arg key;
-					"%%: %, ".format("\\",key, ev[key].asCompileString)
-				}).join
-			)
-		}).join;
-		ret = "XEventList.newFrom([\n%]);".format(ret);
+		ret = self.eventList.presetCompileString;
 		ret;
 	},
 	

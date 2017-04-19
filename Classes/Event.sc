@@ -93,6 +93,18 @@ PlayerEvent : Event {
 		^ev;
 	}
 
+
+	printOn { arg stream;
+		this.storeOn(stream)
+	}
+
+	storeOn { arg stream;
+		stream << "PlayerEvent((";
+		stream << this.keys.as(Array).collect { arg key;
+			"%: %".format(key, this[key].asCompileString)
+		}.join(", ");
+		stream << "))";
+	}
 }
 
 PlayerPattern {
@@ -177,6 +189,18 @@ PatternEvent : Event {
 		//^this.embedPattern.debug("embedPattern").embedInStream((parent: this.parent).putAll(inevent))
 		^this.embedPattern.debug("embedPattern").embedInStream(inevent)
 		//^super.embedInStream((parent: this.parent))
+	}
+
+	printOn { arg stream;
+		this.storeOn(stream)
+	}
+
+	storeOn { arg stream;
+		stream << "PatternEvent((";
+		stream << this.keys.as(Array).collect { arg key;
+			"%: %".format(key, this[key].asCompileString)
+		}.join(", ");
+		stream << "))";
 	}
 }
 

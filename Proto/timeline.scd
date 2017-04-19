@@ -185,14 +185,14 @@
 
 	asPlayerEvent: { arg self;
 		PlayerEvent((
-			receiver: Ref(self)
+			receiver: ( "{ " ++ self.refCompileString ++ " }" ).interpret; // to have closed compile string
 		))
 	},
 
 	asPatternEvent: { arg self;
 		PatternEvent((
 			eventType: \timeline, // i want to get ride of this type system
-			timeline: Ref(self)
+			timeline: ( "{ " ++ self.refCompileString ++ " }" ).interpret; // to have closed compile string
 		))
 		
 	},
@@ -202,7 +202,7 @@
 	},
 
 	presetCompileString: { arg self;
-		"%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList_presetCompileString(self.eventList))
+		"%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString)
 	},
 
 	eventList_presetCompileString: { arg self, eventList;
@@ -1390,7 +1390,7 @@
 
 			redefineClip: { arg me, curname, model;
 				PlayerEvent.redefine(model);
-				model[\receiver] = Ref(PlayerWrapper(Ndef(curname)));
+				model[\receiver] = PlayerWrapper(Ndef(curname));
 				//model.changed(\refresh);
 				self.parent_model.changed(\refresh);
 			},
@@ -1491,7 +1491,7 @@
 
 			redefineClip: { arg me, curname, model;
 				PlayerEvent.redefine(model);
-				model[\receiver] = Ref(PlayerWrapper(TrackDef(curname)));
+				model[\receiver] = "{ PlayerWrapper(TrackDef(%)) }".format(curname).interpret;
 				//model.changed(\refresh);
 				self.parent_model.changed(\refresh);
 			},
@@ -2367,14 +2367,19 @@
 
 	makeVelocityView: { arg self;
 		var keyspec;
+		var height = 150;
 		self.velocityTimeline = VelocityTimelineView.new;
-		self.velocityTimeline.fixedHeight = 150;
+		self.velocityTimeline.fixedHeight = height;
 		self.velocityTimeline.mimicTimeline(self.timeline, \horizontal);
 		self.velocityTimeline.mimicNodeSelection(self.timeline);
 		//self.velocityTimeline.mapParam(Param(self.param.target, \velocity, ControlSpec(0,127,\lin,0,64)));
 		self.velocityTimeline.quant = Point(0,0);
 		self.velocityTimeline.forbidHorizontalNodeMove = true;
 
+		self.velocityVerticalRange = TimelineScroller.new;
+		self.velocityVerticalRange.orientation = \vertical;
+		self.velocityVerticalRange.fixedHeight = height;
+		self.velocityVerticalRange.mapTimeline(self.velocityTimeline);
 
 		self.velocityValue = StaticText.new;
 		self.velocityValue.fixedWidth = 50;
@@ -2404,15 +2409,18 @@
 		});
 
 		self.velocityTimeline.visible = false; // not visible by default, FIXME: should be remembered
+		self.velocityVerticalRange.visible = false;
 		self.velocityShowButton = BasicButton.new.string_(">")
 			.fixedWidth_(20)
 			.action_({ arg me;
 				if(self.velocityTimeline.visible) {
 					me.string = ">";
 					self.velocityTimeline.visible = false;
+					self.velocityVerticalRange.visible = false;
 				} {
 					me.string = "^";
 					self.velocityTimeline.visible = true;
+					self.velocityVerticalRange.visible = true;
 				}
 			})
 		;
@@ -2550,7 +2558,7 @@
 					[
 						nil,
 						self.velocityTimeline.view,
-						nil,
+						self.velocityVerticalRange.view,
 					],
 				]
 			} { [] }
@@ -2558,8 +2566,8 @@
 				[
 					[
 						nil,
-						if(self.disable_hrange != true) {hrange.view},
-						if(self.disable_hrange != true) {sizer},
+						hrange.view,
+						sizer,
 					]
 				]
 			} { [] }  
@@ -2705,6 +2713,7 @@
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
+			self.make_saveas_button,
 			XSimpleButton.new.label_("Add track").action_({
 				self.add_track;
 			}),
