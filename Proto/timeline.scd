@@ -221,22 +221,30 @@
 
 	savePresetCompileString: { arg self, path, action, force_dialog=false;
 		var save_it = { arg mypath;
-			mypath = FileSystemProject.resolve(mypath).fullPath;
-			"Trying to write preset to file %".format(mypath.asCompileString).postln;
-			File.use(mypath, "w", { arg file;
-				var relpath = FileSystemProject.unresolve(mypath);
-				var preset;
-				self.presetCompileStringSavePath = relpath;
-				file.write("%.presetCompileStringSavePath = %;\n\n".format(self.refCompileString, relpath.asCompileString));
-				
-				preset = self.presetCompileString;
-				if(preset.isNil) {
-					"ERROR: no preset found for this object".postln;
-				} {
-					file.write(preset);
-				};
-			});
-			action.()
+			var myfolderpath = PathName(mypath).pathOnly;
+			var myfolderpathname;
+			myfolderpathname = FileSystemProject.resolve(myfolderpath);
+			if(myfolderpathname.notNil) {
+				mypath = myfolderpathname.fullPath ++ PathName(mypath).fileName;
+				"Trying to write preset to file %".format(mypath.asCompileString).postln;
+				File.use(mypath, "w", { arg file;
+					var relpath = FileSystemProject.unresolve(mypath);
+					var preset;
+					self.presetCompileStringSavePath = relpath;
+					file.write("%.presetCompileStringSavePath = %;\n\n".format(self.refCompileString, relpath.asCompileString));
+					
+					preset = self.presetCompileString;
+					if(preset.isNil) {
+						"ERROR: no preset found for this object".postln;
+					} {
+						file.write(preset);
+						"Preset written: %".format(mypath).postln;
+					};
+				});
+				action.()
+			} {
+				"ERROR: savePresetCompileString: Can't resolve file %".format(mypath).postln;
+			};
 		};
 		if(path.notNil) {
 			save_it.(path)
@@ -376,7 +384,7 @@
 
 			self.eventloop.list.changed(\cursor, \play);
 			Pfindur(xtotalDur, Pembed(
-				self.bypass_pattern( Pn(eventlist, 1) ),
+				self.bypass_pattern( Pn(eventlist.clone, 1) ),
 				xrelStartTime
 			));
 		}).repeat(self.repeatCount);
@@ -590,7 +598,7 @@
 			};
 
 			pat = Pfindur(xtotalDur, Pembed(
-				Pn(self.eventloop.list, 1),
+				Pn(self.eventloop.list.clone, 1),
 				xrelStartTime
 			));
 
@@ -829,7 +837,7 @@
 				).trace(prefix:"MAIIIIIIIIIIIIIIIIIIIIIIII")
 				<>
 				Pfindur(xtotalDur, ~timeline_pattern.(
-					Pn(self.eventloop.list.copy, 1), // copy to prevent changes while playing ?
+					Pn(self.eventloop.list.clone, 1), 
 					xrelStartTime
 				))
 			;
@@ -986,7 +994,7 @@
 
 
 			pat = Pfindur(xtotalDur, Pembed(
-				Pn(self.eventloop.list.clone, 1),
+				Pn(self.eventloop.list.clone, 1), // clone avoid lose of sync when adding note but require to wait the end of loop
 				xrelStartTime
 			));
 
@@ -1975,6 +1983,12 @@
 								BasicButton.new.string_("OK").action_({ 
 									self.timeline_model.savePresetCompileString;
 									me.refreshChange;
+									dialog.close;
+								}),
+								BasicButton.new.string_("Choose").action_({ 
+									self.timeline_model.savePresetCompileString(nil, {
+										me.refreshChange;
+									}, false);
 									dialog.close;
 								}),
 								BasicButton.new.string_("Cancel").action_({

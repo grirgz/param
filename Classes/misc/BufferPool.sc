@@ -1,3 +1,4 @@
+// FIXME: this class is a mess forked from someone else code with another vision than mine, should be refactored
 BufferPool {
 
 	classvar <counts,<annotations,<paths, <mono_paths, <wavetable_paths;
@@ -126,6 +127,15 @@ BufferPool {
 		});
 		^buf
 	}
+
+	//*free_sample { arg path;
+	//	// FIXME: doesnt free the last one, so it's memory leak, but that's allow keeping playing it while freeing
+	//	// used for example when you want to reload the file because it has changed
+	//	// i know it's ugly, should read the buffer again
+	//	paths.at(path) = nil;
+	//	mono_paths.at(path) = nil;
+	//	wavetable_paths.at(path) = nil;
+	//}
 
 	*retain { |buf,client,name|
 		//if(annotations.at(buf,client).notNil,{

@@ -1,4 +1,9 @@
 
+// A proposal for standard specs for synthdefs: array, env, bus, buffer, trig, gate, doneAction, wavetable
+// Add also useful spec for list of labels associated with a value: MenuSpec, MenuSpecDef
+// X is because name is already taken in cruciallib, should find a better name, but it's core API of Param quark :/
+
+
 XArraySpec : Spec {
 	var <array, <default;
 	var <>size, <>isMonoSpec;
@@ -386,8 +391,11 @@ XBoolSpec : XNonFloatSpec {
 
 }
 
+///////////////////////////// Menu
+
 MenuSpec : XNonFloatSpec {
 	var <>labelList, <>valueList;
+	var <>list;
 
 	*new { arg list;
 		^super.new.menuSpecInit(list);
@@ -407,15 +415,33 @@ MenuSpec : XNonFloatSpec {
 		}
 	}
 
+	addUnique { arg key, val;
+		if(key.class == Association) {
+			if(labelList.includes(key.value).not) {
+				list.add(key.key -> key.value);
+				labelList.add(key.key);
+				valueList.add(key.value);
+			}
+		} {
+			var xval = val ? key;
+			if(labelList.includes(xval).not) {
+				list.add(key -> xval);
+				labelList.add(key);
+				valueList.add(xval);
+			}
+		}
+	}
+
 	indexAdd { arg val;
 		labelList.add(val);
 		valueList.add(valueList.size);
 	}
 
-	menuSpecInit { arg list;
+	menuSpecInit { arg xlist;
+		list = xlist;
 		labelList = List.new;
 		valueList = List.new;
-		list.do { arg x;
+		xlist.value.do { arg x;
 			if(x.class == Association) {
 				labelList.add(x.key);
 				valueList.add(x.value);
@@ -426,10 +452,11 @@ MenuSpec : XNonFloatSpec {
 		}
 	}
 
-	indexMenuSpecInit { arg list;
+	indexMenuSpecInit { arg xlist;
+		list = xlist;
 		labelList = List.new;
 		valueList = List.new;
-		list.do { arg x, idx;
+		xlist.value.do { arg x, idx;
 			if(x.class == Association) {
 				labelList.add(x.key);
 				valueList.add(x.value);
@@ -459,7 +486,85 @@ MenuSpec : XNonFloatSpec {
 	unmap { arg val;
 		^this.unmapIndex(val) / ( valueList.size - 1);
 	}
+}
 
+MenuSpecDef : MenuSpec {
+	classvar <>all;
+	var <>key;
+
+	*initClass {
+		all = IdentityDictionary.new;
+	}
+
+	*new { arg key, val;
+		if(all[key].isNil) {
+			if(val.notNil) {
+				^super.new.init(val).prAdd(key)
+			} {
+				^super.new.init([]).prAdd(key)
+			}
+		} {
+			var ret = all[key];
+			if(val.notNil) {
+				ret.source = val
+			};
+			^ret;
+		}
+	}
+
+	source { 
+		^this.list;
+	}
+
+	source_ { arg val;
+		this.menuSpecInit(val)
+	}
+
+	prAdd { arg xkey;
+		key = xkey;
+		all[key] = this;
+	}
+
+	init { arg val;
+		this.menuSpecInit(val);
+	}
+
+	clear {
+		if(key.notNil) {
+			all[key] = nil
+		};
+		^nil
+	}
+}
+
+MenuSpecFuncDef : MenuSpecDef {
+	*initClass {
+		all = IdentityDictionary.new;
+	}
+
+	labelList {
+		var ret = List.new;
+		list.value.do { arg x;
+			if(x.class == Association) {
+				ret.add(x.key);
+			} {
+				ret.add(x);
+			}
+		};
+		^ret;
+	}
+
+	valueList {
+		var ret = List.new;
+		list.value.do { arg x;
+			if(x.class == Association) {
+				ret.add(x.value);
+			} {
+				ret.add(x);
+			}
+		};
+		^ret;
+	}
 }
 
 ListIndexSpec : XNonFloatSpec {

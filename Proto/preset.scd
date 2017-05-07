@@ -1,5 +1,7 @@
 "init preset.scd".postln;
 
+// TODO: transform in WindowDef
+
 EventClass.presetSelectorView = { arg pg;
 		var layout;
 		var left_button, popup_menu, right_button;

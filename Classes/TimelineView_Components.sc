@@ -9,7 +9,7 @@ TimelineRulerView : TimelineView {
 	mapCursor { arg curs;
 		cursor = curs;
 		this.view.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
-			px.debug("TimelineLocatorBarView: mousedown set start");
+			//px.debug("TimelineLocatorBarView: mousedown set start");
 			//if(chosennode.isNil) 
 			switch(buttonNumber,
 				0, {
@@ -76,7 +76,7 @@ TimelineRulerView : TimelineView {
 				Pen.stroke;
 			}
 		} {
-			"cursorisnil:::!!!!".debug;
+			//"cursorisnil:::!!!!".debug;
 		};
 	}
 
@@ -167,9 +167,9 @@ TimelineLocatorBarView : TimelineView {
 	// this is the horizontal bar where are displayed the start and stop events and also the locators 
 
 	specialInit {
-		"SPECIAL INIT".debug;
+		//"SPECIAL INIT".debug;
 		this.view.focusLostAction = {
-			"FOCUS LOST".debug;
+			//"FOCUS LOST".debug;
 			this.deselectAllNodes;
 			this.refresh;
 		};
@@ -212,7 +212,7 @@ TimelineLocatorBarView : TimelineView {
 
 	keyDownActionBase { |me, key, modifiers, unicode, keycode |
 
-		key.debug("TimelineLocatorBarView: keyDownActionBase");
+		//key.debug("TimelineLocatorBarView: keyDownActionBase");
 		// edit
 		if(key == $e) {
 			if(chosennode.notNil){
@@ -254,7 +254,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		spritenum = nodeidx;
 		model = event;
 
-		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
 			//[model, origin].debug("node action before");
@@ -264,20 +264,20 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		};
 
 		refresh = {
-			"TimelineViewLocatorLineNode: refresh: 1".debug;
+			//"TimelineViewLocatorLineNode: refresh: 1".debug;
 			origin = Point(model[timeKey], 0);
-			"TimelineViewLocatorLineNode: refresh: 2".debug;
+			//"TimelineViewLocatorLineNode: refresh: 2".debug;
 			color = Color.black;
-			"TimelineViewLocatorLineNode: refresh: 3".debug;
+			//"TimelineViewLocatorLineNode: refresh: 3".debug;
 			label = model[labelKey] ? (model[\type] ? "unnamed");
-			"TimelineViewLocatorLineNode: refresh: 4".debug;
-			[parent.viewport, parent.areasize, Point(width,height)].debug("parent vi, are, size");
+			//"TimelineViewLocatorLineNode: refresh: 4".debug;
+			//[parent.viewport, parent.areasize, Point(width,height)].debug("parent vi, are, size");
 			extent = parent.pixelPointToGridPoint(Point(width,height)); //FIXME: why /2 ???
-			"TimelineViewLocatorLineNode: refresh: 5".debug;
+			//"TimelineViewLocatorLineNode: refresh: 5".debug;
 			//extent.debug("---------extent");
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
 			parent.model.changed(\redraw);
-			"TimelineViewLocatorLineNode: refresh: 6".debug;
+			//"TimelineViewLocatorLineNode: refresh: 6".debug;
 			//[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
 
@@ -316,7 +316,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		pos = this.origin;
 		point = Point(parent.gridPointToPixelPoint(pos).x, 1);
 		point = point - Point(len/2, 0);
-		[spritenum, point, this.rect, parent.gridRectToPixelRect(this.rect)].debug("draw");
+		//[spritenum, point, this.rect, parent.gridRectToPixelRect(this.rect)].debug("draw");
 
 
 		box.();
@@ -453,7 +453,7 @@ MidinoteTimelineRulerView : TimelineView {
 		Pen.alpha = 0.5;
 		Pen.color = Color.black;
 
-		areasize.debug("drawFunc: areasize");
+		//areasize.debug("drawFunc: areasize");
 		areasize.y.do { arg py;
 			//[this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py))].debug("line");
 			Pen.line(this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py)));
@@ -470,7 +470,7 @@ MidinoteTimelineRulerView : TimelineView {
 		Pen.color = Color.black;
 
 
-		areasize.debug("drawFunc: areasize");
+		//areasize.debug("drawFunc: areasize");
 		areasize.y.do { arg py;
 			var start;
 			var next;
@@ -517,7 +517,7 @@ TimelineLocatorPropertiesView {
 			TextField.new
 			.string_(model[\label] ? "unnamed")
 			.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
-				[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+				//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
 
 				if(key == $\r) {
 					// defering because Enter trigger action after keyDownAction so view is already closed
@@ -558,7 +558,7 @@ TimelineDrawer {
 		Pen.color = Color.black;
 
 
-		areasize.debug("drawFunc: areasize");
+		//areasize.debug("drawFunc: areasize");
 		areasize.y.do { arg py;
 			var start;
 			var smallstart;
@@ -733,7 +733,7 @@ CursorTimelineView : TimelineView {
 
 			};
 		} {
-			"cursorisnil:::!!!!".debug;
+			//"cursorisnil:::!!!!".debug;
 		};
 
 	}
@@ -766,7 +766,7 @@ CursorTimelineView : TimelineView {
 				//"COOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOSLCLOCLOCLOSED".debug;
 				controller.remove;
 			} {
-				"CursorTimelineView get a refresh signal!".debug;
+				//"CursorTimelineView get a refresh signal!".debug;
 				//{
 					if(arg1 == \play) {
 						this.play;
@@ -783,7 +783,7 @@ CursorTimelineView : TimelineView {
 	}
 
 	play {
-		"==================************-----------(##############)".debug("cursor PLAY");
+		//"==================************-----------(##############)".debug("cursor PLAY");
 		//if(playtask.notNil) {
 		//	{
 		//	//	Server.default.latency.wait;
@@ -847,7 +847,7 @@ CursorTimelineView : TimelineView {
 	}
 
 	stop {
-		"==================************-----------(##############)".debug("cursor STOP");
+		//"==================************-----------(##############)".debug("cursor STOP");
 		if(playtask.notNil) {
 			//this.isPlaying = false;
 			playtask.stop;

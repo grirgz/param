@@ -89,7 +89,7 @@ TimelineView : SCViewHolder {
 		//		Rect(10, 250, bounds.left + bounds.width + 40, bounds.top + bounds.height+30));
 		//	win.front;
 		//});
-		paraNodes.debug("initParaSpace");
+		Log(\Param).debug("initParaSpace:%", paraNodes);
 
 		this.makeUpdater;
 		action = {
@@ -192,10 +192,10 @@ TimelineView : SCViewHolder {
 		lastPixelPos = Point(px,py);
 		lastGridPos = gpos.trunc(quant.value);
 		this.changed(\lastGridPos);
-		[px, py, npos, gpos].debug("mouseDownAction_ px,py, npos, gpos");
+		//[px, py, npos, gpos].debug("mouseDownAction_ px,py, npos, gpos");
 		chosennode = this.findNode(gpos.x, gpos.y);
-		[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
-		[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
+		//[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
+		//[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
 		mouseDownAction.(me, px, py, mod, buttonNumber, clickCount, chosennode);
 
 		case
@@ -209,7 +209,7 @@ TimelineView : SCViewHolder {
 			var newpos;
 			var newevent;
 
-			debug("---------mouseDownAction: create node mode");
+			//debug("---------mouseDownAction: create node mode");
 
 			//nodesize = this.gridPointToNormPoint(nodesize);
 
@@ -219,32 +219,32 @@ TimelineView : SCViewHolder {
 				newpos = gpos; 
 			};
 
-			"mouseDownAction: 1".debug;
+			//"mouseDownAction: 1".debug;
 			newevent = this.eventFactory(newpos);
 			chosennode = this.addEvent(newevent);
-			newevent.debug("mouseDownAction: 2");
+			//newevent.debug("mouseDownAction: 2");
 
 			createNodeDeferedAction = {
-				debug("mouseDownAction: 3");
+				//debug("mouseDownAction: 3");
 				model.addEvent(newevent);
-				debug("mouseDownAction: 4");
+				//debug("mouseDownAction: 4");
 				model.reorder; // reorder lose node selection
-				debug("mouseDownAction: 5");
+				//debug("mouseDownAction: 5");
 				//model.changed(\refresh); // commented because refresh is already called in mouseUp
-				debug("mouseDownAction: 6");
+				//debug("mouseDownAction: 6");
 				chosennode = nil; // chosennode was set to know which node to resize with mouseMove, but is not really selected
 			};
 
-			[chosennode.posyKey, chosennode.model, chosennode.origin].debug("posy, model, origin");
-			[chosennode.width].debug("pppp");
+			//[chosennode.posyKey, chosennode.model, chosennode.origin].debug("posy, model, origin");
+			//[chosennode.width].debug("pppp");
 			refPoint = newpos; // var used here for reference in trackfunc
 			refWidth = chosennode.width;
 
-			chosennode.debug("mouseDownAction: chosennode!");
+			//chosennode.debug("mouseDownAction: chosennode!");
 		}
 		{ mod.isShift and: { buttonNumber == 0 } } {
 			if(chosennode !=nil) { // a node is selected
-				debug("---------mouseDownAction: prepare for resizing mode");
+				//debug("---------mouseDownAction: prepare for resizing mode");
 				refPoint = gpos; // var used here for reference in trackfunc
 				refWidth = chosennode.width;
 			}
@@ -273,14 +273,14 @@ TimelineView : SCViewHolder {
 				});
 
 				if(selNodes.size < 2) {
-					debug("---------mouseDownAction: deselect all and select clicked node");
+					//debug("---------mouseDownAction: deselect all and select clicked node");
 					this.deselectAllNodes(chosennode);
 				};
 				this.selectNode(chosennode);
 
 				downAction.value(chosennode);
 			}, { // no node is selected
-				debug("---------mouseDownAction: deselect all and draw selrect");
+				//debug("---------mouseDownAction: deselect all and draw selrect");
 				this.deselectAllNodes;
 				startSelPoint = npos;
 				endSelPoint = npos;
@@ -294,8 +294,8 @@ TimelineView : SCViewHolder {
 
 		var bounds = this.bounds;
 		mouseUpAction.(me, x, y, mod);
-		selNodes.debug("-------------- mouseUpAction: selNodes");
-		chosennode.debug("mouseUpAction: chosennode");
+		//selNodes.debug("-------------- mouseUpAction: selNodes");
+		//chosennode.debug("mouseUpAction: chosennode");
 		if(chosennode != nil, { // a node is selected
 			createNodeDeferedAction.value; // function defined when a new node is created
 			createNodeDeferedAction = nil;
@@ -329,7 +329,7 @@ TimelineView : SCViewHolder {
 		var buttonNumber = mouseButtonNumber;
 		var clickCount = mouseClickCount;
 
-		[buttonNumber, clickCount].debug("mouseMoveAction");
+		//[buttonNumber, clickCount].debug("mouseMoveAction");
 
 		// old move algo
 		//newpos = { arg node;
@@ -355,7 +355,7 @@ TimelineView : SCViewHolder {
 			// resize mode
 			if(chosennode != nil) { // a node is selected
 				var newwidth;
-				debug("---------mouseMoveAction: resize mode");
+				//debug("---------mouseMoveAction: resize mode");
 				newwidth = refWidth + (gpos.x - refPoint.x);
 				if( enableQuant ) {
 					newwidth = newwidth.round(quant.value.x);
@@ -378,8 +378,8 @@ TimelineView : SCViewHolder {
 
 				if(chosennode != nil) { // a node is selected
 					var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
-					debug("---------mouseMoveAction: move mode");
-					debug("======= selected nodes will be moved!!!");
+					//debug("---------mouseMoveAction: move mode");
+					//debug("======= selected nodes will be moved!!!");
 					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
 
 					// old move algo
@@ -430,11 +430,11 @@ TimelineView : SCViewHolder {
 
 
 					this.changed(\nodeMoved);
-					debug("======= selected nodes was moved!!!");
+					//debug("======= selected nodes was moved!!!");
 					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes was moved!!!");
 					//model.print;  // debug
 				} { // no node is selected
-					if( startSelPoint.debug("startSelPoint") != Point(0,0) ) {
+					if( startSelPoint != Point(0,0) ) {
 						endSelPoint = npos;
 					}
 				};
@@ -450,7 +450,7 @@ TimelineView : SCViewHolder {
 		oldport = this.viewport;
 		top = ( oldport.top + ( yDelta/this.virtualBounds.height ) ).clip(0,1-oldport.height);
 		newport = Rect(oldport.left, top, oldport.width, oldport.height);
-		[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
+		//[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
 		this.viewport = newport;
 		this.refresh;
 	}
@@ -464,7 +464,7 @@ TimelineView : SCViewHolder {
 	}
 
 	keyDownActionBase { |me, key, modifiers, unicode, keycode |
-		[key, modifiers, unicode, keycode].debug("keyDownActionBase: key, modifiers, unicode, keycode");
+		//[key, modifiers, unicode, keycode].debug("keyDownActionBase: key, modifiers, unicode, keycode");
 
 		// deleting nodes
 
@@ -479,7 +479,7 @@ TimelineView : SCViewHolder {
 		if(key == $q) {
 			// TODO: should be implemented by adding a new property to the event, understood by XEventList
 			//			to be able to undo it
-			quant.value.debug("quantize!!");
+			//quant.value.debug("quantize!!");
 			selNodes.do { arg node;
 				//node.nodeloc.debug("before");
 				node.nodeloc = node.nodeloc.round(quant.value);
@@ -608,9 +608,9 @@ TimelineView : SCViewHolder {
 	drawGridX {
 		// this draw vertical lines along the X axis
 		var grid;
-		mygrid.debug("===============mygrid");
+		//mygrid.debug("===============mygrid");
 		grid = mygrid.(this.virtualBounds, this.areasize, this.viewport);
-		grid.debug("grid");
+		//grid.debug("grid");
 
 		if(grid.notNil) {
 			grid.draw;
@@ -774,10 +774,10 @@ TimelineView : SCViewHolder {
 		if(controller.notNil) {controller.remove};
 		controller = SimpleController(model).put(\refresh, {
 			if(this.view.isNil) {
-				"COOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOSLCLOCLOCLOSED".debug;
+				//"COOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOSLCLOCLOCLOSED".debug;
 				controller.remove;
 			} {
-				"TimelineView get a refresh signal!".debug;
+				//"TimelineView get a refresh signal!".debug;
 				{
 					this.refreshEventList;
 					this.refresh;
@@ -810,7 +810,7 @@ TimelineView : SCViewHolder {
 				if(this.view.isClosed) {
 					timeline_controller.remove;
 				} {
-					[this].debug("refresh viewport because mimicTimeline!!");
+					//[this].debug("refresh viewport because mimicTimeline!!");
 					switch(orientation,
 						\horizontal, {
 							this.viewport = rect_copy_horizontal.(viewport, timeline.viewport);
@@ -830,7 +830,7 @@ TimelineView : SCViewHolder {
 				if(this.view.isClosed) {
 					timeline_controller.remove;
 				} {
-					[this].debug("refresh viewport because mimicTimeline!!");
+					//[this].debug("refresh viewport because mimicTimeline!!");
 					switch(orientation,
 						\horizontal, {
 							this.areasize = Point(timeline.areasize.x, areasize.y);
@@ -865,7 +865,7 @@ TimelineView : SCViewHolder {
 					timeline_controller.remove;
 				} {
 					var to_select = List.new;
-					[this].debug("refresh selection because mimicNodeSelection!!");
+					//[this].debug("refresh selection because mimicNodeSelection!!");
 					// FIXME: this is inneficient
 					this.nodes.do { arg node;
 						timeline.selectedNodes.do { arg selnode;
@@ -1280,10 +1280,10 @@ TimelineView : SCViewHolder {
 			^chosennode;
 		};
 		paraNodes.reverse.do({arg node; 
-			node.spritenum.debug("spritnum");
-			[node.rect, point].debug("findNode");
+			//node.spritenum.debug("spritnum");
+			//[node.rect, point].debug("findNode");
 			if(node.selectable and: {node.rect.containsPoint(point)}, {
-				[node.rect, point].debug("findNode: found!!");
+				//[node.rect, point].debug("findNode: found!!");
 				^node;
 			});
 		});
@@ -1293,10 +1293,10 @@ TimelineView : SCViewHolder {
 	findNodes { arg rect;
 		^paraNodes.collect({arg node; 
 			var point = node.origin;
-			node.spritenum.debug("spritnum");
-			[rect, point].debug("findNodes");
+			//node.spritenum.debug("spritnum");
+			//[rect, point].debug("findNodes");
 			if(node.selectable and: {rect.containsPoint(point)}, {
-				[node.rect, point].debug("findNode: found!!");
+				//[node.rect, point].debug("findNode: found!!");
 				node;
 			});
 		}).select(_.notNil);
@@ -1605,7 +1605,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		spritenum = nodeidx;
 		model = event;
 
-		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
 			//[model, origin, extent].debug("node action before");
@@ -1677,7 +1677,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		if(controller.notNil) {controller.remove};
 		controller = SimpleController(model).put(\refresh, {
 			if(parent.view.isNil) {
-				"YOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOo".debug;
+				//"YOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOo".debug;
 				this.free;
 			} {
 				{
@@ -1701,7 +1701,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		Pen.color = this.color;
 		pos = this.origin;
 		rect = parent.gridRectToPixelRect(this.rect);
-		[spritenum, rect, this.class].debug("draw");
+		//[spritenum, rect, this.class].debug("draw");
 		Pen.fillRect(rect);
 		Pen.color = this.outlineColor;
 		Pen.strokeRect(rect);
@@ -1819,9 +1819,9 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		previewrect = rect.insetAll(0,labelheight,0,0);
 		labelrect = rect.insetAll(0,0,0,rect.height-labelheight);
 
-		labelrect.debug("labelrect");
-		previewrect.debug("previewrect");
-		rect.debug("rect");
+		//labelrect.debug("labelrect");
+		//previewrect.debug("previewrect");
+		//rect.debug("rect");
 
 		//[spritenum, rect].debug("draw");
 
@@ -1981,7 +1981,7 @@ TimelineEnvView : TimelineView {
 	initNode { arg node;
 		node.posyKey = valueKey;
 		node.refresh;
-		node.posyKey.debug("initNode: posyKey");
+		//node.posyKey.debug("initNode: posyKey");
 	}
 
 	mapParam { arg param_object;
@@ -2013,10 +2013,10 @@ TimelineEnvView : TimelineView {
 			var ev;
 			ev = (absTime: pos.x, sustain:nodesize.x);
 			if(param.isNil) {
-				"=========eventFactory: param is nil".debug;
+				//"=========eventFactory: param is nil".debug;
 				ev[\midinote] = pos.y;
 			} {
-				param.property.debug("=========eventFactory: param property");
+				//param.property.debug("=========eventFactory: param property");
 				ev[param.property] = pos.y;
 			};
 			^ev;
@@ -2050,7 +2050,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		model = event;
 		extent = Point(1/4,1);
 
-		[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
+		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
 			//[model, origin].debug("node action before");
@@ -2069,7 +2069,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 			//);
 			var posy = model.use { model[this.posyKey].value(model) } ? (
 				if(parent.param.notNil) {
-					parent.param.default.debug("dd====================");
+					parent.param.default;
 				} {
 					0
 				}
@@ -2078,7 +2078,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 			color = Color.black;
 			outlineColor = Color.grey;
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
-			[this.class, spritenum, origin, extent, color].debug("refresh");
+			//[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
 
 		this.makeUpdater;
@@ -2091,7 +2091,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		var pos;
 		pos = this.origin;
 		point = parent.gridPointToPixelPoint(this.origin);
-		[spritenum, point, this.class].debug("draw");
+		//[spritenum, point, this.class].debug("draw");
 
 		Pen.color = ParamViewToolBox.color_ligth;
 		Pen.lineTo(point);
@@ -2221,7 +2221,7 @@ VelocityTimelineViewNode : TimelineEnvViewNode {
 		var pos;
 		pos = this.origin;
 		point = parent.gridPointToPixelPoint(this.origin);
-		[spritenum, point, this.class].debug("draw");
+		//[spritenum, point, this.class].debug("draw");
 
 		Pen.color = this.color;
 		Pen.moveTo(Point(point.x, parent.virtualBounds.height));
@@ -2352,7 +2352,7 @@ MidinoteGridLines : GridLines {
 		if(pixRange / numTicks > 9) {
 			p['labels'] = lines.collect({ arg val; [val, this.formatLabel(val,nfrac) ] });
 		};
-		^p.debug("---------------P")
+		^p
 	}
 }
 
@@ -2385,13 +2385,13 @@ TimelineScroller : SCViewHolder {
 				timeline.viewport.left = slider.lo;
 				timeline.viewport.width = range;
 				timeline.changed(\viewport);
-				[timeline.viewport, slider.hi, slider.lo, slider.range].debug("hrange action");
+				//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("hrange action");
 				timeline.refresh;
 			} {
 				timeline.viewport.top = slider.lo;
 				timeline.viewport.height = range;
 				timeline.changed(\viewport);
-				[timeline.viewport, slider.hi, slider.lo, slider.range].debug("vrange action");
+				//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("vrange action");
 				timeline.refresh;
 			}
 
@@ -2399,7 +2399,7 @@ TimelineScroller : SCViewHolder {
 
 		// make updater
 		this.view.onChange(timeline, 'viewport', { arg caller, receiver, morearg;
-			[caller, receiver, morearg].debug("onChange args");
+			//[caller, receiver, morearg].debug("onChange args");
 			this.refresh(timeline);
 		});
 
@@ -2413,7 +2413,7 @@ TimelineScroller : SCViewHolder {
 			if(this.orientation == \horizontal) {
 				slider.hi = timeline.viewport.left+timeline.viewport.width;
 				slider.lo = timeline.viewport.left;
-				[timeline, timeline.viewport, timeline.viewport.width, slider.range, slider.hi].debug("=====+++======= ScrollView.refresh: range, hi");
+				//[timeline, timeline.viewport, timeline.viewport.width, slider.range, slider.hi].debug("=====+++======= ScrollView.refresh: range, hi");
 			} {
 				slider.hi = timeline.viewport.top+timeline.viewport.height;
 				slider.lo = timeline.viewport.top;

@@ -29,23 +29,34 @@ TrackDef(\target_object, (
 		// TODO
 		
 	},
-))
+));
 
 ~all_players = [
 	PlayerWrapper(Pdef(\target_object)),
 	PlayerWrapper(Ndef(\target_object)),
 	PlayerWrapper(NodeProxy.new.source_({ SinOsc.ar(200)!2 })),
-	PlayerWrapper(EventPatternProxy.new.source_({ Pbind(\instrument, \default) })),
+	PlayerWrapper(EventPatternProxy.new.source_(Pbind(\instrument, \default))),
 	PlayerWrapper(Param(Ndef(\target_object), \scalar_param)),
 ];
 
 WindowDef(\testplayergui, {
 	VLayout(*
 		~all_players.collect({ arg player;
-			player.asView;
+			HLayout(
+				StaticText.new.string_(player.label),
+				StaticText.new.string_(player.targetClass),
+				StaticText.new.string_(player.key),
+				StaticText.new.string_(player.asCompileString),
+				player.asView,
+			)
 		})
 	)
 }).front;
 
 )
 
+// TODO: test
+// - play now
+// - play with latency
+// - play with quant
+// - find other methods of playerwrapper and test them

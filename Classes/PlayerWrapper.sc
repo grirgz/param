@@ -17,29 +17,29 @@ PlayerWrapper  {
 		wrapper = case 
 			{ target.isNil } {
 				//"WARNING: PlayerWrapper: target is nil".debug;
-				PlayerWrapper_Nil(target)
+				PlayerWrapper_Nil(target, this)
 				//^nil;
 			}
 			{ target.isKindOf(PlayerWrapper) } {
 				^target
 			}
 			{ target.isKindOf(ProtoClass) } {
-				PlayerWrapper_ProtoClass(target)
+				PlayerWrapper_ProtoClass(target, this)
 			}
 			{ target.isKindOf(StepEvent) } {
-				PlayerWrapper_ProtoClass(target)
+				PlayerWrapper_ProtoClass(target, this)
 			}
 			{ target.isKindOf(Event) } {
-				PlayerWrapper_Event(target)
+				PlayerWrapper_Event(target, this)
 			}
 			{ target.isKindOf(NodeProxy) } {
-				PlayerWrapper_NodeProxy(target)
+				PlayerWrapper_NodeProxy(target, this)
 			}
 			{ target.isKindOf(EventPatternProxy) } {
-				PlayerWrapper_EventPatternProxy(target)
+				PlayerWrapper_EventPatternProxy(target, this)
 			}
 			{ target.isKindOf(Param) } {
-				PlayerWrapper_Param.new(target)
+				PlayerWrapper_Param.new(target, this)
 			}
 			{
 				// assume target respond to wrapper interface
@@ -49,7 +49,7 @@ PlayerWrapper  {
 		
 	}
 
-	mapPlayer { arg self, val;
+	mapPlayer { arg  val;
 		this.initWrapper(val);
 		this.changed(\player);
 	}
@@ -82,14 +82,14 @@ PlayerWrapper  {
     doesNotUnderstand { arg selector...args;
 		[selector, args].debug("PlayerWrapper: doesNotUnderstand");
         if(wrapper.class.findRespondingMethodFor(selector).notNil) {
-			"PlayerWrapper: perform".debug;
+			"PlayerWrapper: perform on wrapper".debug;
 			^wrapper.perform(selector, * args);
 		} {
 			if(wrapper.target.class.findRespondingMethodFor(selector).notNil) {
-				"PlayerWrapper: sub perform".debug;
+				"PlayerWrapper: perform on target".debug;
 				^wrapper.target.perform(selector, * args);
 			} {
-				"PlayerWrapper: doesnot".debug;
+				"PlayerWrapper: class, wrapper and target does not understand %".format(selector).debug;
 				DoesNotUnderstandError.throw;
 			}
 		};
@@ -160,19 +160,27 @@ PlayerWrapper  {
 		^init_args
 		//stream << ("Param.new(" ++ init_args.asCompileString ++ ")");
 	}
+
+	*savePresetCompileStringHelper { arg ...args;
+		PlayerWrapper_Base.savePresetCompileStringHelper(*args);
+	}
+	
 }
 
 PlayerWrapper_Base {
 	var <>target;
-	*new { arg target;
-		^super.new.init(target)
+	var <>parent;
+	*new { arg target, parent;
+		
+		^super.new.parent_(parent).init(target);
+
 	}
 
 	init { arg xtarget;
 		target = xtarget
 	}
 
-	key { arg self;
+	key { 
 		^this.label.asSymbol;
 	}
 
@@ -180,10 +188,10 @@ PlayerWrapper_Base {
     doesNotUnderstand { arg selector...args;
 		[selector, args].debug("PlayerWrapper_Base: doesNotUnderstand");
 		if(target.class.findRespondingMethodFor(selector).notNil) {
-			"perform".debug;
+			"perform on target".debug;
 			^target.perform(selector, * args);
 		} {
-			"PlayerWrapper_Base: doesnot".debug;
+			"PlayerWrapper_Base: wrapper and target doesn't respond to %".format(selector).debug;
 			DoesNotUnderstandError.throw;
 		}
 	}
@@ -250,6 +258,89 @@ PlayerWrapper_Base {
 
 	clock {
 		^this.target.tryPerform(\clock) ?? { TempoClock.default };
+	}
+
+	targetClass {
+		^this.target.class.asSymbol;
+	}
+
+	//savePresetCompileString { arg ...args;
+	//	"ERROR: %.savePresetCompileString: not implemented for %".format(this, this.targetClass).postln;
+	//}
+
+	//loadPresetCompileString { arg ...args;
+	//	"ERROR: %.loadPresetCompileString: not implemented for %".format(this, this.targetClass).postln;
+	//}
+
+	*savePresetCompileStringHelper { arg mypath, onDoneAction, refCompileString, presetCompileString;
+		if(mypath.notNil) {
+			var myfolderpath = PathName(mypath).pathOnly;
+			var myfolderpathname;
+			myfolderpathname = FileSystemProject.resolve(myfolderpath);
+			if(myfolderpathname.notNil) {
+				mypath = myfolderpathname.fullPath ++ PathName(mypath).fileName;
+				"Trying to write preset to file %".format(mypath.asCompileString).postln;
+				File.use(mypath, "w", { arg file;
+					var relpath = FileSystemProject.unresolve(mypath);
+					var preset;
+					//refCompileString.interpret.presetCompileStringSavePath = relpath; // commented because moved higher in call chain
+					file.write("%.presetCompileStringSavePath = %;\n\n".format(refCompileString, relpath.asCompileString));
+
+					preset = presetCompileString;
+					if(preset.isNil) {
+						"ERROR: PlayerWrapper.savePresetCompileStringHelper: no preset found for this object".postln;
+					} {
+						file.write(preset);
+					};
+				});
+				onDoneAction.()
+			} {
+				"ERROR: PlayerWrapper.savePresetCompileStringHelper: Can't resolve file %".format(mypath).postln;
+			};
+		} {
+			"ERROR: PlayerWrapper.savePresetCompileStringHelper: no path to save to".postln;
+		}
+	}
+
+	savePresetCompileString { arg path, onDoneAction;
+		this.class.savePresetCompileStringHelper(path ? this.presetCompileStringSavePath, onDoneAction, this.asCompileString, this.presetCompileString)
+	}
+
+	asCompileString {
+		^this.parent.asCompileString;
+	}
+
+	loadPresetCompileString { arg ...args;
+		"loadPresetCompileString: TODO".debug;
+		//"ERROR: %.loadPresetCompileString: not implemented for %".format(this, this.targetClass).postln;
+	}
+
+	savePresetCompileStringDialog { arg path, action, force_dialog=false;
+		if(path.notNil) {
+			this.savePresetCompileString(path, action);
+			this.presetCompileStringSavePath = path;
+		} {
+			if(this.presetCompileStringSavePath.notNil and: { force_dialog==false }) {
+				this.savePresetCompileString(this.presetCompileStringSavePath, action);
+			} {
+				Dialog.savePanel({ arg mypath;
+					mypath.debug("save panel: path");
+					this.savePresetCompileString(mypath, action);
+					this.presetCompileStringSavePath = mypath;
+				},{
+					//"cancelled".postln;
+				});
+			}
+
+		};
+	}
+
+	presetCompileStringSavePath {
+		^this.target.getHalo(\presetCompileStringSavePath);
+	}
+
+	presetCompileStringSavePath_ { arg path;
+		this.target.addHalo(\presetCompileStringSavePath, path)
 	}
 
 }
@@ -344,6 +435,20 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		^target.monitor.isPlaying;
 	}
 
+	presetCompileString {
+		var ret;
+		if(this.key.isKindOf(Symbol)) {
+			if(this.target.getHalo(\ParamGroup).isNil) {
+				this.target.addHalo(\ParamGroup, this.target.asParamGroup)
+			};
+			ret = "%.addHalo(\\ParamGroup, \n%\n);\n".format(this.target.asCompileString, this.target.getHalo(\ParamGroup).presetCompileString);
+			^ret;
+		} {
+			"ERROR: can't save a NodeProxy preset".debug;
+			^nil;
+		}
+	}
+
 }
 
 PlayerWrapper_EventPatternProxy : PlayerWrapper_Base {
@@ -415,6 +520,54 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 		this.doWithQuant {
 			target.stop;
 		}
+	}
+
+	// generic way to classify players : ("%_%".format(player.targetClass, player.key))
+	targetClass {
+		var targetclass;
+		var player;
+		try {
+			targetclass = this.target.class.asSymbol;
+			player = this.target;
+
+			if(targetclass == \ProtoClass) {
+				if( player.protoClass.notNil ) {
+					targetclass = player.protoClass;
+				} {
+					if(player.all.notNil) {
+						targetclass = player.all.key;
+					}
+				}
+			};
+		}
+		^targetclass;
+	}
+
+	savePresetCompileString { arg ...args;
+		if(this.target[\savePresetCompileString].notNil) {
+			^this.target.savePresetCompileString(*args)
+		} {
+			var path = args[0];
+			var onDoneAction = args[1];
+			[path, this.presetCompileStringSavePath, args].debug("PlayerWrapper_ProtoClass.savePresetCompileString");
+			this.class.savePresetCompileStringHelper(path ? this.presetCompileStringSavePath, onDoneAction, this.asCompileString, this.target.presetCompileString)
+		}
+	}
+
+	loadPresetCompileString { arg ...args;
+		if(this.presetCompileStringSavePath.notNil) {
+			FileSystemProject.load(this.presetCompileStringSavePath);
+		} {
+			"ERROR: no presetCompileStringSavePath defined for %".format(this).postln;
+		}
+	}
+
+	presetCompileStringSavePath {
+		^this.target.presetCompileStringSavePath
+	}
+
+	presetCompileStringSavePath_ { arg path;
+		^this.target.presetCompileStringSavePath = path
 	}
 
 }

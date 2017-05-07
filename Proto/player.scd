@@ -1,6 +1,6 @@
 /////////// individuals
 
-// produce an event play an event from a pattern for each .play call 
+// produce and play an event from a pattern for each .play call 
 ~streamPlayer = ProtoClass((
 	new: { arg self, parent, x;
 		self = self.deepCopy;
@@ -318,6 +318,62 @@
 ));
 
 
+
+~patKitDef = ProtoClass((
+	parent: ~parPlayerGroup,
+	all: { PresetDictionary.new(\patKitDef) },
+	new: { arg self, key, instrs;
+
+		if(self.all[key].isNil) {
+			self = self.deepCopy;
+			if(instrs.notNil) {
+				self.source = instrs;
+			};
+			self.key = key;
+			self.all[key] = self;
+		} {
+			self = self.all[key];
+			if(instrs.notNil) {
+				self.source = instrs;
+			};
+		};
+
+		// make default source for gui editing
+		if(self.source.isNil) {
+			self.source = SparseArray.new;
+		};
+		
+		self;
+	},
+
+	clear: { arg self;
+		self.all[self.key] = nil;
+		nil;
+	},
+
+	refCompileString: { arg self, name;
+		"PatKitDef(%)".format(name ? self.key.asCompileString)
+	},
+
+	presetCompileString: { arg self, varname="~ppg";
+		self.parent[\presetCompileString].(self, self.refCompileString)
+	},
+
+	savePresetCompileString: { arg self, path, action, force_dialog=false;
+		PlayerWrapper.savePresetCompileStringHelper(path ? self.presetCompileStringSavePath, action, self.refCompileString, self.presetCompileString);
+	},
+
+	loadPresetCompileString: { arg self;
+		if(self.presetCompileStringSavePath.notNil) {
+			FileSystemProject.load(self.presetCompileStringSavePath);
+		} {
+			"ERROR: no presetCompileStringSavePath defined for %".format(self).postln;
+		}
+	},
+));
+
+////////// recorders
+
 ~playerGroupRecorder = ProtoClass((
 	new: { arg self, group;
 		self = self.deepCopy;
@@ -443,84 +499,4 @@
 		ret = self.eventList.presetCompileString;
 		ret;
 	},
-	
 ));
-
-~patKitDef = ProtoClass((
-	parent: ~parPlayerGroup,
-	all: { PresetDictionary.new(\patKitDef) },
-	new: { arg self, key, instrs;
-
-		if(self.all[key].isNil) {
-			self = self.deepCopy;
-			if(instrs.notNil) {
-				self.source = instrs;
-			};
-			self.key = key;
-			self.all[key] = self;
-		} {
-			self = self.all[key];
-			if(instrs.notNil) {
-				self.source = instrs;
-			};
-		};
-
-		// make default source for gui editing
-		if(self.source.isNil) {
-			self.source = SparseArray.new;
-		};
-		
-		self;
-	},
-
-	clear: { arg self;
-		self.all[self.key] = nil;
-		nil;
-	},
-
-	refCompileString: { arg self, name;
-		"PatKitDef(%)".format(name ? self.key.asCompileString)
-	},
-
-	presetCompileString: { arg self, varname="~ppg";
-		self.parent[\presetCompileString].(self, self.refCompileString)
-	},
-
-	savePresetCompileString: { arg self, path, action, force_dialog=false;
-		var save_it = { arg mypath;
-			mypath = FileSystemProject.resolve(mypath).fullPath;
-			"Trying to write preset to file %".format(mypath.asCompileString).postln;
-			File.use(mypath, "w", { arg file;
-				var relpath = FileSystemProject.unresolve(mypath);
-				var preset;
-				self.presetCompileStringSavePath = relpath;
-				file.write("%.presetCompileStringSavePath = %;\n\n".format(self.refCompileString, relpath.asCompileString));
-				
-				preset = self.presetCompileString;
-				if(preset.isNil) {
-					"ERROR: no preset found for this object".postln;
-				} {
-					file.write(preset);
-				};
-			});
-			action.()
-		};
-		if(path.notNil) {
-			save_it.(path)
-		} {
-			if(self.presetCompileStringSavePath.notNil and: { force_dialog==false }) {
-				save_it.(self.presetCompileStringSavePath)
-			} {
-				Dialog.savePanel({ arg mypath;
-					//path.postln;
-					save_it.(mypath)
-				},{
-					//"cancelled".postln;
-				});
-			}
-
-		};
-	},
-));
-
-

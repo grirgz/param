@@ -1,5 +1,15 @@
 
 // test all wrappers
+//	- Ndef
+//	- Pdef
+//	- StepEvent
+//	- StepList
+//	- ProtoClass
+//	- IdentityDictionary
+//	- Volume
+//	- Bus
+//	- TempoClock
+//	- setter/getter
 // test all types
 //	- array
 //	- env
@@ -8,6 +18,8 @@
 //	- menu
 //	- bus
 //	- buffer
+//	- busmap // TODO
+//	- busarraymap // TODO
 // test all gui
 //	- button
 //	- knob
@@ -83,16 +95,28 @@ Builder(\target_object, { arg scalar_param=10; "bla" });
 	Param(~list, \list),
 	Param(TempoClock.default, \tempo),
 	Param(Ndef(\target_object), "vol"),
-	Param(~bus, \value),
+	//Param(~bus, \value),
+
 	Param(Message(StepList[1,2,3]), \stepCount),
 	Param(Builder(\target_object), \scalar_param),
+	// TODO: add test for each spec !
+
 	Param({ ~variable }, { arg x; ~variable = x }),
+	Param(s.volume, \volume),
 ].flatten;
 
-WindowDef(\testgui, {
+ParamGroupDef(\all_targets, ~all_targets);
+~pg = ParamGroup(~all_targets);
 
-	VLayout (*
-		~all_targets.collect { arg param;
+ParamProto.init; // for preset menu
+
+WindowDef(\testgui, {
+	var layout;
+
+	layout = VLayout (
+		EventClass.presetSelectorView.(ParamGroupDef(\all_targets)),
+		EventClass.presetSelectorView.(~pg),
+		* ~all_targets.collect { arg param;
 			var playout;
 			param.debug("=============================================================== TESTING param");
 			playout = switch(param.type, 
@@ -126,9 +150,14 @@ WindowDef(\testgui, {
 			)
 		}
 	);
+	ScrollView.new.canvas_(View.new.layout_(layout));
 }).front;
 
 );
+
+(
+	ParamGroupDef(\all_targets).group.presetCompileString
+)
 
 
 (
@@ -180,3 +209,7 @@ Param(BusDef(\target_object, \control), 'value').get
 Env([10,10,12],[10,1]).size
 Param({ ~variable }, { arg x; ~variable = x })
 ~variable
+Param(~bus, \value).type
+bus
+~bb = Bus.control
+~bb.type
