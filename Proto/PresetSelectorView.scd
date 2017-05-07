@@ -1,8 +1,5 @@
-"init preset.scd".postln;
 
-// TODO: transform in WindowDef
-
-EventClass.presetSelectorView = { arg pg;
+WindowDef(\PresetSelectorView, { arg def, pg;
 		var layout;
 		var left_button, popup_menu, right_button;
 		var preset_list;
@@ -119,9 +116,9 @@ EventClass.presetSelectorView = { arg pg;
 		).spacing_(1);
 		layout;
 
-};
+});
 
-EventClass.presetListMorpherView = { arg pg, size=8, features;
+WindowDef(\PresetListMorpherView, { arg def, pg, size=8, features;
 		var morpher = PresetListMorpher(pg, size);
 		var save_buttons, load_buttons, disable_buttons, delete_buttons;
 		var features_gui;

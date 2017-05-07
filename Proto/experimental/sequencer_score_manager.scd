@@ -2,49 +2,6 @@
 "Init stepeditor.scd".postln;
 
 
-//~tracks[2].play;
-
-//~make_sequencer.( ~tracks );
-
-//~selector = (
-//	selected_color: Color.red,
-//	deselected_color: Color.yellow,
-//	new: { arg self, selector_count=8, action;
-//		self = self.deepCopy;
-//	
-//		"aA.".debug;
-//		self.selector_count = selector_count;
-//		self.selected_index = 0;
-//		
-//		self.views = selector_count.collect({ arg x;
-//			XSimpleButton.new
-//				.minWidth_(15) 
-//				.action_({
-//					self.select_item(x);
-//					action.(x);
-//				})
-//				.background_(self.deselected_color).debug("WWWTTTFF");
-//		}).debug("WTF");
-//
-//		self.select_item(0);
-//	
-//		"xr.".debug;
-//		self.views.debug("wtf");
-//		self.debug("self!!!");
-//		self;
-//	},
-//
-//	select_item: { arg self, x;
-//		self.views[self.selected_index].background_(self.deselected_color);
-//		self.views[x].background_(self.selected_color);
-//		self.selected_index = x;
-//	},
-//
-//	selected_view: { arg self;
-//		self.views[self.selected_index]
-//	},
-//
-//);
 
 ~class_score_manager = (
 	new: { arg self, track_count=4, delta=1/8, duration=1;

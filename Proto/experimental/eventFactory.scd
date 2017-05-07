@@ -1,3 +1,4 @@
+// kind of deprecated by parPlayerGroup
 
 ~class_event_factory = ProtoClass((
 	// === options:

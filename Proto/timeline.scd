@@ -108,7 +108,7 @@
 	},
 
 	play: { arg self;
-		[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
+		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
 		self.asSelectedPattern.play;
 	},
 
@@ -298,7 +298,7 @@
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
 		self.tracks_bypassed = Set.new;
-		"=============clipTimeline: end init".debug;
+		//"=============clipTimeline: end init".debug;
 
 		self;
 	},
@@ -356,14 +356,14 @@
 
 	bypass_pattern: { arg self, pat;
 		Pcollect({ arg ev;
-			"entering pcollect".debug;
+			//"entering pcollect".debug;
 			ev = ev.copy;
 			if(self.tracks_bypassed.includes(ev.use({ev.midinote}))) {
 				ev[\type] = \rest;
 				ev[\eventType] = nil;
 				ev[\nodeType] = nil;
 			};
-			"ending pcollect".debug;
+			//"ending pcollect".debug;
 			ev;
 		}, pat)	
 	},
@@ -376,7 +376,7 @@
 			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
 			xtotalDur = totalDur.value ? eventlist.totalDur;
 
-			[xrelStartTime, xtotalDur].debug("clip xasPattern: plazy: relstart, totdur");
+			//[xrelStartTime, xtotalDur].debug("clip xasPattern: plazy: relstart, totdur");
 			if(xtotalDur <= 0) {
 				"ERROR: totalDur is negative or zero".postln;
 				xtotalDur = 2
@@ -446,7 +446,7 @@
 
 		self.tracks = { tracks };
 
-		"=============trackTimeline: end init".debug;
+		//"=============trackTimeline: end init".debug;
 
 		self;
 	},
@@ -567,7 +567,7 @@
 	},
 
 	asPattern: { arg self, relStartTime, totalDur;
-		[relStartTime.value, totalDur.value].debug("relstart, totaldur");
+		//[relStartTime.value, totalDur.value].debug("relstart, totaldur");
 		// there is 3 kinds of call to asPattern:
 		// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
 		// - the live code: no startPosition given, defaulting to start event : asPattern
@@ -589,8 +589,8 @@
 			//	xrelStartTime
 			//));
 
-			[xrelStartTime, relStartTime.value, eventlist.relStartTime].debug("xrel, rel, evrel");
-			[xtotalDur, totalDur.value, eventlist.totalDur].debug("xrel, rel, evrel");
+			//[xrelStartTime, relStartTime.value, eventlist.relStartTime].debug("xrel, rel, evrel");
+			//[xtotalDur, totalDur.value, eventlist.totalDur].debug("xrel, rel, evrel");
 
 			if(xtotalDur <= 0) {
 				"ERROR: totalDur is negative or zero".postln;
@@ -604,10 +604,10 @@
 
 			if(self.param.notNil and: {self.composeParamPattern == true}) {
 				if(self.eventFactory.notNil and: {self.eventFactory.mode == \event}) {
-					"Event mode!".debug;
+					//"Event mode!".debug;
 					pat = self.param.target <> pat;
 				} {
-					"Normal mode!".debug;
+					//"Normal mode!".debug;
 					pat = pat <> self.param.target;
 				}
 			};
@@ -667,8 +667,8 @@
 		// param target should be a bus
 		self = self.deepCopy;
 		self.key = \instance;
-		param.debug("envTimeline: newInstance: param");
-		"xx".debug;
+		//param.debug("envTimeline: newInstance: param");
+		//"xx".debug;
 		self.init(param)
 	},
 
@@ -768,7 +768,7 @@
 
 
 	asPattern: { arg self, relStartTime, totalDur;
-		[relStartTime, totalDur].debug("xasPattern: relstart, totdur");
+		//[relStartTime, totalDur].debug("xasPattern: relstart, totdur");
 		self.proxy.source = Prout({ arg inval;
 			var eventlist = self.eventloop.list;
 			var pat;
@@ -780,7 +780,7 @@
 			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
 			xtotalDur = totalDur.value ? eventlist.totalDur;
 
-			[xrelStartTime, xtotalDur].debug("xasPattern: prout: relstart, totdur");
+			//[xrelStartTime, xtotalDur].debug("xasPattern: prout: relstart, totdur");
 
 			if(xtotalDur <= 0) {
 				"ERROR: totalDur is negative or zero".postln;
@@ -808,7 +808,7 @@
 					//\level, Pfunc({ arg ev; ev[self.param.property] ? default }),
 					\curve, 0,
 					\out, self.outBus,
-					\time, Pfunc({ arg ev; ev.debug("ev!!!!!!!!!!!!!!!!!!"); ev.use { 
+					\time, Pfunc({ arg ev; ev.use { 
 							// absTime is in beats (but maybe should be in seconds ?)
 							// need to convert to seconds
 							//(ev.next_absTime ? ev.absTime) - ev.absTime / thisThread.clock.tempo
@@ -821,9 +821,9 @@
 							if(ev[\next_level].isNil) { // last one should be rest
 								\rest
 							} {
-								if(ev[\time].debug("ev.time").notNil and: {ev[\time] < 0.051}, {
+								if(ev[\time].notNil and: {ev[\time] < 0.051}, {
 									ev[\array] = [ ev[\level] ];
-									ev.debug("envTimeline: asPattern: busmode!");
+									//ev.debug("envTimeline: asPattern: busmode!");
 									\bus;
 								}, { 
 									\note;
@@ -1002,11 +1002,11 @@
 			if(self.kit.notNil and: {self.composeParamPattern == true}) {
 				pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
 				if(self.wrapper.postChain.notNil) {
-					"post!".debug;
+					//"post!".debug;
 					pat = self.wrapper.postChain <> pat;
 				};
 				if(self.wrapper.preChain.notNil) {
-					"pre!".debug;
+					//"pre!".debug;
 					pat = pat <> self.wrapper.preChain;
 				};
 			};
@@ -1096,7 +1096,7 @@
 		self.controller.remove;
 		self.controller = SimpleController(self.model).put(\refresh, {
 			var ev = self.model;
-			[self.type_popup, ev].debug("entering clipEditor updater");
+			//[self.type_popup, ev].debug("entering clipEditor updater");
 			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
 				self.controller.remove;
 			} {
@@ -1115,7 +1115,7 @@
 									self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
 										x == ( ev.key ?? { obj.key } )
 									});
-									[self.name_popup.value, self.name_popup.items, ev[\key], ev[\receiver], ev[\receiver].value.key].debug("name, items, key, rec, reckey");
+									//[self.name_popup.value, self.name_popup.items, ev[\key], ev[\receiver], ev[\receiver].value.key].debug("name, items, key, rec, reckey");
 								},
 								TrackDef, {
 									self.type_popup.value = self.type_popup.items.detectIndex({ arg x; x == \Tracks });
@@ -1123,26 +1123,26 @@
 									self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
 										x == ( ev.key ?? { obj.key } )
 									});
-									[self.name_popup.value, self.name_popup.items, ev[\key], ev[\receiver], ev[\receiver].value.key].debug("name, items, key, rec, reckey: TRACKDEF");
+									//[self.name_popup.value, self.name_popup.items, ev[\key], ev[\receiver], ev[\receiver].value.key].debug("name, items, key, rec, reckey: TRACKDEF");
 
 								}
 							);
 						};
-						ev.debug("clipEditor: updater: player");
+						//ev.debug("clipEditor: updater: player");
 						branch.(ev[\receiver].value);
 					},
 					\pattern, {
-						ev.debug("clipEditor: updater: pattern");
+						//ev.debug("clipEditor: updater: pattern");
 						self.type_popup.value = self.type_popup.items.detectIndex({ arg x; x == \Pdef });
 						self.name_popup.items = Pdef.all.keys.asArray;
 						self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
 							x == ( ev.key ?? { ev[\receiver].value.key } ) 
 						});
-						[self.name_popup.value, self.name_popup.items, ev[\key], ev[\receiver], ev[\receiver].value.key].debug("name, items, key, rec, reckey");
+						//[self.name_popup.value, self.name_popup.items, ev[\key], ev[\receiver], ev[\receiver].value.key].debug("name, items, key, rec, reckey");
 					},
 					\timeline, {
 						var type;
-						ev.debug("clipEditor: updater: timeline");
+						//ev.debug("clipEditor: updater: timeline");
 						if(ev.timeline.notNil) {
 							switch(ev.timeline.eventType,
 								\envTimeline, {
@@ -1165,10 +1165,11 @@
 						self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
 							x == ( ev.key ?? { ev.timeline.key } ) 
 						});
-						[self.name_popup.value, self.name_popup.items, ev.key].debug("name, items, key, rec, reckey");
+						//[self.name_popup.value, self.name_popup.items, ev.key].debug("name, items, key, rec, reckey");
 					}, {
 
-						ev.debug("clipEditor: updater: other");
+						//ev.debug("clipEditor: updater: other");
+						ev;
 					}
 				)
 			}
@@ -1220,7 +1221,7 @@
 
 	edit_selected: { arg self, model;
 		model = model ? self.model;
-		[model.type, model].debug("Edit: type");
+		//[model.type, model].debug("Edit: type");
 		switch(model.type,
 			\player, {
 				var player = model.receiver.value;
@@ -1235,17 +1236,17 @@
 			},
 			\pattern, {
 				var player = model.receiver.value;
-				player.asParamGroup.debug("Edit: pattern");
+				//player.asParamGroup.debug("Edit: pattern");
 				if(player.class == PlayerWrapper) {
 					player = player.target;
 				};
-				player.debug("clipeditor: player");
-				player.getHalo(\edit).debug("clipeditor: player, edit");
+				//player.debug("clipeditor: player");
+				//player.getHalo(\edit).debug("clipeditor: player, edit");
 				if(player.getHalo(\edit).notNil) {
-					player.getHalo(\edit).debug("clipeditor: player, halo edit");
+					//player.getHalo(\edit).debug("clipeditor: player, halo edit");
 					player.getHalo(\edit).value;
 				} {
-					player.getHalo(\edit).debug("clipeditor: normal edit");
+					//player.getHalo(\edit).debug("clipeditor: normal edit");
 					player.asParamGroup.edit;
 				}
 			},
@@ -1428,7 +1429,7 @@
 					if(tar.isKindOf(Pdef)) {
 						tar;
 					} {
-						"clipFactories.pdef: ERROR: getTarget: don't know what type!!!".debug;
+						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
 						nil;
 					}; 
 				}
@@ -1451,10 +1452,10 @@
 				player = self.getTarget(model);
 				if(player.isKindOf(Pdef)) {
 					if(player.getHalo(\edit).notNil) {
-						player.getHalo(\edit).debug("clipeditor: player, halo edit");
+						//player.getHalo(\edit).debug("clipeditor: player, halo edit");
 						player.getHalo(\edit).value;
 					} {
-						player.getHalo(\edit).debug("clipeditor: normal edit");
+						//player.getHalo(\edit).debug("clipeditor: normal edit");
 						player.asParamGroup.edit;
 					}
 				} {
@@ -1529,9 +1530,9 @@
 
 			redefineClip: { arg me, curname, model;
 				var tlobj;
-				"redefineClip1".debug;
+				//"redefineClip1".debug;
 				PatternEvent.redefine(model);
-				"redefineClip2".debug;
+				//"redefineClip2".debug;
 
 				tlobj = ( "{ " ++ me.className.new(curname).refCompileString ++ " }" ).interpret;
 				model[\timeline] = tlobj;
@@ -1539,10 +1540,10 @@
 				//	me.keys.debug("redefineClip3:me.new!!!!!");
 				//	me.className.new(curname)
 				//};
-				"redefineClip3".debug;
+				//"redefineClip3".debug;
 				//model.changed(\refresh);
 				self.parent_model.changed(\refresh);
-				"redefineClip4".debug;
+				//"redefineClip4".debug;
 			},
 		);
 		self.clipFactories_timeline_parent = tl;
@@ -1622,7 +1623,7 @@
 					if(tar.isKindOf(Pdef)) {
 						clipkey = 'pdef'
 					} {
-						model.debug("event_to_clipFactory_key: pattern: unknown");
+						//model.debug("event_to_clipFactory_key: pattern: unknown");
 					}
 				}
 			},
@@ -1642,18 +1643,19 @@
 							'trackdef'
 						},
 						{
-							model.debug("event_to_clipFactory_key: player: unknown");
+							//model.debug("event_to_clipFactory_key: player: unknown");
 						}
 					);
 				};
 				clipkey = branch.(model[\receiver].value);
 			},
 			{
-				model.debug("event_to_clipFactory_key: unknown");
+				//model.debug("event_to_clipFactory_key: unknown");
 				nil
 			}
 		);
-		clipkey.debug("event_to_clipFactory_key: result");
+		//clipkey.debug("event_to_clipFactory_key: result");
+		clipkey;
 	},
 
 	clearEditor: { arg self;
@@ -1665,7 +1667,7 @@
 		self.controller.remove;
 		self.controller = SimpleController(self.model).put(\refresh, {
 			var ev = self.model;
-			[self.type_popup, ev].debug("entering clipEditor updater");
+			//[self.type_popup, ev].debug("entering clipEditor updater");
 			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
 				self.controller.remove;
 			} {
@@ -1673,7 +1675,7 @@
 				var clipfac;
 				self.refreshPopups;
 				clipkey = self.event_to_clipFactory_key(ev);
-				clipkey.debug("makeUpdater: clipkey");
+				//clipkey.debug("makeUpdater: clipkey");
 				if(clipkey.notNil) {
 					clipfac = self.clipFactories[clipkey];
 					self.type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
@@ -1701,7 +1703,7 @@
 	edit_selected: { arg self, model;
 		var clipkey, clipfac;
 		model = model ? self.model;
-		[model.type, model].debug("Edit: type");
+		//[model.type, model].debug("Edit: type");
 		clipkey = self.event_to_clipFactory_key(model);
 		clipfac = self.clipFactories[clipkey];
 		clipfac.editSelected(model);
@@ -1713,13 +1715,13 @@
 		var editor;
 		var type_popup, name_popup;
 		var model = self.model;
-		"clipEditor.makeLayout: init".debug;
+		//"clipEditor.makeLayout: init".debug;
 		type_popup = PopUpMenu.new;
 		name_popup = PopUpMenu.new;
 		self.name_popup = name_popup;
 		self.type_popup = type_popup;
 		name_popup.allowsReselection = true;
-		"clipEditor.makeLayout: part 1".debug;
+		//"clipEditor.makeLayout: part 1".debug;
 		//type_popup.allowsReselection = true; // lose selection
 		//name_popup.items = type_popup.items[type_popup.value].asClass.all.keys.asArray;
 		name_popup.action = {
@@ -1729,7 +1731,7 @@
 		};
 
 		self.refreshPopups;
-		"clipEditor.makeLayout: part 2".debug;
+		//"clipEditor.makeLayout: part 2".debug;
 
 		header = HLayout(
 			type_popup,
@@ -1743,7 +1745,7 @@
 			editor,
 		);
 
-		"clipEditor.makeLayout: part 3".debug;
+		//"clipEditor.makeLayout: part 3".debug;
 		self.layout = layout;
 		self.layout;
 	},
@@ -1786,7 +1788,7 @@
 		self.controller.remove;
 		self.controller = SimpleController(self.model).put(\refresh, {
 			var ev = self.model;
-			[self.type_popup, ev].debug("entering clipEditor updater");
+			//[self.type_popup, ev].debug("entering clipEditor updater");
 			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
 				self.controller.remove;
 			} {
@@ -1823,27 +1825,27 @@
 
 	refreshPopups: { arg self;
 		var name_popup = self.name_popup;
-		"refreshPopups".debug;
+		//"refreshPopups".debug;
 		self.type_popup.items = self.trackgroup.asArray.collect(_.label);
 		self.type_popup.action = {
-			"type_popup.action".debug;
+			//"type_popup.action".debug;
 			if(self.type_popup.value.notNil) {
 				name_popup.items = self.trackgroup[self.type_popup.value ].target.children.asArray.collect(_.label);
 			}
 		};
 		self.name_popup.action = { arg view;
-			"name_popup.action".debug;
+			//"name_popup.action".debug;
 			if(view.value.notNil and: {self.model.notNil and: {self.type_popup.value.notNil}}) {
 				self.redefineSelected;
 			}
 		};
-		self.type_popup.valueAction = self.model_to_type_index.debug("model_to_name_index");
-		self.name_popup.value = self.model_to_name_index.debug("model_to_name_index");
+		self.type_popup.valueAction = self.model_to_type_index;
+		self.name_popup.value = self.model_to_name_index;
 	},
 
 	edit_selected: { arg self, model;
 		model = model ? self.model;
-		[model.type, model].debug("Edit: type");
+		//[model.type, model].debug("Edit: type");
 		self.model.receiver.value.target.edit;
 	},
 
@@ -1853,13 +1855,13 @@
 		var editor;
 		var type_popup, name_popup;
 		var model = self.model;
-		"clipEditor.makeLayout: init".debug;
+		//"clipEditor.makeLayout: init".debug;
 		type_popup = PopUpMenu.new;
 		name_popup = PopUpMenu.new;
 		self.name_popup = name_popup;
 		self.type_popup = type_popup;
 		name_popup.allowsReselection = true;
-		"clipEditor.makeLayout: part 1".debug;
+		//"clipEditor.makeLayout: part 1".debug;
 		//type_popup.allowsReselection = true; // lose selection
 		self.refreshPopups;
 
@@ -1875,7 +1877,7 @@
 			editor,
 		);
 
-		"clipEditor.makeLayout: part 3".debug;
+		//"clipEditor.makeLayout: part 3".debug;
 		self.layout = layout;
 		self.layout;
 	},
@@ -1903,7 +1905,7 @@
 
 ~timelinePanelView = (
 	new: { arg self, eventloop;
-		"timelinePanelView".debug("init");
+		//"timelinePanelView".debug("init");
 		self = self.deepCopy;
 
 		self.eventloop = eventloop;
@@ -1912,7 +1914,7 @@
 
 		//self.definePattern;
 
-		"timelinePanelView".debug("end init");
+		//"timelinePanelView".debug("end init");
 		self;
 	},
 
@@ -2082,11 +2084,11 @@
 	},
 
 	zoom_fit: { arg self;
-		[self.areasize, self.timeline.areasize].debug("1");
+		//[self.areasize, self.timeline.areasize].debug("1");
 		~zoom_fit.(self.timeline);
-		[self.areasize, self.timeline.areasize].debug("2");
+		//[self.areasize, self.timeline.areasize].debug("2");
 		self.areasize = self.timeline.areasize;
-		[self.areasize, self.timeline.areasize].debug("4");
+		//[self.areasize, self.timeline.areasize].debug("4");
 	},
 
 	update_track_header: { arg self;
@@ -2129,12 +2131,12 @@
 		};
 		self.track_header_controller = SimpleController(self.timeline)
 		.put(\viewport, {
-			"update_track_header_size: viewport".debug;
+			//"update_track_header_size: viewport".debug;
 			//TODO: remove controller
 			self.update_track_header_size;
 		})
 		.put(\areasize, {
-			"update_track_header_size: areasize".debug;
+			//"update_track_header_size: areasize".debug;
 			self.update_track_header_size;
 			//self.update_track_header;
 		})
@@ -2147,13 +2149,13 @@
 			self.vrange_track_header_action(self.vrange.view)
 		} {
 			if(self.timeline.notNil) {
-				"update_track_header_size: real updating now!".debug;
-				[self.timeline.bounds.height, self.timeline.viewport.height].debug("bh, vh");
+				//"update_track_header_size: real updating now!".debug;
+				//[self.timeline.bounds.height, self.timeline.viewport.height].debug("bh, vh");
 				self.track_header_view.fixedHeight = self.timeline.bounds.height / self.timeline.viewport.height;
 				self.track_header.visibleOrigin = Point(0,(1-self.timeline.viewport.bottom) * self.track_header.bounds.height);
-				self.timeline.viewport.top.debug("top");
-				[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height].debug("[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height]");
-				self.track_header.visibleOrigin.debug("update_track_header_size: visibleOrigin");
+				//self.timeline.viewport.top.debug("top");
+				//[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height].debug("[self.timeline.viewport, self.timeline.viewport.bottom, self.track_header.bounds.height, (1-self.timeline.viewport.bottom) * self.track_header.bounds.height]");
+				//self.track_header.visibleOrigin.debug("update_track_header_size: visibleOrigin");
 			}
 		}
 	},
@@ -2184,9 +2186,9 @@
 
 		self.vrange_track_header_action = { arg self, slider;
 			self.track_header_view.fixedHeight = 1/slider.range * track_header.bounds.height;
-			( 1/slider.range * track_header.bounds.height ).debug("vrange.view.action: fixedHeight");
+			//( 1/slider.range * track_header.bounds.height ).debug("vrange.view.action: fixedHeight");
 			track_header.visibleOrigin = Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height;
-			( Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height ).debug("vrange.view.action: visibleOrigin");
+			//( Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height ).debug("vrange.view.action: visibleOrigin");
 		};
 
 		self.vrange.view.addAction({ arg slider;
@@ -2223,7 +2225,7 @@
 	getTimelineKeyDownAction: { arg self;
 		//Window.keyDownActionTest
 		({ arg me, key, modifiers, unicode, keycode;
-			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
+			//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
 			self.getTimelineKeyDownActionForNodeMove.(me, key, modifiers, unicode, keycode);
 			if(modifiers.isCtrl) {
 				if(key == $n) { // ^n
@@ -2280,13 +2282,13 @@
 								}
 							};
 						});
-						first.debug("first");
+						//first.debug("first");
 						delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
-						~clipTimeline_clipboard.debug("clipboard");
+						//~clipTimeline_clipboard.debug("clipboard");
 						~clipTimeline_clipboard.do({ arg event;
 							var new;
 							new = event.copy;
-							[new, delta].debug("new, delta");
+							//[new, delta].debug("new, delta");
 							new[\absTime] = new[\absTime] + delta;
 							self.timeline.model.addEvent(new);
 						});
@@ -2402,9 +2404,9 @@
 
 		self.refreshPosyValue = {
 			var node;
-			"---------------heyyyyyyyyyyyyyyy".debug;
-			"heyyyyyyyyyyyyyyy".debug;
-			"heyyyyyyyyyyyyyyy".debug;
+			//"---------------heyyyyyyyyyyyyyyy".debug;
+			//"heyyyyyyyyyyyyyyy".debug;
+			//"heyyyyyyyyyyyyyyy".debug;
 			node = self.velocityTimeline.chosennode;
 			if(node.notNil and: { node.model.notNil }) {
 				var val =   node.model[node.posyKey];
@@ -2441,10 +2443,10 @@
 		
 		self.velocityPopUp = PopUpMenu.new;
 		self.velocityPopUp.action_({ arg me;
-			"velocityPopUp.action".debug;
-			"velocityPopUp.actio3n".postln;
+			//"velocityPopUp.action".debug;
+			//"velocityPopUp.actio3n".postln;
 			self.velocityTimeline.mapParam(self.timelineInstrumentParamGroup[me.value]);
-			self.velocityTimeline.param.debug("new param!!!");
+			//self.velocityTimeline.param.debug("new param!!!");
 		}).items_(
 			self.timelineInstrumentParamGroup.collect({ arg x; 
 				x.property;
@@ -2468,7 +2470,7 @@
 		var track_header;
 		var track_header_view;
 		var quant_popup;
-		"AZE".debug;
+		//"AZE".debug;
 		layout = HLayout.new;
 		self.layout = layout;
 		vlayout = VLayout.new;
@@ -2611,7 +2613,7 @@
 		);
 
 		size = self.areasize;
-		size.debug("size!!!");
+		//size.debug("size!!!");
 
 		timeline.areasize = size;
 
@@ -2623,7 +2625,7 @@
 
 		self.timeline = timeline;
 		self.layout = layout;
-		"iiAZE".debug;
+		//"iiAZE".debug;
 
 
 		//self.zoom_fit;
@@ -2749,15 +2751,15 @@
 
 	makeLayout: { arg self;
 		var clipEditor;
-		"clipTimelinePanelView.makeLayout: start init".debug;
+		//"clipTimelinePanelView.makeLayout: start init".debug;
 
 		clipEditor = self.clipEditorNew;
 		self.clipEditor = { clipEditor };
-		"clipTimelinePanelView.makeLayout: part 0.1".debug;
+		//"clipTimelinePanelView.makeLayout: part 0.1".debug;
 		self.clipEditorLayout = self.clipEditor.makeLayout;
-		"clipTimelinePanelView.makeLayout: part 0.2".debug;
+		//"clipTimelinePanelView.makeLayout: part 0.2".debug;
 		self.clipEditor.clearEditor;
-		"clipTimelinePanelView.makeLayout: part 1".debug;
+		//"clipTimelinePanelView.makeLayout: part 1".debug;
 		self[\makeVelocityView] = {}; // disable velocity view
 		self.layout = VLayout(
 			//HLayout(
@@ -2768,7 +2770,7 @@
 			self.clipEditorLayout,
 			//self.parent.makeLayout,
 		);
-		"clipTimelinePanelView.makeLayout: part 2".debug;
+		//"clipTimelinePanelView.makeLayout: part 2".debug;
 		self.timeline.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
 			if(clickCount == 2) {
 				if(chosennode.notNil) {
@@ -2785,13 +2787,13 @@
 				}
 			}
 		};
-		"clipTimelinePanelView.makeLayout: part 3".debug;
+		//"clipTimelinePanelView.makeLayout: part 3".debug;
 		self.timeline.view.onChange(self.eventloop, \list, { 
 			{
 				self.refresh;
 			}.defer
 		});
-		"clipTimelinePanelView.makeLayout: end init".debug;
+		//"clipTimelinePanelView.makeLayout: end init".debug;
 		self.layout;
 	},
 );
@@ -2800,18 +2802,18 @@
 	parent: ~clipTimelinePanelView,
 
 	new: { arg self, timeline;
-		"trackTimelinePanelView: start init".debug;
+		//"trackTimelinePanelView: start init".debug;
 		self = ~timelinePanelView[\new].(self, timeline.eventloop);
-		"trackTimelinePanelView: init part1".debug;
+		//"trackTimelinePanelView: init part1".debug;
 	
 		self.timeline_model = { timeline };
-		"trackTimelinePanelView: init part2".debug;
+		//"trackTimelinePanelView: init part2".debug;
 		self.areasize = self.timeline_model.areasize;
-		"trackTimelinePanelView: init part3".debug;
+		//"trackTimelinePanelView: init part3".debug;
 		
 		self.makeWindow;
 	
-		"trackTimelinePanelView: end init";
+		//"trackTimelinePanelView: end init";
 		self;
 	},
 
@@ -2828,14 +2830,14 @@
 	},
 
 	clipEditorNew: { arg self, model;
-		"clipEditorNew".debug;
+		//"clipEditorNew".debug;
 		~trackEditor.new(model ? self.model, self.timeline_model.eventList, self.timeline_model.tracks);
 	},
 
 	update_track_header: { arg self;
 		var track_count;
 		var track_header_block;
-		"trackTimelinePanelView.update_track_header: init".debug;
+		//"trackTimelinePanelView.update_track_header: init".debug;
 		self.areasize.y = self.timeline_model.tracks.size;
 		track_count = self.areasize.y.asInteger;
 		track_header_block = { arg x;
@@ -2848,7 +2850,7 @@
 			//res.background_(Color.blue);
 			res;
 		};
-		"trackTimelinePanelView.update_track_header: part 1".debug;
+		//"trackTimelinePanelView.update_track_header: part 1".debug;
 		self.track_selector = ~view_selector.new(track_count, {}, { arg view, x; 
 			//x = track_count - x;
 			if(self.timeline_model.is_track_bypassed(x)) {
@@ -2857,7 +2859,7 @@
 				view.label_("%".format(self.timeline_model.tracks[x].label));
 			}
 		});
-		"trackTimelinePanelView.update_track_header: part 2".debug;
+		//"trackTimelinePanelView.update_track_header: part 2".debug;
 		self.track_header.canvas_(
 			self.track_header_view = View.new.layout_(
 				VLayout(*
@@ -2871,7 +2873,7 @@
 			);
 			self.track_header_view
 		).maxWidth_(100);
-		"trackTimelinePanelView.update_track_header: part 3".debug;
+		//"trackTimelinePanelView.update_track_header: part 3".debug;
 		self.update_track_header_size;
 		self.track_header.onResize = { self.update_track_header_size };
 		if(self.track_header_controller.notNil) {
@@ -2879,17 +2881,17 @@
 		};
 		self.track_header_controller = SimpleController(self.timeline)
 		.put(\viewport, {
-			"update_track_header_size: viewport".debug;
+			//"update_track_header_size: viewport".debug;
 			//TODO: remove controller
 			self.update_track_header_size;
 		})
 		.put(\areasize, {
-			"update_track_header_size: areasize".debug;
+			//"update_track_header_size: areasize".debug;
 			self.update_track_header_size;
 			//self.update_track_header;
 		})
 		;
-		"trackTimelinePanelView.update_track_header: part 4".debug;
+		//"trackTimelinePanelView.update_track_header: part 4".debug;
 	},
 
 
@@ -3062,17 +3064,17 @@
 	},
 
 	makeLayout: { arg self;
-		"noteTimelinePanelView.makeLayout".debug;
+		//"noteTimelinePanelView.makeLayout".debug;
 		self.layout = VLayout(
 			//HLayout(
 			//	PlayerWrapperView(EventPlayerWrapper(self.timeline_model)).view,
 			//	XSimpleButton.new.label_("yep"),
 			//),
-		"noteTimelinePanelView.makeLayout bef".debug;
+		//"noteTimelinePanelView.makeLayout bef".debug;
 			self.parent[\makeLayout].(self),
 			//self.parent.makeLayout,
 		);
-		"noteTimelinePanelView.makeLayout af".debug;
+		//"noteTimelinePanelView.makeLayout af".debug;
 		self.timeline.view.onChange(self.eventloop, \list, { 
 			self.refresh;
 		});
@@ -3187,17 +3189,17 @@
 
 
 	makeLayout: { arg self;
-		"noteTimelinePanelView.makeLayout".debug;
+		//"noteTimelinePanelView.makeLayout".debug;
 		self.layout = VLayout(
 			//HLayout(
 			//	PlayerWrapperView(EventPlayerWrapper(self.timeline_model)).view,
 			//	XSimpleButton.new.label_("yep"),
 			//),
-		"noteTimelinePanelView.makeLayout bef".debug;
+		//"noteTimelinePanelView.makeLayout bef".debug;
 			self.parent[\makeLayout].(self),
 			//self.parent.makeLayout,
 		);
-		"noteTimelinePanelView.makeLayout af".debug;
+		//"noteTimelinePanelView.makeLayout af".debug;
 		self.timeline.view.onChange(self.eventloop, \list, { 
 			self.refresh;
 		});

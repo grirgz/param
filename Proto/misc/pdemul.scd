@@ -1,7 +1,4 @@
 
-"Init base.scd".postln;
-
-
 ~pdemul = { arg pat;
 	Prout({ arg proutinval;
 		var str;

@@ -1,5 +1,6 @@
 
-/////////// just to init proto events code
+/////////// this class is a ugly hack to have non-class code run inside a quark
+/////////// call ParamProto.init to have all non-class code loaded
 
 
 ParamProto {

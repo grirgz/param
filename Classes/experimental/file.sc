@@ -1,3 +1,4 @@
+// not finished, not used
 
 FileSystemResolver {
 	var <>paths;
@@ -7,7 +8,7 @@ FileSystemResolver {
 
 	resolve { arg val;
 		paths.do({ arg path;
-			pn = PathName(path +/+ val).exists
+			var pn = PathName(path +/+ val).exists;
 			if(pn.exists) {
 				^pn.fullPath
 			}
