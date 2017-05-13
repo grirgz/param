@@ -25,7 +25,7 @@ ParamGroup : List {
 
 	save { arg key=\default; 
 		presets[key] = super.array.collect { arg param;
-			param.get;
+			param.get.copy; // need to copy to avoid reference sharing with array
 		};
 		this.changed(\presets);
 	}
@@ -39,17 +39,6 @@ ParamGroup : List {
 		^presets[key]
 	}
 
-	getPresetCompileString { arg key=\default;
-		// TODO: write asPresetCompileStringNdef and Pdef and each other Param type
-	}
-
-	getPbindCompileString {
-		^"\nPbind(\n\t%\n)\n".format(
-			this.collect({ arg p; 
-				"%, %,".format(p.property.asCompileString, p.get.asCompileString)
-			}).join("\n\t")
-		)
-	}
 
 	valueList {
 		^this.collect { arg param;
@@ -88,6 +77,19 @@ ParamGroup : List {
 
 	asParam {
 		^this; // to act like a Param with subparams
+	}
+
+	getPresetCompileString { arg key=\default;
+		^this.presetCompileString
+	}
+
+	getPbindCompileString {
+		// TODO: write asPresetCompileStringNdef and Pdef and each other Param type
+		^"\nPbind(\n\t%\n)\n".format(
+			this.collect({ arg p; 
+				"%, %,".format(p.property.asCompileString, p.get.asCompileString)
+			}).join("\n\t")
+		)
 	}
 
 	presetCompileString {

@@ -83,6 +83,7 @@
 
 	eventList_: { arg self, val;
 		self.eventloop.list = val;
+		self;
 	},
 
 	eventLoop: { arg self;
@@ -91,6 +92,7 @@
 
 	eventLoop_: { arg self, val;
 		self.eventloop = val;
+		self;
 	},
 
 	embedInTimeline: { arg self, drop_dur, sustain;
@@ -170,16 +172,21 @@
 	},
 
 	isRecording: { arg self;
-		if(self.eventFactory.notNil) {
-			self.eventFactory.isRecording;
+		if(self.recorder.notNil) {
+			self.recorder.isRecording;
 		} {
 			false
 		}
 	},
 
 	isRecording_: { arg self, val;
-		if(self.eventFactory.notNil) {
-			self.eventFactory.isRecording = val;
+		// deprecated
+		//if(self.eventFactory.notNil) {
+		//	self.eventFactory.isRecording = val;
+		//}
+
+		if(self.recorder.notNil) {
+			self.recorder.isRecording = val;
 		}
 	},
 
@@ -285,14 +292,17 @@
 	},
 
 	init: { arg self;
+		// TODO: make accept a PlayerWrapperGroup as optional argument to handle recording
 		self.areasize = 10@4;
 		//self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
 		self.eventloop = self.makeDefaultEventLoop;
-		self.eventFactory = ~class_player_event_factory.new;
-		self.eventFactory.eventLoop = self.eventloop;
-		self.eventFactory.mode = \note;
-		self.eventFactory.playmode = \gate;
-		self.eventFactory.fullrecord = false;
+
+		//self.eventFactory = ~class_player_event_factory.new;
+		//self.eventFactory.eventLoop = self.eventloop;
+		//self.eventFactory.mode = \note;
+		//self.eventFactory.playmode = \gate;
+		//self.eventFactory.fullrecord = false;
+
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
@@ -697,19 +707,15 @@
 	//	})
 	//},
 
-	init: { arg self, param, bus;
-		self.param = param;
-		self.eventloop = self.makeDefaultEventLoop;
-		self.areasize = 10@128;
-		self.proxy = EventPatternProxy.new;
-		self.cursor = CursorTimeline.new;
-		self.cursor.startPosition = self.eventList.startTime;
-		self.eventFactory = ~class_param_event_factory.new(self.param);
-		self.eventFactory.eventLoop = self.eventloop;
-		self.eventFactory.mode = \note;
-		self.eventFactory.playmode = \gate;
-		self.eventFactory.fullrecord = false;
-		if(bus.isNil) {
+	param_: { arg self, param;
+		self[\param] = param;
+		if(self.recorder.notNil) {
+			self.recorder.stopRecording;
+		};
+		self.recorder = ~paramRecorder.new(self.param);
+		self.recorder.eventLoop = self.eventLoop;
+
+		if(self.customBus.isNil) {
 			if(param.target.isKindOf(Bus)) {
 				self[\outBus] = param.target;
 			} {
@@ -718,8 +724,27 @@
 				self[\outBus] = BusDef(self.key, \control);
 			};
 		} {
-			self[\outBus] = bus;
+			self[\outBus] = self.customBus;
 		};
+	},
+
+	init: { arg self, param, bus;
+		self.eventloop = self.makeDefaultEventLoop;
+		self.areasize = 10@128;
+		self.proxy = EventPatternProxy.new;
+		self.cursor = CursorTimeline.new;
+		self.cursor.startPosition = self.eventList.startTime;
+		self.customBus = bus;
+
+		self.param = param;
+
+		//eventFactory system is deprecated
+		//self.eventFactory = ~class_param_event_factory.new(self.param);
+		//self.eventFactory.eventLoop = self.eventloop;
+		//self.eventFactory.mode = \note;
+		//self.eventFactory.playmode = \gate;
+		//self.eventFactory.fullrecord = false;
+
 
 		// note: this is grid quant, not playing quant
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
@@ -769,18 +794,20 @@
 
 	asPattern: { arg self, relStartTime, totalDur;
 		//[relStartTime, totalDur].debug("xasPattern: relstart, totdur");
-		self.proxy.source = Prout({ arg inval;
+		self.proxy.source = Plazy({ arg inval;
 			var eventlist = self.eventloop.list;
 			var pat;
 			var str;
 			var first;
 			var first_level;
 			var xrelStartTime, xtotalDur;	
+			var postpat, prepat;
 
 			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
 			xtotalDur = totalDur.value ? eventlist.totalDur;
 
 			//[xrelStartTime, xtotalDur].debug("xasPattern: prout: relstart, totdur");
+			self.eventloop.list.changed(\cursor, \play);
 
 			if(xtotalDur <= 0) {
 				"ERROR: totalDur is negative or zero".postln;
@@ -799,51 +826,53 @@
 				//default = self.param.default;
 			};
 
-			~remove_envlist_duplicate.(self.eventloop.list);
-			~compute_eventenv_sustain.(self.eventloop.list);
+			~remove_envlist_duplicate.(eventlist);
+			~compute_eventenv_sustain.(eventlist);
 
-			pat = 
-				Pbind(
-					\instrument, \env_segment,
-					//\level, Pfunc({ arg ev; ev[self.param.property] ? default }),
-					\curve, 0,
-					\out, self.outBus,
-					\time, Pfunc({ arg ev; ev.use { 
-							// absTime is in beats (but maybe should be in seconds ?)
-							// need to convert to seconds
-							//(ev.next_absTime ? ev.absTime) - ev.absTime / thisThread.clock.tempo
-							// use dur instead
-							ev[\sustain] / thisThread.clock.tempo
-					} }),
-					\type, Pfunc({  arg ev;
+			postpat = Pbind(
+				\out, self.outBus,
+				//\level, Pfunc({ arg ev; ev[self.param.property] ? default }),
+				\time, Pfunc({ arg ev; ev.use { 
+					// absTime is in beats (but maybe should be in seconds ?)
+					// need to convert to seconds
+					//(ev.next_absTime ? ev.absTime) - ev.absTime / thisThread.clock.tempo
+					// use dur instead
+					( ev[\sustain] ? 1 ) / thisThread.clock.tempo
+				} }),
+				\type, Pfunc({  arg ev;
 
-						if(ev[\type].isNil or: { ev[\type] == \note }) {
-							if(ev[\next_level].isNil) { // last one should be rest
-								\rest
-							} {
-								if(ev[\time].notNil and: {ev[\time] < 0.051}, {
-									ev[\array] = [ ev[\level] ];
-									//ev.debug("envTimeline: asPattern: busmode!");
-									\bus;
-								}, { 
-									\note;
-								});
-							}
-
+					if(ev[\type].isNil or: { ev[\type] == \note }) {
+						if(ev[\next_level].isNil) { // last one should be rest
+							\rest
 						} {
-							ev[\type]
+							if(ev[\time].notNil and: {ev[\time] < 0.051}, {
+								ev[\array] = [ ev[\level] ];
+								//ev.debug("envTimeline: asPattern: busmode!");
+								\bus;
+							}, { 
+								\note;
+							});
 						}
-					})
-				).trace(prefix:"MAIIIIIIIIIIIIIIIIIIIIIIII")
-				<>
-				Pfindur(xtotalDur, ~timeline_pattern.(
-					Pn(self.eventloop.list.clone, 1), 
-					xrelStartTime
-				))
-			;
 
-			self.eventloop.list.changed(\cursor, \play);
-			~pattern_to_envpattern.(pat).embedInStream(inval);
+					} {
+						ev[\type]
+					}
+				})
+			);
+			//postpat = postpat.trace(prefix:"MAIIIIIIIIIIIIIIIIIIIIIIII"); // debug
+			prepat = Pbind(
+				\instrument, \env_segment,
+				\curve, 0,
+			);
+
+			pat = Pfindur(xtotalDur, Pembed(
+				Pn(self.eventloop.list.clone, 1), 
+				xrelStartTime
+			));
+			pat = postpat <> pat <> prepat;
+
+			//~pattern_to_envpattern.(pat).embedInStream(inval ? ()); 
+			~pattern_to_envpattern.(pat);
 
 		}).repeat(self.repeatCount);
 		self.proxy;
@@ -2212,6 +2241,7 @@
 
 	eventLoop_: { arg self, val;
 		self.timeline_model.eventLoop = val;
+		self;
 	},
 
 	eventList: { arg self;
@@ -2220,6 +2250,7 @@
 
 	eventList_: { arg self, val;
 		self.timeline_model.eventList = val;
+		self;
 	},
 
 	getTimelineKeyDownAction: { arg self;
@@ -3171,15 +3202,21 @@
 			ParamGroup()
 		} {
 			var set, group;
+			var kit = self.kit;
 			set = Set.new;
-			PatKitDef(\barlok1).source.reject(_.isNil).do({ arg pat; 
-				pat.asParamGroup.do({ arg param;
-					if(param.type == \scalar) {
-						set.add(param.property)
-					}
-				})
-			});
-			target = Param(PatKitDef(\barlok1).source.reject(_.isNil)).first.target;	
+			if(kit.notNil) {
+
+				kit.reject(_.isNil).do({ arg pat; 
+					pat.asParamGroup.do({ arg param;
+						if(param.type == \scalar) {
+							set.add(param.property)
+						}
+					})
+				});
+				target = Param(kit.reject(_.isNil)).first.target;	
+			} {
+				Log(\Param).error("kit is nil for this timeline %", self.timeline_model);
+			};
 			group = set.as(List).collect({ arg key;
 				Param(target, key)
 			});

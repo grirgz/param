@@ -219,11 +219,10 @@
 
 	makeListener: { arg self, fun;
 		// FIXME: not the good way, need a omni controller
-		SimpleController.new(self).put(\play, { arg obj, msg ... args;
-			fun.(\play, self.elAt(args[0]), *args); // not standard args
-		}).put(\stop, { arg obj, msg ... args;
-			fun.(\stop, self.elAt(args[0]), *args);
-		});
+		var listenfun = { arg target, msg ... args;
+			fun.(self.elAt(args[0]), msg, *args);
+		};
+		SimpleController.new(self).put(\play, listenfun).put(\stop, listenfun)
 	},
 
 	newChild: { arg parent_self, x;
@@ -268,6 +267,8 @@
 
 ));
 
+
+
 ~seqPlayerGroup = ProtoClass((
 	// notePLayer
 	new: { arg self, list;
@@ -284,12 +285,10 @@
 	},
 
 	makeListener: { arg self, fun;
-		// FIXME: not the good way, need a omni controller
-		SimpleController.new(self).put(\play, { arg obj, msg ... args;
-			fun.(\play, self.elAt(args[0]), *args); // not standard args
-		}).put(\stop, { arg obj, msg ... args;
-			fun.(\stop, self.elAt(args[0]), *args);
-		});
+		var listenfun = { arg target ... args;
+			fun.(self.elAt(args[0]), *args);
+		};
+		SimpleController.new(self).put(\play, listenfun).put(\stop, listenfun)
 	},
 
 	newChild: { arg parent_self, x;
@@ -390,7 +389,7 @@
 
 	eventLoop: { arg self;
 		if(self[\priv_eventLoop].isNil) {
-			self[\priv_eventLoop] = XEventLoop(\bla); // FIXME
+			self[\priv_eventLoop] = XEventLoop.newInstance; // will be overwritten by timeline eventloop
 		};
 		self[\priv_eventLoop];
 	},
@@ -409,17 +408,17 @@
 
 	startRecording: { arg self;
 		self.controller.remove;
-		self.controller = self.target.makeListener({ arg status, player;
-			status.debug("listener: status");
+		self.controller = self.target.makeListener({ arg player, status;
+			Log(\Param).debug("listener: status: %", status);
 			if(status == \play) {
-				player.recev = self.eventLoop.recordEvent(player.asPlayerEvent);
-				player.recev[\clockTime] = self.tempoClock.beats;
-				player.recev.debug("listener: start: recev");
+				player.recordedEvent = self.eventLoop.recordEvent(player.asPlayerEvent);
+				player.recordedEvent[\clockTime] = self.tempoClock.beats;
+				Log(\Param).debug("listener: start: recordedEvent:%", player.recordedEvent);
 			} {
 				if(status == \stop) {
-					player.recev[\sustain] = self.tempoClock.beats - player.recev[\clockTime];
-					player.recev.debug("listener: stop: recev");
-					player.recev.changed(\refresh);
+					player.recordedEvent[\sustain] = self.tempoClock.beats - player.recordedEvent[\clockTime];
+					Log(\Param).debug("listener: stop: recordedEvent:%", player.recordedEvent);
+					player.recordedEvent.changed(\refresh);
 				}
 			}
 		});
@@ -499,4 +498,49 @@
 		ret = self.eventList.presetCompileString;
 		ret;
 	},
+));
+
+~paramRecorder = ProtoClass((
+	parent: ~playerGroupRecorder,
+
+	new: { arg self, param;
+		self = self.deepCopy;
+	
+		self.init(param);
+	
+		self;
+	},
+
+	init: { arg self, target;
+		self.target = target;
+		self.tempoClock = TempoClock.default;
+	},
+
+	startRecording: { arg self;
+		if(self.eventLoop.notNil) {
+			if(self.controller.notNil) {
+				self.controller.remove;
+			};
+			self.controller = self.target.makeListener({ arg obj, param;
+				var ev = (level:param.get);
+				Log(\Param).debug("LEVEL EV RECORDING !! %", ev);
+				self.eventLoop.recordEvent(ev);
+			});
+			self.eventLoop.startRec(false, 0);
+			Log(\Param).info("recording started");
+			self.changed(\isRecording);
+		}
+	},
+
+	stopRecording: { arg self;
+		if(self.eventLoop.notNil) {
+			if(self.controller.notNil) {
+				self.controller.remove;
+			};
+			self.eventLoop.stopRec;
+			Log(\Param).info("recording stopped");
+			self.changed(\isRecording);
+		}
+	},
+
 ));

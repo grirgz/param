@@ -91,17 +91,17 @@ Builder(\target_object, { arg scalar_param=10; "bla" });
 	~three.(Pdef(\target_object)),
 	~three.(StepEventDef(\target_object)),
 	~three.(~dict),
-	Param(~steplist, \list),
-	Param(~list, \list),
+	Param(~steplist, \list), // this bug preset
+	Param(~list, \list), // this bug preset
 	Param(TempoClock.default, \tempo),
-	Param(Ndef(\target_object), "vol"),
-	//Param(~bus, \value),
+	Param(Ndef(\target_object), "vol"), // no gui update
+	//Param(~bus, \value), // this is not working yet
 
 	Param(Message(StepList[1,2,3]), \stepCount),
 	Param(Builder(\target_object), \scalar_param),
-	// TODO: add test for each spec !
+	//// TODO: add test for each spec !
 
-	Param({ ~variable }, { arg x; ~variable = x }),
+	Param({ ~variable }, { arg x; ~variable = x }), // no gui update
 	Param(s.volume, \volume),
 ].flatten;
 
@@ -114,6 +114,7 @@ WindowDef(\testgui, {
 	var layout;
 
 	layout = VLayout (
+		PlayerWrapper(Ndef(\target_object)).asView,
 		EventClass.presetSelectorView.(ParamGroupDef(\all_targets)),
 		EventClass.presetSelectorView.(~pg),
 		* ~all_targets.collect { arg param;

@@ -264,6 +264,7 @@ XEventList : List {
 			var absTime = 0;
 			var ev, prev;
 			var first = true;
+			Log(\Param).debug("XEventList.newfrom start");
 			str = pat.asStream;
 			ins.start(absTime);
 			inval = inval ? Event.default;
@@ -278,19 +279,26 @@ XEventList : List {
 						//ins[0].absTime = ev;
 						if(ev.isKindOf(Number)) {
 							absTime = ev;
-							ev.debug("starting rest");
+							Log(\Param).debug("starting rest");
 						} {
-							if( ev.isRest == true or: { ev.midinote == \rest }) {
-								absTime = ev.dur
+							if( ev.isRest == true or: { ev.use { ~midinote.value } == \rest }) {
+								absTime = ev.use{~delta.value} ? ev.use{~dur.value};
 							}
 						}
 					} {
 						if(ev.notNil) {
-							ev.debug("ev");
+							Log(\Param).debug("ev %", ev);
 							ev[\absTime] = absTime;
-							absTime = absTime + ev[\dur];
+							Log(\Param).debug("XEventList.newFrom: absTime: %, evdur: %", absTime, ev[\dur]);
+							absTime = absTime + ev.use{~delta.value} ? ev.use{~dur.value};
+							// FIXME: hardcode sustain because it's in function of \dur which is overwritten in calcRelDurs
+							// 		should maybe use \delta in calcRelDurs, but this can break everything!
+							ev[\sustain] = ev.use{~sustain.value};
+							// now that absTime is calculated, should get rid of it because not handled everywhere but used instead of \dur in pattern.play
+							ev[\delta] = nil; 
 							ins.addEvent(ev);
 							ev.debug("endev");
+							Log(\Param).debug("endev:%", ev);
 						} {
 							break.value;
 						};
@@ -299,10 +307,22 @@ XEventList : List {
 				}
 			};
 			//endtime = absTime + prev.use({ ~sustain.value(prev) }); // this is wrong
+			Log(\Param).debug("XEventList.newfrom end 1");
 			endtime = absTime;
+
+			// remove rests because not handled by timeline (should display them transparent)
+			ins.reverse.do { arg ev;
+				if(ev.isRest == true or: { ev.use { ~midinote.value } == \rest }) {
+					if([\start, \stop,\locator].includes(ev[\type]).not) {
+						ins.remove(ev);
+					}
+				}
+			};
+
 			ins.finish(endtime);
 			^ins
 		} {
+			Log(\Param).debug("XEventList.newfrom end 2");
 			if(pat.isKindOf(SequenceableCollection)) {
 				var ret = super.newFrom(pat.asArray);
 				ret.reorder;
@@ -535,7 +555,7 @@ XEventLoop {
 
 	startRec { |instant = false, quant|
 		if(quant.notNil) {
-			this.recordQuant = quant;
+			this.recordQuant = quant ? 0;
 		};
 
 		if (isRecording) { ^this };

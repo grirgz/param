@@ -6,6 +6,9 @@ PlayerWrapper  {
 	var <>wrapper;
 	var >label;
 	var init_args;
+	var <>recordedEvent; // playerGroupRecorder need this placeholder to store current event being recorded
+	var <>playerEventWrapper;
+	
 
 	*new { arg target;
 		^super.new.initWrapper(target);
@@ -136,17 +139,21 @@ PlayerWrapper  {
 	}
 
 	asPlayerEvent {
-		^PlayerEvent((
-			receiver: {this}
-		))
+		var fun = this.playerEventWrapper ? { arg x; x };
+		^fun.(PlayerEvent((
+			receiver: "{ % }".format(this.asCompileString).interpret
+		)))
 	}
 
 	makeListener { arg fun;
 		var controller;
+		var listenfun = { arg target ... args;
+			fun.(this, *args);
+		};
 		this.target.debug("makeListener");
 		controller = SimpleController(this.target)
-			.put(\play, fun)
-			.put(\stop, fun)
+			.put(\play, listenfun)
+			.put(\stop, listenfun)
 		;
 		^controller
 	}
@@ -452,6 +459,10 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 }
 
 PlayerWrapper_EventPatternProxy : PlayerWrapper_Base {
+	playNow {
+		target.play(quant:0);
+	}
+
 	label {
 		if(target.isKindOf(Pdef)) {
 			^target.key
@@ -597,9 +608,11 @@ PlayerWrapper_Nil : PlayerWrapper_Base {
 PlayerWrapperGroup : List {
 	var <>mode;
 	var <>label;
+	var <>controllerList;
+	var <>playerEventWrapper;
 	*new { arg anArray;
 		var inst;
-		inst = super.new.setCollection( anArray.collect({ arg item;
+		inst = super.new.setCollection( anArray.collect({ arg item, idx;
 			if(item.isKindOf(PlayerWrapper)) {
 				item;
 			} {
@@ -613,6 +626,33 @@ PlayerWrapperGroup : List {
 	initPlayerWrapperGroup {
 		mode = \any;
 		label = this.collect(_.label).inject("", { arg a, b; a.asString + b.asString });
+		this.do({ arg wrapper, idx; 
+			var eventWrapper = { arg ev;
+				if(this.playerEventWrapper.notNil) {
+					this.playerEventWrapper(ev, idx);
+				} {
+					ev[\midinote] = idx;
+				}
+			};
+			wrapper.playerEventWrapper_(eventWrapper)
+		});
+	}
+
+	makeListener { arg fun;
+		if(controllerList.notNil) {
+			controllerList.remove;
+		};
+		controllerList = ProtoClass((
+			list: List.new, 
+			remove: { arg self;
+				self.list.do(_.remove)
+			})
+		);
+		this.do { arg child;
+			var controller = child.makeListener(fun);
+			controllerList.list.add(controller);
+		};
+		^controllerList;
 	}
 
 	quant {

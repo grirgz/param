@@ -129,6 +129,14 @@ ProtoClass : Event {
 	render { arg ... args;
 		^this[\render].(this, * args)
 	}
+
+	remove { arg ... args;
+		if(this[\remove].notNil) {
+			^this[\remove].(this, * args)
+		} {
+			^this.remove(*args)
+		}
+	}
 }
 
 
