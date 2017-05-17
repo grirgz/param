@@ -31,11 +31,9 @@ ProtoClass : Event {
 
 	*new { arg xevent;
 		var inst;
-		"bla".debug;
-		xevent.debug("xevent");
+		//"bla".debug;
+		//xevent.debug("xevent");
 		inst = super.new;
-		//inst.protoclass_event = ();
-		//inst.protoclass_event.putAll(xevent);
 		inst.putAll(xevent);
 		inst.parent = xevent.parent; // is not copied with putAll
 		^inst;

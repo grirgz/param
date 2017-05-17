@@ -201,7 +201,7 @@ XEventList : List {
 	}
 
 	reorder {
-		"eventlist reordering".debug;
+		//"eventlist reordering".debug;
 		this.sort({ arg a,b; 
 			switch(a[\type],
 				// if a note and start has equal absTime, \start come first
@@ -297,7 +297,7 @@ XEventList : List {
 							// now that absTime is calculated, should get rid of it because not handled everywhere but used instead of \dur in pattern.play
 							ev[\delta] = nil; 
 							ins.addEvent(ev);
-							ev.debug("endev");
+							//ev.debug("endev");
 							Log(\Param).debug("endev:%", ev);
 						} {
 							break.value;
@@ -568,14 +568,14 @@ XEventLoop {
 		};
 		if (instant == true) { 
 			list.start(this.getAbsTime(this.recordQuant));
-			this.getAbsTime.debug("instant start");
+			//this.getAbsTime.debug("instant start");
 		};
 	}
 
 	recordEvent { |event|
 		var recEvent;
-		isRecording.debug("XEventLoop: recordEvent: isRecording");
-		verbosity.debug("XEventLoop: recordEvent: isRecording");
+		//isRecording.debug("XEventLoop: recordEvent: isRecording");
+		//verbosity.debug("XEventLoop: recordEvent: isRecording");
 		if (isRecording) {
 			// autostart at 0
 			if (list.size == 0) { list.start(this.getAbsTime(this.recordQuant)); };
@@ -590,7 +590,7 @@ XEventLoop {
 					recEvent.put(key, val);
 				};
 			};
-			[event, recEvent].debug("XEventLoop: recordEvent: event, recEvent");
+			//[event, recEvent].debug("XEventLoop: recordEvent: event, recEvent");
 			list.addEvent(recEvent);
 			if (verbosity > 1) {
 				("//" + this.asString + "rec: ").post; recEvent.postln;

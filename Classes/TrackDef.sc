@@ -1,10 +1,10 @@
 
 TrackDef : ProtoDef {
-	// just another placeholder
+	// just another placeholder to manage players and mixers
 }
 
 TrackTemplateDef : TrackDef {
-	// just another placeholder
+	// just another placeholder to distinguish tracks proto-classes and proto-instances
 }
 
 
@@ -78,7 +78,7 @@ FileSystemProject : TrackDef {
 		var res = path;
 		var ret;
 		if(loadingFiles.includesEqual(path)) {
-			path.debug("Already loading this file, do nothing\nFileSystemProject.clearLoadingFiles; // to reset");
+			Log(\Param).info("Already loading this file, do nothing: %\nFileSystemProject.clearLoadingFiles; // use this to reset", path);
 			^nil;
 		} {
 			if(File.exists(res)) {
@@ -95,7 +95,7 @@ FileSystemProject : TrackDef {
 					code = code.keep(end+1);
 				};
 
-				res.debug("Loading file");
+				Log(\Param).info("Loading file %", res);
 				try {
 					oldpath = thisProcess.nowExecutingPath;
 					thisProcess.nowExecutingPath = path;
@@ -103,14 +103,14 @@ FileSystemProject : TrackDef {
 					thisProcess.nowExecutingPath = oldpath;
 				} { arg e;
 					thisProcess.nowExecutingPath = oldpath;
-					res.debug("Error when loading file");
-					e.debug("ExC");
+					Log(\Param).error("Error when loading file %", res);
+					Log(\Param).error("Exception %", e);
 					loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }));
 					e.throw;
 				};
 				loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }))
 			} {
-				path.debug("FileSystemProject: File don't exists");
+				Log(\Param).error("FileSystemProject: File don't exists: %", path);
 				^nil
 			};
 		};
@@ -122,7 +122,7 @@ FileSystemProject : TrackDef {
 		if(rpath.notNil and: { rpath.isFile }) {
 			^this.loadFileTillEnd(rpath.fullPath);
 		} {
-			( "FileSystemProject.load: file doesnt exists or is a directory: " ++ path ).debug;
+			Log(\Param).error("FileSystemProject.load: file doesnt exists or is a directory: " ++ path );
 			^nil
 		};
 	}
@@ -132,7 +132,7 @@ FileSystemProject : TrackDef {
 		if(rp.notNil) {
 			cwd = rp.fullPath;
 		} {
-			( "FileSystemProject.cwd: file not found: " ++ path ).debug;
+			Log(\Param).error("FileSystemProject.cwd: file not found: " ++ path );
 		}
 	}
 
@@ -143,7 +143,7 @@ FileSystemProject : TrackDef {
 				paths.add(rpath.fullPath);
 			}
 		} {
-			debug( "Path not found: " ++ path )
+			Log(\Param).error("Path not found: " ++ path );
 		}
 	}
 
@@ -159,17 +159,17 @@ FileSystemProject : TrackDef {
 		};
 		( [ this.cwd ] ++ paths ).do({ arg path;
 			var pn;
-			[path, val].debug("try resolve");
+			//Log(\Param).debug("try resolve %", [path, val]);
 			if(val == "") {
 				pn = PathName(path);
 			} {
 				pn = PathName(val);
-				pn.fullPath.asCompileString.debug("fp");
+				//Log(\Param).debug("fp:%", pn.fullPath.asCompileString);
 				if(pn.isAbsolutePath.not) {
 					pn = PathName(path +/+ val);
 				};
 			};
-			pn.fullPath.asCompileString.debug("fp2");
+			//Log(\Param).debug("fp2:%", pn.fullPath.asCompileString);
 			if(pn.isFile or: { pn.isFolder }) {
 				^pn
 			}
@@ -182,7 +182,7 @@ FileSystemProject : TrackDef {
 		// FIXME: what to do if two candidates ?
 		paths.do({ arg path;
 			var pn;
-			[path, val].debug("try unresolve");
+			//[path, val].debug("try unresolve");
 			if(val.beginsWith(path)) {
 				^val[( path.size )..]
 			}

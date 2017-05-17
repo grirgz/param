@@ -83,16 +83,16 @@ PlayerWrapper  {
 	///////////////
 
     doesNotUnderstand { arg selector...args;
-		[selector, args].debug("PlayerWrapper: doesNotUnderstand");
+		Log(\Param).debug("PlayerWrapper: doesNotUnderstand %",[selector, args]);
         if(wrapper.class.findRespondingMethodFor(selector).notNil) {
-			"PlayerWrapper: perform on wrapper".debug;
+			Log(\Param).debug("PlayerWrapper: perform on wrapper");
 			^wrapper.perform(selector, * args);
 		} {
 			if(wrapper.target.class.findRespondingMethodFor(selector).notNil) {
-				"PlayerWrapper: perform on target".debug;
+				Log(\Param).debug("PlayerWrapper: perform on target");
 				^wrapper.target.perform(selector, * args);
 			} {
-				"PlayerWrapper: class, wrapper and target does not understand %".format(selector).debug;
+				Log(\Param).debug("PlayerWrapper: class, wrapper and target does not understand %".format(selector));
 				DoesNotUnderstandError.throw;
 			}
 		};
@@ -150,7 +150,7 @@ PlayerWrapper  {
 		var listenfun = { arg target ... args;
 			fun.(this, *args);
 		};
-		this.target.debug("makeListener");
+		//this.target.debug("makeListener");
 		controller = SimpleController(this.target)
 			.put(\play, listenfun)
 			.put(\stop, listenfun)
@@ -193,12 +193,12 @@ PlayerWrapper_Base {
 
 
     doesNotUnderstand { arg selector...args;
-		[selector, args].debug("PlayerWrapper_Base: doesNotUnderstand");
+		Log(\Param).debug("PlayerWrapper_Base: doesNotUnderstand", [selector, args]);
 		if(target.class.findRespondingMethodFor(selector).notNil) {
-			"perform on target".debug;
+			Log(\Param).debug("perform on target");
 			^target.perform(selector, * args);
 		} {
-			"PlayerWrapper_Base: wrapper and target doesn't respond to %".format(selector).debug;
+			Log(\Param).debug("PlayerWrapper_Base: wrapper and target doesn't respond to %", selector);
 			DoesNotUnderstandError.throw;
 		}
 	}
@@ -318,7 +318,8 @@ PlayerWrapper_Base {
 	}
 
 	loadPresetCompileString { arg ...args;
-		"loadPresetCompileString: TODO".debug;
+		//"loadPresetCompileString: TODO".debug;
+		NotYetImplementedError.throw
 		//"ERROR: %.loadPresetCompileString: not implemented for %".format(this, this.targetClass).postln;
 	}
 
@@ -331,7 +332,7 @@ PlayerWrapper_Base {
 				this.savePresetCompileString(this.presetCompileStringSavePath, action);
 			} {
 				Dialog.savePanel({ arg mypath;
-					mypath.debug("save panel: path");
+					//mypath.debug("save panel: path");
 					this.savePresetCompileString(mypath, action);
 					this.presetCompileStringSavePath = mypath;
 				},{
@@ -451,7 +452,7 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 			ret = "%.addHalo(\\ParamGroup, \n%\n);\n".format(this.target.asCompileString, this.target.getHalo(\ParamGroup).presetCompileString);
 			^ret;
 		} {
-			"ERROR: can't save a NodeProxy preset".debug;
+			Log(\Param).error("ERROR: can't save a NodeProxy preset");
 			^nil;
 		}
 	}
@@ -560,7 +561,7 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 		} {
 			var path = args[0];
 			var onDoneAction = args[1];
-			[path, this.presetCompileStringSavePath, args].debug("PlayerWrapper_ProtoClass.savePresetCompileString");
+			//[path, this.presetCompileStringSavePath, args].debug("PlayerWrapper_ProtoClass.savePresetCompileString");
 			this.class.savePresetCompileStringHelper(path ? this.presetCompileStringSavePath, onDoneAction, this.asCompileString, this.target.presetCompileString)
 		}
 	}
