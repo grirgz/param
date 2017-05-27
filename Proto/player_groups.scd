@@ -192,7 +192,7 @@
 	},
 
 	targets_: { arg self, val;
-		self[\targets] = val;
+		self[\targets] = val.as(SparseArray);
 		self.children.do({ arg x; x.reboot });
 	},
 

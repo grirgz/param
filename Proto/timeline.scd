@@ -3209,11 +3209,13 @@
 				kit.reject(_.isNil).do({ arg pat; 
 					pat.asParamGroup.do({ arg param;
 						if(param.type == \scalar) {
+							Log(\Param).debug("param %", param);
 							set.add(param.property)
 						}
 					})
 				});
-				target = Param(kit.reject(_.isNil)).first.target;	
+				target = kit.reject(_.isNil).debug("xxx").first;	
+				Log(\Param).debug("target %", target);
 			} {
 				Log(\Param).error("kit is nil for this timeline %", self.timeline_model);
 			};

@@ -7,6 +7,11 @@ TrackTemplateDef : TrackDef {
 	// just another placeholder to distinguish tracks proto-classes and proto-instances
 }
 
+TrackMixerDef {
+	// FIXME: redirect to defined protoclass or be a placeholder ?
+	//		or defined protoclass could be the default ? but constructor signature will be different than TrackDef
+
+}
 
 FileSystemProject : TrackDef {
 	classvar <>defaultProject;

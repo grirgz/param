@@ -351,11 +351,16 @@ XBufferSpec : XNonFloatSpec {
 
 }
 
-XDoneActionSpec : XNonFloatSpec {
-
+XSampleSpec : XBufferSpec {
+	// WIP
+	// FIXME: how to specify sampler parameters and list of available buffers/samples ?
+	var <>numChannels, <>startParamName, sustainParamName, endParamName, speedParamName, startType, sustainType, endType;
+	new { arg self, numChannels, startParamName, sustainParamName, endParamName, speedParamName, startType, sustainType, endType;
+		^this.newCopyArgs(numChannels, startParamName, sustainParamName, endParamName, speedParamName, startType, sustainType, endType);
+	}
 }
 
-XSampleSpec : XBufferSpec {
+XDoneActionSpec : XNonFloatSpec {
 
 }
 
