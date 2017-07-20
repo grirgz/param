@@ -1385,7 +1385,7 @@ NdefParam : BaseParam {
 
 	normGet {
 		var val = this.get;
-		if(val.class == String) {
+		if(val.class == Symbol) {
 			// workaround when a Bus ("c0") is mapped to the parameter
 			^0
 		} {
@@ -2089,8 +2089,8 @@ ListParamSlot : BaseParam {
 
 	normGet {
 		var val = this.get;
-		if(val.class == String) {
-			// workaround when a Bus ("c0") is mapped to the parameter
+		if(val.class == Symbol) {
+			// workaround when a Bus (\c0) is mapped to the parameter
 			^0
 		} {
 			^this.spec.unmap(this.get)
@@ -2320,6 +2320,8 @@ ParamAccessor {
 
 	}
 
+	// selectors
+
 	*array { arg idx;
 		^(
 			setval: { arg self, val;
@@ -2334,6 +2336,44 @@ ParamAccessor {
 				var val;
 				val = self.obj.parent.get;
 				val[idx]
+			},
+
+			toSpec: { arg self, sp;
+				if(sp.isKindOf(XArraySpec)) {
+					sp[idx]
+				} {
+					sp
+				}
+			},
+
+			property: { arg self, prop;
+				idx
+			},
+
+			path: { arg self;
+				self.obj.parent.property -> idx;
+			},
+		);
+	}
+
+	*nestedArray { arg idx;
+		^(
+			setval: { arg self, val;
+				var oldval;
+				oldval = self.obj.parent.get;
+				if(oldval.isSequenceableCollection) {
+					oldval[0][idx] = val; 
+					self.obj.parent.set(oldval.bubble);
+				} {
+					oldval[idx] = val; 
+					self.obj.parent.set(oldval);
+				};
+			},
+
+			getval: { arg self;
+				var val;
+				val = self.obj.parent.get;
+				val.unbubble[idx]
 			},
 
 			toSpec: { arg self, sp;
@@ -2556,17 +2596,21 @@ StepEventParam : BaseParam {
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
 			this.default
 		};
-		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOff(val); 
+			Log(\Param).debug("Val unNested! %", val);
 		};
+		Log(\Param).debug("get:final Val %", val);
 		^val;
 	}
 
 	setRaw { arg val;
-		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOn(val); 
+			Log(\Param).debug("Val Nested! %", val);
 		};
 		target[property] = val;
+		Log(\Param).debug("set:final Val %", val);
 		target.changed(\set, property, val);
 	}
 

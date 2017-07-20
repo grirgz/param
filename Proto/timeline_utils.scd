@@ -59,7 +59,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	embed_pattern: { arg self, pat, start_offset;
 		Pspawner({ arg spawner;
 			var stream = pat.asStream;
-			[pat, start_offset].debug("timeline_pattern: start");
+			//[pat, start_offset].debug("timeline_pattern: start");
 
 			stream = self.cut_stream(start_offset, stream);
 
@@ -100,20 +100,23 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				var suboffset = val[\event_dropdur] - (val[\previous_event_dropdur] ? 0);
 				if(suboffset == 0) {
 					// we are on a border, do nothing;
-					val.debug("we are on a border, do nothing; ");
+					//val.debug("we are on a border, do nothing; ");
+					val;
 				} {
 					if( suboffset > val.sustain ) {
 						// we are on a rest
 						val[\sustain] = val.sustain - suboffset;
 						val[\dur] = val.dur - suboffset;
 						val[\isRest] = true;
-						val.debug("we are on a rest");
+						//val.debug("we are on a rest");
+						val;
 					} {
 						// we are on a note
 						val[\sustain] = val.sustain - suboffset;
 						val[\dur] = val.dur - suboffset;
 						//val[\event_dropdur] = suboffset;
-						val.debug("we are on a note");
+						//val.debug("we are on a note");
+						val;
 					};
 				}
 			};
@@ -125,7 +128,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		var previous_offset = 0;
 		var val;
 		var crossing_line = List.new;
-		[drop_time, stream].debug("entering ~stream_dropdur");
+		//[drop_time, stream].debug("entering ~stream_dropdur");
 		if(drop_time.notNil and: { drop_time != 0}) {
 
 			while (
@@ -138,8 +141,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				{
 					val.use {
 						val[\previous_event_dropdur] = val[\event_dropdur]; // used by ~split_event to not substract sustain two times
-						val.debug("stream_dropdur: val");
-						[val.dur, val.sustain].debug("stream_dropdur: val: dur, sustain");
+						//val.debug("stream_dropdur: val");
+						//[val.dur, val.sustain].debug("stream_dropdur: val: dur, sustain");
 						previous_offset = current_offset;
 						current_offset = current_offset + val.dur; 
 						if(
@@ -149,10 +152,10 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 							}
 						) {
 							val[\event_dropdur] = drop_time - previous_offset + (val[\event_dropdur] ? 0);
-							val.debug("stream_dropdur: added to crossing_line");
+							//val.debug("stream_dropdur: added to crossing_line");
 							crossing_line.add(val);
 						};
-						[current_offset, previous_offset, val].debug("mangling");
+						[current_offset, previous_offset, val];
 					}
 				}
 			);
@@ -166,7 +169,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				crossing_line = crossing_line.collect({ arg ev; 
 					ev = self.split_event(ev.copy);
 					ev[\dur] = 0;
-					ev.debug("stream_dropdur: transformed crossing_line");
+					//ev.debug("stream_dropdur: transformed crossing_line");
+					ev;
 				});
 
 				Pseq(
@@ -185,7 +189,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 					crossing_line = crossing_line.collect({ arg ev; 
 						ev = self.split_event(ev.copy);
 						ev[\dur] = 0;
-						ev.debug("stream_dropdur: transformed crossing_line");
+						//ev.debug("stream_dropdur: transformed crossing_line");
+						ev;
 					});
 					Pseq(
 						crossing_line 
@@ -204,7 +209,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			// first yield all the splitted event concurrent with current val, then val, then remaining stream
 
 		} {
-			"~stream_dropdur: return original stream untouched".debug;
+			//"~stream_dropdur: return original stream untouched".debug;
 			stream;
 		};
 	},
@@ -219,7 +224,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		var drop_time;
 		var original_eventlist = eventlist;
 		eventlist = eventlist.copy;
-		[eventlist].debug("entering ~eventlist_aspattern");
+		//[eventlist].debug("entering ~eventlist_aspattern");
 
 		eventlist.do { arg ev;
 			if(ev[\type] == \start) {
@@ -240,8 +245,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			},
 			{
 				val.use {
-					val.debug("eventlist_aspattern: val");
-					[val.dur, val.sustain].debug("eventlist_aspattern: val: dur, sustain");
+					//val.debug("eventlist_aspattern: val");
+					//[val.dur, val.sustain].debug("eventlist_aspattern: val: dur, sustain");
 					previous_offset = current_offset;
 					current_offset = current_offset + val.dur; 
 					if(
@@ -252,10 +257,10 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 						}
 					) {
 						val[\event_dropdur] = drop_time - previous_offset;
-						val.debug("eventlist_aspattern: added to crossing_line");
+						//val.debug("eventlist_aspattern: added to crossing_line");
 						crossing_line.add(val);
 					};
-					[current_offset, previous_offset, val].debug("mangling");
+					[current_offset, previous_offset, val];
 				}
 			}
 		);
@@ -268,7 +273,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			crossing_line = crossing_line.collect({ arg ev; 
 				ev = self.split_event(ev.copy);
 				ev[\dur] = 0; // every event start at the same time, \start event hold the delta to next event
-				ev.debug("eventlist_aspattern: transformed crossing_line");
+				//ev.debug("eventlist_aspattern: transformed crossing_line");
+				ev;
 			});
 
 			val.use {
@@ -278,20 +284,20 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 			Prout({ arg inval;
 				original_eventlist.changed(\cursor, \play);
-				"============================= Pembed.embed_eventlist starting routine".debug;
+				//"============================= Pembed.embed_eventlist starting routine".debug;
 				crossing_line.collect({ arg x; 
-					x.debug("crossing_line list");
-					x.proto !? { x.proto.keys.debug("-proto") }
+					//x.debug("crossing_line list");
+					x.proto !? { x.proto.keys }
 				});
 				[val].collect({ arg x; 
-					x.debug("val list");
-					x.proto !? { x.proto.keys.debug("-proto") }
+					//x.debug("val list");
+					x.proto !? { x.proto.keys }
 				});
 				eventlist.collect({ arg x; 
-					x.debug("eventlist list");
-					x.proto !? { x.proto.keys.debug("-proto") }
+					//x.debug("eventlist list");
+					x.proto !? { x.proto.keys }
 				});
-				( original_eventlist.endTime - original_eventlist.startTime ).debug("handling end event in pfindur");
+				//( original_eventlist.endTime - original_eventlist.startTime ).debug("handling end event in pfindur");
 				Pfindur(original_eventlist.endTime - original_eventlist.startTime, Pseq(
 					( crossing_line ++ [val] ++ eventlist ).collect({ arg x; Pev(x) })
 				)).embedInStream(inval);
@@ -332,9 +338,9 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 		timeline.model.do { arg ev, x;
 			var midi = ev.use { ev.midinote };
-			[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
+			//[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
 			if(midi.notNil) {
-				[x, midi].debug("zoom_fit, notnil");
+				//[x, midi].debug("zoom_fit, notnil");
 				if(midi > maxy) {
 					maxy = midi;
 				};
@@ -348,17 +354,17 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			timeline.areasize.y = maxy + 1;
 		};
 
-		[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
-		[timeline.areasize].debug("areasize");
+		//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
+		//[timeline.areasize].debug("areasize");
 		range = (maxy-miny+1)/timeline.areasize.y;
 		timeline.viewport.top = (miny/timeline.areasize.y);
 		timeline.viewport.height = range.clip(0.1,1);
-		[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
+		//[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
 
 		//timeline.viewport.top = 42/128;
 		//timeline.viewport.height = ((54-42)/128);
 
-		timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
+		//timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
 
 		timeline.changed(\viewport);
 		timeline.refresh;
@@ -474,28 +480,28 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 				var is_rest = { arg val;
 					val.type == \rest or: { val.type == \start or: { val.type == \end } };
 				};
-				val.debug("pattern_to_envpattern");
+				//val.debug("pattern_to_envpattern");
 				if(first == true) {
 					if(is_rest.(val)) {
-						val.type.debug("pattern_to_envpattern: start/end");
+						//val.type.debug("pattern_to_envpattern: start/end");
 						previous_val = val;
 						previous_val.yield;
 					} {
 						var level = val.use { val.level };
 						var busev = val.copy;
 						var next_level, next_absTime;
-						level.debug("pattern_to_envpattern: first");
+						//level.debug("pattern_to_envpattern: first");
 						if(busev[\event_dropdur].notNil) {
 							next_level = val[\next_level];
 							next_absTime = val[\next_absTime];
-							[ next_level, next_absTime, busev ].debug("nlevel, nabstime, busev");
+							//[ next_level, next_absTime, busev ].debug("nlevel, nabstime, busev");
 							level = 
 								( next_level - busev.level ) * busev.event_dropdur 
 								/ (next_absTime - busev.absTime) 
 								+ busev.level
 							;
 						};
-						level.debug("pattern_to_envpattern: first: altered level");
+						//level.debug("pattern_to_envpattern: first: altered level");
 						busev.putAll(
 							(
 								type: \bus,
@@ -513,7 +519,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 						previous_val[\type] = \bus;
 					} {
 						previous_val[\level] = previous_val[\next_level];
-						previous_val.debug("pattern_to_envpattern: yield previous");
+						//previous_val.debug("pattern_to_envpattern: yield previous");
+						previous_val;
 					};
 					previous_val.yield;
 					previous_val = val;
@@ -526,7 +533,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			previous_val[\type] = \bus;
 		} {
 			previous_val[\level] = previous_val[\next_level];
-			previous_val.debug("pattern_to_envpattern: yield previous");
+			//previous_val.debug("pattern_to_envpattern: yield previous");
+			previous_val;
 		};
 		previous_val.yield;
 	})
@@ -578,9 +586,9 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 ~eventloop_loadArchiveData = { arg eventloop_data;
 	var loop;
 	var list;
-	"eventloop_loadArchiveData".debug;
+	//"eventloop_loadArchiveData".debug;
 	loop = XEventLoop.newInstance;
-	"eventloop_loadArchiveData y".debug;
+	//"eventloop_loadArchiveData y".debug;
 
 	loop.list = if(eventloop_data.notNil) { // FIXME: don't know why could be nil
 		~eventlist_loadArchiveData.(eventloop_data.list)
@@ -588,9 +596,9 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		XEventList.new.start.finish(1);
 	};
 	//loop.addList(list);
-	"eventloop_loadArchiveData x".debug;
+	//"eventloop_loadArchiveData x".debug;
 	//loop.setList(0);
-	"eventloop_loadArchiveData END".debug;
+	//"eventloop_loadArchiveData END".debug;
 	loop;
 };
 
@@ -679,10 +687,10 @@ if( ~iProxyChain_all.isNil) {
 		if(in.notNil) {
 			self.proxyOrder.do { arg slot_idx, i;
 				var slot;
-				slot_idx.debug("slot_idx");
+				//slot_idx.debug("slot_idx");
 				slot = self.slots[slot_idx];
 				if(slot.notNil and: { self.isEnabled[slot_idx] != 0 }) {
-					[slot_idx, in, i].debug("in!!!");
+					//[slot_idx, in, i].debug("in!!!");
 					slot.xset(self.inKey, in.asControlInput);
 					//slot.parentGroup = self.proxyGroup;
 					//self.proxyGroup.moveNodeToTail(slot.group);
@@ -702,9 +710,9 @@ if( ~iProxyChain_all.isNil) {
 			//	}
 			//};
 
-			[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!!");
+			//[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!!");
 			self.monitor.xset(\inBus, in);
-			[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!! after");
+			//[self.monitor, in, self.monitor.get(\inBus)].debug("monitor!!! after");
 			//self.proxyGroup.moveNodeToHead(self.monitor.group);
 			//self.monitor.group.moveNodeToTail(Group(s));
 			//self.slots[self.proxyOrder.asArray.last].play(0)

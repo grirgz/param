@@ -1034,9 +1034,17 @@
 					//"post!".debug;
 					pat = self.wrapper.postChain <> pat;
 				};
+				if(self.postChain.notNil) {
+					//"post!".debug;
+					pat = self.postChain <> pat;
+				};
 				if(self.wrapper.preChain.notNil) {
 					//"pre!".debug;
 					pat = pat <> self.wrapper.preChain;
+				};
+				if(self.preChain.notNil) {
+					//"pre!".debug;
+					pat = pat <> self.preChain;
 				};
 			};
 

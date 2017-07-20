@@ -255,15 +255,20 @@
 	},
 	
 	presetCompileString: { arg self, varname="~ppg";
-	"%.targets = [\n%];".format(
-		varname,
-		self.targets.collect({ arg target, idx;
-			var res;
-			res = "\t%,\n".format(target.asCompileString);
-			res;
-		}).join
-	)
-};
+		"%.targets = [\n%];".format(
+			varname,
+			self.targets.collect({ arg target, idx;
+				var res;
+				res = "\t%,\n".format(target.asCompileString);
+				res;
+			}).join
+		)
+	},
+
+	asPattern: { arg self, score;
+		var pat = PdrumStep(self.targets, score, 1, key:\kitIndex);
+		pat
+	},
 
 ));
 

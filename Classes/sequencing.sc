@@ -108,28 +108,34 @@ PdrumStep : Pattern {
 			scoreStream = score.asStream;
 			scoreStream.do( { arg scoreev;
 				var pat;
-				if(scoreev.isNil) { "RETRUN".debug; ^inval };
+				if(scoreev.isNil) { 
+					//"RETRUN".debug; 
+					^inval
+				};
+				if(scoreev.isNumber) {
+					scoreev = (isRest:true, dur:scoreev)
+				};
 				if(scoreev[key].isNil or: {isRestFunction.(scoreev[key])}) {
-					ev = silentEvent.composeEvents(scoreev).debug("yieldrest").yield(ev);
+					ev = silentEvent.composeEvents(scoreev).yield(ev);
 					//ev = silentEvent.composeEvents(scoreev).yield(ev);
 				} {
 					var padevs;
 					var xscoreev = scoreev.copy;
-					scoreev[key].debug("midinote (or specified key)");
+					//scoreev[key].debug("midinote (or specified key)");
 					xscoreev[key] = nil;
 					padevs = this.dictStream(scoreev[key]).next(inval);
-					padevs.debug("padevs");
+					//padevs.debug("padevs");
 					if(padevs.isSequenceableCollection.not) {
 						padevs = [padevs]
 					};
 					padevs.collect{ arg padev, x;
 						if(x == ( padevs.size-1 )) {
-							ev = padev.composeEvents(xscoreev).debug("yield1").yield(ev);
+							ev = padev.composeEvents(xscoreev).yield(ev);
 							//ev = padev.composeEvents(xscoreev).yield(ev);
 						} {
 							var sc = xscoreev.copy;
 							sc[\delta] = 0;
-							ev = padev.composeEvents(sc).debug("yield2").yield(ev);
+							ev = padev.composeEvents(sc).yield(ev);
 							//ev = padev.composeEvents(sc).yield(ev);
 						};
 						ev;
@@ -231,10 +237,10 @@ StepEvent : Event {
 		var instr;
 		var specgroup;
 		instr = this.getHalo(\instrument) ? this.instrument;
-		if(instr.notNil) {
+		if(instr.notNil and: {SynthDesc(instr).notNil}) {
 			^SynthDesc(instr).asParamGroup(this);
 		} {
-			"error: no instrument found".postln;
+			"error: no instrument found: %".format(instr).postln;
 			^nil;
 		}
 	}
@@ -301,7 +307,7 @@ StepEvent : Event {
 			}
 		};
 		pbind = Pbind(
-			*pairs.debug("pairs")
+			*pairs
 			//++ [\what, Pfunc({ arg ev; ev.debug("WTF!"); pairs.clump(2).do { arg x; 
 			//	x.debug("list") };
 			//	1
@@ -311,7 +317,7 @@ StepEvent : Event {
 			pbind = pbind.keep(1);
 		};
 		ev = pbind.embedInStream(ev);
-		ev.debug("ev: end");
+		//ev.debug("ev: end");
 		^ev;
 	}
 
@@ -444,7 +450,7 @@ PresetEvent : StepEvent {
 			}
 		};
 		pbind = Pbind(
-			*pairs.debug("pairs")
+			*pairs
 			//++ [\what, Pfunc({ arg ev; ev.debug("WTF!"); pairs.clump(2).do { arg x; 
 			//	x.debug("list") };
 			//	1

@@ -800,7 +800,7 @@ CursorTimelineView : TimelineView {
 					var privcursor;
 					Server.default.latency.wait; // compense for pattern latency
 					//loop{
-						"at begining of loop:%".format(cursorPos, endTime).postln;
+						//"at begining of loop:%".format(cursorPos, endTime).postln;
 						//if(this.isPlaying) {
 							start_beat = TempoClock.default.beats;
 							start_offset = cursor.startPosition ? this.model.startTime;

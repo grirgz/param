@@ -1,5 +1,6 @@
 
 // the goal is extend SynthDesc to access to be able to access info about a SynthDef by key: SynthDesc(\sampler) for the \sampler SynthDef
+// this class make use of experimental class SpecGroup
 
 +SynthDesc {
 	*new { arg name;
@@ -30,7 +31,12 @@
 
 	asParamGroup { arg target;
 		var sgroup = SpecGroup.newFrom(this.params);
-		^sgroup.asParamGroup(target)
+		if(sgroup.notNil) {
+			^sgroup.asParamGroup(target)
+		} {
+			Log(\Param).info("SynthDesc: synth definition not found: %", this.name);
+			^ParamGroup.new
+		}
 	}
 
 	specs {
