@@ -118,6 +118,7 @@
 		if(self.ev.isNil) {
 			self.ev = Event.default;
 		};
+		self.ev = self.ev.copy.putAll(self.pre_event);
 		self.ev.debug("play: before next: ev");
 		self.ev = self.stream.next(self.ev);
 		self.ev.debug("play: ev");
@@ -275,17 +276,18 @@
 
 
 ~seqPlayerGroup = ProtoClass((
-	// notePLayer
-	new: { arg self, list;
+	// seq because a single pattern is read instead of one pattern per note index in parPlayerGroup
+	// this use notePlayer as children
+	new: { arg self, pat;
 		self = self.deepCopy;
 	
-		self.init(list);
+		self.init(pat);
 	
 		self;
 	},
 
-	init: { arg self, list;
-		self.targets = list;
+	init: { arg self, pat;
+		self.target = pat;
 		self.children = SparseArray.new;
 	},
 
@@ -294,6 +296,13 @@
 			fun.(self.elAt(args[0]), *args);
 		};
 		SimpleController.new(self).put(\play, listenfun).put(\stop, listenfun)
+	},
+
+	stream: { arg self;
+		if(self[\prStream].isNil) {
+			self[\prStream] = self.target.asPattern.asStream;
+		};
+		self[\prStream]
 	},
 
 	newChild: { arg parent_self, x;

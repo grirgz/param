@@ -117,11 +117,16 @@ XEnvSpec : Spec {
 	var <isMonoSpec;
 	var <isDynamic=false;
 	var <type=\default;
+	var zerospec;
+	var defaultLevelSpec
 
 	*new { arg levels, times, curves, default;
 		var size;
 		var isMonoSpec;
 		var isDynamic = false;
+
+		zerospec = ControlSpec(0,0.000000001,\lin);
+		defaultLevelSpec = ControlSpec(0,2,\lin,0,0.1);
 
 		if(levels.isSequenceableCollection.not) {
 			isDynamic = true;
@@ -177,46 +182,66 @@ XEnvSpec : Spec {
 		^[levels, times, curves, default]
 	}
 
-	*adsr { arg attack, decay, sustain, release, peak;
+	*adsr { arg attackTime, decayTime, sustainLevel, releaseTime, peakLevel;
 		var inst;
-		var zerospec = ControlSpec(0,0.000000001,\lin);
-		attack = attack ? ControlSpec(0,2,\lin,0,0.1);
-		decay = decay ? attack;
-		sustain = sustain ? attack;
-		release = release ? attack;
-		peak = peak ? sustain;
-		inst = this.new([ zerospec, peak, sustain, zerospec], [attack, decay, release]);
+		attackTime = attackTime ? defaultLevelSpec;
+		decayTime = decayTime ? attackTime;
+		sustainLevel = sustainLevel? attackTime;
+		releaseTime = releaseTime ? attackTime;
+		peakLevel = peakLevel ? sustainLevel;
+		inst = this.new([ zerospec, peakLevel, sustainLevel, zerospec], [attackTime, decayTime, releaseTime]);
 		^inst
+	}
+
+
+	*dadsr { arg delayTime, attackTime, decayTime, sustainLevel, releaseTime;
+		var inst;
+		delayTime = delayTime ? ControlSpec(0,2,\lin,0,0);
+		attackTime = attackTime ? defaultLevelSpec;
+		decayTime = decayTime ? attackTime;
+		sustainLevel = sustainLevel? attackTime;
+		releaseTime = releaseTime ? attackTime;
+		peakLevel = peakLevel ? sustainLevel;
+		inst = this.new([ zerospec, zerospec, peakLevel, sustainLevel, zerospec], [delayTime, attackTime, decayTime, releaseTime]);
+		^inst
+	}
+
+	*asr { arg attackTime, sustainLevel, releaseTime;
+		var inst;
+		attackTime = attackTime ? defaultLevelSpec;
+		sustainLevel = sustainLevel ? attackTime;
+		releaseTime = releaseTime ? attackTime;
+		inst = this.new([ zerospec, sustainLevel, zerospec], [attackTime, releaseTime]);
+		^inst
+	}
+
+	*perc { arg attackTime, releaseTime, level;
+		var inst;
+		attackTime = attackTime ? defaultLevelSpec;
+		level = level ? attackTime;
+		releaseTime = releaseTime ? attackTime;
+		inst = this.new([ zerospec, level, zerospec], [attackTime, releaseTime]);
+		^inst
+	}
+
+	*triangle { dur, level;
+		dur = dur ? defaultLevelSpec;
+		level = level ? dur;
+		inst = this.new([ zerospec, level, zerospec], [dur, dur]);
 	}
 
 	// TODO: others env
 
-	*dadsr { arg delay, attack, decay, sustain, release;
-
-	}
-
-	*asr {
-
-	}
-
-	*perc {
-
-	}
-
-	*triangle {
-
-	}
-
 	*sine {
-
+		"NOT IMPLEMENTED".throw;
 	}
 
 	*linen {
-
+		"NOT IMPLEMENTED".throw;
 	}
 
 	*cutoff {
-
+		"NOT IMPLEMENTED".throw;
 	}
 
 	map { arg val, ignoreCurves=true;
