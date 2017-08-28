@@ -117,16 +117,19 @@ XEnvSpec : Spec {
 	var <isMonoSpec;
 	var <isDynamic=false;
 	var <type=\default;
-	var zerospec;
-	var defaultLevelSpec
+	classvar zerospec;
+	classvar defaultLevelSpec;
+
+	*classInit {
+		zerospec = ControlSpec(0,0.000000001,\lin);
+		defaultLevelSpec = ControlSpec(0,2,\lin,0,0.1);
+	}
 
 	*new { arg levels, times, curves, default;
 		var size;
 		var isMonoSpec;
 		var isDynamic = false;
 
-		zerospec = ControlSpec(0,0.000000001,\lin);
-		defaultLevelSpec = ControlSpec(0,2,\lin,0,0.1);
 
 		if(levels.isSequenceableCollection.not) {
 			isDynamic = true;
@@ -194,7 +197,7 @@ XEnvSpec : Spec {
 	}
 
 
-	*dadsr { arg delayTime, attackTime, decayTime, sustainLevel, releaseTime;
+	*dadsr { arg delayTime, attackTime, decayTime, sustainLevel, releaseTime, peakLevel;
 		var inst;
 		delayTime = delayTime ? ControlSpec(0,2,\lin,0,0);
 		attackTime = attackTime ? defaultLevelSpec;
@@ -224,10 +227,12 @@ XEnvSpec : Spec {
 		^inst
 	}
 
-	*triangle { dur, level;
+	*triangle { arg dur, level;
+		var inst;
 		dur = dur ? defaultLevelSpec;
 		level = level ? dur;
 		inst = this.new([ zerospec, level, zerospec], [dur, dur]);
+		^inst;
 	}
 
 	// TODO: others env
