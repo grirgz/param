@@ -328,6 +328,10 @@
 		child;
 	},
 
+	stop: { arg self;
+		self.children.do(_.stop)
+	},
+
 ));
 
 
