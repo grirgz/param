@@ -45,6 +45,11 @@
 		BusDef(\trackMixerDef_+++self.key, \audio, self.numchannels)
 	},
 
+	inbus_: { arg self, val;
+		self[\inbus] = val;
+		self.proxy.set(\inbus, val);
+	},
+
 	numchannels: 2,
 
 	define_mixer: { arg self;
