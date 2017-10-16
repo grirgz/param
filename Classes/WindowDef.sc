@@ -37,6 +37,9 @@ WindowDef {
 	}
 
 	*new { arg key, val;
+		if(val.isKindOf(WindowDef)) {
+			val = val.source;
+		};
 		if(key.isNil or: {all[key].isNil}) {
 			if(val.notNil) {
 				^super.new.init(val).prAdd(key)

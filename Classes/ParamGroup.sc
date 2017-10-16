@@ -95,13 +95,14 @@ ParamGroup : List {
 	presetCompileString {
 		var ret;
 		var params, presets;
+		this.save(\current);
 		params = this.collect({ arg param;
 			"\t" ++ param.asCompileString
 		}).join(",\n");
 		presets = this.presets.keys.as(Array).collect({ arg pkey;
 			"\t% -> %".format(pkey.asCompileString, this.presets[pkey].asCompileString)
 		}).join(",\n");
-		ret = "ParamGroup([\n%\n]).presets = IdentityDictionary[\n%\n];\n".format(params, presets);
+		ret = "ParamGroup([\n%\n]).presets_(IdentityDictionary[\n%\n]);\n".format(params, presets);
 		^ret;
 	}
 }

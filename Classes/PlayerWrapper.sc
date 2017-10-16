@@ -394,7 +394,7 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 	}
 
 	outBus { arg val;
-		this.target.initMonitor.out ? 0;
+		^this.target.initMonitor.out ? 0;
 	}
 
 	play {
