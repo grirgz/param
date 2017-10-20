@@ -691,4 +691,8 @@ PatKitDef {
 		ParamProto.init;
 		^~patKitDef.new(name, val);
 	}
+
+	*all {
+		^~patKitDef.all;
+	}
 }
