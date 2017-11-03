@@ -429,8 +429,7 @@ XBoolSpec : XNonFloatSpec {
 ///////////////////////////// Menu
 
 MenuSpec : XNonFloatSpec {
-	var <>labelList, <>valueList;
-	var <>list;
+	var <>labelList, <>valueList, <>list; // should be List
 
 	*new { arg list;
 		^super.new.menuSpecInit(list);
@@ -473,7 +472,7 @@ MenuSpec : XNonFloatSpec {
 	}
 
 	menuSpecInit { arg xlist;
-		list = xlist;
+		list = ( xlist ?? { List.new } ).asList;
 		labelList = List.new;
 		valueList = List.new;
 		xlist.value.do { arg x;
@@ -488,7 +487,7 @@ MenuSpec : XNonFloatSpec {
 	}
 
 	indexMenuSpecInit { arg xlist;
-		list = xlist;
+		list = ( xlist ?? { List.new } ).asList;
 		labelList = List.new;
 		valueList = List.new;
 		xlist.value.do { arg x, idx;
