@@ -1,5 +1,5 @@
 
-// the goal is extend SynthDesc to access to be able to access info about a SynthDef by key: SynthDesc(\sampler) for the \sampler SynthDef
+// the goal is to extend SynthDesc to be able to access info about a SynthDef by key: SynthDesc(\sampler) for the \sampler SynthDef
 // this class make use of experimental class SpecGroup
 
 +SynthDesc {
