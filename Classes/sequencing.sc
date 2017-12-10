@@ -68,7 +68,7 @@ PdrumStep : Pattern {
 
 	initPdrumStep { arg isRestFun;
 		isRestFunction = isRestFun ? { arg x; x.class == Symbol };
-		silentEvent = (isRest:true, type: \rest, foudmagueul: \ouais);
+		silentEvent = (isRest:true, type: \rest);
 		streamDict = IdentityDictionary.new;
 	}
 
