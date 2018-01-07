@@ -101,6 +101,36 @@ ParamViewToolBox {
 		if(param.notNil) { view.mapParam(param) };
 		^view;
 	}
+
+	*attachContextMenu { arg param, view;
+		var con = ContextMenuWindow.new();
+		con.action = { arg menu, selection;
+			switch(selection,
+				0, {
+					param.setBusMode(param.inBusMode.not);
+				},
+				1, {
+					param.unset
+				},
+				2, {
+					param.set(param.default)
+				}
+			)
+		};
+		con.attach(view, {
+			con.list = [ 
+				if(param.inBusMode) {
+					"Disable bus mode"
+				} {
+					"Enable bus mode"
+				},
+				"Unset",
+				"Default",
+			]
+		});
+		^con;
+
+	}
 }
 
 
@@ -324,12 +354,15 @@ ParamGroupLayout {
 
 		gridlayout = GridLayout.rows(*
 			scalarlist.collect({ arg param;
+
+				var statictext = if(label_mode == \full) {
+				param.asStaticTextLabel;
+				} {
+					StaticText.new.string_(param.property)
+				};
+				ParamViewToolBox.attachContextMenu(param, statictext);
 				[
-					if(label_mode == \full) {
-						param.asStaticTextLabel;
-					} {
-						StaticText.new.string_(param.property)
-					},
+					statictext,
 					param.asSlider.orientation_(\horizontal),
 					param.asTextField,
 				]
@@ -349,12 +382,13 @@ ParamGroupLayout {
 
 		biglayout = VLayout(*
 			biglist.collect({ arg param;
+				var statictext = if(label_mode == \full) {
+					param.asStaticTextLabel;
+				} {
+					StaticText.new.string_(param.property)
+				};
 				VLayout(
-					if(label_mode == \full) {
-						param.asStaticTextLabel;
-					} {
-						StaticText.new.string_(param.property)
-					},
+					statictext,
 					param.asView,
 					param.asTextField,
 				)

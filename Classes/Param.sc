@@ -1383,6 +1383,10 @@ NdefParam : BaseParam {
 		//target.changed(\set, property); // already exists in Ndef
 	}
 
+	unset { 
+		target.unset(property);
+	}
+
 	normGet {
 		var val = this.get;
 		if(val.class == Symbol) {
@@ -1661,6 +1665,10 @@ PdefParam : BaseParam {
 
 	set { arg val;
 		target.setVal(property, val);
+	}
+
+	unset { 
+		target.unset(property);
 	}
 
 	setRaw { arg val;
