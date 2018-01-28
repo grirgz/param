@@ -117,10 +117,11 @@ MIDIKeyboardView : SCViewHolder {
 			.mouseMoveAction_({|me, x, y, mod|
 				chosenkey = this.findNote(x, y);
 				if(trackKey.note != chosenkey.note, {
+					var oldnote = trackKey.note;
 					trackKey.color = trackKey.scalecolor; // was : type
 					trackKey = chosenkey;
 					chosenkey.color = Color.grey;
-					trackAction.value(chosenkey.note);
+					trackAction.value(chosenkey.note, oldnote);
 					this.refresh;
 				});
 			})

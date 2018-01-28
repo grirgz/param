@@ -166,6 +166,7 @@
 
 ////////// collectives
 
+// act as a drum kit, play the player in the group according to midinote
 ~parPlayerGroup = ProtoClass((
 	new: { arg self, list;
 		self = self.deepCopy;
@@ -275,9 +276,9 @@
 
 
 
+// seq because a single pattern is read instead of one pattern per note index in parPlayerGroup
+// this use notePlayer as children
 ~seqPlayerGroup = ProtoClass((
-	// seq because a single pattern is read instead of one pattern per note index in parPlayerGroup
-	// this use notePlayer as children
 	new: { arg self, pat;
 		self = self.deepCopy;
 	
@@ -336,6 +337,7 @@
 
 
 
+// specialisation for PatKitDef: compile string and Def design
 ~patKitDef = ProtoClass((
 	parent: ~parPlayerGroup,
 	all: { PresetDictionary.new(\patKitDef) },
@@ -391,6 +393,7 @@
 
 ////////// recorders
 
+// can record seqPlayerGroup and parPlayerGroup
 ~playerGroupRecorder = ProtoClass((
 	new: { arg self, group;
 		self = self.deepCopy;
@@ -518,6 +521,7 @@
 	},
 ));
 
+// can record Param
 ~paramRecorder = ProtoClass((
 	parent: ~playerGroupRecorder,
 

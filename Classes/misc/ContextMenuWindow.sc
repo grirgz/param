@@ -38,7 +38,7 @@ ContextMenuWindow {
 		if(mouseButton.notNil and: { mouseButton != 1 }) {
 			^this
 		};
-		window = Window("kkk",Rect(x+bo.origin.x,Window.screenBounds.height - view.absoluteBounds.top - y,200,1), border:false);
+		window = Window("Context menu",Rect(x+bo.origin.x,Window.screenBounds.height - view.absoluteBounds.top - y,200,200), border:false);
 		//[x,y, view.absoluteBounds, view.bounds, Window.screenBounds].debug("BOUDS");
 		window.endFrontAction = {
 			this.close;
@@ -49,10 +49,13 @@ ContextMenuWindow {
 
 					//{ win.close }.defer(1);
 				}).selectionAction_({ arg me;
-					me.selection.debug("selection!!");
+					me.selection.debug("context menu selected item");
 					if(me.selection.size > 0) {
 						try {
 							action.(this, me.selection[0]);
+						} { arg ex;
+							ex.reportError;
+							"Exception in context menu action.".postln;
 						};
 						this.close;
 					}

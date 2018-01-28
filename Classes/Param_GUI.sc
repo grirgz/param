@@ -114,6 +114,25 @@ ParamViewToolBox {
 				},
 				2, {
 					param.set(param.default)
+				},
+				3, {
+					var midi = param.target.getHalo(\MIDIFunc, param.property);
+					if(midi.notNil) {
+						midi.free;
+						param.target.addHalo(\MIDIFunc, param.property, nil);
+					};
+					midi = MIDIFunc.cc({ arg ... args;
+						//args.debug("MENU MIDI Func");
+						param.normSet(args[0]/127)
+					}).fix.learn;
+					param.target.addHalo(\MIDIFunc, param.property, midi);
+				},
+				4, {
+					var midi = param.target.getHalo(\MIDIFunc, param.property);
+					if(midi.notNil) {
+						midi.free;
+						param.target.addHalo(\MIDIFunc, param.property, nil);
+					};
 				}
 			)
 		};
@@ -126,6 +145,12 @@ ParamViewToolBox {
 				},
 				"Unset",
 				"Default",
+				"MIDI CC learn and map",
+				if(param.target.getHalo(\MIDIFunc, param.property).notNil) {
+					"Clear MIDI (%)".format(param.target.getHalo(\MIDIFunc, param.property).msgNum);
+				} {
+					"Clear MIDI (not set)";
+				},
 			]
 		});
 		^con;
