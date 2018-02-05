@@ -2,7 +2,7 @@
 ////////////////// nice storages for resources
 
 BufDef {
-	classvar <>client = \veco;
+	classvar <>client = \BufDef;
 	classvar <>all;
 	classvar <>root;
 	classvar <>paths;
@@ -81,6 +81,7 @@ BufDef {
 	}
 
 	*mono { arg name, path;
+		// FIXME: majority of other method doesnt take in account the possibility of mono buffers
 		path = this.my_new(name, path);
 		^BufferPool.get_mono_sample(client, path);
 	}
@@ -124,6 +125,46 @@ BufDef {
 
 	*freeAll {
 		BufferPool.reset;	
+	}
+
+	*reload { arg name;
+		if(all.at(name).isNil) {
+			if(name.asString.contains("/")) {
+				// special constructor with file path as name
+				name = this.abspath_to_relpath(name);
+				^BufDef(name.asSymbol, name.asString)
+			} {
+				^nil
+			}
+		} {
+			var path = all.at(name);
+			if(path.isKindOf(Buffer)) {
+				^path;
+			} {
+				var buf;
+				path = this.relpath_to_abspath(path);
+				buf = BufferPool.get_stereo_sample(client, path);
+				BufferPool.release(client, buf);
+				^BufferPool.get_stereo_sample(client, path);
+			}
+		}
+	}
+
+	*clear { arg name;
+		if(all.at(name).isNil) {
+			^nil
+		} {
+			var path = all.at(name);
+			if(path.isKindOf(Buffer)) {
+				^path
+			} {
+				var buf;
+				path = this.relpath_to_abspath(path);
+				buf = BufferPool.get_stereo_sample(client, path);
+				BufferPool.release(client, buf);
+				^nil;
+			}
+		}
 	}
 
 }

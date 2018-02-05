@@ -128,15 +128,6 @@ BufferPool {
 		^buf
 	}
 
-	//*free_sample { arg path;
-	//	// FIXME: doesnt free the last one, so it's memory leak, but that's allow keeping playing it while freeing
-	//	// used for example when you want to reload the file because it has changed
-	//	// i know it's ugly, should read the buffer again
-	//	paths.at(path) = nil;
-	//	mono_paths.at(path) = nil;
-	//	wavetable_paths.at(path) = nil;
-	//}
-
 	*retain { |buf,client,name|
 		//if(annotations.at(buf,client).notNil,{
 		//	//(client.asString++" already retained buffer "++buf.path).warn;
@@ -146,6 +137,7 @@ BufferPool {
 			this.watchServer(buf.server);
 		//});
 	}
+
 	*release { |buf,client|
 		// seems broken ?
 		var dict,key;
@@ -167,6 +159,24 @@ BufferPool {
 				buf.free;
 			})
 		});
+	}
+
+	free { arg buf;
+		// force free for all clients even if still used
+		counts.remove(buf);
+		annotations.removeAt(buf);
+		if(buf.path.notNil) {
+			if(buf.numChannels == 1) {
+				mono_paths[buf.path] = nil;
+			} {
+				paths[buf.path] = nil;
+			};
+			if(wavetable_paths[buf.path].notNil) {
+				// FIXME: strange to test for channel number for mono and stereo but not for wavetable
+				wavetable_paths[buf.path] = nil;
+			};
+		};
+		buf.free;
 	}
 
 	*is_freed { arg buf;
@@ -202,4 +212,6 @@ BufferPool {
 	}
 	*itemCount { |buf| ^counts.itemCount(buf) }
 	*buffers { ^counts.contents.keys.as(Array) }
+
+
 }

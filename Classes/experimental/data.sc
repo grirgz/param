@@ -424,8 +424,7 @@ BusGroup {
 
 	clear {
 		if(this.key.notNil) {
-			BufDef.all[this.key] = nil;
-			BufferPool.free_sample()
+			BufDef.clear(this.key);
 		}
 	}
 
