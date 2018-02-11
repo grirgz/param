@@ -83,13 +83,30 @@ BufDef {
 	*mono { arg name, path;
 		// FIXME: majority of other method doesnt take in account the possibility of mono buffers
 		path = this.my_new(name, path);
-		^BufferPool.get_mono_sample(client, path);
+		if(path.notNil) {
+			^BufferPool.get_mono_sample(client, path);
+		} {
+			"%: Path not found: %, %".format(this.name, name, path).error;
+			^nil
+		}
 	}
 
 	*my_new { arg name, path, channels;
+		// FIXME: this store the thing without knowing if it exists
 		if(path.isNil) {
-			path = all.at(name);
-			path = this.relpath_to_abspath(path);
+			if(all.at(name).isNil) {
+				if(name.asString.contains("/")) {
+					// special constructor with file path as name
+					path = this.abspath_to_relpath(name.asString);
+					all.put(name.asSymbol, path.asString);
+					path = this.relpath_to_abspath(path);
+				} {
+					^nil
+				}
+			} {
+				path = all.at(name);
+				path = this.relpath_to_abspath(path);
+			}
 		} {
 			all.put(name, path);
 			path = this.relpath_to_abspath(path);
