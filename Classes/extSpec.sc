@@ -346,6 +346,10 @@ XEnvSpec : Spec {
 	
 }
 
+XAudioSpec : Spec {
+	
+}
+
 
 XNonFloatSpec : Spec { // maybe a parent for all others special spec to exclude them when making a gui ?
 	var <>default;

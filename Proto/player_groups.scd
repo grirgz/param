@@ -57,7 +57,8 @@
 				self.play_ev = self.ev.copy;
 				self.play_ev[\isRest] = false;
 				self.play_ev[\sustain] = inf;
-				self.play_ev[\latency] = \;
+				//self.play_ev[\latency] = \; // not supported in 3.9.1
+				self.play_ev[\latency] = \no; // TODO: find standard way
 				self.cur_ev = self.play_ev.play;
 				self.changed(\play);
 				self.parent_self.changed(\play, self.index);

@@ -369,7 +369,7 @@ ParamGroupLayout {
 		});
 		biglist = pg.select({ arg param;
 			param.type != \scalar and: { 
-				param.spec.isKindOf(AudioSpec).not
+				param.spec.isKindOf(XAudioSpec).not
 				and: { 
 					// FIXME: find a better way to handle this
 					param.type != \other 

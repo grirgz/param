@@ -76,7 +76,7 @@
 			outbus = outbus.index;
 		};
 		self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter);
-		self.proxy.play(outbus, self.numchannels);
+		self.proxy.play(outbus, self.numchannels, GroupDef(\mixer, nil, \addAfter));
 	},
 
 	setOut: { arg self, outbus;
