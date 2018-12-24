@@ -206,7 +206,7 @@ MIDIMap {
 
 	*get { arg key;
 		var path = this.keyToPath(key);
-		responders.at(*path)
+		^responders.at(*path)
 	}
 
 	*freeAll {

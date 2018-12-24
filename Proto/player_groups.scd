@@ -135,7 +135,7 @@
 		self.play_ev = self.ev.copy;
 		self.play_ev[\isRest] = false;
 		self.play_ev[\sustain] = inf;
-		self.play_ev[\latency] = \;
+		self.play_ev[\latency] = Ref(0);
 		self.cur_ev = self.play_ev.play;
 		self.changed(\play);
 		self.parent_self.changed(\play, self.index);

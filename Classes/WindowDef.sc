@@ -55,6 +55,11 @@ WindowDef {
 		}
 	}
 
+	clear {
+		all[key] = nil;
+		^key;
+	}
+
 	prAdd { arg xkey;
 		key = xkey;
 		if(xkey.notNil) {

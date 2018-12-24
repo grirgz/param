@@ -180,7 +180,6 @@
 			var val;
 			//val = self.score_select_view.value;
 			self.score_select_view.items_( (0..self.banks[0].size-1) );
-			self.banks.debug("bordel");
 			self.score_select_view.value = self.banks[0].index;
 		};
 		self.selected = self.selected.clip(0, self.banks.size-1);

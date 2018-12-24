@@ -10,6 +10,7 @@ Param {
 	classvar <>defaultPollRate = 0.2;
 	classvar <>editFunction;
 	classvar <>lastTweaked;
+	classvar <>trace = false;
 
 	*initClass {
 		Class.initClassTree(List);
@@ -474,9 +475,11 @@ Param {
 				slider.action = { arg self;
 					action.value(self, this);
 					customAction.value(self, this);
-					Param.lastTweaked = this;
+					Param.lastTweaked = this; // FIXME: only work when there is a GUI
 					Param.changed(\lastTweaked);
-					//debug("action!");
+					if(Param.trace == true) {
+						"%: input: %, param value: %, param norm value: %".format(this, self.value, this.get, this.normGet).postln;
+					}
 				};
 			}.defer;
 

@@ -27,11 +27,11 @@ PlayerWrapperView {
 			button = Button.new.action_({ arg view;
 				switch(view.value,
 					1, {
-						[view.value, model].debug("mais play bordel!");
+						//[view.value, model].debug("play");
 						model.play;
 					},
 					0, {
-						[view.value, model].debug("mais stop bordel!");
+						//[view.value, model].debug("stop");
 						model.stop;
 					}
 				);
@@ -139,11 +139,11 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 			button = Button.new.action_({ arg view;
 				switch(view.value,
 					1, {
-						[view.value, model].debug("mais play bordel!");
+						//[view.value, model].debug("play");
 						model.play;
 					},
 					0, {
-						[view.value, model].debug("mais stop bordel!");
+						//[view.value, model].debug("stop");
 						model.stop;
 					}
 				);

@@ -78,6 +78,10 @@ ProtoClass : Event {
 		^this[\source].(this, * args)
 	}
 
+	first { arg ... args;
+		^this[\first].(this, * args)
+	}
+
 	next { arg ... args;
 		^this[\next].(this, * args)
 	}

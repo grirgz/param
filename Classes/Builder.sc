@@ -36,6 +36,9 @@ Builder {
 		if( fun.isNil ) {
 			fun = {}
 		};
+		if(fun.isKindOf(Builder)) {
+			fun = fun.source;
+		};
 		source = fun;
 		this.class.functionArgsToEnvir(fun).keysValuesDo { arg k, v;
 			if( this.envir[k].isNil ) {
