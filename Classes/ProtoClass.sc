@@ -139,6 +139,18 @@ ProtoClass : Event {
 			^this.remove(*args)
 		}
 	}
+
+	numChannels { arg ... args;
+		^this[\numChannels].(this, * args)
+	}
+
+	numChannels_ { arg ... args;
+		if(this[\numChannels_].notNil) {
+			this[\numChannels_].(this, * args)
+		} {
+			this[\numChannels] = args[0]
+		}
+	}
 }
 
 
@@ -147,7 +159,8 @@ ProtoDef : ProtoClass {
 	//var <>key;
 
 	*initClass {
-		all = IdentityDictionary.new;
+		Class.initClassTree(PresetDictionary);
+		all = PresetDictionary.new(\ProtoDef);
 	}
 
 	*new { arg key, val;
@@ -210,6 +223,75 @@ ProtoDef : ProtoClass {
 
 }
 
-ProtoTemplateDef : ProtoDef {
-	// just another placeholder
+ProtoTemplateDef : ProtoClass {
+	// NOTE: if i don't redefine all method using "all" classvar, then they use the parent class "all" despite redefining it in initClass :(
+	//	also super.new is not the one i want when i copy the *new constructior
+	//	for this reason i copied the whole class and herit from ProtoClass instead
+	classvar <>all;
+	//var <>key;
+
+	*initClass {
+		Class.initClassTree(PresetDictionary);
+		all = PresetDictionary.new(\ProtoTemplateDef);
+	}
+
+	*new { arg key, val;
+		if(all[key].isNil) {
+			if(val.notNil) {
+				^super.new(val).prAdd(key)
+			} {
+				^super.new(()).prAdd(key)
+			}
+		} {
+			var ret = all[key];
+			if(val.notNil) {
+				ret.putAll(val);
+				ret[\key] = key;
+				ret[\parent] = val[\parent];
+			};
+			^ret;
+		}
+	}
+
+	prAdd { arg xkey;
+		this[\key] = xkey;
+		all[this.key] = this;
+	}
+
+	key {
+		^this[\key]
+	}
+
+	putAll { arg ... args;
+		var k = this.key;
+		// preserve key
+		super.putAll(*args);
+		this[\key] = k;
+	}
+
+	clear {
+		if(this.key.notNil) {
+			all[this.key] = nil
+		};
+		^nil
+	}
+
+	// TODO: should be in parent class
+	collect { arg ...args;
+		^this[\collect].(this, *args)
+	}
+
+	do { arg ...args;
+		this[\do].(this, *args)
+	}
+
+	printOn { arg stream;
+		this.storeOn(stream)
+	}
+
+	storeOn { arg stream;
+		stream << "%(%)".format(this.class.asString, this.key.asCompileString);
+	}
+
 }
+

@@ -3,6 +3,177 @@
 TimelineRulerView : TimelineView {
 	// this is X ruler actually, with graduated bars to measure time in beats
 	// you can define start and stop of timeline interactively
+	// also draw the red rectangle for current position (useful for pasting)
+	//var <>mygrid; // debug, already in parentclass
+	var <>cursor;
+
+	mapCursor { arg curs;
+		cursor = curs;
+		this.view.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
+			//px.debug("TimelineLocatorBarView: mousedown set start");
+			//if(chosennode.isNil) 
+			switch(buttonNumber,
+				0, {
+					cursor.startPosition_(this.pixelPointToGridPoint(Point(px, 0)).x.round(quant.value.x));
+				},
+				1, {
+					cursor.endPosition_(this.pixelPointToGridPoint(Point(px, 0)).x.round(quant.value.x));
+				},
+				2, {
+					cursor.startPosition_(nil);
+					cursor.endPosition_(nil);
+				}
+			);
+			this.refresh;
+			mouseDownAction.(me, px, py, mod, buttonNumber, clickCount);
+		}
+	}
+
+	specialInit { 
+		this.view.mouseDownAction = nil;
+		this.view.mouseMoveAction = nil;
+		this.view.mouseUpAction = nil;
+		this.view.drawFunc = { this.drawFunc };
+	}
+
+	drawCursor {
+		var start_ppos = 0;
+		var end_ppos;
+		//Pen.color = Color.red;
+		//cpos = this.gridPointToPixelPoint(Point(cursorPos, 0)).x;
+		//Pen.line(Point(cpos,0), Point(cpos, this.virtualBounds.height));
+		//Pen.stroke;
+
+		if(cursor.notNil) {
+			if(cursor.startPosition.notNil) {
+				Pen.color = Color.blue;
+				start_ppos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
+			};
+			//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
+			//Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+			//Pen.stroke;
+
+			if(cursor.endPosition.notNil) {
+				//var 
+				Pen.color = Color.blue.alpha_(0.4);
+				end_ppos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
+				//[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
+				//Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+				//Pen.fillRect(Rect(start_ppos, 0, end_ppos - start_ppos, this.virtualBounds.height));
+
+			};
+
+			//if(cursor.startPosition.notNil or: { cursor.endPosition.notNil }) {
+			// TODO: find a way to retrieve end event time position
+			if(end_ppos.notNil) {
+
+				Pen.fillRect(Rect(
+					start_ppos, 
+					//0,
+					this.virtualBounds.height * 3/4, 
+					end_ppos - start_ppos, 
+					this.virtualBounds.height * 1/4
+				));
+				Pen.stroke;
+			}
+		} {
+			//"cursorisnil:::!!!!".debug;
+		};
+	}
+
+
+	drawGraduations { arg factor, x, oidx, idx;
+		// factor: the zoom factor, a big factor means big zoom and grid marking very small times
+		// x is x position in pixel where to draw a bar
+		// oidx is the index of the bar to alternate bold bars
+		// idx is not used
+		var yoffset;
+		if( oidx % 4 == 0 ) { 
+			yoffset = 0;
+			Pen.color = Color.black;
+			Pen.alpha = 1;
+		} { 
+			yoffset = 4;
+			Pen.color = Color.black;
+			Pen.alpha = 0.5;
+		};
+		Pen.line(Point(x,yoffset), Point(x,this.virtualBounds.height));
+		if(oidx % 2 == 0) {
+			var fontsize = 8;
+			if(oidx % 16 == 0) {
+				if(oidx % 32 == 0) {
+					fontsize = 10;
+					Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,-2), Font.new.size_(fontsize).bold_(true));
+				} {
+					fontsize = 10;
+					Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,-2), Font.new.size_(fontsize));
+				}
+			} {
+				Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,0), Font.new.size_(fontsize));
+			};
+		};
+		Pen.stroke;
+	}
+
+	*vertical_grid_do { arg view, fun;
+		// dynamic grid generation
+		var unitRect = view.gridRectToPixelRect(Rect(0,0,1,1));
+
+		var minsize = 20;
+		var bounds = view.bounds;
+		var areasize = view.areasize;
+		var viewport = view.viewport;
+		var xlen = unitRect.width; // number of pixel for one beat
+		var offset = unitRect.left;
+		var factor = 1;
+		factor = 2**( xlen/minsize ).log2.asInteger;
+		//xlen.debug("xlen");
+
+		//[ (areasize.x * viewport.origin.x).asInteger, (areasize.x * factor * viewport.width + 1).asInteger ].debug("start, end XXXXXX");
+		(areasize.x * factor * viewport.width + 1).asInteger.do { arg idx;
+			var oidx, x;
+			//var orx;
+			oidx = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1);
+			x = oidx * xlen / factor + offset;
+			//orx = (idx) * xlen / factor + offset;
+			//x = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1) * xlen / factor + offset;
+			//[idx, x, xlen, bounds.height, bounds, offset, factor].debug("grid drawer: x");
+			fun.(factor, x, oidx, idx);
+		}
+	}
+
+	drawFunc {
+		var grid;
+		var bounds = this.bounds;
+		var fontsize = 8;
+		if(mygrid.notNil) {
+			mygrid.(this)
+		} {
+			this.class.vertical_grid_do(this, { arg ... args;
+				this.perform(\drawGraduations, *args)
+			});
+		};
+		this.drawCursor;
+
+		// current pos
+		if(this.lastGridPos.notNil) {
+			var ppos = this.gridPointToPixelPoint( this.lastGridPos );
+			var sweep = 1/2;
+			Pen.color = Color.red(alpha:0.8);
+			Pen.addWedge(Point( ppos.x, 10 ), 10, 3pi/2 - (sweep/2), sweep );
+			Pen.fill;
+		};
+
+		Pen.color = Color.black;
+		Pen.alpha = 0.5;
+		Pen.stringAtPoint("beats", Point(bounds.right-35,0), Font.new.size_(fontsize).bold_(true));
+
+	}
+}
+
+TimelineSecondRulerView : TimelineRulerView {
+	// this is a X ruler with graduated bars to measure time in *seconds*
+	// you can define start and stop of timeline interactively
 	//var <>mygrid; // debug, already in parentclass
 	var <>cursor;
 
@@ -112,24 +283,25 @@ TimelineRulerView : TimelineView {
 
 	*vertical_grid_do { arg view, fun;
 		// dynamic grid generation
-		var pixelRect = view.gridRectToPixelRect(Rect(0,0,1,1));
-		var gridRect = view.gridRectToPixelRect(Rect(0,0,1,1));
+		var unitRect = view.secondRectToPixelRect(Rect(0,0,1,1));
 
 		var minsize = 20;
 		var bounds = view.bounds;
 		var areasize = view.areasize;
+		var second_areasize = view.areasize / view.clock.tempo;
 		var viewport = view.viewport;
-		var xlen = view.gridRectToPixelRect(Rect(0,0,1,1)).width;
-		var offset = pixelRect.left;
+		var xlen = unitRect.width; // number of pixel for one beat
+		var offset = unitRect.left;
 		var factor = 1;
 		factor = 2**( xlen/minsize ).log2.asInteger;
+		//factor = (factor / view.clock.tempo).asInteger;
 		//xlen.debug("xlen");
 
 		//[ (areasize.x * viewport.origin.x).asInteger, (areasize.x * factor * viewport.width + 1).asInteger ].debug("start, end XXXXXX");
-		(areasize.x * factor * viewport.width + 1).asInteger.do { arg idx;
+		(second_areasize.x  * factor * viewport.width + 1).asInteger.do { arg idx;
 			var oidx, x;
 			//var orx;
-			oidx = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1);
+			oidx = (idx + (second_areasize.x * viewport.origin.x * factor).asInteger + 1);
 			x = oidx * xlen / factor + offset;
 			//orx = (idx) * xlen / factor + offset;
 			//x = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1) * xlen / factor + offset;
@@ -141,6 +313,7 @@ TimelineRulerView : TimelineView {
 	drawFunc {
 		var grid;
 		var bounds = this.bounds;
+		var fontsize = 8;
 		if(mygrid.notNil) {
 			mygrid.(this)
 		} {
@@ -159,6 +332,9 @@ TimelineRulerView : TimelineView {
 			Pen.fill;
 		};
 
+		Pen.color = Color.black;
+		Pen.alpha = 0.5;
+		Pen.stringAtPoint("secs.", Point(bounds.right-35,0), Font.new.size_(fontsize).bold_(true));
 
 	}
 }
@@ -425,6 +601,7 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 
 }
 
+////// y rulers
 MidinoteTimelineRulerView : TimelineView {
 	// the piano roll!
 	var <>mygrid; // debug
@@ -885,4 +1062,60 @@ CursorTimeline {
 		this.changed(\endPosition, startPosition);
 		this.changed(\refresh);
 	}
+}
+
+
+/////////////////////// sample timeline view
+
+SampleTimelineView : TimelineView {
+	var <>bufferData;
+	var <>resampleRate;
+	var <>numChannels = 0;
+	var <>mydraw;
+
+	drawWaveform {
+		if(mydraw.notNil) {
+			mydraw.debug("mydraw");
+			mydraw.(this);
+		} {
+			//Pen.color = Color.green;
+			var height = this.bounds.height;
+			var width = this.bounds.width;
+			var drawChannel = { arg chanidx, chandata;
+				var drawWave = { arg yfac=1;
+					chandata.do{|y, x|
+						var p;
+						var offset = chanidx*2+1;
+						y = y[chanidx] ? 0;
+						y = y * 2;
+						p = this.secondPointToPixelPoint(Point(x/resampleRate,y*yfac+offset));
+						//p.debug("p");
+						if(x==0, {Pen.moveTo(p)}, {Pen.lineTo(p)});
+					};
+				};
+				Pen.width = 1;
+
+				drawWave.(1);
+				Pen.color = Color.black;
+				Pen.fill;
+
+				//drawWave.(1);
+				//Pen.color = Color.blue;
+				//Pen.stroke;
+
+				drawWave.(-1);
+				Pen.color = Color.black;
+				Pen.fill;
+
+				//drawWave.(-1);
+				//Pen.color = Color.blue;
+				//Pen.stroke;
+			};
+			numChannels.do { arg idx;
+				drawChannel.(idx, this.bufferData);
+			};
+
+		}
+	}
+	
 }

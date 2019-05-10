@@ -74,12 +74,14 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	},
 
 	embed_event: { arg self, spawner, ev;
-		//ev.debug("EMBED event");
+		ev.debug("EMBED event");
 		if(ev.type == \pattern) {
 			ev = PatternEvent(ev); // because normal Event have embedInStream which replace parent by Event.default
-			//ev.parent.keys.debug("EMBED event parent keys (pattern)");
+			ev.parent.keys.debug("EMBED event parent keys (pattern)");
+			//ev.debug("embed_event: ev");
 			spawner.par(ev.embedPattern);
-			spawner.wait(ev.use {ev.dur}); // FIXME: use delta ?
+			spawner.wait(ev.use{ev.delta} ? ev.use {ev.dur}); // FIXME: use delta ?
+			//spawner.seq(ev.embedPattern);
 		} {
 			if(ev.type == \player) {
 				ev = PlayerEvent(ev);
@@ -605,6 +607,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 /////////////////////////////////////////////////////////////////////////////////////
 
 
+// TODO: move this junk elsewhere
 
 
 // To be converted in class in Gui.sc

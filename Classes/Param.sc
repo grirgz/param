@@ -363,6 +363,10 @@ Param {
 		wrapper.setBusMode(enable, free);
 	}
 
+	inBusMode {
+		^wrapper.inBusMode
+	}
+
 	numChannels {
 		^this.spec.numChannels;
 	}
@@ -907,11 +911,11 @@ Param {
 		^view;
 	}
 
-	asButton {
+	asButton { arg label = "";
 		var but = Button.new
 			.states_([
-				["", Color.black, Color.white],
-				["", Color.black, ParamViewToolBox.color_ligth],
+				[label, Color.black, Color.white],
+				[label, Color.black, ParamViewToolBox.color_ligth],
 			]);
 		but.mapParam(this);
 		^but;
@@ -1269,6 +1273,11 @@ BaseParam {
 		};
 		^val.copy;
 	}
+
+	inBusMode {
+		^false
+	}
+
 }
 
 StandardConstructorParam : BaseParam {

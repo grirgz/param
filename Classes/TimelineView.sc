@@ -11,6 +11,7 @@ TimelineView : SCViewHolder {
 
 	var <>mygrid; // debug;
 
+	var >clock;
 	var <viewport; // zero is topLeft, all is normalised between 0 and 1
 	var <areasize;
 	var <>createNodeHook;
@@ -66,6 +67,9 @@ TimelineView : SCViewHolder {
 
 
 	var <>forbidHorizontalNodeMove = false;
+
+	var <>selectionCursor;
+	var <>selectionCursorController;
 	
 	*new { arg posyKey; 
 		^super.new.initParaSpace(posyKey);
@@ -173,6 +177,10 @@ TimelineView : SCViewHolder {
 		// to be overriden
 	}
 
+	clock {
+		^(clock ? TempoClock.default)
+	}
+
 	///////////////////////////////////////////////////////// input events handling
 
 	mouseDownActionBase {|me, px, py, mod, buttonNumber, clickCount|
@@ -191,6 +199,9 @@ TimelineView : SCViewHolder {
 		gpos = this.pixelPointToGridPoint(Point(px,py));
 		lastPixelPos = Point(px,py);
 		lastGridPos = gpos.trunc(quant.value);
+		if(selectionCursor.notNil) {
+			selectionCursor.startPosition = gpos.trunc(quant.value);
+		};
 		this.changed(\lastGridPos);
 		//[px, py, npos, gpos].debug("mouseDownAction_ px,py, npos, gpos");
 		chosennode = this.findNode(gpos.x, gpos.y);
@@ -682,6 +693,10 @@ TimelineView : SCViewHolder {
 		// the nodes or circles
 
 		this.drawNodes;
+
+		// the optional waveform
+
+		this.drawWaveform;
 		
 		// the selection node
 
@@ -709,6 +724,7 @@ TimelineView : SCViewHolder {
 
 	}
 
+	drawWaveform {} // for children classes
 
 	drawNodes {
 
@@ -855,6 +871,22 @@ TimelineView : SCViewHolder {
 		timeline.changed(\areasize);
 		timeline.changed(\viewport); 
 
+	}
+
+	mapSelectionCursor { arg cur;
+		selectionCursor = cur;
+		if(selectionCursorController.notNil) {
+			selectionCursorController.remove;
+		};
+		selectionCursorController = SimpleController(selectionCursor).put(\refresh, {
+			if(this.view.notNil) {
+				if(this.view.isClosed) {
+					selectionCursorController.remove;
+				} {
+					this.view.refresh;
+				};
+			}
+		})
 	}
 
 	mimicNodeSelection { arg timeline;
@@ -1082,6 +1114,23 @@ TimelineView : SCViewHolder {
 	pixelExtentToGridExtent { arg point;
 		// not used by TimelineViewLocatorNode
 		^(point / this.bounds.extent * areasize * viewport.extent);
+	}
+
+	//// seconds
+
+	secondPointToPixelPoint { arg point;
+		^this.gridPointToPixelPoint(point * Point(this.clock.tempo,1));
+	}
+
+	pixelPointToSecondPoint { arg point;
+		^this.pixelPointToGridPoint(point / Point(this.clock.tempo,1));
+	}
+
+	secondRectToPixelRect { arg rect;
+		^Rect.fromPoints(
+			this.secondPointToPixelPoint(rect.origin),
+			this.secondPointToPixelPoint(rect.rightBottom),
+		);
 	}
 
 	///////////////// 

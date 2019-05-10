@@ -1,6 +1,7 @@
 /////////// individuals
 
 // produce and play an event from a pattern for each .play call 
+// designed to be a child of some parent collection class where targets are stored
 ~streamPlayer = ProtoClass((
 	new: { arg self, parent, x;
 		self = self.deepCopy;
@@ -18,6 +19,18 @@
 
 	target_: { arg self, val;
 		self.parent_self.setTarget(self.index, val);
+	},
+
+	defaultTarget: { arg self;
+		self.parent_self.defaultTarget
+	},
+
+	playMode: { arg self;
+		self.parent_self.playMode
+	},
+
+	isEmpty: { arg self;
+		self.target.isNil or: { self.target == self.defaultTarget }
 	},
 
 	preChain: { arg self;
@@ -168,6 +181,7 @@
 ////////// collectives
 
 // act as a drum kit, play the player in the group according to midinote
+// this use streamPlayer as children
 ~parPlayerGroup = ProtoClass((
 	new: { arg self, list;
 		self = self.deepCopy;
@@ -176,6 +190,8 @@
 	
 		self;
 	},
+
+	playMode: \gate, // play on key down and stop on key up
 
 	init: { arg self, list;
 		self.targets = list;
@@ -255,6 +271,10 @@
 			self.children[x] = child;
 		};
 		child;
+	},
+
+	childAt: { arg self, x;
+		self.elAt(x)
 	},
 	
 	presetCompileString: { arg self, varname="~ppg";
@@ -338,8 +358,9 @@
 
 
 
-// specialisation for PatKitDef: compile string and Def design
+// specialisation of parPlayerGroup for PatKitDef: compile string and Def design
 ~patKitDef = ProtoClass((
+	protoClass: \PatKitDef,
 	parent: ~parPlayerGroup,
 	all: { PresetDictionary.new(\patKitDef) },
 	new: { arg self, key, instrs;
@@ -347,7 +368,16 @@
 		if(self.all[key].isNil) {
 			self = self.deepCopy;
 			if(instrs.notNil) {
-				self.source = instrs;
+				if(instrs.isSequenceableCollection) {
+					self.source = instrs;
+				} {
+					// allow for copy by using PatKitDef(\xx2, PatKitDef(\xx))
+					try {
+						if(instrs.protoClass == \PatKitDef) {
+							self.source = instrs.source.deepCopy;
+						}
+					}
+				}
 			};
 			self.key = key;
 			self.all[key] = self;
@@ -381,6 +411,10 @@
 
 	savePresetCompileString: { arg self, path, action, force_dialog=false;
 		PlayerWrapper.savePresetCompileStringHelper(path ? self.presetCompileStringSavePath, action, self.refCompileString, self.presetCompileString);
+	},
+
+	savePresetCompileStringDialog: { arg self, path, action, force_dialog=false;
+		PlayerWrapper(self).savePresetCompileStringDialog(path ? self.presetCompileStringSavePath, action, force_dialog);
 	},
 
 	loadPresetCompileString: { arg self;
@@ -437,7 +471,7 @@
 				player.recordedEvent[\clockTime] = self.tempoClock.beats;
 				Log(\Param).debug("listener: start: recordedEvent:%", player.recordedEvent);
 			} {
-				if(status == \stop) {
+				if(status == \stop and: {player.recordedEvent.notNil}) {
 					player.recordedEvent[\sustain] = self.tempoClock.beats - player.recordedEvent[\clockTime];
 					Log(\Param).debug("listener: stop: recordedEvent:%", player.recordedEvent);
 					player.recordedEvent.changed(\refresh);

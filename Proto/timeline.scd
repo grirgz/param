@@ -5,9 +5,15 @@
 ~eventTimeline = ProtoClass((
 
 	prAdd: { arg self, name;
+		[self.all, name].debug("prAdd");
 		self.all[name] = self;
+		[self.all, name].debug("prAdd2");
 		self.key = name;
 		self;
+	},
+
+	addInstance: { arg self, name; // workaround to not clash with ProtoDef prAdd
+		self[\prAdd].(self, name)
 	},
 
 	clear: { arg self;
@@ -198,14 +204,14 @@
 
 	asPatternEvent: { arg self;
 		PatternEvent((
-			eventType: \timeline, // i want to get ride of this type system
+			//eventType: \timeline, // i want to get ride of this type system // done! 
 			timeline: ( "{ " ++ self.refCompileString ++ " }" ).interpret; // to have closed compile string
 		))
 		
 	},
 
 	refCompileString: { arg self, name;
-		"to be overloaded"	
+		"~eventTimeline(..)"	
 	},
 
 	presetCompileString: { arg self;
@@ -307,6 +313,7 @@
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
+		self.selection_cursor = CursorTimeline.new;
 		self.tracks_bypassed = Set.new;
 		//"=============clipTimeline: end init".debug;
 
@@ -452,6 +459,7 @@
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
+		self.selection_cursor = CursorTimeline.new;
 		self.tracks_bypassed = Set.new;
 
 		self.tracks = { tracks };
@@ -526,17 +534,13 @@
 
 	init: { arg self, param;
 
-		self.param = param;
 		self.eventloop = self.makeDefaultEventLoop;
+		self.param = param; // depends on eventloop
 		self.areasize = 10@128;
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
-		self.eventFactory = ~class_event_factory.new(self.param.target);
-		self.eventFactory.eventLoop = self.eventloop;
-		self.eventFactory.mode = \note;
-		self.eventFactory.playmode = \gate;
-		self.eventFactory.fullrecord = false;
+		self.selection_cursor = CursorTimeline.new;
 
 		// TODO: make a recorder and deprecate eventFactory
 		//self.recorder = ~playerGroupRecorder.new(self.wrapper);
@@ -545,6 +549,31 @@
 		// note: this is grid quant, not playing quant
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
 		
+	},
+
+	param_: { arg self, param;
+		if(param.isNil) {
+			param = Param(Pdef(\NoteTimeline_default, Pbind()), \midinote);
+		};
+		if(param.isKindOf(Pdef)) {
+			param = Param(param, \note);
+		};
+		self[\param] = param;
+		self.eventFactory = ~class_event_factory.new(self.param.target);
+		self.eventFactory.eventLoop = self.eventloop;
+		self.eventFactory.mode = \note;
+		self.eventFactory.playmode = \gate;
+		self.eventFactory.fullrecord = false;
+
+		//if(kit.isSequenceableCollection) {
+			//self[\kit] = kit;
+			//self.wrapper = ~parPlayerGroup.new(self.kit);
+		//} {
+			//self.wrapper = kit;
+			//self[\kit] = { arg self; self.wrapper.targets };
+		//};
+		//self.recorder = ~playerGroupRecorder.new(self.wrapper);
+		//self.recorder.eventLoop = self.eventLoop;
 	},
 
 	new_load: { arg self, data;
@@ -585,6 +614,8 @@
 
 		// timeline_pattern take a start time relative to firstEvent
 		// XEventList.relStartTime is relative to firstEvent
+		// FIXME: replacing source in proxy at call time means that a playing proxy will play immediately the new source when asked its pattern
+		//		could have nasty side effects
 		self.proxy.source = Plazy({
 			var eventlist = self.eventloop.list;
 			var pat;
@@ -734,6 +765,7 @@
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
+		self.selection_cursor = CursorTimeline.new;
 		self.customBus = bus;
 
 		self.param = param;
@@ -932,6 +964,7 @@
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
+		self.selection_cursor = CursorTimeline.new;
 
 		// note: this is grid quant, not playing quant
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
@@ -1409,7 +1442,7 @@
 
 		self.clipFactories.ndef = (
 			key: 'ndef',
-			label: { arg self; self.key.asString.capitalize },
+			label: { arg self; self.key.asString },
 			keylist: {
 				if(Ndef.all[\localhost].notNil) {
 					Ndef.all[\localhost].envir.keys.asArray.sort;
@@ -1446,7 +1479,7 @@
 
 		self.clipFactories.pdef = (
 			key: 'pdef',
-			label: { arg self; self.key.asString.capitalize },
+			label: { arg self; self.key.asString },
 			keylist: {
 				Pdef.all.keys.asArray.sort; 
 			},
@@ -1510,7 +1543,7 @@
 
 		self.clipFactories.trackdef = (
 			key: 'trackdef',
-			label: { arg self; self.key.asString.capitalize },
+			label: { arg self; self.key.asString },
 			keylist: {
 				TrackDef.all.keys.asArray.sort; 
 			},
@@ -1547,7 +1580,7 @@
 		// generic timeline factory
 		tl = (
 			key: 'generictimeline',
-			label: { arg self; self.key.asString.capitalize },
+			label: { arg self; self.key.asString },
 
 			className: {
 				~noteTimeline
@@ -1585,36 +1618,19 @@
 		);
 		self.clipFactories_timeline_parent = tl;
 
-		self.clipFactories.noteTimeline = (
-			key: 'noteTimeline',
-			parent: tl,
-			className: { topEnvironment[\noteTimeline] },
-		);
+		[\noteTimeline, \clipTimeline, \envTimeline, \modStepTimeline, \kitTimeline].do { arg key;
+			self.clipFactories[key] = (
+				key: key,
+				parent: tl,
+				className: "{ topEnvironment[%] }".format(key.asCompileString).interpret,
+			);
+		};
 
-		self.clipFactories.clipTimeline = (
-			key: 'clipTimeline',
+		self.clipFactories.sampleTimeline = (
+			key: 'sampleTimeline',
 			parent: tl,
-			className: { topEnvironment[\clipTimeline] },
+			className: { ProtoTemplateDef(\SampleTimeline) },
 		);
-
-		self.clipFactories.envTimeline = (
-			key: 'envTimeline',
-			parent: tl,
-			className: { topEnvironment[\envTimeline] },
-		);
-
-		self.clipFactories.modStepTimeline = (
-			key: 'modStepTimeline',
-			parent: tl,
-			className: { topEnvironment[\modStepTimeline] },
-		);
-
-		self.clipFactories.kitTimeline = (
-			key: 'kitTimeline',
-			parent: tl,
-			className: { topEnvironment[\kitTimeline] },
-		);
-
 
 		self.clipFactories_keys = self.clipFactories.keys.asArray.sort;
 		
@@ -1626,6 +1642,7 @@
 		// 'Pdef',
 		// 'Ndef',
 		// 'ClipTimeline',
+		// 'SampleTimeline',
 		// 'NoteTimeline',
 		// 'EnvTimeline',
 		// 'ModStepTimeline',
@@ -1634,23 +1651,29 @@
 		switch(model.type, 
 			\pattern, {
 				if(model.timeline.notNil) {
-					switch(model.timeline.eventType,
-						\envTimeline, {
-							clipkey = 'envTimeline'
-						},
-						\clipTimeline, {
-							clipkey = 'clipTimeline'
-						},
-						\noteTimeline, {
-							clipkey = 'noteTimeline'
-						},
-						\kitTimeline, {
-							clipkey = 'kitTimeline'
-						},
-						\modStepTimeline, {
-							clipkey = 'modStepTimeline'
-						},
-					)
+					if(self.clipFactories_keys.includes(model.timeline.eventType)) {
+						clipkey = model.timeline.eventType
+					};
+					//switch(model.timeline.eventType,
+						//\envTimeline, {
+							//clipkey = 'envTimeline'
+						//},
+						//\clipTimeline, {
+							//clipkey = 'clipTimeline'
+						//},
+						//\sampleTimeline, {
+							//clipkey = 'sampleTimeline'
+						//},
+						//\noteTimeline, {
+							//clipkey = 'noteTimeline'
+						//},
+						//\kitTimeline, {
+							//clipkey = 'kitTimeline'
+						//},
+						//\modStepTimeline, {
+							//clipkey = 'modStepTimeline'
+						//},
+					//)
 				} {
 					//var tar = model.receiver.value;
 					//if(tar.isKindOf(PlayerWrapper)) {
@@ -2267,25 +2290,26 @@
 			//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
 			self.getTimelineKeyDownActionForNodeMove.(me, key, modifiers, unicode, keycode);
 			if(modifiers.isCtrl) {
-				if(key == $n) { // ^n
+				//if(key == $n) { // ^n // don't work anymore
+				if(keycode == $n.ascii) { // ^n
 					"new!".debug;
 					self.eventLoop.pushList;
 					self.eventList = self.timeline_model.makeDefaultEventList;
 					self.eventLoop.pushList;
 				};
-				if(key == $k) { // ^k
+				if(keycode == $k.ascii) { // ^k
 					"clone!".debug;
 					self.eventLoop.pushList;
 					self.eventList = self.eventLoop.lists.first.clone;
 					self.eventLoop.pushList;
 				};
-				if(key == $d) { // ^d
+				if(keycode == $d.ascii) { // ^d
 					"double!".debug;
 					self.eventLoop.pushList;
 					self.eventList = self.eventLoop.lists.first.clone.double;
 					self.eventLoop.pushList;
 				};
-				if(key == $c) { // ^c
+				if(keycode == $c.ascii) { // ^c
 					var selnodes;
 					var cursor = self.timeline_model.cursor;
 					var startpos, endpos;
@@ -2306,7 +2330,7 @@
 						~clipTimeline_clipboard = selnodes;
 					};
 				};
-				if(key == $v) { // ^v
+				if(keycode == $v.ascii) { // ^v
 					"paste!".debug;
 					if(~clipTimeline_clipboard.notNil) {
 						var delta;
@@ -2497,15 +2521,46 @@
 		//self.velocityPopUp.mapParam(Param(Message(self.velocityTimeline), \valueKey, keyspec));
 	},
 
+	makeXRuler: { arg self;
+		var cursor_timeline;
+		var locatorbar;
+		var ruler_x_beat;
+		cursor_timeline = CursorTimelineView.new;
+		~cursor_timeline = cursor_timeline;
+		self.cursor_timeline = cursor_timeline;
+		cursor_timeline.mapCursor(self.cursor);
+		cursor_timeline.quant = self.quant_ref;
+
+
+		ruler_x_beat = TimelineRulerView.new;
+		ruler_x_beat.mapCursor(self.cursor);
+		ruler_x_beat.quant = self.quant_ref;
+		self.ruler_x_beat = ruler_x_beat;
+		locatorbar = TimelineLocatorBarView.new;
+		self.locatorbar = locatorbar;
+
+		locatorbar.quant = self.quant_ref;
+
+		ruler_x_beat.mimicTimeline(self.timeline);
+		locatorbar.mimicTimeline(self.timeline);
+		cursor_timeline.mimicTimeline(self.timeline);
+
+		self.locatorbar.view.minSize = Point(10,15);
+		self.ruler_x_beat.view.minSize = Point(10,10);
+		
+		VLayout(
+			locatorbar.view,
+			self.ruler_x_beat.view,
+		);
+	},
+
 	makeLayout: { arg self;
 		var layout;
 		var tl_layout;
 		var vlayout, timeline, vrange, hrange, size;
 		var eventloop = self.eventloop;
-		var ruler_x, ruler_y, sizer;
-		var locatorbar;
+		var ruler_y, sizer;
 		var sizer_action;
-		var cursor_timeline;
 		var track_header;
 		var track_header_view;
 		var quant_popup;
@@ -2530,31 +2585,14 @@
 		};
 
 		timeline.quant = self.quant_ref;
+		timeline.mapSelectionCursor(self.selection_cursor);
 
 		self.makeVelocityView;
 
 		//self.cursor = CursorTimeline.new;
 		//self.cursor.startPosition = self.eventloop.list.startTime;
+		self.ruler_x = self.makeXRuler;
 
-		cursor_timeline = CursorTimelineView.new;
-		~cursor_timeline = cursor_timeline;
-		self.cursor_timeline = cursor_timeline;
-		cursor_timeline.mapCursor(self.cursor);
-		cursor_timeline.quant = self.quant_ref;
-
-
-		ruler_x = TimelineRulerView.new;
-		ruler_x.mapCursor(self.cursor);
-		ruler_x.quant = self.quant_ref;
-		self.ruler_x = ruler_x;
-		locatorbar = TimelineLocatorBarView.new;
-		self.locatorbar = locatorbar;
-
-		locatorbar.quant = self.quant_ref;
-
-		ruler_x.mimicTimeline(timeline);
-		locatorbar.mimicTimeline(timeline);
-		cursor_timeline.mimicTimeline(timeline);
 
 		hrange = TimelineScroller.new;
 		hrange.orientation = \horizontal;
@@ -2589,10 +2627,7 @@
 			[
 				[
 					nil,
-					VLayout(
-						locatorbar.view,
-						ruler_x.view,
-					),
+					self.ruler_x,
 					XSimpleButton.new.label_("z")
 						.maxWidth_(10)
 						.action_({
@@ -2602,7 +2637,7 @@
 				[
 					if(self.disable_track_header != true) {track_header},
 					StackLayout(
-						cursor_timeline.view,
+						self.cursor_timeline.view,
 						timeline.view,
 					).mode_(1),
 					vrange.view,
@@ -2656,9 +2691,7 @@
 
 		timeline.areasize = size;
 
-		ruler_x.view.minSize = Point(10,10);
 		//ruler_y.view.minSize = Point(40,10);
-		locatorbar.view.minSize = Point(10,15);
 
 		self.refresh; // map eventlist to timelines
 
@@ -2739,6 +2772,10 @@
 
 	cursor: { arg self;
 		self.timeline_model.cursor;
+	},
+
+	selection_cursor: { arg self;
+		self.timeline_model.selection_cursor;
 	},
 
 	key: { arg self;
@@ -2833,6 +2870,7 @@
 			}.defer
 		});
 		//"clipTimelinePanelView.makeLayout: end init".debug;
+		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
 		self.layout;
 	},
 );
@@ -2963,6 +3001,10 @@
 		self.timeline_model.cursor;
 	},
 
+	selection_cursor: { arg self;
+		self.timeline_model.selection_cursor;
+	},
+
 	key: { arg self;
 		self.timeline_model.key;
 	},
@@ -3029,6 +3071,7 @@
 		self.timeline.view.onChange(self.eventloop, \list, { 
 			self.refresh;
 		});
+		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
 		self.layout;
 	},
 );
@@ -3061,6 +3104,11 @@
 	cursor: { arg self;
 		self.timeline_model.cursor;
 	},
+
+	selection_cursor: { arg self;
+		self.timeline_model.selection_cursor;
+	},
+
 
 	key: { arg self;
 		self.timeline_model.key;
@@ -3154,6 +3202,10 @@
 
 	cursor: { arg self;
 		self.timeline_model.cursor;
+	},
+
+	selection_cursor: { arg self;
+		self.timeline_model.selection_cursor;
 	},
 
 	key: { arg self;

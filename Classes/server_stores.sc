@@ -161,7 +161,7 @@ BufDef {
 				var buf;
 				path = this.relpath_to_abspath(path);
 				buf = BufferPool.get_stereo_sample(client, path);
-				BufferPool.release(client, buf);
+				BufferPool.release(buf, client);
 				^BufferPool.get_stereo_sample(client, path);
 			}
 		}
@@ -178,7 +178,7 @@ BufDef {
 				var buf;
 				path = this.relpath_to_abspath(path);
 				buf = BufferPool.get_stereo_sample(client, path);
-				BufferPool.release(client, buf);
+				BufferPool.release(buf, client);
 				^nil;
 			}
 		}

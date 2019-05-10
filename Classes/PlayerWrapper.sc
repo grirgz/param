@@ -128,10 +128,15 @@ PlayerWrapper  {
 		}
 	}
 
+	isEmpty {
+		^wrapper.isEmpty
+	}
+
 	///////////// gui
 
 	edit {
-		^WindowLayout({ PlayerWrapperView.new(this).layout });
+		^wrapper.edit;
+		//^WindowLayout({ PlayerWrapperView.new(this).layout });
 	}
 
 	asView {
@@ -351,6 +356,13 @@ PlayerWrapper_Base {
 		this.target.addHalo(\presetCompileStringSavePath, path)
 	}
 
+	isEmpty { 
+		^this.target.isNil
+	}
+
+	edit {
+		^WindowLayout({ PlayerWrapperView.new(this).layout });
+	}
 }
 
 PlayerWrapper_Param : PlayerWrapper_Base {
@@ -457,6 +469,14 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		}
 	}
 
+	isEmpty { 
+		^this.target.source.isNil
+	}
+
+	edit {
+		^WindowDef(\NdefEditor).front(this.target);
+	}
+
 }
 
 PlayerWrapper_EventPatternProxy : PlayerWrapper_Base {
@@ -472,6 +492,13 @@ PlayerWrapper_EventPatternProxy : PlayerWrapper_Base {
 		}
 	}
 
+	isEmpty { 
+		^this.target.source.isNil
+	}
+
+	edit {
+		^WindowDef(\PdefEditor).front(this.target);
+	}
 }
 
 EventPlayerWrapper : PlayerWrapper_Event { } // compat, to be deleted
@@ -529,9 +556,9 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 	}
 
 	stop {
-		this.doWithQuant {
-			target.stop;
-		}
+		// if protoclass already have a quant, the wrapper sould not add it again
+		// the protoclass is responsible to add a quant
+		target.stop;
 	}
 
 	// generic way to classify players : ("%_%".format(player.targetClass, player.key))
@@ -582,6 +609,14 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 		^this.target.presetCompileStringSavePath = path
 	}
 
+	isEmpty { 
+		^this.target.isEmpty
+	}
+
+	edit {
+		^this.target.edit;
+	}
+
 }
 
 PlayerWrapper_Nil : PlayerWrapper_Base {
@@ -599,6 +634,10 @@ PlayerWrapper_Nil : PlayerWrapper_Base {
 	}
 
 	stop {
+	}
+
+	isEmpty { 
+		^true
 	}
 
 }

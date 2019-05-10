@@ -39,7 +39,7 @@ ClipTimeline(\test_cliptimeline).edit;
 
 ///////////////////// TrackTimeline
 
-TrackTimeline(\test_cliptimeline).edit;
+TrackTimeline(\test_tracktimeline).edit;
 
 ///////////////////// ParamTimeline
 

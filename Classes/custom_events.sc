@@ -146,12 +146,26 @@ PatternEvent : Event {
 				};
 			},
 			embedPattern: { arg self;
+
 				var sus = self.use { self.sustain };
+				// NOTE: dur is not used because only Pembed at event list level can embed pattern which have dur < sustain
 				if(self.timeline.notNil) {
-					Pfindur(sus, self.timeline.asPattern);
+					// FIXME: ugly hack to allow sampleTimeline
+					if(self.timeline.eventType == \sampleTimeline) {
+						Pfindur(sus, self.timeline.asPattern(self.startOffset ? self.event_dropdur));
+					} {
+						Pfindur(sus, self.timeline.asPattern);
+					}
 				} {
 					// event_dropdur is the old key, should replace by startOffset
-					Pfindur(sus, Pembed(self.pattern, self.startOffset ? self.event_dropdur))
+					var pat = Pfindur(sus, Pembed(self.pattern, self.startOffset ? self.event_dropdur));
+					pat;
+					//Pspawner({ arg sp;
+						//sp.par(
+							//Pfindur(sus, Pembed(self.pattern, self.startOffset ? self.event_dropdur))
+						//);
+						//sp.wait(self.use{self.dur}) // use delta ?
+					//})
 				}
 			},
 			receiver: { arg self; // can be used like a \type:\player thanks to this method
@@ -173,6 +187,7 @@ PatternEvent : Event {
 		var inst;
 		inst = super.new;
 		inst.parent = myevent ? defaultParent;
+		inst[\type] = \pattern; // don't know why it's not taken from parent event, need enforce
 		inst.putAll(ev);
 		^inst;
 	}
@@ -185,10 +200,15 @@ PatternEvent : Event {
 	}
 
 	embedInStream { arg inevent;
-		//^super.embedInStream((parent: this.parent).putAll(inevent))
+		// NOTE: should not embed pattern immediatly, else PatternEvents in Pseq cannot be parallel
+		^super.embedInStream((parent: this.parent).putAll(inevent))
 		//^this.embedPattern.debug("embedPattern").embedInStream((parent: this.parent).putAll(inevent))
-		^this.embedPattern.debug("embedPattern").embedInStream(inevent)
+		//^this.embedPattern.embedInStream(inevent)
 		//^super.embedInStream((parent: this.parent))
+	}
+
+	embedPatternInStream { arg inevent;
+		^this.embedPattern.embedInStream(inevent)
 	}
 
 	printOn { arg stream;
