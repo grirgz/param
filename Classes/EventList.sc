@@ -200,6 +200,21 @@ XEventList : List {
 		this.changed(\refresh);
 	}
 
+	splitEvent { arg event, durFromEventStart;
+		var ev1 = event;
+		var ev2 = event.copy;
+		var osus = event.use{ ~sustain.value };
+		if(durFromEventStart < osus) {
+			ev1[\sustain] = durFromEventStart;
+			ev2[\sustain] = osus-durFromEventStart;
+			ev2[\absTime] = ev1[\absTime] + durFromEventStart;
+			ev2[\event_dropdur] = durFromEventStart + ( ev2[\event_dropdur] ? 0 );
+		};
+		this.addEvent(ev2);
+		this.reorder;
+		this.changed(\refresh);
+	}
+
 	reorder {
 		//"eventlist reordering".debug;
 		this.sort({ arg a,b; 

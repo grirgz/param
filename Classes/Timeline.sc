@@ -33,3 +33,34 @@ TrackTimeline {
 		^topEnvironment[\trackTimeline].new(*args)
 	}
 }
+
+CursorTimeline {
+	// represent a slice of time with start and end position
+	var <startPosition;
+	var <endPosition;
+	startPosition_ { arg startPos;
+		startPosition = startPos;
+		this.swapIfNegative;
+		this.changed(\startPosition, startPosition);
+		this.changed(\refresh);
+	}
+
+	swapIfNegative {
+		if(endPosition.notNil and: { startPosition.notNil }) {
+			if(endPosition < startPosition) {
+				var x;
+				x = startPosition;
+				startPosition = endPosition;
+				endPosition = x;
+			}
+		}
+	}
+
+	endPosition_ { arg endPos;
+		endPosition = endPos;
+		this.swapIfNegative;
+		this.changed(\endPosition, startPosition);
+		this.changed(\refresh);
+	}
+}
+

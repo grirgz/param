@@ -112,8 +112,11 @@ ParamProto.init; // for preset menu
 
 WindowDef(\testgui, {
 	var layout;
+	var layoutAs;
+	var layoutMap;
+	var viewList = List.new;
 
-	layout = VLayout (
+	layoutAs = VLayout (
 		PlayerWrapper(Ndef(\target_object)).asView,
 		EventClass.presetSelectorView.(ParamGroupDef(\all_targets)),
 		EventClass.presetSelectorView.(~pg),
@@ -151,7 +154,70 @@ WindowDef(\testgui, {
 			)
 		}
 	);
-	ScrollView.new.canvas_(View.new.layout_(layout));
+	/*
+	layoutMap = VLayout (
+		PlayerWrapper(Ndef(\target_object)).asView,
+		EventClass.presetSelectorView.(ParamGroupDef(\all_targets)),
+		EventClass.presetSelectorView.(~pg),
+		* ~all_targets.collect { arg param;
+			var playout;
+			param.debug("=============================================================== TESTING param");
+			playout = switch(param.type, 
+				\scalar, {
+					HLayout(*
+						viewList.addAll([\StaticText, \TextField, \NumberBox, \Knob, \Slider, \sButton].collect({ arg gui;
+							gui.new.mapParam(param);
+						})
+						++ [
+							StaticText.new.mapParamLabel(param)
+						])
+					)
+
+				},
+				\array, {
+					HLayout(*
+						[\StaticText, \TextField, \MultiSliderView].collect({ arg method;
+							gui.new.mapParam(param);
+						})
+						++ [
+							StaticText.new.mapParamLabel(param)
+						]
+					)
+				},
+				\env, {
+					HLayout(*
+						[\StaticText, \TextField, \EnvelopeView, \XEnvelopeView].collect({ arg method;
+							gui.new.mapParam(param);
+						})
+						++ [
+							StaticText.new.mapParamLabel(param)
+						]
+					)
+
+				},
+			);
+			HLayout(
+				StaticText.new.string_(param.target.class),
+				playout
+			)
+		}
+	);
+	*/
+	layout = VLayout(
+		layoutAs,
+		//layoutMap, // TODO
+	);
+	VLayout(
+		HLayout (
+			BasicButton.new.string_("Map param").action_({
+			
+			}),
+			BasicButton.new.string_("Unmap param").action_({
+			
+			}),
+		),
+		ScrollView.new.canvas_(View.new.layout_(layout)),
+	)
 }).front;
 
 );

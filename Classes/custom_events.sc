@@ -151,11 +151,12 @@ PatternEvent : Event {
 				// NOTE: dur is not used because only Pembed at event list level can embed pattern which have dur < sustain
 				if(self.timeline.notNil) {
 					// FIXME: ugly hack to allow sampleTimeline
-					if(self.timeline.eventType == \sampleTimeline) {
+					// fixed: it should be the default
+					//if(self.timeline.eventType == \sampleTimeline) {
 						Pfindur(sus, self.timeline.asPattern(self.startOffset ? self.event_dropdur));
-					} {
-						Pfindur(sus, self.timeline.asPattern);
-					}
+					//} {
+						//Pfindur(sus, self.timeline.asPattern);
+					//}
 				} {
 					// event_dropdur is the old key, should replace by startOffset
 					var pat = Pfindur(sus, Pembed(self.pattern, self.startOffset ? self.event_dropdur));
@@ -226,6 +227,8 @@ PatternEvent : Event {
 
 
 Pembed : Pattern {
+	classvar <>startOffsetKey = \event_dropdur;
+	classvar <>sustainKey = \sustain;
 	*new { arg ...args;
 		^topEnvironment[\pembed].new(*args);
 	}

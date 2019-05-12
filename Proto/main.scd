@@ -12,6 +12,7 @@
 		"player_groups.scd",
 		"timeline_utils.scd",
 		"timeline.scd",
+		"timeline_sample.scd",
 		"experimental/drumrack.scd",
 		"experimental/sequencer_score_manager.scd",
 		"StepEventView.scd",

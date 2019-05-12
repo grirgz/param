@@ -48,13 +48,11 @@
 		relStartTime = {
 			var sp = startPosition.value;
 			if(sp.isNil) {
-				self.eventList.relStartTime;
+				self.eventList.relStartTime; // start time relative to first event
 			} {
 				var xx;
-				xx = ( sp - self.eventList.firstTime ).clip(0,inf);
-				// now relStartTime is independent of start event
-				self.eventList.firstTime max: xx;
-				// now relStartTime is always after first event
+				xx = ( sp - self.eventList.firstTime ).clip(0,inf); // now relStartTime is independent of start event
+				self.eventList.firstTime max: xx; // now relStartTime is always after first event
 			};
 
 		};
@@ -64,13 +62,14 @@
 			var absStart = relStartTime.value + self.eventList.firstTime;
 			var ep = endPosition.value;
 			var xx;
-			xx = if(ep.isNil) {
-				//totalDur = self.eventloop.list.totalDur - (startPosition - eventlist.startTime ).clip(0,inf);
-				self.eventLoop.list.totalDur;
-			} {
-				//totalDur = endPosition - (startPosition ? eventlist.startTime);
-				(ep - absStart);
-			};
+			//xx = if(ep.isNil) {
+				////totalDur = self.eventloop.list.totalDur - (startPosition - eventlist.startTime ).clip(0,inf);
+				//self.eventlist.totalDur;
+			//} {
+				////totalDur = endPosition - (startPosition ? eventlist.startTime);
+				//(( ep ? eventlist.endTime ) - absStart);
+			//};
+			xx = (( ep ? eventlist.endTime ) - absStart);
 			// prevent empty (infinite loop)
 			if(xx == 0) {
 				2;
@@ -117,7 +116,11 @@
 
 	play: { arg self;
 		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
-		self.asSelectedPattern.play;
+		var pat = self.asSelectedPattern;
+		if(self.proxy != pat) {
+			self.proxy.source = pat;
+		};
+		self.proxy.play;
 	},
 
 	asSelectedPattern: { arg self;
@@ -315,6 +318,7 @@
 		self.cursor.startPosition = self.eventList.startTime;
 		self.selection_cursor = CursorTimeline.new;
 		self.tracks_bypassed = Set.new;
+		self.recorder = ProtoTemplateDef(\SampleClipTimelineRecorder).new(self);
 		//"=============clipTimeline: end init".debug;
 
 		self;
@@ -611,6 +615,7 @@
 		// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
 		// - the live code: no startPosition given, defaulting to start event : asPattern
 		// - when embedded in bigger timeline: startPosition is relative to start event : embedInTimeline
+		//		if startOffset, relStartTime is adjusted
 
 		// timeline_pattern take a start time relative to firstEvent
 		// XEventList.relStartTime is relative to firstEvent
@@ -1743,7 +1748,14 @@
 					self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
 						x == clipfac.getName(ev)
 					});
+
+					// FIXME: should use parent_model startOffsetKey to be flexible
+					self.startOffsetField.mapParam(Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)));
+					self.sustainField.mapParam(Param(self.model, Pembed.sustainKey));
 				} {
+					self.startOffsetField.mapParam(nil);
+					self.startOffsetField.string = "";
+					self.sustainField.mapParam(nil);
 					self.type_popup.value = nil;
 					self.name_popup.value = nil;
 				}
@@ -1792,13 +1804,24 @@
 
 		self.refreshPopups;
 		//"clipEditor.makeLayout: part 2".debug;
+		self.startOffsetField = TextField.new.fixedWidth_(60);
+		self.sustainField = TextField.new.fixedWidth_(60);
 
 		header = HLayout(
-			type_popup,
-			name_popup,
+			[type_popup, stretch:2],
+			[name_popup, stretch:2],
 			XSimpleButton.new.label_("Edit").action_({
 				self.edit_selected;
-			})
+			}),
+			[HLayout(
+				StaticText.new.string_("offset:"),
+				self.startOffsetField,
+			), stretch:0],
+			[HLayout(
+				StaticText.new.string_("sustain:"),
+				self.sustainField,
+			), stretch:0],
+
 		);
 		layout = VLayout(
 			header,
@@ -2358,7 +2381,14 @@
 						//self.timeline.model.changed(\refresh);
 						self.timeline.model.reorder;
 					}
-				}
+				};
+				if(keycode == $s.ascii) { // ^s
+					"split!".debug;
+					self.splitAction;
+					//self.eventLoop.pushList;
+					//self.eventList = self.timeline_model.makeDefaultEventList;
+					//self.eventLoop.pushList;
+				};
 			} {
 				// no modifier
 
@@ -2638,6 +2668,7 @@
 					if(self.disable_track_header != true) {track_header},
 					StackLayout(
 						self.cursor_timeline.view,
+						timeline.selectionView,
 						timeline.view,
 					).mode_(1),
 					vrange.view,
@@ -2713,6 +2744,7 @@
 	},
 
 	refresh: { arg self;
+		// event list has changed, refresh the mappings
 		self.timeline.mapEventList(self.eventloop.list);
 		self.cursor_timeline.mapEventList(self.eventloop.list);
 		self.locatorbar.mapEventList(self.eventloop.list);
@@ -2802,6 +2834,7 @@
 			self.track_selector.viewInit.(self.track_selector.selected_view, self.track_selector.selected_index);
 		});
 
+		Log(\Param).debug("recorder %", self.timeline_model.recorder);
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
@@ -2812,6 +2845,7 @@
 			mute_button,
 			self.make_quant_popup,
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			Param(Message(self.timeline_model.recorder), \isRecording, XBoolSpec()).asButton("Rec"),
 		);
 		
 		self.header_layout;
@@ -2872,6 +2906,10 @@
 		//"clipTimelinePanelView.makeLayout: end init".debug;
 		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
 		self.layout;
+	},
+
+	splitAction: { arg self;
+		self.timeline.splitAtSelectionEdges;
 	},
 );
 

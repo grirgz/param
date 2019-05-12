@@ -206,7 +206,7 @@
 
 +Slider {
 	unmapParam {
-		Param.unmapSlider(this);
+		Param.unmapView(this);
 	}
 
 	mapParam { arg param;
@@ -220,7 +220,7 @@
 
 +Knob {
 	unmapParam {
-		Param.unmapSlider(this);
+		Param.unmapView(this);
 	}
 
 	mapParam { arg param;
@@ -234,7 +234,7 @@
 
 +MultiSliderView {
 	unmapParam {
-		Param.unmapSlider(this);
+		Param.unmapView(this);
 	}
 
 	mapParam { arg param;
@@ -248,7 +248,7 @@
 
 +StaticText {
 	unmapParam {
-		Param.unmapSlider(this);
+		Param.unmapView(this);
 		{
 			this.string = "-";
 		}.defer;
@@ -273,7 +273,10 @@
 
 +TextField {
 	unmapParam {
-		Param.unmapSlider(this);
+		Param.unmapView(this);
+		{
+			this.string = "";
+		}.defer;
 	}
 
 	mapParam { arg param;
@@ -287,7 +290,7 @@
 
 +NumberBox {
 	unmapParam {
-		Param.unmapSlider(this);
+		Param.unmapView(this);
 	}
 
 	mapParam { arg param;

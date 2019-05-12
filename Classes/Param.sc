@@ -285,6 +285,7 @@ Param {
 				wrapper = BusParam(*args);
 			}
 		);
+		// FIXME: should not have to add the whole class hierarchy
 		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
 		class_dispatcher['Pbindef'] = class_dispatcher['Pdef'];
 
@@ -294,6 +295,8 @@ Param {
 
 		class_dispatcher['Event'] = class_dispatcher['Dictionary'];
 		class_dispatcher['PresetEvent'] = class_dispatcher['Dictionary'];
+		class_dispatcher['PlayerEvent'] = class_dispatcher['Dictionary'];
+		class_dispatcher['PatternEvent'] = class_dispatcher['Dictionary'];
 		//class_dispatcher['StepEvent'] = class_dispatcher['Dictionary'];
 		class_dispatcher['StepEventDef'] = class_dispatcher['StepEvent'];
 		class_dispatcher['IdentityDictionary'] = class_dispatcher['Dictionary'];
@@ -313,6 +316,7 @@ Param {
 			class_dispatcher[target.class.asSymbol].value;
 		} {
 			// ParamValue goes here
+			// FIXME: this is error prone when target is not recognized
 			wrapper = target;
 		}
 	}
@@ -582,7 +586,7 @@ Param {
 			// the parameter is mapped to a Ndef
 			^val.asCompileString;
 		} {
-			switch(this.valueType,
+			switch(this.wrapper.valueType,
 				\scalar, {
 					^val.asFloat.asStringPrec(precision);
 				},
@@ -599,6 +603,11 @@ Param {
 			);
 		};
 	}
+
+	controllerTarget {
+		^this.wrapper.controllerTarget;
+	}
+
 
 	////// widgets
 
@@ -1260,7 +1269,7 @@ BaseParam {
 		};
 		instr = this.instrument;
 		if(instr.notNil) {
-			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec.default };
+			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec !? _.default ? 0 };
 			if(spec.class == XEnvSpec) {
 				val = val.asEnv;
 			};

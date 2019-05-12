@@ -11,16 +11,18 @@ TimelineView : SCViewHolder {
 
 	var <>mygrid; // debug;
 
+	var <userView;
+	var <selectionView;
+
 	var >clock;
 	var <viewport; // zero is topLeft, all is normalised between 0 and 1
 	var <areasize;
 	var <>createNodeHook;
 	var <>deleteNodeHook;
 	var <>paraNodes, connections; 
-	var <chosennode, mouseTracker;
+	var <chosennode; 
 	var <>quant;
 	var <>enableQuant = true;
-	var <userView;
 	var win;
 	var >virtualBounds;
 	var downAction, upAction, trackAction, keyDownAction, rightDownAction, overAction, connAction;
@@ -31,6 +33,7 @@ TimelineView : SCViewHolder {
 	var background, fillcolor;
 	var nodeCount, shape;
 	var startSelPoint, endSelPoint, refPoint, refWidth;
+	var rawStartSelPoint, rawEndSelPoint;
 
 	var refPoint; // grid_clicked_point
 	var chosennode_old_origin; // in grid units
@@ -63,14 +66,21 @@ TimelineView : SCViewHolder {
 	var createNodeDeferedAction;
 
 	var >eventFactory;
-	var <>valueKey = \midinote;
-
-
-	var <>forbidHorizontalNodeMove = false;
 
 	var <>selectionCursor;
 	var <>selectionCursorController;
-	
+
+	//// keys
+
+	var <>valueKey = \midinote;
+
+	//// options
+
+	var <>forbidHorizontalNodeMove = false;
+	var <>stayingSelection = true;
+	var <>quantizedSelection = true;
+	var <>enablePreview = false;
+
 	*new { arg posyKey; 
 		^super.new.initParaSpace(posyKey);
 	}
@@ -102,14 +112,14 @@ TimelineView : SCViewHolder {
 		};
 
 		selNodes = IdentitySet.new;
-		//mouseTracker = UserView.new(win, Rect(bounds.left, bounds.top, bounds.width, bounds.height));
 		quant = Point(1/8,1);
 		viewport = viewport ?? Rect(0,0,1,1);
 		areasize = areasize ?? Point(2,128);
-		mouseTracker = UserView.new;
-		userView = mouseTracker;
-		this.view = mouseTracker;
+		userView = UserView.new;
+		selectionView = UserView.new;
+		this.view = userView;
  		//bounds = mouseTracker.bounds; // thanks ron!
+ 		selectionView.bounds = userView.bounds; // thanks ron!
  		
 		background = Color.white;
 		this.view.background = Color.white(0.9);
@@ -132,10 +142,11 @@ TimelineView : SCViewHolder {
 		fontColor = Color.black;
 		pen	= GUI.pen;
 
-		mouseTracker
-			.canFocus_(true)
-			.focusColor_(Color.clear.alpha_(0.0))
-			//.relativeOrigin_(false)
+		selectionView.drawFunc_({ this.drawSelection });
+
+		userView
+			//.canFocus_(true)
+			//.focusColor_(Color.red.alpha_(0.5))
 
 			.mouseUpAction_({|me, x, y, mod|
 				this.mouseUpActionBase(me, x, y, mod)
@@ -167,6 +178,43 @@ TimelineView : SCViewHolder {
 
 			.drawFunc_({		
 				this.drawFunc;
+			})
+		;
+
+		selectionView
+			//.canFocus_(true)
+			//.focusColor_(Color.red.alpha_(0.5))
+
+			.mouseUpAction_({|me, x, y, mod|
+				this.mouseUpActionBase(me, x, y, mod)
+			})
+
+			.mouseDownAction_({|me, px, py, mod, buttonNumber, clickCount|
+				this.mouseDownActionBase(me, px, py, mod, buttonNumber, clickCount)
+			})
+
+			.mouseMoveAction_({|me, px, py, mod|
+				this.mouseMoveActionBase(me, px, py, mod)
+			})
+
+			.mouseWheelAction_({ arg view, x, y, modifiers, xDelta, yDelta;
+				this.mouseWheelActionBase(view, x, y, modifiers, xDelta, yDelta)
+			})
+
+			.mouseOverAction_({arg me, x, y;
+				this.mouseOverActionBase(me, x, y)
+			})
+
+			.keyDownAction_({ |me, key, modifiers, unicode, keycode |
+				this.keyDownActionBase(me, key, modifiers, unicode, keycode);
+			})
+
+			.keyUpAction_({ |me, key, modifiers, unicode |
+				this.keyUpActionBase(me, key, modifiers, unicode )
+			})
+
+			.drawFunc_({		
+				this.drawSelection;
 			})
 		;
 
@@ -203,7 +251,8 @@ TimelineView : SCViewHolder {
 			selectionCursor.startPosition = gpos.trunc(quant.value);
 		};
 		this.changed(\lastGridPos);
-		//[px, py, npos, gpos].debug("mouseDownAction_ px,py, npos, gpos");
+		Log(\Param).debug("mouseDownAction_ px %,py %, npos %, gpos %", px, py, npos, gpos);
+
 		chosennode = this.findNode(gpos.x, gpos.y);
 		//[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
 		//[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
@@ -293,9 +342,16 @@ TimelineView : SCViewHolder {
 			}, { // no node is selected
 				//debug("---------mouseDownAction: deselect all and draw selrect");
 				this.deselectAllNodes;
-				startSelPoint = npos;
-				endSelPoint = npos;
-				this.refresh;
+				if(quantizedSelection) {
+					rawStartSelPoint = npos;
+					startSelPoint = npos.trunc(nquant);
+					rawEndSelPoint = npos;
+					endSelPoint = npos.trunc(nquant);
+				} {
+					startSelPoint = npos;
+					endSelPoint = npos;
+				};
+				this.refreshSelectionView;
 			});
 		};
 	}
@@ -321,8 +377,10 @@ TimelineView : SCViewHolder {
 			rect = this.normRectToGridRect(Rect.fromPoints(startSelPoint, endSelPoint));
 			selNodes = IdentitySet.new;
 			this.selectNodes(this.findNodes(rect));
-			startSelPoint = 0@0;
-			endSelPoint = 0@0;
+			if(stayingSelection.not) {
+				startSelPoint = 0@0;
+				endSelPoint = 0@0;
+			};
 			this.refresh;
 		});
 	}
@@ -444,12 +502,47 @@ TimelineView : SCViewHolder {
 					//debug("======= selected nodes was moved!!!");
 					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes was moved!!!");
 					//model.print;  // debug
+					this.refresh;
 				} { // no node is selected
 					if( startSelPoint != Point(0,0) ) {
-						endSelPoint = npos;
+						if(quantizedSelection) {
+							var realLeftTop = { arg rect;
+								var x = rect.origin.x;
+								var y = rect.origin.y;
+								if(rect.height < 0) {
+									y = rect.origin.y + rect.height;
+								};
+								if(rect.width < 0) {
+									x = rect.origin.x + rect.width;
+								};
+								Point(x,y)
+							};
+							var realRightBottom = { arg rect;
+								var x = rect.rightBottom.x;
+								var y = rect.rightBottom.y;
+								if(rect.height < 0) {
+									y = rect.rightBottom.y - rect.height;
+								};
+								if(rect.width < 0) {
+									x = rect.rightBottom.x - rect.width;
+								};
+								Point(x,y)
+							};
+							var selrec = Rect.fromPoints(rawStartSelPoint, npos);
+							var leftTop = realLeftTop.(selrec);
+							var rightBottom = realRightBottom.(selrec);
+							var qleftTop = leftTop.trunc(nquant);
+							var qrightBottom = rightBottom.trunc(nquant) + nquant;
+							//Log(\Param).debug("rstart % rend % selrec % leftTop % % rightBottom % % ", rawStartSelPoint, npos, selrec, leftTop, qleftTop, rightBottom, qrightBottom);
+							startSelPoint = qleftTop;
+							endSelPoint = qrightBottom;
+							rawEndSelPoint = npos;
+						} {
+							endSelPoint = npos;
+						};
+						this.refreshSelectionView;
 					}
 				};
-				this.refresh;
 			}
 		};
 	}
@@ -587,6 +680,21 @@ TimelineView : SCViewHolder {
 		}
 	}
 
+	splitAtSelectionEdges {
+		var selrect = this.normRectToGridRect(Rect.fromPoints(startSelPoint, endSelPoint));
+		this.findCrossedNodes(selrect.leftTop, selrect.leftBottom).do { arg node;
+			this.splitNode(node, selrect.left)
+		};
+		this.findCrossedNodes(selrect.rightTop, selrect.rightBottom).do { arg node;
+			this.splitNode(node, selrect.right)
+		};
+				//Rect(5,5,10,10).intersects(Rect(9,4,0,3))
+	}
+
+	splitNode { arg node, gridY;
+		this.model.splitEvent(node.model, gridY - node.model[node.timeKey]);
+	}
+
 	///////////////////////////////////////////////////////// Drawing
 	
 	drawGridY {
@@ -665,7 +773,6 @@ TimelineView : SCViewHolder {
 		//var bounds = this.view.bounds;
 		var pen = Pen;
 		var bounds = this.virtualBounds;
-		var pstartSelPoint, pendSelPoint;
 
 
 		pen.width = 1;
@@ -673,12 +780,12 @@ TimelineView : SCViewHolder {
 		pen.fillRect(bounds); // background fill
 		backgrDrawFunc.value; // background draw function
 
-		// grid
+		/////////////// grid
 
 		this.drawGridX;
 		this.drawGridY;
 		
-		// the lines
+		/////////////// the lines
 
 		pen.color = Color.black;
 		connections.do({arg conn;
@@ -686,20 +793,33 @@ TimelineView : SCViewHolder {
 		});
 		pen.stroke;
 
-		// end line
+		/////////////// end line
 
 		this.drawEndLine;
 		
-		// the nodes or circles
+		/////////////// the nodes or circles
 
 		this.drawNodes;
 
-		// the optional waveform
+		/////////////// the optional waveform
 
 		this.drawWaveform;
 		
-		// the selection node
+		/////////////// the selection node
 
+		//this.drawSelection;
+
+
+		/////////////// background frame
+
+		pen.color = Color.black;
+		pen.strokeRect(bounds); 
+
+	}
+
+	drawSelection {
+		var pstartSelPoint, pendSelPoint;
+		var pen = Pen;
 		pstartSelPoint = this.normPointToPixelPoint(startSelPoint);
 		pendSelPoint = this.normPointToPixelPoint(endSelPoint);
 
@@ -716,12 +836,32 @@ TimelineView : SCViewHolder {
 							pendSelPoint.y - pstartSelPoint.y
 							));
 
+		/////////////// the raw selection node (enable for debug)
 
-		// background frame
+		//pstartSelPoint = this.normPointToPixelPoint(rawStartSelPoint);
+		//pendSelPoint = this.normPointToPixelPoint(rawEndSelPoint);
 
-		pen.color = Color.black;
-		pen.strokeRect(bounds); 
+		//pen.color = selectFillColor;
+		//pen.fillRect(Rect(	pstartSelPoint.x + 0.5, 
+							//pstartSelPoint.y + 0.5,
+							//pendSelPoint.x - pstartSelPoint.x,
+							//pendSelPoint.y - pstartSelPoint.y
+							//));
+		//pen.color = selectStrokeColor;
+		//pen.strokeRect(Rect(	pstartSelPoint.x + 0.5, 
+							//pstartSelPoint.y + 0.5,
+							//pendSelPoint.x - pstartSelPoint.x,
+							//pendSelPoint.y - pstartSelPoint.y
+							//));
 
+		/////////////// debug marker
+
+		//Pen.color = Color.red;
+		//Pen.addArc(Point(1,1),2, 0, 2pi);
+		//Pen.fill;
+		//Pen.addArc(Point(20,20),5, 0, 2pi);
+		//Pen.fill;
+		
 	}
 
 	drawWaveform {} // for children classes
@@ -1123,7 +1263,7 @@ TimelineView : SCViewHolder {
 	}
 
 	pixelPointToSecondPoint { arg point;
-		^this.pixelPointToGridPoint(point / Point(this.clock.tempo,1));
+		^this.pixelPointToGridPoint(point) / Point(this.clock.tempo,1);
 	}
 
 	secondRectToPixelRect { arg rect;
@@ -1309,7 +1449,16 @@ TimelineView : SCViewHolder {
 	}
 
 	refresh {
-		if( this.refreshEnabled, { {mouseTracker.refresh}.defer; });
+		if( this.refreshEnabled, { {
+			userView.refresh;
+			selectionView.refresh;
+		}.defer; });
+	}
+
+	refreshSelectionView {
+		if( this.refreshEnabled, { {
+			selectionView.refresh;
+		}.defer; });
 	}
 
 	lazyRefresh {
@@ -1328,7 +1477,7 @@ TimelineView : SCViewHolder {
 			// priority to the already selected node
 			^chosennode;
 		};
-		paraNodes.reverse.do({arg node; 
+		paraNodes.reverse.do({arg node;  // reverse because topmost is last
 			//node.spritenum.debug("spritnum");
 			//[node.rect, point].debug("findNode");
 			if(node.selectable and: {node.rect.containsPoint(point)}, {
@@ -1337,6 +1486,18 @@ TimelineView : SCViewHolder {
 			});
 		});
 		^nil;
+	}
+
+	findCrossedNodes { arg startPoint, endPoint;
+		^paraNodes.collect({arg node; 
+			var point = node.origin;
+			//node.spritenum.debug("spritnum");
+			//[rect, point].debug("findNodes");
+			if(node.selectable and: {Rect.fromPoints(startPoint, endPoint).intersects(node.rect)}, {
+				//[node.rect, point].debug("findNode: found!!");
+				node;
+			});
+		}).select(_.notNil);
 	}
 
 	findNodes { arg rect;
@@ -1523,19 +1684,57 @@ TimelineView : SCViewHolder {
 
 TimelinePreview : TimelineView {
 	drawFunc {
+		Log(\Param).debug("preview drawFunc");
 		this.drawNodes;
 		this.drawEndLine;
+	}
+
+	mapModel { arg model;
+		if(model[\eventlist].notNil) {
+			this.mapEventList(model.eventlist);
+		};
+
+		// FIXME: this is specific code, should be generalized
+		if(model.timeline.notNil) {
+			switch(model.timeline.eventType,
+				\clipTimeline, {
+					// FIXME: should optimize this out of here
+					var maxy = 1;
+					model.timeline.eventList.do { arg ev;
+						if(ev[this.posyKey].notNil and: { ev[this.posyKey]  > maxy }) {
+							maxy = ev[this.posyKey];
+						};
+					};
+					this.areasize.y = maxy + 1;
+				}, {
+
+				}
+			);
+		};
 	}
 }
 
 TimelinePreview_Env : TimelineEnvView {
 	drawFunc {
+		Log(\Param).debug("preview drawFunc env");
 		this.drawNodes;
 		this.drawEndLine;
 	}
 
-	nodeClass {
-		^TimelineEnvViewNode
+	mapModel { arg model;
+		this.mapParam(model.timeline.levelParam);
+	}
+}
+
+TimelinePreview_Sample : SampleTimelineView {
+	drawFunc {
+		Log(\Param).debug("preview drawFunc sample");
+		this.drawWaveform;
+		this.drawEndLine;
+	}
+
+	mapModel { arg model;
+		this.mapData(model.timeline);
 	}
 }
 
@@ -1548,11 +1747,16 @@ TimelinePreview_Env : TimelineEnvView {
 TimelineViewNode {
 	*new { arg parent, nodeidx, event;
 		var type;
+		var node;
 		// FIXME: choose a better type system
 		type = event[\nodeType] ? event[\eventType] ? event[\type];
-		//[ parent.class, type.asCompileString ].debug("TimelineViewNode: new: nodeType/type");
-		//[ event[\nodeType], event, event.parent ].debug("TimelineViewNode: nodeType");
-		^switch(type,
+		if(type == \pattern and:{  event[\timeline].notNil }) {
+			type = \timeline;
+		};
+
+		Log(\Param).debug("% %".format("TimelineViewNode: new: parent, nodeType/type",[ parent.class, type.asCompileString ]));
+		Log(\Param).debug("TimelineViewNode: nodeType %".format([ event[\nodeType], event, event.parent ]));
+		node = switch(type,
 			\start, {
 				var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
 				res.alpha = 1;
@@ -1571,11 +1775,16 @@ TimelineViewNode {
 			},
 			\timeline, {
 				//if(event.timeline.isKindOf(EnvTimeline)) {
-				if(event.timeline.eventType == \envTimeline) {
-					TimelineViewEventEnvNode(parent, nodeidx, event)
-				} {
-					TimelineViewEventListNode(parent, nodeidx, event)
-				}
+				switch(event.timeline.eventType,
+					\envTimeline, {
+						TimelineViewEventEnvNode(parent, nodeidx, event)
+					},
+					\sampleTimeline, {
+						TimelineViewSampleNode(parent, nodeidx, event)
+					}, {
+						TimelineViewEventListNode(parent, nodeidx, event)
+					}
+				)
 			},
 			\player, {
 				TimelineViewEventListNode(parent, nodeidx, event)
@@ -1593,7 +1802,11 @@ TimelineViewNode {
 				//type.asCompileString.debug("mais pourquoi ?? :(");
 				TimelineViewEventNode(parent, nodeidx, event)
 			}
-		)
+		);
+
+		Log(\Param).debug("node created: % %".format(node.class, node));
+
+		^node;
 	}
 }
 
@@ -1601,6 +1814,7 @@ TimelineViewNode {
 //// base
 
 TimelineViewNodeBase {
+	// TODO: take default key names from PlayerEvent
 	var <spritenum;
 	var <model;
 	var <>absTime;
@@ -1610,6 +1824,8 @@ TimelineViewNodeBase {
 	var >posyKey = \midinote;
 	var <>defaultPosyValue = 0;
 	var <>lenKey = \sustain;
+	var <>startOffsetKey = \event_dropdur;
+	var <>startOffset;
 	var <>origin;
 	var <>extent;
 	var <>defaultHeight = 1;
@@ -1789,6 +2005,17 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 	initPreview {}
 
+	refreshPreview {
+		if(model[\eventlist].notNil) {
+			preview.mapEventList(model.eventlist);
+		};
+
+		if(model.timeline.notNil) {
+			preview.mapModel(model)
+		};
+
+	}
+
 	init { arg xparent, nodeidx, event;
 		parent = xparent;
 		spritenum = nodeidx;
@@ -1806,6 +2033,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 			model[timeKey] = origin.x;
 			model[this.posyKey] = origin.y;
 			model[lenKey] = extent.x;
+			//model[startOffsetKey] = startOffset; // user should change model directly
 		};
 
 		refresh = {
@@ -1815,30 +2043,8 @@ TimelineViewEventListNode : TimelineViewEventNode {
 			outlineColor = Color.black;
 			extent = Point(model.use { currentEnvironment[lenKey].value(model) } ? 1, 1); // * tempo ?
 			label = model.use {  model.label } ? "unnamed";
-			if(model[\eventlist].notNil) {
-				preview.mapEventList(model.eventlist);
-			};
-
-			// FIXME: this is specific code, should be generalized
-			if(model.timeline.notNil) {
-				switch(model.timeline.eventType,
-					\envTimeline, {
-						preview.mapParam(model.timeline.levelParam);
-					},
-					\clipTimeline, {
-						// FIXME: should optimize this out of here
-						var maxy = 1;
-						model.timeline.eventList.do { arg ev;
-							if(ev[this.posyKey].notNil and: { ev[this.posyKey]  > maxy }) {
-								maxy = ev[this.posyKey];
-							};
-						};
-						preview.areasize.y = maxy + 1;
-					}, {
-
-					}
-				);
-			};
+			startOffset = model[startOffsetKey];
+			this.refreshPreview;
 
 			parent.refresh;
 			//[spritenum, origin, extent, color].debug("node refresh");
@@ -1847,6 +2053,32 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		this.makeUpdater;
 		this.refresh;
 		this.action;
+	}
+
+	drawSpecialRect { arg rect;
+		Pen.moveTo(rect.rightTop);
+		Pen.moveTo(rect.rightBottom);
+		//TODO
+
+	}
+
+	drawRectTriangle { arg rect, anglePos='leftTop';
+		var poslist = ['leftTop', 'rightTop', 'rightBottom', 'leftBottom'];
+		var startIdx = poslist.indexOf(anglePos);
+
+		Pen.moveTo(rect.perform(poslist.wrapAt(startIdx)));
+		Pen.lineTo(rect.perform(poslist.wrapAt(startIdx+1)));
+		Pen.lineTo(rect.perform(poslist.wrapAt(startIdx+3)));
+		Pen.lineTo(rect.perform(poslist.wrapAt(startIdx+4)));
+
+	}
+
+	drawRectDiagonal { arg rect, anglePos='leftTop';
+		var poslist = ['leftTop', 'rightTop', 'rightBottom', 'leftBottom'];
+		var startIdx = poslist.indexOf(anglePos);
+
+		Pen.moveTo(rect.perform(poslist.wrapAt(startIdx+1)));
+		Pen.lineTo(rect.perform(poslist.wrapAt(startIdx+3)));
 	}
 
 	draw {
@@ -1864,6 +2096,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		pos = this.origin;
 
 		rect = parent.gridRectToPixelRect(this.rect);
+		rect = rect.insetAll(0,0,1,1); // cleaner drawing
 		// now rect is in screen coordinates
 		previewrect = rect.insetAll(0,labelheight,0,0);
 		labelrect = rect.insetAll(0,0,0,rect.height-labelheight);
@@ -1878,47 +2111,79 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		Pen.fillRect(rect);
 		Pen.color = label_background;
 		Pen.fillRect(previewrect);
+
 		//Pen.color = Color.red;
 		//Pen.fillRect(labelrect);
 
+		// outline
 
 		Pen.color = this.outlineColor;
 		Pen.strokeRect(rect);
 
+		// top left triangle
+		if(startOffset.notNil and: { startOffset > 0 }) {
+			Pen.color = this.outlineColor;
+		} {
+			Pen.color = Color.white;
+		};
+
+		this.drawRectTriangle(
+			Rect(labelrect.origin.x, labelrect.origin.y, labelheight/4, labelheight/4),
+			'leftTop'
+		);
+		Pen.fill;
+
+		this.drawRectDiagonal(
+			Rect(labelrect.origin.x, labelrect.origin.y, labelheight/4, labelheight/4),
+			'leftTop'
+		);
+		Pen.color = this.outlineColor;
+		Pen.stroke;
+
+		// top right triangle
+		Pen.color = Color.white;
+
+		this.drawRectTriangle(
+			Rect(labelrect.rightTop.x, labelrect.rightTop.y, labelheight.neg/4, labelheight/4),
+			'leftTop'
+		);
+		Pen.fill;
+
+		this.drawRectDiagonal(
+			Rect(labelrect.rightTop.x, labelrect.rightTop.y, labelheight.neg/4, labelheight/4),
+			'leftTop'
+		);
+		Pen.color = this.outlineColor;
+		Pen.stroke;
+
+		// label
 		Pen.color = Color.black;
 		Pen.stringLeftJustIn(" "++label, labelrect);
-		//Pen.stringInRect(label, labelrect);
-		//Pen.string(label);
 
-		//virtualBounds_rect =  Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-previewrect.height);
-		//Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-previewrect.height).debug("vboundsrect orig");
-		//virtualBounds_rect =  Rect(0, 0, 100, 100);
-		//virtualBounds_rect =  previewrect;
-		//virtualBounds_rect = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, 0-parent.virtualBounds.height-previewrect.height);
-		//virtualBounds_rect = previewrect.flipScreen(parent.virtualBounds);
-		//virtualBounds_rect = previewrect;
-		//virtualBounds_rect.debug("vboundsrect now");
-		//virtualBounds_rect =  Rect(previewrect.leftBottom.x, previewrect.leftBottom.y+previewrect.height, parent.bounds.width, previewrect.height);
-		virtualBounds_rect = Rect(previewrect.leftTop.x, previewrect.leftTop.y, this.parent.virtualBounds.width, previewrect.height);
+		// preview
 
-		//virtualBounds_rect = previewrect;
-		preview.virtualBounds = virtualBounds_rect;
-		preview.areasize = preview.areasize.x_(this.parent.areasize.x);
-		preview.viewport = preview.viewport.width_(this.parent.viewport.width);
+		if(this.enablePreview) {
 
-		//Pen.color = Color.red;
-		//Pen.addRect( virtualBounds_rect );
+			// we use wide virtualBounds_rect as a workaround for a size bug to be found
+			virtualBounds_rect = Rect(previewrect.leftTop.x, previewrect.leftTop.y, this.parent.virtualBounds.width, previewrect.height);
+			//virtualBounds_rect = previewrect;
+
+			preview.virtualBounds = virtualBounds_rect;
+			preview.areasize = preview.areasize.x_(this.parent.areasize.x);
+			preview.viewport = preview.viewport.width_(this.parent.viewport.width);
+
+			Pen.use {
+				Pen.addRect(previewrect);
+				Pen.clip;
+				Log(\Param).debug("preview");
+				preview.drawFunc;
+			};
+		}
 		//Pen.stroke;
-		//Pen.color = Color.blue;
-		//Pen.addRect( previewrect );
-		//Pen.stroke;
-		//preview.virtualBounds = Rect(previewrect.leftBottom.x, previewrect.leftBottom.y, parent.bounds.width, previewrect.height);
-		Pen.use {
-			Pen.addRect(previewrect);
-			Pen.clip;
-			preview.drawFunc;
-		};
-		//Pen.stroke;
+	}
+
+	enablePreview {
+		^this.parent.enablePreview;
 	}
 
 	makeUpdater {
@@ -1937,6 +2202,12 @@ TimelineViewEventListNode : TimelineViewEventNode {
 TimelineViewEventEnvNode : TimelineViewEventListNode {
 	timelinePreviewClass {
 		^TimelinePreview_Env
+	}
+}
+
+TimelineViewSampleNode : TimelineViewEventListNode {
+	timelinePreviewClass {
+		^TimelinePreview_Sample
 	}
 }
 
@@ -2469,6 +2740,102 @@ TimelineScroller : SCViewHolder {
 			}
 		}.defer;
 	}
+}
+
+/////////////////////// sample timeline view
+
+SampleTimelineView : TimelineView {
+	var <>bufferData;
+	var >resampledData;
+	var <>resampledDataLight;
+	var >resampleRate;
+	var <>resampleRateLight;
+	var <>numChannels = 0;
+	var <>mydraw;
+
+	mapData { arg model;
+		this.view.onChange(model, \data, { 
+			{
+				"hey!! changed data".debug;
+				numChannels = model.numChannels;
+				this.areasize = Point(areasize.x, numChannels);
+
+				resampleRate = model.resampleRate;
+				resampleRateLight = model.resampleRateLight;
+				resampledData = model.resampledData;
+				resampledDataLight = model.resampledDataLight;
+
+				//[self.timeline.numChannels, model.numChannels].debug("A23");
+				this.refresh;
+			}.defer
+		});
+		model.changed(\data);
+	}
+
+	resampledData {
+		^resampledData
+	}
+
+	resampleRate {
+		^resampleRate
+	}
+
+	drawWaveform {
+		Log(\Param).debug("draw waveform");
+		if(mydraw.notNil) {
+			mydraw.debug("mydraw");
+			mydraw.(this);
+		} {
+			//Pen.color = Color.green;
+			var bounds = this.virtualBounds;
+			var height = bounds.height;
+			var width = bounds.width;
+			var drawChannel = { arg chanidx, chandata;
+				var drawWave = { arg yfac=1;
+					block { arg break;
+
+						chandata.do{|y, x|
+							var p;
+							var offset = chanidx+0.5;
+							y = y[chanidx] ? 0;
+							p = this.secondPointToPixelPoint(Point(x/this.resampleRate,y*yfac+offset));
+							//if(x%100==0) { p.debug("p % %".format(chanidx, yfac)); };
+							if(x==0, {Pen.moveTo(p)}, {Pen.lineTo(p)});
+							if(p.x > bounds.right) {
+								//Log(\Param).debug("break!");
+								break.value
+							}
+						};
+					}
+				};
+				Pen.width = 1;
+
+				drawWave.(1);
+				Pen.color = Color.black;
+				Pen.fill;
+
+				//drawWave.(1);
+				//Pen.color = Color.blue;
+				//Pen.stroke;
+
+				drawWave.(-1);
+				Pen.color = Color.black;
+				Pen.fill;
+
+				//drawWave.(-1);
+				//Pen.color = Color.blue;
+				//Pen.stroke;
+			};
+			//Log(\Param).debug("draw waveform: bounds %, areasize %", bounds, this.areasize );
+			numChannels.do { arg idx;
+				drawChannel.(idx, this.resampledData);
+			};
+			//Pen.color = Color.red;
+			//Pen.strokeRect(bounds);
+
+		}
+	}
+	
 }
 
 ///////////////////////////////////////
