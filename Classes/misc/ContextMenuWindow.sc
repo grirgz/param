@@ -66,3 +66,28 @@ ContextMenuWindow {
 	}
 }
 
+
+/////////////////:
+/*
+// example
+
+
+WindowDef(\popup, {
+		VLayout(
+			Knob.new.mouseDownAction_({ arg view, x, y, mod, mouseButton;
+				var menu = MenuSpec(
+					[
+						"Setmode" -> { "k".debug },
+						"remove" -> { "xxxk".debug },
+					]
+				);
+				ContextMenuWindow(menu.labelList.asArray).front(view, x, y, mouseButton).action_({ arg me, idx;
+					menu.valueList[idx].value
+
+				})
+			})
+		)
+
+}).front;
+
+*/

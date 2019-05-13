@@ -363,7 +363,11 @@
 
 + View {
 	// FIXME: why doesnt init ? 
-	onChange { arg model, key, fun;
+	onChange { arg ...args; // deprecated name
+		^this.followChange(*args)
+	}
+
+	followChange { arg model, key, fun, init=true;
 		var con = SimpleController.new(model).put(key, { arg ...args;
 			if(this.isClosed) {
 				con.remove;
@@ -371,6 +375,9 @@
 				fun.(* [this] ++ args);
 			};
 		});
+		if(init==true) { 
+			model.changed(key);	
+		};
 	}
 
 	refreshChangeAction_ { arg fun;

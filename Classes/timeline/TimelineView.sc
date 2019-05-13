@@ -321,12 +321,15 @@ TimelineView : SCViewHolder {
 
 			//"mouseDownAction: 1".debug;
 			newevent = this.eventFactory(newpos);
+			Log(\Param).debug("new event!!!!!!!!! %", newevent);
 			chosennode = this.addEvent(newevent);
 			//newevent.debug("mouseDownAction: 2");
+			Log(\Param).debug("new event after add!!!!!!!!! %", newevent);
 
 			createNodeDeferedAction = {
 				//debug("mouseDownAction: 3");
 				model.addEvent(newevent);
+				Log(\Param).debug("new event after add to model!!!!!!!!! %", newevent);
 				//debug("mouseDownAction: 4");
 				model.reorder; // reorder lose node selection
 				//debug("mouseDownAction: 5");
@@ -716,8 +719,10 @@ TimelineView : SCViewHolder {
 		// why nodesize is in normalized form ???
 		nodesize = this.gridPointToNormPoint(nodesize);
 		if(eventFactory.isNil) {
+			Log(\Param).debug("TimelineView: eventFactory is nil");
 			^(absTime: pos.x, midinote: pos.y, sustain:nodesize.x);
 		} {
+			Log(\Param).debug("TimelineView: eventFactory is %", eventFactory.asCompileString);
 			^eventFactory.(pos, nodesize.x);
 		}
 	}

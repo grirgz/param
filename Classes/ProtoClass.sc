@@ -295,3 +295,55 @@ ProtoTemplateDef : ProtoClass {
 
 }
 
+ProtoClassDef {
+	classvar <>protoClassDef_all;
+	//classvar <>protoClassDef_key = \ProtoClassDefKey;
+
+	*initClass {
+		Class.initClassTree(PresetDictionary);
+		protoClassDef_all = PresetDictionary.new(\ProtoClassDef);
+	}
+
+	*new { arg key, val;
+		if(val.notNil) {
+			if(val.isKindOf(ProtoClass).not) {
+				val = ProtoClass(val);
+			};
+			protoClassDef_all[key] = val;
+			^val
+		} {
+			^protoClassDef_all[key];
+		}
+	}
+
+	*protoClassDef_clear { arg key;
+		if(key.notNil) {
+			protoClassDef_all[key] = nil
+		};
+		^nil
+	}
+
+	// TODO: should be in parent class
+	collect { arg ...args;
+		^this[\collect].(this, *args)
+	}
+
+	do { arg ...args;
+		this[\do].(this, *args)
+	}
+
+	printOn { arg stream;
+		this.storeOn(stream)
+	}
+
+	storeOn { arg stream;
+		stream << "%(%)".format(this.class.asString, this.key.asCompileString);
+	}
+
+}
+
+ProtoInst {
+	*new { arg templateKey ...args;
+		^ProtoClassDef(templateKey).new(*args)
+	}
+}
