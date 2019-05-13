@@ -180,11 +180,11 @@ DrumRack {
 		^(
 			load: { arg self; 
 				var inst;
-				"1".debug;
+				//"1".debug;
 				inst = DrumRack(self.name);
-				"2".debug;
+				//"2".debug;
 				inst.loadDrumrack(self.drumrack_name);
-				"3".debug;
+				//"3".debug;
 				inst;
 			},
 			name: key,

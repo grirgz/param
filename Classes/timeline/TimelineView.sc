@@ -1,10 +1,6 @@
+
 // based on Thor Magnusson code - www.ixi-audio.net
 // GNU licence - google it.
-
-// TODO
-// change name para to timeline
-// change node len to width and size to height
-// determine coordinate system used by hooks
 
 
 TimelineView : SCViewHolder {
@@ -131,8 +127,8 @@ TimelineView : SCViewHolder {
 		paraNodes = List.new; // list of ParaNode objects
 		connections = List.new; // list of arrays with connections eg. [2,3]
 		nodeCount = 0;
-		startSelPoint = 0@0;
-		endSelPoint = 0@0;
+		this.startSelPoint = 0@0;
+		this.endSelPoint = 0@0;
 		refPoint = 0@0; // in grid units
 		refWidth = 0;
 		shape = "rect";
@@ -229,6 +225,53 @@ TimelineView : SCViewHolder {
 		^(clock ? TempoClock.default)
 	}
 
+	//////////////////////////
+
+	startSelPoint_ { arg npoint;
+		if(this.selectionCursor.notNil) {
+			if(npoint.isNil) {
+				this.selectionCursor.startPoint = nil;
+			} {
+				this.selectionCursor.startPoint = this.normPointToGridPoint(npoint);
+			};
+		};
+		startSelPoint = npoint;
+	}
+
+	endSelPoint_ { arg npoint;
+		if(this.selectionCursor.notNil) {
+			if(npoint.isNil) {
+				this.selectionCursor.endPoint = nil;
+			} {
+				this.selectionCursor.endPoint = this.normPointToGridPoint(npoint);
+			};
+		};
+		endSelPoint = npoint;
+	}
+
+	startSelPoint { arg npoint;
+		if(this.selectionCursor.notNil) {
+			if(this.selectionCursor.startPoint.notNil) {
+				^this.gridPointToNormPoint(this.selectionCursor.startPoint);
+			} {
+				^nil
+			}
+		} {
+			^startSelPoint;
+		}
+	}
+
+	endSelPoint { arg npoint;
+		if(this.selectionCursor.notNil) {
+			if(this.selectionCursor.startPoint.notNil) {
+				^this.gridPointToNormPoint(this.selectionCursor.endPoint);
+			} {
+				^nil
+			}
+		} {
+			^endSelPoint;
+		}
+	}
 	///////////////////////////////////////////////////////// input events handling
 
 	mouseDownActionBase {|me, px, py, mod, buttonNumber, clickCount|
@@ -247,9 +290,6 @@ TimelineView : SCViewHolder {
 		gpos = this.pixelPointToGridPoint(Point(px,py));
 		lastPixelPos = Point(px,py);
 		lastGridPos = gpos.trunc(quant.value);
-		if(selectionCursor.notNil) {
-			selectionCursor.startPosition = gpos.trunc(quant.value);
-		};
 		this.changed(\lastGridPos);
 		Log(\Param).debug("mouseDownAction_ px %,py %, npos %, gpos %", px, py, npos, gpos);
 
@@ -340,17 +380,18 @@ TimelineView : SCViewHolder {
 
 				downAction.value(chosennode);
 			}, { // no node is selected
-				//debug("---------mouseDownAction: deselect all and draw selrect");
+				Log(\Param).debug("---------mouseDownAction: deselect all and draw selrecti");
 				this.deselectAllNodes;
 				if(quantizedSelection) {
 					rawStartSelPoint = npos;
-					startSelPoint = npos.trunc(nquant);
+					this.startSelPoint = npos.trunc(nquant);
 					rawEndSelPoint = npos;
-					endSelPoint = npos.trunc(nquant);
+					this.endSelPoint = npos.trunc(nquant);
 				} {
-					startSelPoint = npos;
-					endSelPoint = npos;
+					this.startSelPoint = npos;
+					this.endSelPoint = npos;
 				};
+				Log(\Param).debug("sel:% %", this.startSelPoint, this.endSelPoint);
 				this.refreshSelectionView;
 			});
 		};
@@ -374,12 +415,13 @@ TimelineView : SCViewHolder {
 		},{ // no node is selected
 			// find which nodes are selected
 			var rect;
-			rect = this.normRectToGridRect(Rect.fromPoints(startSelPoint, endSelPoint));
+			Log(\Param).debug("mouseUpAction st %, en %", this.startSelPoint, this.endSelPoint);
+			rect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
 			selNodes = IdentitySet.new;
 			this.selectNodes(this.findNodes(rect));
 			if(stayingSelection.not) {
-				startSelPoint = 0@0;
-				endSelPoint = 0@0;
+				this.startSelPoint = 0@0;
+				this.endSelPoint = 0@0;
 			};
 			this.refresh;
 		});
@@ -504,7 +546,7 @@ TimelineView : SCViewHolder {
 					//model.print;  // debug
 					this.refresh;
 				} { // no node is selected
-					if( startSelPoint != Point(0,0) ) {
+					if( this.startSelPoint != Point(0,0) ) {
 						if(quantizedSelection) {
 							var realLeftTop = { arg rect;
 								var x = rect.origin.x;
@@ -534,11 +576,11 @@ TimelineView : SCViewHolder {
 							var qleftTop = leftTop.trunc(nquant);
 							var qrightBottom = rightBottom.trunc(nquant) + nquant;
 							//Log(\Param).debug("rstart % rend % selrec % leftTop % % rightBottom % % ", rawStartSelPoint, npos, selrec, leftTop, qleftTop, rightBottom, qrightBottom);
-							startSelPoint = qleftTop;
-							endSelPoint = qrightBottom;
+							this.startSelPoint = qleftTop;
+							this.endSelPoint = qrightBottom;
 							rawEndSelPoint = npos;
 						} {
-							endSelPoint = npos;
+							this.endSelPoint = npos;
 						};
 						this.refreshSelectionView;
 					}
@@ -681,7 +723,7 @@ TimelineView : SCViewHolder {
 	}
 
 	splitAtSelectionEdges {
-		var selrect = this.normRectToGridRect(Rect.fromPoints(startSelPoint, endSelPoint));
+		var selrect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
 		this.findCrossedNodes(selrect.leftTop, selrect.leftBottom).do { arg node;
 			this.splitNode(node, selrect.left)
 		};
@@ -692,7 +734,8 @@ TimelineView : SCViewHolder {
 	}
 
 	splitNode { arg node, gridY;
-		this.model.splitEvent(node.model, gridY - node.model[node.timeKey]);
+		var newevent = this.model.splitEvent(node.model, gridY - node.model[node.timeKey]);
+		node.decorateCopy(newevent);
 	}
 
 	///////////////////////////////////////////////////////// Drawing
@@ -820,21 +863,24 @@ TimelineView : SCViewHolder {
 	drawSelection {
 		var pstartSelPoint, pendSelPoint;
 		var pen = Pen;
-		pstartSelPoint = this.normPointToPixelPoint(startSelPoint);
-		pendSelPoint = this.normPointToPixelPoint(endSelPoint);
+		if(this.startSelPoint.notNil and: {this.endSelPoint.notNil}) {
 
-		pen.color = selectFillColor;
-		pen.fillRect(Rect(	pstartSelPoint.x + 0.5, 
-							pstartSelPoint.y + 0.5,
-							pendSelPoint.x - pstartSelPoint.x,
-							pendSelPoint.y - pstartSelPoint.y
-							));
-		pen.color = selectStrokeColor;
-		pen.strokeRect(Rect(	pstartSelPoint.x + 0.5, 
-							pstartSelPoint.y + 0.5,
-							pendSelPoint.x - pstartSelPoint.x,
-							pendSelPoint.y - pstartSelPoint.y
-							));
+			pstartSelPoint = this.normPointToPixelPoint(this.startSelPoint);
+			pendSelPoint = this.normPointToPixelPoint(this.endSelPoint);
+
+			pen.color = selectFillColor;
+			pen.fillRect(Rect(	pstartSelPoint.x + 0.5, 
+				pstartSelPoint.y + 0.5,
+				pendSelPoint.x - pstartSelPoint.x,
+				pendSelPoint.y - pstartSelPoint.y
+			));
+			pen.color = selectStrokeColor;
+			pen.strokeRect(Rect(	pstartSelPoint.x + 0.5, 
+				pstartSelPoint.y + 0.5,
+				pendSelPoint.x - pstartSelPoint.x,
+				pendSelPoint.y - pstartSelPoint.y
+			));
+		}
 
 		/////////////// the raw selection node (enable for debug)
 
@@ -1018,15 +1064,18 @@ TimelineView : SCViewHolder {
 		if(selectionCursorController.notNil) {
 			selectionCursorController.remove;
 		};
-		selectionCursorController = SimpleController(selectionCursor).put(\refresh, {
-			if(this.view.notNil) {
-				if(this.view.isClosed) {
-					selectionCursorController.remove;
-				} {
-					this.view.refresh;
-				};
-			}
-		})
+		if(cur.notNil) {
+			cur.enableSwapIfNegative = false; // should be in model
+			selectionCursorController = SimpleController(selectionCursor).put(\refresh, {
+				if(this.view.notNil) {
+					if(this.view.isClosed) {
+						selectionCursorController.remove;
+					} {
+						this.view.refresh;
+					};
+				}
+			})
+		};
 	}
 
 	mimicNodeSelection { arg timeline;
@@ -1680,65 +1729,34 @@ TimelineView : SCViewHolder {
 	}
 }
 
-//////////////////////////////// preview
+///////////////// variants children
 
-TimelinePreview : TimelineView {
-	drawFunc {
-		Log(\Param).debug("preview drawFunc");
-		this.drawNodes;
-		this.drawEndLine;
-	}
-
-	mapModel { arg model;
-		if(model[\eventlist].notNil) {
-			this.mapEventList(model.eventlist);
-		};
-
-		// FIXME: this is specific code, should be generalized
-		if(model.timeline.notNil) {
-			switch(model.timeline.eventType,
-				\clipTimeline, {
-					// FIXME: should optimize this out of here
-					var maxy = 1;
-					model.timeline.eventList.do { arg ev;
-						if(ev[this.posyKey].notNil and: { ev[this.posyKey]  > maxy }) {
-							maxy = ev[this.posyKey];
-						};
-					};
-					this.areasize.y = maxy + 1;
-				}, {
-
-				}
-			);
-		};
+MidinoteTimelineView : TimelineView {
+	// this timeline is the same that the basic timeline, with piano background
+	drawGridY {
+		TimelineDrawer.draw_piano_bar(this, 0, 0.2);
 	}
 }
 
-TimelinePreview_Env : TimelineEnvView {
-	drawFunc {
-		Log(\Param).debug("preview drawFunc env");
-		this.drawNodes;
-		this.drawEndLine;
+KitTimelineView : TimelineView {
+	// this timeline is the same that the basic timeline, with grouping rows by 4
+	drawGridY {
+		TimelineDrawer.draw_quad_lines(this);
 	}
-
-	mapModel { arg model;
-		this.mapParam(model.timeline.levelParam);
-	}
+	
 }
 
-TimelinePreview_Sample : SampleTimelineView {
-	drawFunc {
-		Log(\Param).debug("preview drawFunc sample");
-		this.drawWaveform;
-		this.drawEndLine;
-	}
+PdefTimelineView : TimelineView { // deprecated name
 
-	mapModel { arg model;
-		this.mapData(model.timeline);
-	}
+}
+
+ClipTimelineView : TimelineView {
+
 }
 
 
+
+//////////////////////////////////////////////////////////////
 //////////////////////////////// Nodes
 
 
@@ -1780,7 +1798,7 @@ TimelineViewNode {
 						TimelineViewEventEnvNode(parent, nodeidx, event)
 					},
 					\sampleTimeline, {
-						TimelineViewSampleNode(parent, nodeidx, event)
+						TimelineViewEventSampleNode(parent, nodeidx, event)
 					}, {
 						TimelineViewEventListNode(parent, nodeidx, event)
 					}
@@ -1837,6 +1855,7 @@ TimelineViewNodeBase {
 	var <>selectable = true; // to be or not ignored by findNode
 	var <>deletable = true;
 	var <>visible = true;
+	var <>enablePreview = true;
 	*new {
 		^super.new
 	}
@@ -1846,7 +1865,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 	var <>colorSelected;
 	var <>colorDeselected;
 
-	var <>refloc;
+	var <>refloc; // used to store start point when moving node, should be named oldOrigin
 
 	*new { arg parent, nodeidx, event;
 		^super.new.init(parent, nodeidx, event).baseInit;
@@ -1892,6 +1911,10 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		this.action;
 	}
 
+	enablePreview {
+		^parent.enablePreview;
+	}
+
 	selectable {
 		^[\rest, \start, \end].includes(this.model[\type]).not
 	}
@@ -1913,7 +1936,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		this.action;
 	}
 
-	nodeloc {
+	nodeloc { // deprecated origin
 		^origin
 	}
 
@@ -1985,6 +2008,8 @@ TimelineViewEventNode : TimelineViewNodeBase {
 	free {
 		if(controller.notNil) {controller.remove};
 	}
+
+	decorateCopy {} // to set name when copied
 }
 
 //// children
@@ -2006,13 +2031,15 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	initPreview {}
 
 	refreshPreview {
-		if(model[\eventlist].notNil) {
-			preview.mapEventList(model.eventlist);
-		};
+		if(this.enablePreview == true) {
+			if(model[\eventlist].notNil) {
+				preview.mapEventList(model.eventlist);
+			};
 
-		if(model.timeline.notNil) {
-			preview.mapModel(model)
-		};
+			if(model.timeline.notNil) {
+				preview.mapModel(model)
+			};
+		}
 
 	}
 
@@ -2197,6 +2224,10 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		//	this.refresh;
 		//})
 	}
+
+	decorateCopy { arg ev; // to set name when copied
+ 		ev.label = "%-%".format(label, (ev[Pembed.startOffsetKey] ? 0).asStringPrec(4));
+	}
 }
 
 TimelineViewEventEnvNode : TimelineViewEventListNode {
@@ -2205,15 +2236,17 @@ TimelineViewEventEnvNode : TimelineViewEventListNode {
 	}
 }
 
-TimelineViewSampleNode : TimelineViewEventListNode {
+TimelineViewEventSampleNode : TimelineViewEventListNode {
 	timelinePreviewClass {
 		^TimelinePreview_Sample
 	}
 }
 
+////////////////////////////////////////////////////////////////
 
 // node for EventLoop instead of EventList
-// FIXME: lot of common code with TimelineViewEventListNode, not maintened currently
+// not maintened currently
+// FIXME: lot of common code with TimelineViewEventListNode
 TimelineViewEventLoopNode : TimelineViewEventListNode {
 
 	init { arg xparent, nodeidx, event;
@@ -2266,595 +2299,4 @@ TimelineViewEventLoopNode : TimelineViewEventListNode {
 	}
 }
 
-
-
-//////////////////////////////// Env and Env node
-
-TimelineEnvView : TimelineView {
-	var valueKey = \midinote;
-	var <param;
-
-	gridPointToNormPoint { arg point;
-		if(param.notNil) {
-			var ypos;
-			ypos = param.spec.unmap(point.y);
-			^Point(point.x / areasize.x, ypos);
-		} {
-			^(point / areasize)
-		}
-	}
-
-	normPointToGridPoint { arg point;
-		if(param.notNil) {
-			var ypos;
-			ypos = param.spec.map(point.y);
-			^Point(point.x * areasize.x, ypos);
-		} {
-			^(point * areasize)
-		}
-	}
-
-	nodeClass {
-		^TimelineEnvViewNode
-	}
-
-	initNode { arg node;
-		node.posyKey = valueKey;
-		node.refresh;
-		//node.posyKey.debug("initNode: posyKey");
-	}
-
-	mapParam { arg param_object;
-		param = param_object;
-		this.valueKey = param.property;
-		this.areasize.y = param.spec.range;
-	}
-
-	valueKey {
-		^valueKey;
-	}
-
-	valueKey_ { arg val;
-		valueKey = val;
-		//paraNodes.do { arg node;
-		//	if(node.isKindOf(TimelineEnvViewNode)) {
-		//		node.posyKey = val;
-		//		node.refresh;
-		//	}
-		//};
-		this.refreshEventList;
-	}
-
-	eventFactory { arg pos;
-		var nodesize = Point(1,1);
-		// why nodesize is in normalized form ???
-		nodesize = this.gridPointToNormPoint(nodesize);
-		if(eventFactory.isNil) {
-			var ev;
-			ev = (absTime: pos.x, sustain:nodesize.x);
-			if(param.isNil) {
-				//"=========eventFactory: param is nil".debug;
-				ev[\midinote] = pos.y;
-			} {
-				//param.property.debug("=========eventFactory: param property");
-				ev[param.property] = pos.y;
-			};
-			^ev;
-		} {
-			^eventFactory.(pos, nodesize.x);
-		}
-	}
-}
-
-TimelineEnvViewNode : TimelineViewEventNode {
-	var <>radius = 3;
-
-	*new { arg parent, nodeidx, event;
-		switch(event[\type],
-			\start, {
-				^TimelineViewLocatorLineNode.new(parent, nodeidx, event);
-			},
-			\end, {
-				^TimelineViewLocatorLineNode.new(parent, nodeidx, event);
-			},
-			{
-				^super.new(parent, nodeidx, event).baseInit;
-			}
-		);
-	}
-
-
-	init { arg xparent, nodeidx, event;
-		parent = xparent;
-		spritenum = nodeidx;
-		model = event;
-		extent = Point(1/4,1);
-
-		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
-
-		action = {
-			//[model, origin].debug("node action before");
-			model[timeKey] = origin.x;
-			model[this.posyKey] = origin.y;
-			//model[lenKey] = extent.x;
-		};
-
-		refresh = {
-			//var posy = model[this.posyKey] ? (
-			//	if(parent.param.notNil) {
-			//		parent.param.default.debug("dd====================");
-			//	} {
-			//		0
-			//	}
-			//);
-			var posy = model.use { model[this.posyKey].value(model) } ? (
-				if(parent.param.notNil) {
-					parent.param.default;
-				} {
-					0
-				}
-			);
-			origin = Point(model[timeKey] ? 0, posy);
-			color = Color.black;
-			outlineColor = Color.grey;
-			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
-			//[this.class, spritenum, origin, extent, color].debug("refresh");
-		};
-
-		this.makeUpdater;
-		this.refresh;
-		//this.action;
-	}
-
-	draw {
-		var point;
-		var pos;
-		pos = this.origin;
-		point = parent.gridPointToPixelPoint(this.origin);
-		//[spritenum, point, this.class].debug("draw");
-
-		Pen.color = ParamViewToolBox.color_ligth;
-		Pen.lineTo(point);
-		Pen.stroke;
-
-		Pen.color = this.outlineColor;
-		Pen.addArc(point, radius, 0, 2*pi);
-		//Pen.strokeRect(this.pixelRect);
-		Pen.stroke;
-
-		Pen.color = Color(0.8,0.8,0.8);
-		Pen.addArc(point, radius-1, 0, 2*pi);
-		//Pen.strokeRect(this.pixelRect);
-		Pen.stroke;
-
-		Pen.color = this.color;
-		Pen.moveTo(point);
-
-	}
-
-	//deselectNode {
-	//	outlineColor = Color.green;
-	//}
-
-	pixelRect {
-		var point, rect;
-		point = parent.gridPointToPixelPoint(this.origin);
-		rect = Rect(point.x-radius, point.y-radius, radius*2, radius*2)
-		^rect;
-	}
-
-	rect {
-		var point;
-		var rect;
-		rect = parent.pixelRectToGridRect(this.pixelRect);
-		^rect;
-	}
-	
-}
-
-
-//////////////////////////////// Velocity Timeline
-
-VelocityTimelineView : TimelineEnvView {
-	var valueKey = \velocity;
-
-	nodeClass {
-		^VelocityTimelineViewNode
-	}
-
-	clipGridPoint { arg point;
-		var x, y;
-		x = point.x.clip(0,this.areasize.x-quant.value.x); // FIXME: not sure if -1 should be scaled to something
-		y = point.y.clip(param.spec.clipLo,param.spec.clipHi-quant.value.y);
-		^Point(x,y);
-	}
-
-	//drawGridY {
-	//	TimelineDrawer.draw_quad_lines_factor(this, 1/4);
-	//}
-
-	deleteNode { arg node, refresh=true;
-		var del;
-		var nodenr = node.spritenum;
-		if(node.deletable.not) { ^this };
-		node.model.removeAt(node.posyKey);
-		deleteNodeHook.(node, nodenr);
-		if(refresh == true, {this.refreshEventList; this.refresh});
-	}
-	
-
-}
-
-VelocityTimelineViewNode : TimelineEnvViewNode {
-	var <>radius = 8;
-
-	//*new { arg parent, nodeidx, event;
-	//	switch(event[\type],
-	//		\start, {
-	//			^TimelineViewLocatorLineNode.new(parent, nodeidx, event);
-	//		},
-	//		\end, {
-	//			^TimelineViewLocatorLineNode.new(parent, nodeidx, event);
-	//		},
-	//		{
-	//			^super.new(parent, nodeidx, event).baseInit;
-	//		}
-	//	);
-	//}
-
-	drawTriangle {
-
-	}
-
-	//visible {
-	//	^[\rest, \start, \end].includes(this.model[\type]).not
-	//}
-
-	//defaultPosyValue {
-	//	if(parent.param.notNil) {
-	//		^parent.param.default
-	//	} {
-	//		^64
-	//	}
-	//}
-
-	//defaultHeight {
-	//	//^parent.pixelPointToGridPoint(Point(1000,1000)).x; // bug with areasize initialisation order
-	//	^4
-	//}
-
-	//draw {
-	//	var rect;
-	//	var pos;
-	//	Pen.color = this.color;
-	//	pos = this.origin;
-	//	rect = parent.gridRectToPixelRect(this.rect);
-	//	//[spritenum, rect].debug("draw");
-	//	Pen.fillRect(rect);
-	//	Pen.color = this.outlineColor;
-	//	Pen.strokeRect(rect);
-	//	//Pen.stroke;
-	//}
-
-	draw {
-		var point;
-		var pos;
-		pos = this.origin;
-		point = parent.gridPointToPixelPoint(this.origin);
-		//[spritenum, point, this.class].debug("draw");
-
-		Pen.color = this.color;
-		Pen.moveTo(Point(point.x, parent.virtualBounds.height));
-		Pen.lineTo(point);
-		Pen.stroke;
-
-		Pen.color = this.outlineColor;
-		Pen.addArc(point, radius, 0, 2*pi);
-		//Pen.strokeRect(this.pixelRect);
-		Pen.stroke;
-
-		Pen.color = Color(0.8,0.8,0.8);
-		Pen.addArc(point, radius-1, 0, 2*pi);
-		//Pen.strokeRect(this.pixelRect);
-		Pen.stroke;
-
-		Pen.color = this.color;
-		Pen.moveTo(point);
-
-	}
-
-}
-
-//////////////////////////////// utilities
-
-// not used anymore, use TimelineDrawer 
-DenseGridLines : GridLines {
-	var <>density = 1;
-	var <>labelDensity = 1;
-	
-	getParams { |valueMin,valueMax,pixelMin,pixelMax,numTicks|
-		var lines,p,pixRange;
-		var nfrac,d,graphmin,graphmax,range;
-		pixRange = pixelMax - pixelMin;
-		if(numTicks.isNil,{
-			numTicks = (pixRange / 64 * density);
-			numTicks = numTicks.max(3).round(1);
-		});
-		# graphmin,graphmax,nfrac,d = this.ideals(valueMin,valueMax,numTicks);
-		lines = [];
-		if(d != inf,{
-			forBy(graphmin,graphmax + (0.5*d),d,{ arg tick;
-				if(tick.inclusivelyBetween(valueMin,valueMax),{
-					lines = lines.add( tick );
-				})
-			});
-		});
-		p = ();
-		p['lines'] = lines;
-		if(pixRange / numTicks > (9 / labelDensity)) {
-			p['labels'] = lines.collect({ arg val; [val, this.formatLabel(val,nfrac) ] });
-		};
-		^p
-	}
-}
-
-// not used anymore, use TimelineDrawer 
-MidinoteGridLines : GridLines {
-	
-	var <>density = 1;
-	var <>labelDensity = 1;
-	
-	//getParams { |valueMin,valueMax,pixelMin,pixelMax,numTicks|
-	//	var lines,p,pixRange;
-	//	var nfrac,d,graphmin,graphmax,range;
-
-	//	var count = valueMax - valueMin;
-	//	var pixelCount = pixelMax - pixelMin;
-
-	//	if(pixelCount < 200) {
-	//		count = count / 2;
-	//	};
-
-	//	count.collect {
-	//		pixelMin
-
-	//	}
-
-	//	pixRange = pixelMax - pixelMin;
-	//	if(numTicks.isNil,{
-	//		numTicks = (pixRange / 64 * density);
-	//		numTicks = numTicks.max(3).round(1);
-	//	});
-	//	# graphmin,graphmax,nfrac,d = this.ideals(valueMin,valueMax,numTicks);
-	//	lines = [];
-	//	if(d != inf,{
-	//		forBy(graphmin,graphmax + (0.5*d),d,{ arg tick;
-	//			if(tick.inclusivelyBetween(valueMin,valueMax),{
-	//				lines = lines.add( tick );
-	//			})
-	//		});
-	//	});
-	//	p = ();
-	//	p['lines'] = lines;
-	//	if(pixRange / numTicks > (9 / labelDensity)) {
-	//		p['labels'] = lines.collect({ arg val; [val, this.formatLabel(val,nfrac) ] });
-	//	};
-	//	^p
-	//}
-
-	getParams { |valueMin,valueMax,pixelMin,pixelMax,numTicks|
-		var lines,p,pixRange;
-		var nfrac,d,graphmin,graphmax,range;
-		var count = 127;
-		var pixelCount = pixelMax - pixelMin;
-		pixRange = pixelMax - pixelMin;
-		if(numTicks.isNil,{
-			numTicks = 127;
-			//if(pixelCount < 200) {
-			//	numTicks = ( numTicks / 2 ).round(1);
-			//};
-		});
-		# graphmin,graphmax,nfrac,d = this.ideals(valueMin,valueMax,numTicks);
-		d= 1;
-		if(pixelCount < 200) {
-			d = 2
-		};
-		lines = [];
-		if(d != inf,{
-			forBy(graphmin,graphmax + (0.5*d),d,{ arg tick;
-				if(tick.inclusivelyBetween(valueMin,valueMax),{
-					lines = lines.add( tick );
-				})
-			});
-		});
-		p = ();
-		p['lines'] = lines;
-		if(pixRange / numTicks > 9) {
-			p['labels'] = lines.collect({ arg val; [val, this.formatLabel(val,nfrac) ] });
-		};
-		^p
-	}
-}
-
-
-///////////////////////////////////////
-
-
-TimelineScroller : SCViewHolder {
-	var myOrientation;
-
-	*new {
-		var ins = super.new;
-		ins.view = RangeSlider.new;
-		^ins;
-	}
-
-	orientation_ { arg val;
-		myOrientation = val;
-		this.view.orientation = val;
-	}
-
-	orientation {
-		^myOrientation;
-	}
-
-	mapTimeline { arg timeline;
-		this.view.action = { arg slider;
-			var range = slider.range.clip(0.01,1); // prevent division by 0
-			if(this.orientation == \horizontal) {
-				timeline.viewport.left = slider.lo;
-				timeline.viewport.width = range;
-				timeline.changed(\viewport);
-				//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("hrange action");
-				timeline.refresh;
-			} {
-				timeline.viewport.top = slider.lo;
-				timeline.viewport.height = range;
-				timeline.changed(\viewport);
-				//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("vrange action");
-				timeline.refresh;
-			}
-
-		};
-
-		// make updater
-		this.view.onChange(timeline, 'viewport', { arg caller, receiver, morearg;
-			//[caller, receiver, morearg].debug("onChange args");
-			this.refresh(timeline);
-		});
-
-		this.refresh(timeline);
-	
-	}
-
-	refresh { arg timeline;
-		{
-			var slider = this;
-			if(this.orientation == \horizontal) {
-				slider.hi = timeline.viewport.left+timeline.viewport.width;
-				slider.lo = timeline.viewport.left;
-				//[timeline, timeline.viewport, timeline.viewport.width, slider.range, slider.hi].debug("=====+++======= ScrollView.refresh: range, hi");
-			} {
-				slider.hi = timeline.viewport.top+timeline.viewport.height;
-				slider.lo = timeline.viewport.top;
-			}
-		}.defer;
-	}
-}
-
-/////////////////////// sample timeline view
-
-SampleTimelineView : TimelineView {
-	var <>bufferData;
-	var >resampledData;
-	var <>resampledDataLight;
-	var >resampleRate;
-	var <>resampleRateLight;
-	var <>numChannels = 0;
-	var <>mydraw;
-
-	mapData { arg model;
-		this.view.onChange(model, \data, { 
-			{
-				"hey!! changed data".debug;
-				numChannels = model.numChannels;
-				this.areasize = Point(areasize.x, numChannels);
-
-				resampleRate = model.resampleRate;
-				resampleRateLight = model.resampleRateLight;
-				resampledData = model.resampledData;
-				resampledDataLight = model.resampledDataLight;
-
-				//[self.timeline.numChannels, model.numChannels].debug("A23");
-				this.refresh;
-			}.defer
-		});
-		model.changed(\data);
-	}
-
-	resampledData {
-		^resampledData
-	}
-
-	resampleRate {
-		^resampleRate
-	}
-
-	drawWaveform {
-		Log(\Param).debug("draw waveform");
-		if(mydraw.notNil) {
-			mydraw.debug("mydraw");
-			mydraw.(this);
-		} {
-			//Pen.color = Color.green;
-			var bounds = this.virtualBounds;
-			var height = bounds.height;
-			var width = bounds.width;
-			var drawChannel = { arg chanidx, chandata;
-				var drawWave = { arg yfac=1;
-					block { arg break;
-
-						chandata.do{|y, x|
-							var p;
-							var offset = chanidx+0.5;
-							y = y[chanidx] ? 0;
-							p = this.secondPointToPixelPoint(Point(x/this.resampleRate,y*yfac+offset));
-							//if(x%100==0) { p.debug("p % %".format(chanidx, yfac)); };
-							if(x==0, {Pen.moveTo(p)}, {Pen.lineTo(p)});
-							if(p.x > bounds.right) {
-								//Log(\Param).debug("break!");
-								break.value
-							}
-						};
-					}
-				};
-				Pen.width = 1;
-
-				drawWave.(1);
-				Pen.color = Color.black;
-				Pen.fill;
-
-				//drawWave.(1);
-				//Pen.color = Color.blue;
-				//Pen.stroke;
-
-				drawWave.(-1);
-				Pen.color = Color.black;
-				Pen.fill;
-
-				//drawWave.(-1);
-				//Pen.color = Color.blue;
-				//Pen.stroke;
-			};
-			//Log(\Param).debug("draw waveform: bounds %, areasize %", bounds, this.areasize );
-			numChannels.do { arg idx;
-				drawChannel.(idx, this.resampledData);
-			};
-			//Pen.color = Color.red;
-			//Pen.strokeRect(bounds);
-
-		}
-	}
-	
-}
-
-///////////////////////////////////////
-
-+ Rect {
-	flipY {
-		^Rect(this.origin.x, this.origin.y, this.extent.x, 0-this.extent.y);
-	}
-
-	flipScreen { arg screen_height;
-		^Rect(this.origin.x, screen_height - (this.origin.y+this.extent.y), this.extent.x, this.extent.y);
-	}
-
-	translate { arg point;
-		^Rect(this.origin.x + point.x, this.origin.y + point.y, this.width, this.height)
-	}
-
-	scale { arg point;
-		^Rect(this.origin.x * point.x, this.origin.y * point.y, this.width * point.x, this.height * point.y)
-	}
-}
 

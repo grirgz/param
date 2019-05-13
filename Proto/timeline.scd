@@ -3,6 +3,7 @@
 
 
 ~eventTimeline = ProtoClass((
+	proxyQuantIsDefault: true, // the only way to preserve default proxy quant
 
 	prAdd: { arg self, name;
 		[self.all, name].debug("prAdd");
@@ -24,7 +25,7 @@
 	makeDefaultEventList: { arg self;
 		var el = XEventList.new;
 		el.start;
-		el.finish(1);
+		el.finish(8);
 		el;
 	},
 
@@ -35,7 +36,13 @@
 		loop;
 	},
 
-	asPatternAbs: { arg self, startPosition, endPosition;
+	asPatternAbs_futur: { arg self, startPosition, endPosition;
+
+		//var sloop = self.loopmaster.get
+		//self.xasPattern(relStartTime, totalDur);
+	},
+
+	asPatternAbs: { arg self, startPosition, endPosition, repeatCount;
 		var relStartTime, totalDur;
 		var eventlist = self.eventList;
 		// currentlty, startPosition and endPosition are in absolute time in the GUI, but will be relative to start event in futur
@@ -44,6 +51,7 @@
 		// this is the time between first event absTime and asked start time
 		// because silence before first event can't be counted in Pembed
 		// if startPosition is before first event, relStartTime is negative, not handled by Pembed for the moment
+		// relStartTime need to be relative to the first event, because Pembed only see the relative time to the first event and doesn't read \absTime
 		
 		relStartTime = {
 			var sp = startPosition.value;
@@ -62,6 +70,9 @@
 			var absStart = relStartTime.value + self.eventList.firstTime;
 			var ep = endPosition.value;
 			var xx;
+			if(ep.notNil and:{ep - absStart < 0.01}) { // prevent too short cursor loop
+				ep = eventlist.endTime;
+			};
 			//xx = if(ep.isNil) {
 				////totalDur = self.eventloop.list.totalDur - (startPosition - eventlist.startTime ).clip(0,inf);
 				//self.eventlist.totalDur;
@@ -71,7 +82,8 @@
 			//};
 			xx = (( ep ? eventlist.endTime ) - absStart);
 			// prevent empty (infinite loop)
-			if(xx == 0) {
+			if(xx < 0.01) {
+				Log(\Param).debug("timeline.asPattern: loop too short, setting it to 2: xx", xx);
 				2;
 			} {
 				xx
@@ -79,7 +91,7 @@
 		};
 
 		//[startPosition, endPosition, relStartTime, totalDur].collect(_.value).debug("asPatternAbs: start, end, relstart, totdur");
-		self.xasPattern(relStartTime, totalDur);
+		self.xasPattern(relStartTime, totalDur, repeatCount);
 	},
 
 	eventList: { arg self;
@@ -123,12 +135,46 @@
 		self.proxy.play;
 	},
 
-	asSelectedPattern: { arg self;
-		self.asPatternAbs({self.cursor.startPosition}, {self.cursor.endPosition})
+	playNow: { arg self, repeatCount;
+		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
+		var pat = self.asSelectedPattern(repeatCount);
+		if(self.proxy != pat) {
+			// FIXME: this destroy use of defaultQuant, with little workaround, ugly
+			var oldquant = self.proxy.quant; 
+			self.proxy.quant = 0;
+			self.proxy.setSource(pat);
+			self.proxy.stop;// Pmono doesnt supprot doReset
+			self.proxy.play(quant:0);
+			//self.proxy.play(quant:0, doReset:true);
+			//PlayerWrapper(self.proxy).playNow;
+			if(self.proxyQuantIsDefault) {
+				self.proxy.quant = nil
+			} {
+				self.proxy.quant = oldquant;
+			}
+		} {
+			//self.proxy.play(quant:0, doReset:true);
+			self.proxy.stop;// Pmono doesnt supprot doReset
+			self.proxy.play(quant:0);
+			//PlayerWrapper(self.proxy).playNow;
+		};
+	},
+
+	stopNow: { arg self;
+		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
+		PlayerWrapper(self.proxy).stopNow;
+		self.eventloop.list.changed(\cursor, \stop);
+	},
+
+	asSelectedPattern: { arg self, repeatCount;
+		self.asPatternAbs({self.cursor.startPosition}, {self.cursor.endPosition}, repeatCount)
 	},
 
 	stop: { arg self;
 		self.proxy.stop;
+		PlayerWrapper(self.proxy).doWithQuant({
+			self.eventloop.list.changed(\cursor, \stop);
+		})
 	},
 
 	isPlaying: { arg self;
@@ -144,6 +190,7 @@
 	},
 
 	quant_: { arg self, val;
+		self.proxyQuantIsDefault = val.isNil;
 		self.proxy.quant = val;  // so PlayerEvent can set quant of timelines
 	},
 
@@ -283,7 +330,7 @@
 //if(~clipTimeline_all.isNil) {
 //	~clipTimeline_all = IdentityDictionary.new;
 //};
-~clipTimeline = ProtoClass((
+ClipTimeline.proto = ProtoClass((
 	parent: ~eventTimeline,
 	all: { PresetDictionary.new(\clipTimeline) },
 	eventType: \clipTimeline,
@@ -389,7 +436,21 @@
 		}, pat)	
 	},
 
-	asPattern: { arg self, relStartTime, totalDur;
+	asPattern_futur: { arg self, relStartTime, totalDur;
+		self.proxy.source = Plazy({
+			var eventlist = self.eventList;
+			var sloop = self.loopmaster.getStandardLoop(relStartTime, totalDur);
+
+			self.eventloop.list.changed(\cursor, \play);
+			Pfindur(sloop.totalDur, Pembed(
+				self.bypass_pattern( Pn(eventlist.clone, 1) ),
+				sloop.relStartTime
+			));
+		}).repeat(self.repeatCount);
+		self.proxy;
+	},
+
+	asPattern: { arg self, relStartTime, totalDur, repeatCount;
 		self.proxy.source = Plazy({
 			var eventlist = self.eventList;
 			var xrelStartTime, xtotalDur;
@@ -403,12 +464,12 @@
 				xtotalDur = 2
 			};
 
-			self.eventloop.list.changed(\cursor, \play);
+			self.eventloop.list.changed(\cursor, \play); // FIXME: should be an event
 			Pfindur(xtotalDur, Pembed(
 				self.bypass_pattern( Pn(eventlist.clone, 1) ),
 				xrelStartTime
 			));
-		}).repeat(self.repeatCount);
+		}).repeat(repeatCount ? self.repeatCount);
 		self.proxy;
 	},
 
@@ -429,6 +490,7 @@
 		"ClipTimeline(%)".format(name)
 	},
 ));
+~clipTimeline = ClipTimeline.proto;
 
 ~trackTimeline = ProtoClass((
 	parent: ~clipTimeline,
@@ -512,6 +574,7 @@
 		"TrackTimeline(%)".format(name)
 	},
 ));
+
 
 //if(~noteTimeline_all.isNil) {
 //	~noteTimeline_all = IdentityDictionary.new;
@@ -609,7 +672,7 @@
 		)
 	},
 
-	asPattern: { arg self, relStartTime, totalDur;
+	asPattern: { arg self, relStartTime, totalDur, repeatCount;
 		//[relStartTime.value, totalDur.value].debug("relstart, totaldur");
 		// there is 3 kinds of call to asPattern:
 		// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
@@ -621,7 +684,8 @@
 		// XEventList.relStartTime is relative to firstEvent
 		// FIXME: replacing source in proxy at call time means that a playing proxy will play immediately the new source when asked its pattern
 		//		could have nasty side effects
-		self.proxy.source = Plazy({
+		//self.proxy.source = Plazy({
+		var pat = Plazy({
 			var eventlist = self.eventloop.list;
 			var pat;
 			var xrelStartTime, xtotalDur;
@@ -659,8 +723,9 @@
 			};
 
 			pat;
-		}).repeat(self.repeatCount);
-		self.proxy;
+		}).repeat(repeatCount ? self.repeatCount);
+		//self.proxy;
+		pat;
 	},
 
 	outBus: { arg self;
@@ -1634,7 +1699,7 @@
 		self.clipFactories.sampleTimeline = (
 			key: 'sampleTimeline',
 			parent: tl,
-			className: { ProtoTemplateDef(\SampleTimeline) },
+			className: { SampleTimeline.proto },
 		);
 
 		self.clipFactories_keys = self.clipFactories.keys.asArray.sort;
@@ -1724,15 +1789,19 @@
 	},
 
 	clearEditor: { arg self;
+		// when no event selected
+
 		self.type_popup.items = [""];
 		self.name_popup.items = [""];
+		self.startOffsetField.mapParam(nil);
+		self.sustainField.mapParam(nil);
 	},
 
 	makeUpdater: { arg self;
 		self.controller.remove;
 		self.controller = SimpleController(self.model).put(\refresh, {
 			var ev = self.model;
-			//[self.type_popup, ev].debug("entering clipEditor updater");
+			[self.type_popup, ev].debug("entering clipEditor updater");
 			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
 				self.controller.remove;
 			} {
@@ -1740,8 +1809,11 @@
 				var clipfac;
 				self.refreshPopups;
 				clipkey = self.event_to_clipFactory_key(ev);
-				//clipkey.debug("makeUpdater: clipkey");
+				clipkey.debug("makeUpdater: clipkey");
+				self.startOffsetField.mapParam(Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)));
+				self.sustainField.mapParam(Param(self.model, Pembed.sustainKey));
 				if(clipkey.notNil) {
+					clipkey.debug("makeUpdater: clipkey not nil");
 					clipfac = self.clipFactories[clipkey];
 					self.type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
 					self.name_popup.items = clipfac.keylist;
@@ -1750,12 +1822,9 @@
 					});
 
 					// FIXME: should use parent_model startOffsetKey to be flexible
-					self.startOffsetField.mapParam(Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)));
-					self.sustainField.mapParam(Param(self.model, Pembed.sustainKey));
 				} {
-					self.startOffsetField.mapParam(nil);
-					self.startOffsetField.string = "";
-					self.sustainField.mapParam(nil);
+					// selected event not recognized
+
 					self.type_popup.value = nil;
 					self.name_popup.value = nil;
 				}
@@ -2262,6 +2331,7 @@
 	make_track_header: { arg self;
 		var track_header;
 		track_header = ScrollView.new;
+		track_header.keyDownAction = self.getTimelineKeyDownAction;
 		track_header.hasBorder = false;
 		track_header.hasVerticalScroller = false;
 		track_header.hasHorizontalScroller = false;
@@ -2310,7 +2380,7 @@
 	getTimelineKeyDownAction: { arg self;
 		//Window.keyDownActionTest
 		({ arg me, key, modifiers, unicode, keycode;
-			//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
+			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
 			self.getTimelineKeyDownActionForNodeMove.(me, key, modifiers, unicode, keycode);
 			if(modifiers.isCtrl) {
 				//if(key == $n) { // ^n // don't work anymore
@@ -2385,13 +2455,34 @@
 				if(keycode == $s.ascii) { // ^s
 					"split!".debug;
 					self.splitAction;
-					//self.eventLoop.pushList;
-					//self.eventList = self.timeline_model.makeDefaultEventList;
-					//self.eventLoop.pushList;
 				};
+				if(keycode == $ .ascii) { // ^s
+					"stop!".debug;
+					self.timeline_model.stopNow;
+				}
 			} {
 				// no modifier
 
+				if(keycode == $ .ascii) { // ^s
+					"play/stop now!".debug;
+					if(self.timeline_model.selection_cursor.notNil) {
+						self.timeline_model.cursor.setPositions(
+							self.timeline_model.selection_cursor.startPosition ? 0,
+							self.timeline_model.selection_cursor.endPosition
+						);
+					} {
+						Log(\Param).debug("no selection cursor");
+					};
+					self.timeline_model.playNow(1);
+				};
+				if(keycode == 65481) { // F12
+					"Panic!".debug;
+					CmdPeriod.run;
+				};
+				if(keycode == 65474) { // F5
+					"play!".debug;
+					self.timeline_model.play;
+				}
 			}
 		});
 	},

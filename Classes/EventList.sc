@@ -213,6 +213,7 @@ XEventList : List {
 		this.addEvent(ev2);
 		this.reorder;
 		this.changed(\refresh);
+		^ev2;
 	}
 
 	reorder {
@@ -337,7 +338,7 @@ XEventList : List {
 			ins.finish(endtime);
 			^ins
 		} {
-			Log(\Param).debug("XEventList.newfrom end 2");
+			//Log(\Param).debug("XEventList.newfrom: not pattern, create normal event list");
 			if(pat.isKindOf(SequenceableCollection)) {
 				var ret = super.newFrom(pat.asArray);
 				ret.reorder;

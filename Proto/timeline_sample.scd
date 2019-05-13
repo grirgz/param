@@ -1,10 +1,11 @@
 
 (
 
-SynthDef(\SampleTimeline_player, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, speed=1, trigger=1, loop=0, bufnum=0, startSeconds=0;
+SynthDef(\SampleTimeline_player, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, speed=1, trigger=1, loop=0, bufnum=0, startSeconds=0, gain=1;
 	var sig;
 	sig = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * speed, trigger, startPos: (startSeconds*BufSampleRate.kr(bufnum)), doneAction:2, loop: loop);
 	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.01,0.1,1,0.01)), gate, doneAction:2);
+	sig = sig * gain;
 	Out.ar(out, sig);
 }).add;
 
@@ -46,14 +47,14 @@ ProtoTemplateDef(\SampleClipTimelineRecorder, (
 			self[\isRecording] = true;
 			"prepare Start recording".debug(name);
 
-			clip = ProtoTemplateDef(\SampleTimeline).new(name.asSymbol);
+			clip = SampleTimeline(name.asSymbol);
 			ev = clip.asPatternEvent;
 			self.recordedEvent = ev;
 			self.recordedClip = clip;
 			self.recordName = name;
-			ev[\absTime] = tl.selection_cursor.startPosition !? _.x ? 0;
+			ev[\absTime] = tl.selection_cursor.startPosition ? 0;
 			ev[\sustain] = 1/2;
-			ev[\midinote] = tl.selection_cursor.startPosition !? _.y ? 0;
+			ev[\midinote] = (tl.selection_cursor.startPoint !? _.y ? 0).trunc(tl.quant_ref.value.y);
 			tl.eventList.addEvent(ev);
 			tl.eventList.reorder;
 			self.startRecordingTime = self.tempoClock.beats;
@@ -101,7 +102,7 @@ ProtoTemplateDef(\SampleClipTimelineRecorder, (
 
 ));
 
-ProtoTemplateDef(\SampleTimeline,(
+SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with key and prAdd
 	parent: ~eventTimeline,
 	all: { PresetDictionary.new(\sampleTimeline) },
 	eventType: \sampleTimeline,
@@ -135,6 +136,7 @@ ProtoTemplateDef(\SampleTimeline,(
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
+		self.selection_cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
 		self.tracks_bypassed = Set.new;
 		//"=============clipTimeline: end init".debug;
@@ -156,7 +158,7 @@ ProtoTemplateDef(\SampleTimeline,(
 
 	keepRecordedFile: { arg self;
 		var fileName = self.fileName;
-		if(fileName.notNil && self.recordedFileIsKept.not) {
+		if(fileName.notNil && self.recordedFileIsKept.not) { // can't use ProtoTemplateDef, clash with key and prAdd
 			var newfilename = self.recordDirectory +/+ PathName(fileName).fileName;
 			File.mkdir(self.recordDirectory);
 			File.copy(fileName, newfilename);
@@ -169,7 +171,7 @@ ProtoTemplateDef(\SampleTimeline,(
 	},
 
 	recordedFileIsKept: { arg self;
-		self.fileName.beginsWith(self.recordDirectory)
+		(self.fileName ? "").beginsWith(self.recordDirectory)
 	},
 
 	asArchiveData: { arg self;
@@ -276,7 +278,7 @@ ProtoTemplateDef(\SampleTimeline,(
 		if(name.isNil) {
 			name = self.key.asCompileString
 		};
-		"ProtoTemplateDef(\\SampleTimeline).new(%)".format(name)
+		"SampleTimeline(%)".format(name)
 	},
 
 	buffer_: { arg self, buffer;
@@ -308,7 +310,7 @@ ProtoTemplateDef(\SampleTimeline,(
 							self.resampledData = resample;
 							self.resampleRate = resamplePerSecond;
 							self.numChannels = numChannels;
-							self.areasize = Point(self.areasize.x, self.numChannels);
+							self.areasize = Point(self.areasize.x, self.numChannels ? 2);
 							self.changed(\areasize);
 							self.changed(\data);
 							"loaded".debug;
@@ -323,6 +325,7 @@ ProtoTemplateDef(\SampleTimeline,(
 
 	},
 ));
+~sampleTimeline = SampleTimeline.proto;
 
 
 
@@ -355,6 +358,10 @@ ProtoTemplateDef(\SampleTimelineView, (
 
 	cursor: { arg self;
 		self.timeline_model.cursor;
+	},
+
+	selection_cursor: { arg self;
+		self.timeline_model.selection_cursor;
 	},
 
 	key: { arg self;
@@ -409,6 +416,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 		self.cursor_timeline = cursor_timeline;
 		cursor_timeline.mapCursor(self.cursor);
 		cursor_timeline.quant = self.quant_ref;
+
 
 
 		ruler_x_beat = TimelineRulerView.new;

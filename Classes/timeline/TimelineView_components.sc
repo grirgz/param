@@ -1,5 +1,7 @@
 // Timeline helper widgets
 
+////// x rulers
+
 TimelineRulerView : TimelineView {
 	// this is X ruler actually, with graduated bars to measure time in beats
 	// you can define start and stop of timeline interactively
@@ -339,6 +341,8 @@ TimelineSecondRulerView : TimelineRulerView {
 	}
 }
 
+////// locator bar
+
 TimelineLocatorBarView : TimelineView {
 	// this is the horizontal bar where are displayed the start and stop events and also the locators 
 
@@ -418,7 +422,8 @@ TimelineLocatorBarView : TimelineView {
 }
 
 TimelineViewLocatorNode : TimelineViewEventNode {
-	// a locator node
+	// a locator node used in TimelineLocatorBarView
+	// draw a little triangle and allow to drag
 
 	var label;
 	var labelKey = \label;
@@ -536,11 +541,50 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 	deselectNode {
 		outlineColor = Color.black;
 	}
-
 }
 
-// TODO: replace hardcoded line with node
-// FIXME: how to be never selected by findNode ?
+TimelineLocatorPropertiesView {
+	// editor for the name of the locator
+	
+	*initClass {
+		Class.initClassTree(TextField)
+	}
+
+	*new { arg model;
+		super.new.init(model);
+	}
+
+	init { arg model;
+		var window = Window.new("Locator edit", Rect(550,550,200,60));
+		var layout;
+		layout = VLayout(
+			TextField.new
+			.string_(model[\label] ? "unnamed")
+			.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
+				//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+
+				if(key == $\r) {
+					// defering because Enter trigger action after keyDownAction so view is already closed
+					{
+						window.close;
+					}.defer(0.1)
+				};
+				
+			})
+			.action_({ arg view;
+				model[\label] = view.value;
+				model.changed(\refresh);
+			})
+		);
+		window.layout = layout;
+		//window.alwaysOnTop = true;
+		window.front;
+	}
+}
+
+
+// TODO: replace hardcoded line with this class
+// because start and end events are part of the timeline so should be drawed as others events
 TimelineViewLocatorLineNode : TimelineViewEventNode {
 	var <>alpha = 0.5;
 
@@ -602,6 +646,7 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 }
 
 ////// y rulers
+
 MidinoteTimelineRulerView : TimelineView {
 	// the piano roll!
 	var <>mygrid; // debug
@@ -676,46 +721,201 @@ KitTimelineRulerView : TimelineView {
 }
 
 
-TimelineLocatorPropertiesView {
-	// editor for the name of the locator
-	
-	*initClass {
-		Class.initClassTree(TextField)
+
+
+
+////////////////////////// cursor
+
+CursorTimelineView : TimelineView {
+	// an userview to put on top of timeline to have lines indicating the start and end of cursor
+	// also the line indicating the current playing position
+	// TimelineRulerView handle the interactivity
+	var <>cursorPos = 0;
+	var <>playtask;
+	var <>cursor;
+	var <>cursorController;
+	var <>isPlaying = false;
+
+	drawFunc {
+		var cpos;
+		var spos;
+		Pen.color = Color.red;
+		cpos = this.gridPointToPixelPoint(Point(cursorPos, 0)).x;
+		Pen.line(Point(cpos,0), Point(cpos, this.virtualBounds.height));
+		Pen.stroke;
+
+		if(cursor.notNil) {
+			if(cursor.startPosition.notNil) {
+				Pen.color = Color.blue;
+				spos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
+				//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
+				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+				Pen.stroke;
+			};
+
+			if(cursor.endPosition.notNil) {
+				Pen.color = Color.blue;
+				spos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
+				//[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
+				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+				Pen.stroke;
+
+			};
+		} {
+			//"cursorisnil:::!!!!".debug;
+		};
+
 	}
 
-	*new { arg model;
-		super.new.init(model);
-	}
-
-	init { arg model;
-		var window = Window.new("Locator edit", Rect(550,550,200,60));
-		var layout;
-		layout = VLayout(
-			TextField.new
-			.string_(model[\label] ? "unnamed")
-			.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
-				//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
-
-				if(key == $\r) {
-					// defering because Enter trigger action after keyDownAction so view is already closed
-					{
-						window.close;
-					}.defer(0.1)
+	mapCursor { arg cur;
+		cursor = cur;
+		if(cursorController.notNil) {
+			cursorController.remove;
+		};
+		cursorController = SimpleController(cursor).put(\refresh, {
+			if(this.view.notNil) {
+				if(this.view.isClosed) {
+					cursorController.remove;
+				} {
+					this.view.refresh;
 				};
-				
-			})
-			.action_({ arg view;
-				model[\label] = view.value;
-				model.changed(\refresh);
-			})
-		);
-		window.layout = layout;
-		//window.alwaysOnTop = true;
-		window.front;
+			}
+		})
+	}
+
+	specialInit {
+		this.view.background = Color.clear;
+		this.view.acceptsMouse_(false);
+	}
+
+	makeUpdater {
+		if(controller.notNil) {controller.remove};
+		controller = SimpleController(model).put(\cursor, { arg obj, msg, arg1;
+			if(this.view.isNil) {
+				//"COOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOSLCLOCLOCLOSED".debug;
+				controller.remove;
+			} {
+				//"CursorTimelineView get a refresh signal!".debug;
+				//{
+					if(arg1 == \play) {
+						this.play;
+					} {
+						this.stop;
+					}
+				//}.defer(Server.default.latency)
+
+			};
+		});
+		controller.put(\redraw, {
+			this.refresh;
+		});
+	}
+
+	play {
+		"==================************-----------(##############)".debug("cursor PLAY");
+		//if(playtask.notNil) {
+		//	{
+		//	//	Server.default.latency.wait;
+		//		playtask.stop;
+		//	}.defer(Server.default.latency.wait);
+		//};
+		//playtask = playtask ?? {TaskProxy.new};
+		//if(playtask.isPlaying.not) {
+			//{
+				if(playtask.isNil) {
+					playtask = TaskProxy.new;
+					playtask.quant = 0;
+				};
+			{
+				Server.default.latency.wait; // compense for pattern latency
+
+				playtask.source = {
+					var start_beat;
+					var start_offset;
+					var endTime;
+					var privcursor;
+					//Server.default.latency.wait; // compense for pattern latency
+					//loop{
+					//"at begining of loop:%".format(cursorPos, endTime).postln;
+					//if(this.isPlaying) {
+					start_beat = TempoClock.default.beats;
+					start_offset = cursor.startPosition ? this.model.startTime;
+
+					// prevent too short loop
+					if(cursor.endPosition.notNil 
+						and: {  
+							cursor.startPosition.notNil
+							and: {
+								cursor.endPosition - cursor.startPosition < 0.1
+							}
+						}) {
+							endTime = this.model.endTime;
+						} {
+						endTime = cursor.endPosition ? this.model.endTime; // no real time modification of end time
+					};
+
+					// prevent too short loop with endtime
+					if(endTime - start_offset < 0.1) {
+						Log(\Param).debug("CursorTimelineView: too short loop, start % end %", start_offset, endTime);
+						endTime = start_offset + 1;
+					};
+
+					cursorPos =  start_offset;
+					if(cursor.notNil and: { cursor.startPosition.notNil }) {
+						start_offset = start_offset max: cursor.startPosition;
+					};
+
+					privcursor = cursorPos;
+					Log(\Param).debug("start_beat %, start_offset %, endTime:%", start_beat, start_offset, endTime);
+
+					while({
+						privcursor < endTime;
+						//true;
+					}, {
+						cursorPos = TempoClock.default.beats - start_beat + start_offset;
+						privcursor = TempoClock.default.beats - start_beat + start_offset;
+						//cursorPos.debug("cursorPos");
+						{
+							if(this.view.isNil or: { this.view.isClosed }) {
+								this.stop;
+							} {
+								this.view.refresh;
+							};
+						}.defer;
+						( 1/16 ).wait;
+						//{
+						//	this.view.refresh;
+						//}.defer;
+
+					});
+					//this.isPlaying = false;
+					//} {
+					//	(1/16).wait;
+					//}
+					//}
+				};
+				playtask.play(TempoClock.default)
+			}.fork
+
+			//}.defer(Server.default.latency)
+		//} {
+		//	this.isPlaying = true;
+		//}
+	}
+
+	stop {
+		//"==================************-----------(##############)".debug("cursor STOP");
+		if(playtask.notNil) {
+			//this.isPlaying = false;
+			playtask.stop;
+		};
+		
 	}
 	
 }
 
+
+//////////////////////////////// utilities
 
 TimelineDrawer {
 	// Toolbox class for drawing
@@ -853,185 +1053,178 @@ TimelineDrawer {
 	}
 }
 
-MidinoteTimelineView : TimelineView {
-	// this timeline is the same that the basic timeline, with piano background
-	drawGridY {
-		TimelineDrawer.draw_piano_bar(this, 0, 0.2);
-	}
-}
 
-KitTimelineView : TimelineView {
-	// this timeline is the same that the basic timeline, with grouping rows by 4
-	drawGridY {
-		TimelineDrawer.draw_quad_lines(this);
-	}
-	
-}
+TimelineScroller : SCViewHolder {
+	var myOrientation;
 
-PdefTimelineView : TimelineView {
-
-}
-
-////////////////////////// cursor
-
-CursorTimelineView : TimelineView {
-	// an userview to put on top of timeline to have lines indicating the start and end of cursor
-	// also the line indicating the current playing position
-	// TimelineRulerView handle the interactivity
-	var <>cursorPos = 0;
-	var <>playtask;
-	var <>cursor;
-	var <>cursorController;
-	var <>isPlaying = false;
-
-	drawFunc {
-		var cpos;
-		var spos;
-		Pen.color = Color.red;
-		cpos = this.gridPointToPixelPoint(Point(cursorPos, 0)).x;
-		Pen.line(Point(cpos,0), Point(cpos, this.virtualBounds.height));
-		Pen.stroke;
-
-		if(cursor.notNil) {
-			if(cursor.startPosition.notNil) {
-				Pen.color = Color.blue;
-				spos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
-				//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
-				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
-				Pen.stroke;
-			};
-
-			if(cursor.endPosition.notNil) {
-				Pen.color = Color.blue;
-				spos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
-				//[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
-				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
-				Pen.stroke;
-
-			};
-		} {
-			//"cursorisnil:::!!!!".debug;
-		};
-
+	*new {
+		var ins = super.new;
+		ins.view = RangeSlider.new;
+		^ins;
 	}
 
-	mapCursor { arg cur;
-		cursor = cur;
-		if(cursorController.notNil) {
-			cursorController.remove;
-		};
-		cursorController = SimpleController(cursor).put(\refresh, {
-			if(this.view.notNil) {
-				if(this.view.isClosed) {
-					cursorController.remove;
-				} {
-					this.view.refresh;
-				};
-			}
-		})
+	orientation_ { arg val;
+		myOrientation = val;
+		this.view.orientation = val;
 	}
 
-	specialInit {
-		this.view.background = Color.clear;
-		this.view.acceptsMouse_(false);
+	orientation {
+		^myOrientation;
 	}
 
-	makeUpdater {
-		if(controller.notNil) {controller.remove};
-		controller = SimpleController(model).put(\cursor, { arg obj, msg, arg1;
-			if(this.view.isNil) {
-				//"COOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOSLCLOCLOCLOSED".debug;
-				controller.remove;
+	mapTimeline { arg timeline;
+		this.view.action = { arg slider;
+			var range = slider.range.clip(0.01,1); // prevent division by 0
+			if(this.orientation == \horizontal) {
+				timeline.viewport.left = slider.lo;
+				timeline.viewport.width = range;
+				timeline.changed(\viewport);
+				//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("hrange action");
+				timeline.refresh;
 			} {
-				//"CursorTimelineView get a refresh signal!".debug;
-				//{
-					if(arg1 == \play) {
-						this.play;
-					} {
-						this.stop;
-					}
-				//}.defer(Server.default.latency)
+				timeline.viewport.top = slider.lo;
+				timeline.viewport.height = range;
+				timeline.changed(\viewport);
+				//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("vrange action");
+				timeline.refresh;
+			}
 
-			};
-		});
-		controller.put(\redraw, {
-			this.refresh;
-		});
-	}
-
-	play {
-		//"==================************-----------(##############)".debug("cursor PLAY");
-		//if(playtask.notNil) {
-		//	{
-		//	//	Server.default.latency.wait;
-		//		playtask.stop;
-		//	}.defer(Server.default.latency.wait);
-		//};
-		//playtask = playtask ?? {TaskProxy.new};
-		//if(playtask.isPlaying.not) {
-			//{
-				playtask = Task({
-					var start_beat;
-					var start_offset;
-					var endTime;
-					var privcursor;
-					Server.default.latency.wait; // compense for pattern latency
-					//loop{
-						//"at begining of loop:%".format(cursorPos, endTime).postln;
-						//if(this.isPlaying) {
-							start_beat = TempoClock.default.beats;
-							start_offset = cursor.startPosition ? this.model.startTime;
-							endTime = cursor.endPosition ? this.model.endTime; // no real time modification of end time
-							cursorPos =  start_offset;
-							if(cursor.notNil and: { cursor.startPosition.notNil }) {
-								start_offset = start_offset max: cursor.startPosition;
-							};
-
-							privcursor = cursorPos;
-
-							while({
-								privcursor < endTime;
-								//true;
-							}, {
-								cursorPos = TempoClock.default.beats - start_beat + start_offset;
-								privcursor = TempoClock.default.beats - start_beat + start_offset;
-								//cursorPos.debug("cursorPos");
-								{
-									if(this.view.isNil or: { this.view.isClosed }) {
-										this.stop;
-									} {
-										this.view.refresh;
-									};
-								}.defer;
-								( 1/16 ).wait;
-								//{
-								//	this.view.refresh;
-								//}.defer;
-
-							});
-							//this.isPlaying = false;
-						//} {
-						//	(1/16).wait;
-						//}
-					//}
-				});
-				playtask.play(TempoClock.default)
-
-			//}.defer(Server.default.latency)
-		//} {
-		//	this.isPlaying = true;
-		//}
-	}
-
-	stop {
-		//"==================************-----------(##############)".debug("cursor STOP");
-		if(playtask.notNil) {
-			//this.isPlaying = false;
-			playtask.stop;
 		};
-		
-	}
+
+		// make updater
+		this.view.onChange(timeline, 'viewport', { arg caller, receiver, morearg;
+			//[caller, receiver, morearg].debug("onChange args");
+			this.refresh(timeline);
+		});
+
+		this.refresh(timeline);
 	
+	}
+
+	refresh { arg timeline;
+		{
+			var slider = this;
+			if(this.orientation == \horizontal) {
+				slider.hi = timeline.viewport.left+timeline.viewport.width;
+				slider.lo = timeline.viewport.left;
+				//[timeline, timeline.viewport, timeline.viewport.width, slider.range, slider.hi].debug("=====+++======= ScrollView.refresh: range, hi");
+			} {
+				slider.hi = timeline.viewport.top+timeline.viewport.height;
+				slider.lo = timeline.viewport.top;
+			}
+		}.defer;
+	}
+}
+
+///////////////////////////////////////
+
+// not used anymore, use TimelineDrawer 
+DenseGridLines : GridLines {
+	var <>density = 1;
+	var <>labelDensity = 1;
+	
+	getParams { |valueMin,valueMax,pixelMin,pixelMax,numTicks|
+		var lines,p,pixRange;
+		var nfrac,d,graphmin,graphmax,range;
+		pixRange = pixelMax - pixelMin;
+		if(numTicks.isNil,{
+			numTicks = (pixRange / 64 * density);
+			numTicks = numTicks.max(3).round(1);
+		});
+		# graphmin,graphmax,nfrac,d = this.ideals(valueMin,valueMax,numTicks);
+		lines = [];
+		if(d != inf,{
+			forBy(graphmin,graphmax + (0.5*d),d,{ arg tick;
+				if(tick.inclusivelyBetween(valueMin,valueMax),{
+					lines = lines.add( tick );
+				})
+			});
+		});
+		p = ();
+		p['lines'] = lines;
+		if(pixRange / numTicks > (9 / labelDensity)) {
+			p['labels'] = lines.collect({ arg val; [val, this.formatLabel(val,nfrac) ] });
+		};
+		^p
+	}
+}
+
+// not used anymore, use TimelineDrawer 
+MidinoteGridLines : GridLines {
+	
+	var <>density = 1;
+	var <>labelDensity = 1;
+	
+	//getParams { |valueMin,valueMax,pixelMin,pixelMax,numTicks|
+	//	var lines,p,pixRange;
+	//	var nfrac,d,graphmin,graphmax,range;
+
+	//	var count = valueMax - valueMin;
+	//	var pixelCount = pixelMax - pixelMin;
+
+	//	if(pixelCount < 200) {
+	//		count = count / 2;
+	//	};
+
+	//	count.collect {
+	//		pixelMin
+
+	//	}
+
+	//	pixRange = pixelMax - pixelMin;
+	//	if(numTicks.isNil,{
+	//		numTicks = (pixRange / 64 * density);
+	//		numTicks = numTicks.max(3).round(1);
+	//	});
+	//	# graphmin,graphmax,nfrac,d = this.ideals(valueMin,valueMax,numTicks);
+	//	lines = [];
+	//	if(d != inf,{
+	//		forBy(graphmin,graphmax + (0.5*d),d,{ arg tick;
+	//			if(tick.inclusivelyBetween(valueMin,valueMax),{
+	//				lines = lines.add( tick );
+	//			})
+	//		});
+	//	});
+	//	p = ();
+	//	p['lines'] = lines;
+	//	if(pixRange / numTicks > (9 / labelDensity)) {
+	//		p['labels'] = lines.collect({ arg val; [val, this.formatLabel(val,nfrac) ] });
+	//	};
+	//	^p
+	//}
+
+	getParams { |valueMin,valueMax,pixelMin,pixelMax,numTicks|
+		var lines,p,pixRange;
+		var nfrac,d,graphmin,graphmax,range;
+		var count = 127;
+		var pixelCount = pixelMax - pixelMin;
+		pixRange = pixelMax - pixelMin;
+		if(numTicks.isNil,{
+			numTicks = 127;
+			//if(pixelCount < 200) {
+			//	numTicks = ( numTicks / 2 ).round(1);
+			//};
+		});
+		# graphmin,graphmax,nfrac,d = this.ideals(valueMin,valueMax,numTicks);
+		d= 1;
+		if(pixelCount < 200) {
+			d = 2
+		};
+		lines = [];
+		if(d != inf,{
+			forBy(graphmin,graphmax + (0.5*d),d,{ arg tick;
+				if(tick.inclusivelyBetween(valueMin,valueMax),{
+					lines = lines.add( tick );
+				})
+			});
+		});
+		p = ();
+		p['lines'] = lines;
+		if(pixRange / numTicks > 9) {
+			p['labels'] = lines.collect({ arg val; [val, this.formatLabel(val,nfrac) ] });
+		};
+		^p
+	}
 }
 
 

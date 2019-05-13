@@ -447,7 +447,11 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		if(target.getHalo(\stopIsMute) != false) {
 			target.stop(target.fadeTime); // FIXME: how to configure ?
 		} {
-			target.free;
+			{
+				//Server.default.latency.wait;
+				//target.free;
+				target.end;
+			}.fork;
 		}
 	}
 

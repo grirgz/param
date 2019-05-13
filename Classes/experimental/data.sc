@@ -212,12 +212,13 @@ PresetDictionary : IdentityDictionary {
 				//[pkey, this.all.keys].debug("loadAll: all keys2");
 				inst = this.new(pkey);
 				//[pkey, this.all.keys].debug("loadAll: all keys3");
-				[pkey ,Archive.global.at(\PresetDictionary, pkey)].debug("Loading library ==");
+				//[pkey ,Archive.global.at(\PresetDictionary, pkey)].debug("Loading library ==");
+				[pkey].debug("Loading library ==");
 				if( Archive.global.at(\PresetDictionary, pkey).notNil ) {
 					//[pkey, this.all.keys].debug("loadAll: all keys4");
 					Archive.global.at(\PresetDictionary, pkey).keys.do { arg subkey, n;
 						var data;
-						[n, pkey, subkey, this.all.keys].debug("3x loadAll: in your PresetDictionary, loading its content");
+						//[n, pkey, subkey, this.all.keys].debug("3x loadAll: in your PresetDictionary, loading its content");
 						data = Archive.global.at(\PresetDictionary, pkey)[subkey];
 						inst[subkey] = data.load;
 					};
@@ -249,7 +250,8 @@ PresetDictionary : IdentityDictionary {
 			var dict;
 			isLoading = true;
 			dict = ArchiveDictionary.read(this.class.archiveFolder +/+ key);
-			[key , dict].debug("Loading library ======================");
+			//[key , dict].debug("Loading library ======================");
+			[key].debug("Loading library ======================");
 			if(dict.notNil) {
 				dict.keysValuesDo { arg k, v;
 					this[k] = v;

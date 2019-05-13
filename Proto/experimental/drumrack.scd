@@ -179,10 +179,10 @@
 
 	add_from_lib: { arg self, lib, key;
 		[lib.key, key].debug("add_from_lib");
-		lib.lib[key].list.debug("list");
-		self.list.collect(_.keys).debug("before");
+		//lib.lib[key].list.debug("list");
+		//self.list.collect(_.keys).debug("before");
 		lib.lib[key].list.collect({ arg x; self.list.add(x.clone.debug("clone")) });
-		self.list.collect(_.keys).debug("after");
+		//self.list.collect(_.keys).debug("after");
 		self.update_proxy;
 	},
 
