@@ -22,6 +22,27 @@
 		nil
 	},
 
+	basicInit: { arg self;
+		self.eventloop = self.makeDefaultEventLoop;
+		self.areasize = 10@128;
+		self.proxy = EventPatternProxy.new;
+		self.cursor = CursorTimeline.new;
+		self.cursor.startPosition = self.eventList.startTime;
+		self.postChain = EventPatternProxy.new.source_(Pbind());
+		self.selection_cursor = CursorTimeline.new;
+
+		// note: this is grid quant, not playing quant
+		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
+		
+	},
+
+	target: { arg self;
+		if(self.param.notNil) {
+			self.param.target
+		}
+	},
+
+
 	makeDefaultEventList: { arg self;
 		var el = XEventList.new;
 		el.start;
@@ -34,6 +55,14 @@
 		loop.list = self.makeDefaultEventList;
 		//loop.setList(0);
 		loop;
+	},
+
+	outBus: { arg self;
+		self.postChain.get(\out)
+	},
+	
+	outBus_: { arg self, val;
+		self.postChain.set(\out, val)
 	},
 
 	asPatternAbs_futur: { arg self, startPosition, endPosition;
@@ -325,6 +354,13 @@
 
 		};
 	},
+
+	asPreview: { arg self;
+		TimelinePreview.new.mapEventList(self.eventList).view.mouseDownAction_({ 
+			self.edit;
+		}).fixedHeight_(40);
+	},
+
 ));
 
 //if(~clipTimeline_all.isNil) {
@@ -601,21 +637,10 @@ ClipTimeline.proto = ProtoClass((
 
 	init: { arg self, param;
 
-		self.eventloop = self.makeDefaultEventLoop;
+		self.basicInit;
 		self.param = param; // depends on eventloop
-		self.areasize = 10@128;
-		self.proxy = EventPatternProxy.new;
-		self.cursor = CursorTimeline.new;
-		self.cursor.startPosition = self.eventList.startTime;
-		self.selection_cursor = CursorTimeline.new;
 
 		// TODO: make a recorder and deprecate eventFactory
-		//self.recorder = ~playerGroupRecorder.new(self.wrapper);
-		//self.recorder.eventLoop = self.eventLoop;
-
-		// note: this is grid quant, not playing quant
-		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
-		
 	},
 
 	param_: { arg self, param;
@@ -626,11 +651,15 @@ ClipTimeline.proto = ProtoClass((
 			param = Param(param, \note);
 		};
 		self[\param] = param;
-		self.eventFactory = ~class_event_factory.new(self.param.target);
-		self.eventFactory.eventLoop = self.eventloop;
-		self.eventFactory.mode = \note;
-		self.eventFactory.playmode = \gate;
-		self.eventFactory.fullrecord = false;
+		self.wrapper = ~seqPlayerGroup.new(self.param.target);
+		self.recorder = ~playerGroupRecorder.new(self.wrapper);
+		self.recorder.eventLoop = self.eventLoop;
+
+		//self.eventFactory = ~class_event_factory.new(self.param.target);
+		//self.eventFactory.eventLoop = self.eventloop;
+		//self.eventFactory.mode = \note;
+		//self.eventFactory.playmode = \gate;
+		//self.eventFactory.fullrecord = false;
 
 		//if(kit.isSequenceableCollection) {
 			//self[\kit] = kit;
@@ -707,7 +736,7 @@ ClipTimeline.proto = ProtoClass((
 				xtotalDur = 2
 			};
 
-			pat = Pfindur(xtotalDur, Pembed(
+			pat = self.postChain <> Pfindur(xtotalDur, Pembed(
 				Pn(self.eventloop.list.clone, 1),
 				xrelStartTime
 			));
@@ -726,14 +755,6 @@ ClipTimeline.proto = ProtoClass((
 		}).repeat(repeatCount ? self.repeatCount);
 		//self.proxy;
 		pat;
-	},
-
-	outBus: { arg self;
-		self.proxy.get(\out)
-	},
-	
-	outBus_: { arg self, val;
-		self.proxy.set(\out, val)
 	},
 
 
@@ -838,7 +859,7 @@ ClipTimeline.proto = ProtoClass((
 		self.selection_cursor = CursorTimeline.new;
 		self.customBus = bus;
 
-		self.param = param;
+		self.param = param ?? { Param((empty:1), \empty, \unipolar) };
 
 		//eventFactory system is deprecated
 		//self.eventFactory = ~class_param_event_factory.new(self.param);
@@ -1018,26 +1039,10 @@ ClipTimeline.proto = ProtoClass((
 		self;
 	},
 
-	outBus: { arg self;
-		self.proxy.get(\out)
-	},
-	
-	outBus_: { arg self, val;
-		self.proxy.set(\out, val)
-	},
-
 	init: { arg self, kit;
 
-		self.eventloop = self.makeDefaultEventLoop;
-		self.kit = kit;
-		self.areasize = 10@128;
-		self.proxy = EventPatternProxy.new;
-		self.cursor = CursorTimeline.new;
-		self.cursor.startPosition = self.eventList.startTime;
-		self.selection_cursor = CursorTimeline.new;
-
-		// note: this is grid quant, not playing quant
-		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
+		self.basicInit;
+		self.kit = kit ?? { PatKitDef(\PatKitDef_default) };
 		
 	},
 
@@ -1098,7 +1103,7 @@ ClipTimeline.proto = ProtoClass((
 		)
 	},
 
-	asPattern: { arg self, relStartTime, totalDur;
+	asPattern: { arg self, relStartTime, totalDur, repeatCount;
 		// there is 3 kinds of call to asPattern:
 		// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
 		// - the live code: no startPosition given, defaulting to start event : asPattern
@@ -1106,7 +1111,8 @@ ClipTimeline.proto = ProtoClass((
 
 		// timeline_pattern take a start time relative to firstEvent
 		// XEventList.relStartTime is relative to firstEvent
-		self.proxy.source = Plazy({
+		//self.proxy.source = Plazy({
+		var pat = Plazy({
 			var eventlist = self.eventloop.list;
 			var pat;
 			var xrelStartTime, xtotalDur;
@@ -1162,8 +1168,9 @@ ClipTimeline.proto = ProtoClass((
 			//};
 
 			pat;
-		}).repeat(self.repeatCount);
-		self.proxy;
+		}).repeat(repeatCount ? self.repeatCount);
+		//self.proxy;
+		pat
 	},
 
 	edit: { arg self;
@@ -1196,574 +1203,6 @@ ClipTimeline.proto = ProtoClass((
 ~clipTimeline.all.loadIfNotInitialized;
 
 ///////////////////////////////////////////////////////////////////// timeline panel
-
-////////////////// clip editor (really: clip chooser/selector)
-
-~clipEditor = (
-	new: { arg self, model, parent;
-		self = self.deepCopy;
-	
-		self.model = model;
-		self.parent_model = {parent};
-		//self.makeWindow;
-		
-		self.init_default_clip_factories;
-	
-		self;
-	},
-
-	init_default_clip_factories: { arg self;
-		var tl;
-		self.clipFactories = ();
-
-		self.clipFactories.ndef = (
-			key: 'ndef',
-			label: { arg self; self.key.asString },
-			keylist: {
-				if(Ndef.all[\localhost].notNil) {
-					Ndef.all[\localhost].envir.keys.asArray.sort;
-				} {
-					[];
-				}
-			},
-
-			getName: { arg self, ev;
-				ev.receiver.value.key;
-			},
-
-			editSelected: { arg self, model;
-				var player = model.receiver.value;
-				if(player.class == PlayerWrapper) {
-					player = player.target;
-				};
-				if(player.getHalo(\edit).notNil) {
-					player.getHalo(\edit).value;
-				} {
-					player.edit;
-				}
-			},
-
-			redefineClip: { arg me, curname, model;
-				PlayerEvent.redefine(model);
-				model[\receiver] = PlayerWrapper(Ndef(curname));
-				//model.changed(\refresh);
-				self.parent_model.changed(\refresh);
-			},
-
-
-		);
-
-		self.clipFactories.pdef = (
-			key: 'pdef',
-			label: { arg self; self.key.asString },
-			keylist: {
-				Pdef.all.keys.asArray.sort; 
-			},
-
-			getTarget: { arg self, ev;
-				// depends pattern event, player event
-				if(ev.pattern.isKindOf(Pdef)) {
-					// pattern type
-					ev.pattern;
-				} {
-					// player type
-					var tar = ev.receiver.value;
-					tar.key; // PlayerWrapper has key wrapper
-					if(tar.isKindOf(PlayerWrapper)) {
-						tar = tar.target;
-					};
-					if(tar.isKindOf(Pdef)) {
-						tar;
-					} {
-						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
-						nil;
-					}; 
-				}
-				
-			},
-
-			getName: { arg self, ev;
-				self.getTarget(ev).key;
-			},
-
-			editSelected: { arg self, model;
-				var player;
-				//player = model.receiver.value;
-				//player.asParamGroup.debug("Edit: pattern");
-				//if(player.class == PlayerWrapper) {
-				//	player = player.target;
-				//};
-				//player.debug("clipeditor: player");
-				//player.getHalo(\edit).debug("clipeditor: player, edit");
-				player = self.getTarget(model);
-				if(player.isKindOf(Pdef)) {
-					if(player.getHalo(\edit).notNil) {
-						//player.getHalo(\edit).debug("clipeditor: player, halo edit");
-						player.getHalo(\edit).value;
-					} {
-						//player.getHalo(\edit).debug("clipeditor: normal edit");
-						player.asParamGroup.edit;
-					}
-				} {
-					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
-				}
-			},
-
-			redefineClip: { arg me, curname, model;
-				PatternEvent.redefine(model);
-				model[\pattern] = Pdef(curname);
-				//model.changed(\refresh);
-				self.parent_model.changed(\refresh);
-			},
-		);
-
-		self.clipFactories.trackdef = (
-			key: 'trackdef',
-			label: { arg self; self.key.asString },
-			keylist: {
-				TrackDef.all.keys.asArray.sort; 
-			},
-
-			getName: { arg self, ev;
-				ev.receiver.value.key;
-			},
-
-			editSelected: { arg self, model;
-				var player = model.receiver.value;
-				if(player.class == PlayerWrapper) {
-					player = player.target;
-				};
-				if(player.getHalo(\edit).notNil) {
-					player.getHalo(\edit).value;
-				} {
-					if(player[\edit].notNil) {
-						player.edit;
-					} {
-						player.editor.front;
-					}
-				}
-			},
-
-			redefineClip: { arg me, curname, model;
-				PlayerEvent.redefine(model);
-				model[\receiver] = "{ PlayerWrapper(TrackDef(%)) }".format(curname).interpret;
-				//model.changed(\refresh);
-				self.parent_model.changed(\refresh);
-			},
-
-		);
-
-		// generic timeline factory
-		tl = (
-			key: 'generictimeline',
-			label: { arg self; self.key.asString },
-
-			className: {
-				~noteTimeline
-			},
-
-			keylist: { arg self;
-				self.className.all.keys.asArray.sort;
-			},
-
-			getName: { arg self, model;
-				model.timeline.key;
-			},
-
-			editSelected: { arg self, model;
-				model.timeline.edit;
-			},
-
-			redefineClip: { arg me, curname, model;
-				var tlobj;
-				Log(\Param).debug("redefineClip timeline before ev:% %", model, model.class);
-				PatternEvent.redefine(model);
-				Log(\Param).debug("redefineClip timeline ev:% %", model, model.class);
-
-				tlobj = ( "{ " ++ me.className.new(curname).refCompileString ++ " }" ).interpret;
-				model[\timeline] = tlobj;
-				//model[\timeline] = { 
-				//	me.keys.debug("redefineClip3:me.new!!!!!");
-				//	me.className.new(curname)
-				//};
-				//"redefineClip3".debug;
-				//model.changed(\refresh);
-				self.parent_model.changed(\refresh);
-				//"redefineClip4".debug;
-			},
-		);
-		self.clipFactories_timeline_parent = tl;
-
-		[\noteTimeline, \clipTimeline, \envTimeline, \modStepTimeline, \kitTimeline].do { arg key;
-			self.clipFactories[key] = (
-				key: key,
-				parent: tl,
-				className: "{ topEnvironment[%] }".format(key.asCompileString).interpret,
-			);
-		};
-
-		self.clipFactories.sampleTimeline = (
-			key: 'sampleTimeline',
-			parent: tl,
-			className: { SampleTimeline.proto },
-		);
-
-		self.clipFactories_keys = self.clipFactories.keys.asArray.sort;
-		
-	},
-
-	event_to_clipFactory_key: { arg self, model;
-		var clipkey;
-
-		// 'Pdef',
-		// 'Ndef',
-		// 'ClipTimeline',
-		// 'SampleTimeline',
-		// 'NoteTimeline',
-		// 'EnvTimeline',
-		// 'ModStepTimeline',
-		// 'Tracks',
-
-		switch(model.type, 
-			\pattern, {
-				if(model.timeline.notNil) {
-					if(self.clipFactories_keys.includes(model.timeline.eventType)) {
-						clipkey = model.timeline.eventType
-					};
-					//switch(model.timeline.eventType,
-						//\envTimeline, {
-							//clipkey = 'envTimeline'
-						//},
-						//\clipTimeline, {
-							//clipkey = 'clipTimeline'
-						//},
-						//\sampleTimeline, {
-							//clipkey = 'sampleTimeline'
-						//},
-						//\noteTimeline, {
-							//clipkey = 'noteTimeline'
-						//},
-						//\kitTimeline, {
-							//clipkey = 'kitTimeline'
-						//},
-						//\modStepTimeline, {
-							//clipkey = 'modStepTimeline'
-						//},
-					//)
-				} {
-					//var tar = model.receiver.value;
-					//if(tar.isKindOf(PlayerWrapper)) {
-					//	tar = tar.target;
-					//};
-					var tar = model.pattern;
-					if(tar.isKindOf(Pdef)) {
-						clipkey = 'pdef'
-					} {
-						//model.debug("event_to_clipFactory_key: pattern: unknown");
-					}
-				}
-			},
-			\player, {
-				var branch = { arg obj;
-					switch( obj.class,
-						PlayerWrapper, {
-							branch.(obj.target)
-						},
-						Ndef, {
-							'ndef'
-						},
-						Pdef, {
-							'pdef'
-						},
-						TrackDef, {
-							'trackdef'
-						},
-						{
-							//model.debug("event_to_clipFactory_key: player: unknown");
-						}
-					);
-				};
-				clipkey = branch.(model[\receiver].value);
-			},
-			{
-				//model.debug("event_to_clipFactory_key: unknown");
-				nil
-			}
-		);
-		//clipkey.debug("event_to_clipFactory_key: result");
-		clipkey;
-	},
-
-	clearEditor: { arg self;
-		// when no event selected
-
-		self.type_popup.items = [""];
-		self.name_popup.items = [""];
-		self.clipLabelField.mapParam(nil);
-		self.startOffsetField.mapParam(nil);
-		self.sustainField.mapParam(nil);
-	},
-
-	makeUpdater: { arg self;
-		self.controller.remove;
-		self.controller = SimpleController(self.model).put(\refresh, {
-			var ev = self.model;
-			[self.type_popup, ev].debug("entering clipEditor updater");
-			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
-				self.controller.remove;
-			} {
-				var clipkey;
-				var clipfac;
-				self.refreshPopups;
-				clipkey = self.event_to_clipFactory_key(ev);
-				clipkey.debug("makeUpdater: clipkey");
-				self.startOffsetField.mapParam(Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)));
-				self.clipLabelField.mapParam(Param(Message(self.model), \label));
-				self.sustainField.mapParam(Param(self.model, Pembed.sustainKey));
-				if(clipkey.notNil) {
-					clipkey.debug("makeUpdater: clipkey not nil");
-					clipfac = self.clipFactories[clipkey];
-					self.type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
-					self.name_popup.items = clipfac.keylist;
-					self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
-						x == clipfac.getName(ev)
-					});
-
-					// FIXME: should use parent_model startOffsetKey to be flexible
-				} {
-					// selected event not recognized
-
-					self.type_popup.value = nil;
-					self.name_popup.value = nil;
-				}
-			}
-		});
-	},
-
-	refreshPopups: { arg self;
-		var name_popup = self.name_popup;
-		self.type_popup.items = self.clipFactories_keys.collect({ arg x; self.clipFactories[x].label });
-		self.type_popup.action = {
-			name_popup.items = self.clipFactories[ self.clipFactories_keys[self.type_popup.value] ].keylist;
-		};
-		self.type_popup.valueAction = 0;
-	},
-
-	edit_selected: { arg self, model;
-		var clipkey, clipfac;
-		model = model ? self.model;
-		//[model.type, model].debug("Edit: type");
-		clipkey = self.event_to_clipFactory_key(model);
-		clipfac = self.clipFactories[clipkey];
-		clipfac.editSelected(model);
-	},
-
-	makeLayout: { arg self;
-		var layout;
-		var header;
-		var editor;
-		var type_popup, name_popup;
-		var model = self.model;
-		//"clipEditor.makeLayout: init".debug;
-		type_popup = PopUpMenu.new;
-		name_popup = PopUpMenu.new;
-		self.name_popup = name_popup;
-		self.type_popup = type_popup;
-		name_popup.allowsReselection = true;
-		//"clipEditor.makeLayout: part 1".debug;
-		//type_popup.allowsReselection = true; // lose selection
-		//name_popup.items = type_popup.items[type_popup.value].asClass.all.keys.asArray;
-		name_popup.action = {
-			var curname = name_popup.items[name_popup.value];
-			var model = self.model;
-			self.clipFactories[self.clipFactories_keys[type_popup.value]].redefineClip(curname, model);
-		};
-
-		self.refreshPopups;
-		//"clipEditor.makeLayout: part 2".debug;
-		self.clipLabelField = TextField.new.fixedWidth_(60);
-		self.startOffsetField = TextField.new.fixedWidth_(60);
-		self.sustainField = TextField.new.fixedWidth_(60);
-
-		header = HLayout(
-			[type_popup, stretch:2],
-			[name_popup, stretch:2],
-			XSimpleButton.new.label_("Edit").action_({
-				self.edit_selected;
-			}),
-			[HLayout(
-				StaticText.new.string_("offset:"),
-				self.startOffsetField,
-			), stretch:0],
-			[HLayout(
-				StaticText.new.string_("sustain:"),
-				self.sustainField,
-			), stretch:0],
-			[HLayout(
-				StaticText.new.string_("name:"),
-				self.clipLabelField,
-			), stretch:0],
-
-		);
-		layout = VLayout(
-			header,
-			editor,
-		);
-
-		//"clipEditor.makeLayout: part 3".debug;
-		self.layout = layout;
-		self.layout;
-	},
-
-	makeWindow: { arg self;
-		var window = Window.new;
-		var layout;
-		layout = self.makeLayout;
-		window.layout = layout;
-		//window.alwaysOnTop = true;
-		window.front;
-
-		self.makeUpdater;
-		self.model.changed(\refresh);
-	},
-
-);
-
-~trackEditor = ProtoClass((
-	new: { arg self, model, parent, trackgroup;
-		self = self.deepCopy;
-	
-		self.model = model;
-		self.parent_model = {parent};
-		self.trackgroup = { trackgroup };
-		~clipEditor[\init_default_clip_factories].(self);
-		
-		self;
-	},
-	
-	mapModel: { arg self, model, parent, trackgroup;
-		self.model = model;
-		self.parent_model = { parent };
-		self.trackgroup = { trackgroup };
-		self.makeUpdater;
-		self.model.changed(\refresh);
-	},
-
-	makeUpdater: { arg self;
-		self.controller.remove;
-		self.controller = SimpleController(self.model).put(\refresh, {
-			var ev = self.model;
-			//[self.type_popup, ev].debug("entering clipEditor updater");
-			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
-				self.controller.remove;
-			} {
-				var clipkey;
-				var clipfac;
-				self.refreshPopups;
-			}
-		});
-	},
-
-	model_to_type_index: { arg self;
-		var track;
-		if(self.model.notNil and: { self.model.receiver.notNil }) {
-			track = self.model.receiver.value.target.parentTrack;
-			self.trackgroup.detectIndex({ arg x; x.target === track  });
-		}
-	},
-
-	model_to_name_index: { arg self;
-		if(self.model.notNil and: { self.model.receiver.notNil }) {
-			self.model.receiver.value.target.index;
-		}
-	},
-
-	redefineSelected: { arg self, model;
-		var view = self.name_popup;
-		var track = self.trackgroup[self.type_popup.value].target;
-		var idx = view.value;
-		model = model ? self.model;
-		PlayerEvent.redefine(model);
-		model[\receiver] = { PlayerWrapper(track.childAt(idx)) };
-		self.parent_model.changed(\refresh);
-	},
-
-	refreshPopups: { arg self;
-		var name_popup = self.name_popup;
-		//"refreshPopups".debug;
-		self.type_popup.items = self.trackgroup.asArray.collect(_.label);
-		self.type_popup.action = {
-			//"type_popup.action".debug;
-			if(self.type_popup.value.notNil) {
-				name_popup.items = self.trackgroup[self.type_popup.value ].target.children.asArray.collect(_.label);
-			}
-		};
-		self.name_popup.action = { arg view;
-			//"name_popup.action".debug;
-			if(view.value.notNil and: {self.model.notNil and: {self.type_popup.value.notNil}}) {
-				self.redefineSelected;
-			}
-		};
-		self.type_popup.valueAction = self.model_to_type_index;
-		self.name_popup.value = self.model_to_name_index;
-	},
-
-	edit_selected: { arg self, model;
-		model = model ? self.model;
-		//[model.type, model].debug("Edit: type");
-		self.model.receiver.value.target.edit;
-	},
-
-	makeLayout: { arg self;
-		var layout;
-		var header;
-		var editor;
-		var type_popup, name_popup;
-		var model = self.model;
-		//"clipEditor.makeLayout: init".debug;
-		type_popup = PopUpMenu.new;
-		name_popup = PopUpMenu.new;
-		self.name_popup = name_popup;
-		self.type_popup = type_popup;
-		name_popup.allowsReselection = true;
-		//"clipEditor.makeLayout: part 1".debug;
-		//type_popup.allowsReselection = true; // lose selection
-		self.refreshPopups;
-
-		header = HLayout(
-			type_popup,
-			name_popup,
-			BasicButton.new.label_("Edit").action_({
-				self.edit_selected;
-			})
-		);
-		layout = VLayout(
-			header,
-			editor,
-		);
-
-		//"clipEditor.makeLayout: part 3".debug;
-		self.layout = layout;
-		self.layout;
-	},
-
-	makeWindow: { arg self;
-		var window = Window.new;
-		var layout;
-		layout = self.makeLayout;
-		window.layout = layout;
-		//window.alwaysOnTop = true;
-		window.front;
-
-		self.makeUpdater;
-		self.model.changed(\refresh);
-	},
-
-	asView: { arg self;
-		self.makeLayout;
-	},
-));
-
 //////////////////////////////// Timeline Panel Views
 
 /////// base timeline panel view
@@ -1806,12 +1245,12 @@ ClipTimeline.proto = ProtoClass((
 	},
 
 	make_stop_button: { arg self;
-		XSimpleButton.new.label_("[]").action_({
+		BasicButton.new.label_("⏹").action_({ // doesnt work with my font but show a square anyway
 			self.cursor.startPosition = nil;
 			self.cursor.endPosition = nil;
 			PlayerWrapper(self.timeline_model).stop;
 			self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
-		});
+		}).maxWidth_(30);
 	},
 
 	make_quant_popup: { arg self;
@@ -2681,14 +2120,20 @@ ClipTimeline.proto = ProtoClass((
 			//	XSimpleButton.new.label_("yep"),
 			//),
 			HLayout (
-				self.makeLeftPaneLayout,
-				VLayout (
-					[~timelinePanelView[\makeLayout].(self), stretch:1],
-					HLayout (
-						self.makeLeftPaneToggle,
-						self.clipEditorLayout,
-					)
-				)
+				*[
+					self.makeLeftPaneLayout,
+					VLayout (
+						[~timelinePanelView[\makeLayout].(self), stretch:1],
+						HLayout (
+							*[
+								self.makeLeftPaneToggle,
+								self.clipEditorLayout,
+								self.makeRightPaneToggle,
+							].select(_.notNil)
+						)
+					),
+					self.makeRightPaneLayout,
+				].select(_.notNil)
 			),
 			//self.parent.makeLayout,
 		);
@@ -2727,6 +2172,26 @@ ClipTimeline.proto = ProtoClass((
 	splitAction: { arg self;
 		self.timeline.splitAtSelectionEdges;
 	},
+
+	makeRightPaneLayout: { arg self;
+		self.leftPaneView = View.new.layout_(WindowDef(\ClipTimelineClipList).asView(ProtoClassDef(\ClipTimelineClipList).new(self.timeline_model))).maxWidth_(200);
+		self.leftPaneView;
+	},
+
+	makeRightPaneToggle: { arg self;
+		BasicButton.new.string_(">")
+		.fixedWidth_(20)
+		.action_({ arg me;
+			if(self.leftPaneView.visible) {
+				me.string = ">";
+				self.leftPaneView.visible = false;
+			} {
+				me.string = "^";
+				self.leftPaneView.visible = true;
+			}
+		})
+		;
+	};
 );
 
 ~trackTimelinePanelView = (
@@ -2986,6 +2451,10 @@ ClipTimeline.proto = ProtoClass((
 				["Rec", Color.black, Color.white],
 				["Rec", Color.black, Color.red],
 			]),
+			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				WindowDef(\TimelineOverlayMenu).front(self.timeline_model, view, x, y)
+			}).maxWidth_(20)
 		);
 		
 		self.header_layout;
@@ -3029,7 +2498,6 @@ ClipTimeline.proto = ProtoClass((
 		//}
 		self.layout;
 	},
-
 );
 
 ~kitTimelinePanelView = (
@@ -3166,3 +2634,856 @@ ClipTimeline.proto = ProtoClass((
 	},
 
 );
+
+
+////////////////// clip editor (really: clip chooser/selector)
+
+~clipEditor = (
+	new: { arg self, model, parent;
+		self = self.deepCopy;
+	
+		self.model = model;
+		self.parent_model = {parent};
+		//self.makeWindow;
+		
+		self.init_default_clip_factories;
+	
+		self;
+	},
+
+	init_default_clip_factories: { arg self;
+		var tl;
+		self.clipFactories = ();
+
+		self.clipFactories.ndef = (
+			key: 'ndef',
+			label: { arg self; self.key.asString },
+			keylist: {
+				if(Ndef.all[\localhost].notNil) {
+					Ndef.all[\localhost].envir.keys.asArray.sort;
+				} {
+					[];
+				}
+			},
+
+			getName: { arg self, ev;
+				ev.receiver.value.key;
+			},
+
+			className: {
+				Ndef
+			},
+
+			editSelected: { arg self, model;
+				var player = model.receiver.value;
+				if(player.class == PlayerWrapper) {
+					player = player.target;
+				};
+				if(player.getHalo(\edit).notNil) {
+					player.getHalo(\edit).value;
+				} {
+					player.edit;
+				}
+			},
+
+			redefineClip: { arg me, curname, model;
+				PlayerEvent.redefine(model);
+				model[\receiver] = PlayerWrapper(Ndef(curname));
+				//model.changed(\refresh);
+				self.parent_model.changed(\refresh);
+			},
+
+
+		);
+
+		self.clipFactories.pdef = (
+			key: 'pdef',
+			label: { arg self; self.key.asString },
+			keylist: {
+				Pdef.all.keys.asArray.sort; 
+			},
+
+			getTarget: { arg self, ev;
+				// depends pattern event, player event
+				if(ev.pattern.isKindOf(Pdef)) {
+					// pattern type
+					ev.pattern;
+				} {
+					// player type
+					var tar = ev.receiver.value;
+					tar.key; // PlayerWrapper has key wrapper
+					if(tar.isKindOf(PlayerWrapper)) {
+						tar = tar.target;
+					};
+					if(tar.isKindOf(Pdef)) {
+						tar;
+					} {
+						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
+						nil;
+					}; 
+				}
+				
+			},
+
+			className: {
+				Pdef
+			},
+
+			getName: { arg self, ev;
+				self.getTarget(ev).key;
+			},
+
+			editSelected: { arg self, model;
+				var player;
+				//player = model.receiver.value;
+				//player.asParamGroup.debug("Edit: pattern");
+				//if(player.class == PlayerWrapper) {
+				//	player = player.target;
+				//};
+				//player.debug("clipeditor: player");
+				//player.getHalo(\edit).debug("clipeditor: player, edit");
+				player = self.getTarget(model);
+				if(player.isKindOf(Pdef)) {
+					if(player.getHalo(\edit).notNil) {
+						//player.getHalo(\edit).debug("clipeditor: player, halo edit");
+						player.getHalo(\edit).value;
+					} {
+						//player.getHalo(\edit).debug("clipeditor: normal edit");
+						player.asParamGroup.edit;
+					}
+				} {
+					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+				}
+			},
+
+			redefineClip: { arg me, curname, model;
+				PatternEvent.redefine(model);
+				model[\pattern] = Pdef(curname);
+				//model.changed(\refresh);
+				self.parent_model.changed(\refresh);
+			},
+		);
+
+		self.clipFactories.trackdef = (
+			key: 'trackdef',
+			label: { arg self; self.key.asString },
+			keylist: {
+				TrackDef.all.keys.asArray.sort; 
+			},
+
+			getName: { arg self, ev;
+				ev.receiver.value.key;
+			},
+
+			editSelected: { arg self, model;
+				var player = model.receiver.value;
+				if(player.class == PlayerWrapper) {
+					player = player.target;
+				};
+				if(player.getHalo(\edit).notNil) {
+					player.getHalo(\edit).value;
+				} {
+					if(player[\edit].notNil) {
+						player.edit;
+					} {
+						player.editor.front;
+					}
+				}
+			},
+
+			redefineClip: { arg me, curname, model;
+				PlayerEvent.redefine(model);
+				model[\receiver] = "{ PlayerWrapper(TrackDef(%)) }".format(curname).interpret;
+				//model.changed(\refresh);
+				self.parent_model.changed(\refresh);
+			},
+
+		);
+
+		// generic timeline factory
+		tl = (
+			key: 'generictimeline',
+			label: { arg self; self.key.asString },
+
+			className: {
+				~noteTimeline
+			},
+
+			keylist: { arg self;
+				self.className.all.keys.asArray.sort;
+			},
+
+			getName: { arg self, model;
+				model.timeline.key;
+			},
+
+			editSelected: { arg self, model;
+				model.timeline.edit;
+			},
+
+			redefineClip: { arg me, curname, model;
+				var tlobj;
+				Log(\Param).debug("redefineClip timeline before ev:% %", model, model.class);
+				PatternEvent.redefine(model);
+				Log(\Param).debug("redefineClip timeline ev:% %", model, model.class);
+
+				tlobj = ( "{ " ++ me.className.new(curname).refCompileString ++ " }" ).interpret;
+				model[\timeline] = tlobj;
+				//model[\timeline] = { 
+				//	me.keys.debug("redefineClip3:me.new!!!!!");
+				//	me.className.new(curname)
+				//};
+				//"redefineClip3".debug;
+				//model.changed(\refresh);
+				self.parent_model.changed(\refresh);
+				//"redefineClip4".debug;
+			},
+		);
+		self.clipFactories_timeline_parent = tl;
+
+		[\noteTimeline, \clipTimeline, \envTimeline, \modStepTimeline, \kitTimeline].do { arg key;
+			self.clipFactories[key] = (
+				key: key,
+				parent: tl,
+				className: "{ topEnvironment[%] }".format(key.asCompileString).interpret,
+			);
+		};
+
+		self.clipFactories.sampleTimeline = (
+			key: 'sampleTimeline',
+			parent: tl,
+			className: { SampleTimeline.proto },
+		);
+
+		self.clipFactories_keys = self.clipFactories.keys.asArray.sort;
+		
+	},
+
+	event_to_clipFactory_key: { arg self, model;
+		var clipkey;
+
+		// 'Pdef',
+		// 'Ndef',
+		// 'ClipTimeline',
+		// 'SampleTimeline',
+		// 'NoteTimeline',
+		// 'EnvTimeline',
+		// 'ModStepTimeline',
+		// 'Tracks',
+
+		switch(model.type, 
+			\pattern, {
+				if(model.timeline.notNil) {
+					if(self.clipFactories_keys.includes(model.timeline.eventType)) {
+						clipkey = model.timeline.eventType
+					};
+					//switch(model.timeline.eventType,
+						//\envTimeline, {
+							//clipkey = 'envTimeline'
+						//},
+						//\clipTimeline, {
+							//clipkey = 'clipTimeline'
+						//},
+						//\sampleTimeline, {
+							//clipkey = 'sampleTimeline'
+						//},
+						//\noteTimeline, {
+							//clipkey = 'noteTimeline'
+						//},
+						//\kitTimeline, {
+							//clipkey = 'kitTimeline'
+						//},
+						//\modStepTimeline, {
+							//clipkey = 'modStepTimeline'
+						//},
+					//)
+				} {
+					//var tar = model.receiver.value;
+					//if(tar.isKindOf(PlayerWrapper)) {
+					//	tar = tar.target;
+					//};
+					var tar = model.pattern;
+					if(tar.isKindOf(Pdef)) {
+						clipkey = 'pdef'
+					} {
+						//model.debug("event_to_clipFactory_key: pattern: unknown");
+					}
+				}
+			},
+			\player, {
+				var branch = { arg obj;
+					switch( obj.class,
+						PlayerWrapper, {
+							branch.(obj.target)
+						},
+						Ndef, {
+							'ndef'
+						},
+						Pdef, {
+							'pdef'
+						},
+						TrackDef, {
+							'trackdef'
+						},
+						{
+							//model.debug("event_to_clipFactory_key: player: unknown");
+						}
+					);
+				};
+				clipkey = branch.(model[\receiver].value);
+			},
+			{
+				//model.debug("event_to_clipFactory_key: unknown");
+				nil
+			}
+		);
+		//clipkey.debug("event_to_clipFactory_key: result");
+		clipkey;
+	},
+
+	clearEditor: { arg self;
+		// when no event selected
+
+		self.type_popup.items = [""];
+		self.name_popup.items = [""];
+		self.clipLabelField.mapParam(nil);
+		self.startOffsetField.mapParam(nil);
+		self.sustainField.mapParam(nil);
+	},
+
+	makeUpdater: { arg self;
+		self.controller.remove;
+		self.controller = SimpleController(self.model).put(\refresh, {
+			var ev = self.model;
+			[self.type_popup, ev].debug("entering clipEditor updater");
+			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
+				self.controller.remove;
+			} {
+				var clipkey;
+				var clipfac;
+				self.refreshPopups;
+				clipkey = self.event_to_clipFactory_key(ev);
+				clipkey.debug("makeUpdater: clipkey");
+				self.startOffsetField.mapParam(Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)));
+				self.clipLabelField.mapParam(Param(Message(self.model), \label));
+				self.sustainField.mapParam(Param(self.model, Pembed.sustainKey));
+				if(clipkey.notNil) {
+					clipkey.debug("makeUpdater: clipkey not nil");
+					clipfac = self.clipFactories[clipkey];
+					self.type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
+					self.name_popup.items = clipfac.keylist;
+					self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
+						x == clipfac.getName(ev)
+					});
+
+					// FIXME: should use parent_model startOffsetKey to be flexible
+				} {
+					// selected event not recognized
+
+					self.type_popup.value = nil;
+					self.name_popup.value = nil;
+				}
+			}
+		});
+	},
+
+	refreshPopups: { arg self;
+		var name_popup = self.name_popup;
+		self.type_popup.items = self.clipFactories_keys.collect({ arg x; self.clipFactories[x].label });
+		self.type_popup.action = {
+			name_popup.items = self.clipFactories[ self.clipFactories_keys[self.type_popup.value] ].keylist;
+		};
+		self.type_popup.valueAction = 0;
+	},
+
+	edit_selected: { arg self, model;
+		var clipkey, clipfac;
+		model = model ? self.model;
+		//[model.type, model].debug("Edit: type");
+		clipkey = self.event_to_clipFactory_key(model);
+		clipfac = self.clipFactories[clipkey];
+		clipfac.editSelected(model);
+	},
+
+	makeLayout: { arg self;
+		var layout;
+		var header;
+		var editor;
+		var type_popup, name_popup;
+		var model = self.model;
+		//"clipEditor.makeLayout: init".debug;
+		type_popup = PopUpMenu.new;
+		name_popup = PopUpMenu.new;
+		self.name_popup = name_popup;
+		self.type_popup = type_popup;
+		name_popup.allowsReselection = true;
+		//"clipEditor.makeLayout: part 1".debug;
+		//type_popup.allowsReselection = true; // lose selection
+		//name_popup.items = type_popup.items[type_popup.value].asClass.all.keys.asArray;
+		name_popup.action = {
+			var curname = name_popup.items[name_popup.value];
+			var model = self.model;
+			self.clipFactories[self.clipFactories_keys[type_popup.value]].redefineClip(curname, model);
+		};
+
+		self.refreshPopups;
+		//"clipEditor.makeLayout: part 2".debug;
+		self.clipLabelField = TextField.new.fixedWidth_(60);
+		self.startOffsetField = TextField.new.fixedWidth_(60);
+		self.sustainField = TextField.new.fixedWidth_(60);
+
+		header = HLayout(
+			[type_popup, stretch:2],
+			[name_popup, stretch:2],
+			XSimpleButton.new.label_("Edit").action_({
+				self.edit_selected;
+			}),
+			[HLayout(
+				StaticText.new.string_("offset:"),
+				self.startOffsetField,
+			), stretch:0],
+			[HLayout(
+				StaticText.new.string_("sustain:"),
+				self.sustainField,
+			), stretch:0],
+			[HLayout(
+				StaticText.new.string_("name:"),
+				self.clipLabelField,
+			), stretch:0],
+
+		);
+		layout = VLayout(
+			header,
+			editor,
+		);
+
+		//"clipEditor.makeLayout: part 3".debug;
+		self.layout = layout;
+		self.layout;
+	},
+
+	makeWindow: { arg self;
+		var window = Window.new;
+		var layout;
+		layout = self.makeLayout;
+		window.layout = layout;
+		//window.alwaysOnTop = true;
+		window.front;
+
+		self.makeUpdater;
+		self.model.changed(\refresh);
+	},
+
+);
+
+~trackEditor = ProtoClass((
+	new: { arg self, model, parent, trackgroup;
+		self = self.deepCopy;
+	
+		self.model = model;
+		self.parent_model = {parent};
+		self.trackgroup = { trackgroup };
+		~clipEditor[\init_default_clip_factories].(self);
+		
+		self;
+	},
+	
+	mapModel: { arg self, model, parent, trackgroup;
+		self.model = model;
+		self.parent_model = { parent };
+		self.trackgroup = { trackgroup };
+		self.makeUpdater;
+		self.model.changed(\refresh);
+	},
+
+	makeUpdater: { arg self;
+		self.controller.remove;
+		self.controller = SimpleController(self.model).put(\refresh, {
+			var ev = self.model;
+			//[self.type_popup, ev].debug("entering clipEditor updater");
+			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
+				self.controller.remove;
+			} {
+				var clipkey;
+				var clipfac;
+				self.refreshPopups;
+			}
+		});
+	},
+
+	model_to_type_index: { arg self;
+		var track;
+		if(self.model.notNil and: { self.model.receiver.notNil }) {
+			track = self.model.receiver.value.target.parentTrack;
+			self.trackgroup.detectIndex({ arg x; x.target === track  });
+		}
+	},
+
+	model_to_name_index: { arg self;
+		if(self.model.notNil and: { self.model.receiver.notNil }) {
+			self.model.receiver.value.target.index;
+		}
+	},
+
+	redefineSelected: { arg self, model;
+		var view = self.name_popup;
+		var track = self.trackgroup[self.type_popup.value].target;
+		var idx = view.value;
+		model = model ? self.model;
+		PlayerEvent.redefine(model);
+		model[\receiver] = { PlayerWrapper(track.childAt(idx)) };
+		self.parent_model.changed(\refresh);
+	},
+
+	refreshPopups: { arg self;
+		var name_popup = self.name_popup;
+		//"refreshPopups".debug;
+		self.type_popup.items = self.trackgroup.asArray.collect(_.label);
+		self.type_popup.action = {
+			//"type_popup.action".debug;
+			if(self.type_popup.value.notNil) {
+				name_popup.items = self.trackgroup[self.type_popup.value ].target.children.asArray.collect(_.label);
+			}
+		};
+		self.name_popup.action = { arg view;
+			//"name_popup.action".debug;
+			if(view.value.notNil and: {self.model.notNil and: {self.type_popup.value.notNil}}) {
+				self.redefineSelected;
+			}
+		};
+		self.type_popup.valueAction = self.model_to_type_index;
+		self.name_popup.value = self.model_to_name_index;
+	},
+
+	edit_selected: { arg self, model;
+		model = model ? self.model;
+		//[model.type, model].debug("Edit: type");
+		self.model.receiver.value.target.edit;
+	},
+
+	makeLayout: { arg self;
+		var layout;
+		var header;
+		var editor;
+		var type_popup, name_popup;
+		var model = self.model;
+		//"clipEditor.makeLayout: init".debug;
+		type_popup = PopUpMenu.new;
+		name_popup = PopUpMenu.new;
+		self.name_popup = name_popup;
+		self.type_popup = type_popup;
+		name_popup.allowsReselection = true;
+		//"clipEditor.makeLayout: part 1".debug;
+		//type_popup.allowsReselection = true; // lose selection
+		self.refreshPopups;
+
+		header = HLayout(
+			type_popup,
+			name_popup,
+			BasicButton.new.label_("Edit").action_({
+				self.edit_selected;
+			})
+		);
+		layout = VLayout(
+			header,
+			editor,
+		);
+
+		//"clipEditor.makeLayout: part 3".debug;
+		self.layout = layout;
+		self.layout;
+	},
+
+	makeWindow: { arg self;
+		var window = Window.new;
+		var layout;
+		layout = self.makeLayout;
+		window.layout = layout;
+		//window.alwaysOnTop = true;
+		window.front;
+
+		self.makeUpdater;
+		self.model.changed(\refresh);
+	},
+
+	asView: { arg self;
+		self.makeLayout;
+	},
+));
+
+/////////////////////// cliplist side panel
+
+
+ProtoClassDef(\ClipTimelineClipList, (
+	parent: ~clipEditor,
+	new: { arg self, timeline;
+		self = self.deepCopy;
+	
+		self.init_default_clip_factories;
+		self.clipList = List.new;
+		self.timeline = timeline;
+		self.defineEventFactory;
+		self.gatherClips;
+		if(self.clipList.size > 0) {
+			self.setBrushToClipId(self.clipList.first)
+		};
+		
+		self;
+	},
+
+	eventToClipId: { arg self, ev;
+		var clipkey;
+		ev.debug("eventToClipId: ev");
+		if([\rest, \start,\end].includes(ev.type)) {
+			nil
+		} {
+			clipkey	= self.event_to_clipFactory_key(ev); 
+			clipkey.debug("clipkey");
+			if(clipkey.notNil) {
+				[clipkey, self.clipFactories[clipkey].getName(ev)].debug("clipId")
+			} {
+				Log(\Param).debug("eventToClipId: no clipkey %, ev:%", clipkey, ev);
+				nil;
+			};
+		}
+	},
+
+	clipIdToEvent: { arg self, clipId;
+		var clipkey = clipId.first;
+		var inskey = clipId.last;
+		var ev = ();
+		var clipfac;
+		[clipId, self.clipFactories[clipkey], ev].debug("clipIdToEvent");
+		self.clipFactories[clipkey].redefineClip(inskey, ev);
+		[ev, ev[\label]].debug("clipIdToEvent ev");
+		ev
+	},
+
+	addClipIdToClipList: { arg self, clipId;
+		if(clipId.notNil) {
+			if(self.clipList.includesEqual(clipId).not) {
+				self.clipList.add(clipId);
+				if(self.clipList.size == 1) {
+					self.setBrushToClipId(self.clipList.first)
+				};
+			} {
+				Log(\Param).debug("already added");
+			}
+		} {
+			Log(\Param).debug("addClipIdToClipList: no clipId %", clipId);
+		};
+		self.changed(\clipList);
+	},
+
+	clipIdToFactory: { arg self, clipId;
+		if(clipId.notNil) {
+			var fac = self.clipFactories[clipId.first];
+			if(fac.notNil) {
+				fac;
+			} {
+				Log(\Param).debug("addClipIdToClipList: no clipId %", clipId);
+				nil;
+			}
+		} {
+			Log(\Param).debug("clipIdToFactory: no clipId %", clipId);
+			nil;
+		};
+	},
+
+	clipIdToTarget: { arg self, clipId;
+		var fac = self.clipIdToFactory(clipId);
+		fac.className.new(clipId.last);
+	},
+
+	addToClipList: { arg self, val;
+		var clipId = self.eventToClipId(val);
+		self.addClipIdToClipList(clipId);
+	},
+
+	gatherClips: { arg self;
+		"gat".debug;
+		self.timeline.eventList.do { arg clip;
+			self.addToClipList(clip)
+		}
+	},
+	
+	edit: { arg self;
+		WindowDef(\ClipList).front(self);
+	},
+
+	clipIdLabel: { arg self, clipId;
+		if(clipId.isNil) {
+			"nil"
+		} {
+			"% (%)".format(PlayerWrapper(self.clipIdToTarget(clipId)).label, clipId.first);
+		}
+	},
+
+	setBrushToClipId: { arg self, clipId;
+		self.brushClipId = clipId;
+		self.changed(\brushClipId);
+	},
+
+	defineEventFactory: { arg self;
+		self.timeline.eventFactory = { 
+			{ arg pos, nodesize;
+				var ev = (absTime: pos.x, midinote: pos.y, legato:1, sustain: nodesize).debug("ev add ###");
+				var clipev;
+				Log(\Param).debug("ev fac: brush:%, clipev:%", self.brushClipId, clipev);
+				if(self.brushClipId.isNil) {
+					Log(\Param).debug("No brush selected");
+					clipev = ev;
+				} {
+					clipev = self.clipIdToEvent(self.brushClipId);
+					clipev.putAll(ev);
+				};
+				Log(\Param).debug("ev fac: brush:%, clipev:%", self.brushClipId, clipev);
+				clipev;
+			}
+		};
+		self.timeline.changed(\eventFactory);
+		
+	},
+));
+
+WindowDef(\ClipTimelineNewClip, { arg def, model, fac;
+	var namefield = TextField.new;
+	VLayout (
+		HLayout(
+			StaticText.new.string_("name:"),
+			namefield,
+		),
+		ListView.new.items_(fac.keylist ++ [""]).action_({ arg view;
+			namefield.string = view.items[view.value];
+		}),
+		HLayout(
+			BasicButton.new.string_("Cancel").action_({ arg view;
+				def.closeWindow;
+			}),
+			BasicButton.new.string_("OK").action_({ arg view;
+				var name = namefield.string;
+				if(name.notNil and: {name.trim != ""}) {
+					var inst = fac.className.new(name.asSymbol);
+					model.addClipIdToClipList([fac.key, inst.key]);
+					def.closeWindow;
+				} {
+					"no name".debug;
+				}
+			}),
+		)
+	)
+});
+
+WindowDef(\ClipTimelineClipList, { arg def, model;
+	VLayout (
+		HLayout (
+			BasicButton.new.string_("Add").action_({ arg view;
+				var menu = MenuSpec(
+					[
+						"clipTimeline", 
+						"noteTimeline",
+						"kitTimeline",
+						"paramTimeline",
+						"sampleTimeline",
+						"pdef",
+						"ndef",
+					]
+				);
+				model.gatherClips;
+				ContextMenuWindow(menu.labelList.asArray).front(view, view.bounds.rightBottom.x, view.bounds.rightBottom.y).action_({ arg me, idx;
+					var key = menu.labelList[idx].value.asSymbol;
+					model.clipFactories_keys.debug("keys");
+					if( model.clipFactories_keys.includes(key)) {
+						WindowDef(\ClipTimelineNewClip).front(model,model.clipFactories[key])
+					} {
+						key.debug("no name");
+					}
+				})
+			}),
+			//BasicButton.new.string_("open clip timeline").action_({
+				//model.timeline.edit
+				
+			//})
+		),
+		ListView.new.action_({arg view;
+			Log(\Param).debug("action! %", view.value);
+			model.setBrushToClipId(model.clipList[view.value]);
+		}).enterKeyAction_({arg view;
+			Log(\Param).debug("action! %", view.value);
+			model.setBrushToClipId(model.clipList[view.value]);
+		}).followChange(model, \clipList, { arg view;
+			view.items_(model.clipList.collect({ arg clipId;
+				model.clipIdLabel(clipId)
+			}))
+		}),
+		HLayout (
+			StaticText.new.followChange(model, \brushClipId, { arg view;
+				var clipId = model.brushClipId;
+				view.string_(
+					model.clipIdLabel(clipId)
+				)
+			}),
+			BasicButton.new.string_("Edit").action_({
+				model.clipIdToTarget(model.brushClipId).edit;
+			})
+		)
+	)
+});
+
+WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
+	var inview, layout;
+	[x, y].debug("xy");
+	def.windowDo { arg win;
+		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
+		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
+		win.endFrontAction = { win.close };
+	};
+	inview = View.new;
+
+
+	layout = VLayout (
+		HLayout(
+			StaticText.new.string_("outBus:"),
+			Param(
+				Message(model),
+				\outBus, 
+				MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k).index }) )
+			).asPopUpMenu,
+		),
+		BasicButton.new.string_("Piano keyboard").action_({ 
+			model.debug("m");
+			model.target.debug("t");
+			WindowDef(\TimelinePianoKeyboard).front(model.wrapper)
+		}),
+		nil
+	);
+	//def.windowDo { arg win;
+		//win.setInnerExtent(view.bounds.extent.min(20));
+	//};
+	inview.layout_(layout);
+	
+}).border_(false);
+
+WindowDef(\TimelinePianoKeyboard, { arg def, player;
+	var kb = MIDIKeyboardView.new;
+	if(player.notNil) {
+		kb.keyDownAction = { arg midinote, old;
+			if(old.notNil) {
+				player.elAt(old).stop;
+			};
+			player.elAt(midinote).play;
+		};
+		kb.keyTrackAction = { arg midinote, old;
+			player.elAt(old).stop;
+			player.elAt(midinote).play;
+		};
+		kb.keyUpAction = { arg midinote;
+			player.elAt(midinote).stop;
+		};
+	};
+	def.windowDo { arg win;
+		win.setInnerExtent(800,120)
+   
+	};
+	kb.asView;
+});

@@ -372,7 +372,12 @@
 			if(this.isClosed) {
 				con.remove;
 			} {
-				fun.(* [this] ++ args);
+				try {
+					fun.(* [this] ++ args);
+				} { arg err;
+					"In View.followChange: key:%".format(key).error;
+					err.reportError;
+				}
 			};
 		});
 		if(init==true) { 

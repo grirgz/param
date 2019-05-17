@@ -26,6 +26,7 @@ WindowDef {
 	var <>windowName;
 	var <>simpleController;
 	var <>startRenderingTime;
+	var <>border = true;
 
 
 	// FIXME: window is not restored at the exact same position but is shifted downward, maybe a ubuntu unity bug
@@ -123,12 +124,27 @@ WindowDef {
 			Task({ // defering because sometime GUI need to wait to allow processing of sound while loading
 				startRenderingTime = thisThread.seconds;
 				window.view.removeAll;
-				val = source.value(this, *args);
+				try {
+					val = source.value(this, *args);
+				} { arg err;
+					"In WindowDef: %".format(key).error;
+					err.reportError;
+				};
 				window.name = this.windowName ? key ? "";
 				if(val.isKindOf(Layout)) {
 					layout = val;
 				} {
-					layout = HLayout(val)
+					if(val.isKindOf(View)) {
+						layout = HLayout(val)
+					} {
+						if(val.isKindOf(Window)) {
+							"Error: WindowDef function return a window".postln;
+							layout = HLayout();
+						} {
+							Log(\Param).debug("WindowsDef: not sure what to do with this object: %", val );
+							layout = HLayout();
+						}
+					}
 				};
 				window.layout = layout;
 			}).play(AppClock);
@@ -158,7 +174,7 @@ WindowDef {
 			}
 		};
 		if(window.isNil or: { window.isClosed }) {
-			window = Window.new;
+			window = Window.new(border:border);
 			this.loadWindowProperties;
 			this.updateView(*args);
 			window.onClose = window.onClose.addFunc({
@@ -174,7 +190,11 @@ WindowDef {
 		//window.alwaysOnTop = true;
 	}
 
-	onChange { arg model, key, func;
+	onChange { arg ...args; // deprecated
+		^followChange(*args)
+	}
+
+	followChange { arg model, key, func;
 		simpleController = simpleController ?? { SimpleController(model) };
 		simpleController.put(key, {
 			if(this.window.isNil or: { this.window.isClosed }) {

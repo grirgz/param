@@ -63,6 +63,7 @@ a.collect(_.type);
 XEventList : List {
 	var <totalDur = 0, <playingDur = 0;
 	var >startTime, <>endTime;
+	var <>extraData; // for storing buffer data or other things sync with his eventlist
 
 	print { |keys, postRest = true|
 		var postKeys;

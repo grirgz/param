@@ -140,7 +140,7 @@ PlayerWrapper  {
 	}
 
 	asView {
-		^PlayerWrapperView.new(this).layout;
+		^PlayerWrapperView.new(this).view;
 	}
 
 	asPlayerEvent {

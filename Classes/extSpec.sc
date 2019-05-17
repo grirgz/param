@@ -432,8 +432,10 @@ XBoolSpec : XNonFloatSpec {
 
 ///////////////////////////// Menu
 
-MenuSpec : XNonFloatSpec {
-	var <>labelList, <>valueList, <>list; // should be List
+TagSpec : XNonFloatSpec {
+	var list; // forced to List
+	var <>dynamicLists;
+	//var dirty = true; // cache not really implemented
 
 	*new { arg list;
 		^super.new.menuSpecInit(list);
@@ -443,90 +445,158 @@ MenuSpec : XNonFloatSpec {
 		^super.new.indexMenuSpecInit(list);
 	}
 
+	addDynamicList { arg dlist;
+		// symbol -> { function returning a list }
+		// dynamicList is also an association
+		// key is unused currently but could serve to remove
+		if(dlist.isKindOf(Association)) {
+			dynamicLists.add(dlist);
+		} {
+			"MenuSpec: dynamic list should be an association: %".format(dlist).error
+		};
+		//dirty = true;
+	}
+
+	addUniqueDynamicList { arg newdlist;
+		if(dynamicLists.every({ arg dlist; dlist.key != newdlist.key })) { 
+			this.addDynamicList(newdlist)
+		}
+	}
+
+	replaceDynamicList { arg newdlist;
+		var idx = dynamicLists.detectIndex({ arg dlist; dlist.key == newdlist.key });
+		if(idx.notNil) {
+			this.dynamicLists[idx] = newdlist
+		} {
+			this.addDynamicList(newdlist)
+		}
+	}
+
 	add { arg key, val;
 		if(key.class == Association) {
-			labelList.add(key.key);
-			valueList.add(key.value);
+			list.add(key)
 		} {
-			labelList.add(key);
-			valueList.add(val ? key);
+			list.add(key -> ( val ? key ))
 		}
+	}
+
+	valueList {
+		^this.associationList.collect(_.value)
+	}
+
+	labelList {
+		^this.associationList.collect(_.key)
+	}
+
+	keyList {
+		^this.labelList
+	}
+
+	associationList {
+		var ret = list.value.copy;
+		dynamicLists.do({ arg dlist;
+			try {
+				dlist.value.value.do { arg x; // asso.value then execute
+					if(x.isKindOf(Association)) {
+						ret.add(x);
+					} {
+						ret.add(x -> x);
+					}
+				}
+			} { arg err;
+				"In MenuSpec: dynamic list: %".format(dlist).error;
+				err.reportError;
+			}
+		});
+		//dirty = false;
+		^ret;
+	}
+
+	list {
+		^this.associationList
+	}
+
+	staticList {
+		^list
 	}
 
 	addUnique { arg key, val;
 		if(key.class == Association) {
-			if(labelList.includes(key.value).not) {
+			if(this.labelList.includes(key.value).not) {
 				list.add(key.key -> key.value);
-				labelList.add(key.key);
-				valueList.add(key.value);
+				//dirty = true;
 			}
 		} {
 			var xval = val ? key;
-			if(labelList.includes(xval).not) {
+			if(this.labelList.includes(xval).not) {
 				list.add(key -> xval);
-				labelList.add(key);
-				valueList.add(xval);
+				//dirty = true;
 			}
 		}
+	}
+
+	addUniq { arg ...args;
+		^this.addUnique(*args);
 	}
 
 	indexAdd { arg val;
-		labelList.add(val);
-		valueList.add(valueList.size);
+		this.add(val, list.size);
 	}
 
 	menuSpecInit { arg xlist;
-		list = ( xlist ?? { List.new } ).asList;
-		labelList = List.new;
-		valueList = List.new;
-		xlist.value.do { arg x;
-			if(x.class == Association) {
-				labelList.add(x.key);
-				valueList.add(x.value);
-			} {
-				labelList.add(x);
-				valueList.add(x);
-			}
-		}
+		if(xlist.isKindOf(Function)) { // can init with a dynamic list
+			this.replaceDynamicList(\list -> xlist);
+			xlist = [];
+		};
+		if(xlist.isKindOf(Association)) { // can init with a dynamic list
+			this.replaceDynamicList(xlist);
+			xlist = [];
+		};
+		list = List.new;
+		dynamicLists = dynamicLists ? List.new; // don't erase dynlist by default
+		xlist.do({ arg item;
+			this.add(item)
+		});
 	}
 
 	indexMenuSpecInit { arg xlist;
-		list = ( xlist ?? { List.new } ).asList;
-		labelList = List.new;
-		valueList = List.new;
-		xlist.value.do { arg x, idx;
-			if(x.class == Association) {
-				labelList.add(x.key);
-				valueList.add(x.value);
-			} {
-				labelList.add(x);
-				valueList.add(idx);
-			}
-		}
+		if(xlist.isKindOf(Function)) { // can init with a dynamic list
+			this.addDynamicList(\list -> xlist);
+			xlist = [];
+		};
+		if(xlist.isKindOf(Association)) { // can init with a dynamic list
+			this.addDynamicList(xlist);
+			xlist = [];
+		};
+		list = List.new;
+		dynamicLists = dynamicLists ? List.new; // don't erase dynlist by default
+		xlist.do({ arg item;
+			this.indexAdd(item)
+		});
 	}
 
 	default { 
-		^valueList[0]
+		^this.valueList[0]
 	}
 
 	mapIndex { arg val;
-		^valueList[val.round.asInteger]
+		^this.valueList[val.round.asInteger]
 	}
 
 	unmapIndex { arg val;
-		^valueList.detectIndex({ arg x; x == val })
+		^this.valueList.detectIndex({ arg x; x == val })
 	}
 
 	map { arg val;
-		^this.mapIndex(val * ( valueList.size - 1))
+		^this.mapIndex(val * ( this.valueList.size - 1))
 	}
 
 	unmap { arg val;
-		^this.unmapIndex(val) / ( valueList.size - 1);
+		^this.unmapIndex(val) / ( this.valueList.size - 1);
 	}
 }
 
-MenuSpecDef : MenuSpec {
+TagSpecDef : TagSpec {
 	classvar <>all;
 	var <>key;
 
@@ -575,35 +645,11 @@ MenuSpecDef : MenuSpec {
 	}
 }
 
-MenuSpecFuncDef : MenuSpecDef {
-	*initClass {
-		all = IdentityDictionary.new;
-	}
+MenuSpec : TagSpec { }
+MenuSpecDef : TagSpecDef { }
 
-	labelList {
-		var ret = List.new;
-		list.value.do { arg x;
-			if(x.class == Association) {
-				ret.add(x.key);
-			} {
-				ret.add(x);
-			}
-		};
-		^ret;
-	}
+MenuSpecFuncDef : TagSpecDef { } // deprecated
 
-	valueList {
-		var ret = List.new;
-		list.value.do { arg x;
-			if(x.class == Association) {
-				ret.add(x.value);
-			} {
-				ret.add(x);
-			}
-		};
-		^ret;
-	}
-}
 
 ListIndexSpec : XNonFloatSpec {
 	var <>fun;

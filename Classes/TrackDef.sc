@@ -1,16 +1,25 @@
 
 TrackDef : ProtoDef {
 	// just another placeholder to manage players and mixers
+	*all {
+		^PresetDictionary.new(\TrackDef);
+	}
 }
 
 TrackTemplateDef : TrackDef {
 	// just another placeholder to distinguish tracks proto-classes and proto-instances
+	*all {
+		^PresetDictionary.new(\TrackTemplateDef);
+	}
 }
 
 TrackMixerDef {
 	// FIXME: redirect to defined protoclass or be a placeholder ?
 	//		or defined protoclass could be the default ? but constructor signature will be different than TrackDef
 
+	*all {
+		^PresetDictionary.new(\TrackMixerDef);
+	}
 }
 
 FileSystemProject : TrackDef {
@@ -20,8 +29,11 @@ FileSystemProject : TrackDef {
 	classvar <>loadingFiles;
 	classvar <>current;
 
+	*all {
+		^PresetDictionary.new(\FileSystemProject);
+	}
+
 	*initClass {
-		all = IdentityDictionary.new;
 		loadingFiles = List.new;
 		defaultProject = (
 			path: { arg self;
@@ -198,11 +210,13 @@ FileSystemProject : TrackDef {
 	*new { arg key, val;
 		var rkey = this.resolve(key.asString);
 		if(rkey.notNil) {
-			if(all[rkey].isNil) {
+			if(this.all[rkey].isNil) {
 				^super.new(rkey.fullPath.asSymbol, val ? this.defaultProject);
 			} {
 				^super.new(rkey.fullPath.asSymbol, val);
 			}
+		} {
+			"FileSystemProject: can't resolve this project".error;  
 		};
 		^nil
 	}

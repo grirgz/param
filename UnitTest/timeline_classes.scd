@@ -1,4 +1,15 @@
 
+/////////////////// test if no error when no argument given and doesnt exists
+ClipTimeline(\noer).edit; // PASS
+KitTimeline(\noer2).edit; // PASS
+SampleTimeline(\noer).edit; // PASS
+NoteTimeline(\noer).edit; // PASS
+ParamTimeline(\noer2).edit; // FAIL
+TrackTimeline(\noer).edit; // FAIL
+
+
+
+
 ///////////////////// NoteTimeline
 (
 	Pdef(\test_notetimeline, Pbind(

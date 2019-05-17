@@ -3,7 +3,7 @@
 	// this view selector is based 
 	// this selector version added possibility to regenere the views if they have been removed
 	selected_color: ParamViewToolBox.color_dark,
-	deselected_color: ParamViewToolBox.color_ligth,
+	deselected_color: Color.white,
 	new: { arg self, selector_count=8, action, viewInit;
 		self = self.deepCopy;
 	
@@ -76,7 +76,9 @@
 				if(self[\deselect_action].notNil) {
 					self.deselect_action(views[self.old_selected_index], self.old_selected_index);
 				} {
-					views[self.selected_index].background_(self.deselected_color);
+					[ views[self.selected_index], views[self.selected_index].background ].debug("kkk");
+					views[self.old_selected_index].background_(self.deselected_color);
+					[ views[self.selected_index], views[self.selected_index].background ].debug("kkk2");
 				}
 			};
 			if(views[x].notNil) {

@@ -414,19 +414,27 @@ TimelineView : SCViewHolder {
 			selNodes.do({arg node; 
 				node.refloc = node.nodeloc;
 			});
-			this.refresh;
+			//this.refresh;
 		},{ // no node is selected
 			// find which nodes are selected
 			var rect;
+			var wasSelected = false;
 			Log(\Param).debug("mouseUpAction st %, en %", this.startSelPoint, this.endSelPoint);
-			rect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
-			selNodes = IdentitySet.new;
-			this.selectNodes(this.findNodes(rect));
-			if(stayingSelection.not) {
-				this.startSelPoint = 0@0;
-				this.endSelPoint = 0@0;
+			if(this.startSelPoint.notNil and: {this.endSelPoint.notNil}) {
+
+				rect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
+				wasSelected = selNodes.size > 0;
+				selNodes = IdentitySet.new;
+				this.selectNodes(this.findNodes(rect));
+				if(stayingSelection.not) {
+					this.startSelPoint = 0@0;
+					this.endSelPoint = 0@0;
+					this.refreshSelectionView;
+				};
 			};
-			this.refresh;
+			if(wasSelected or:{ selNodes.size > 0 }) {
+				this.refresh;
+			}
 		});
 	}
 
@@ -469,7 +477,7 @@ TimelineView : SCViewHolder {
 			// resize mode
 			if(chosennode != nil) { // a node is selected
 				var newwidth;
-				//debug("---------mouseMoveAction: resize mode");
+				//Log(\Param).debug("---------mouseMoveAction: resize mode");
 				newwidth = refWidth + (gpos.x - refPoint.x);
 				if( enableQuant ) {
 					newwidth = newwidth.round(quant.value.x);
@@ -493,6 +501,7 @@ TimelineView : SCViewHolder {
 				if(chosennode != nil) { // a node is selected
 					var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
 					//debug("---------mouseMoveAction: move mode");
+					//Log(\Param).debug("---------mouseMoveAction: move mode");
 					//debug("======= selected nodes will be moved!!!");
 					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
 
@@ -1076,7 +1085,7 @@ TimelineView : SCViewHolder {
 					if(this.view.isClosed) {
 						selectionCursorController.remove;
 					} {
-						this.view.refresh;
+						this.refreshSelectionView;
 					};
 				}
 			})

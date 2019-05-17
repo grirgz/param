@@ -38,6 +38,7 @@ PlayerWrapperView {
 			})
 		);
 		lay.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
+		lay.addUniqueMethod(\parentView, { this }); // FIXME: why is button wrapped in a layout ?
 		this.makeUpdater;
 		this.update;
 		^lay;
@@ -132,10 +133,14 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 	// but require to remember if class is a layout or a view
 	// maybe better would be for view to return a view and layout return a layout
 
-	layout { arg parent;
+	layout {
+		^this.makeLayout;
+	}
+
+	makeLayout { arg parent;
 		var lay;
 		labelView = StaticText.new.string_("bla");
-		lay = HLayout(
+		lay = VLayout(
 			button = Button.new.action_({ arg view;
 				switch(view.value,
 					1, {
@@ -159,6 +164,7 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 		view.addUniqueMethod(\labelView, { labelView });
 		view.addUniqueMethod(\selected, { arg me, x; this.selected });
 		view.addUniqueMethod(\selected_, { arg me, x; this.selected = x });
+		view.addUniqueMethod(\parentView, { this });
 		this.makeUpdater;
 		this.update;
 		^view;
@@ -166,13 +172,13 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 
 	view { 
 		if(view.isNil) {
-			this.layout;
+			this.makeLayout;
 		};
 		^view;
 	}
 
 	asView {
-		^this.layout;
+		^this.view;
 	}
 
 	selected_ { arg val;

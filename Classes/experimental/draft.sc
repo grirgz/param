@@ -1,3 +1,35 @@
+
+
+//// classvar can't be herited, this is the only solution to herit the Def design
+//ClaVar{
+	//*all {
+		//^PresetDictionary(\ClaVar)
+	//}
+
+	//add { arg k, v;
+		//this.class.all[k] = v;
+	//}
+
+	//who {
+		//this.class.all.postln;
+	//}
+//}
+
+//ClaVarChild : ClaVar{
+	////classvar <>all;
+	///[>initClass {
+		////this.all = PresetDictionary(\ClaVarChild)
+	////}
+	//*all {
+		//^PresetDictionary(\ClaVarChild)
+	//}
+//}
+
+
+
+
+
+
 //
 //// more complex
 //YourGuiClass : ObjectGui {

@@ -1076,17 +1076,22 @@ TimelineScroller : SCViewHolder {
 		this.view.action = { arg slider;
 			var range = slider.range.clip(0.01,1); // prevent division by 0
 			if(this.orientation == \horizontal) {
-				timeline.viewport.left = slider.lo;
-				timeline.viewport.width = range;
-				timeline.changed(\viewport);
-				//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("hrange action");
-				timeline.refresh;
+				// prevent unneeded updates
+				if(timeline.viewport.left != slider.lo or: { timeline.viewport.width != range }) {
+					timeline.viewport.left = slider.lo;
+					timeline.viewport.width = range;
+					timeline.changed(\viewport);
+					//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("hrange action");
+					timeline.refresh;
+				};
 			} {
-				timeline.viewport.top = slider.lo;
-				timeline.viewport.height = range;
-				timeline.changed(\viewport);
-				//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("vrange action");
-				timeline.refresh;
+				if(timeline.viewport.top != slider.lo or: { timeline.viewport.height != range }) {
+					timeline.viewport.top = slider.lo;
+					timeline.viewport.height = range;
+					timeline.changed(\viewport);
+					//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("vrange action");
+					timeline.refresh;
+				};
 			}
 
 		};
