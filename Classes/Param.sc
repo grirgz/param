@@ -931,7 +931,7 @@ Param {
 	}
 
 	asPopUpMenu {
-		^PopUpMenu.new.mapParam(this)
+		^PopUpMenu.new.mapParam(this) // is Param.mapPopUpMenu
 	}
 
 	asIndexPopUpMenu {

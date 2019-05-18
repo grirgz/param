@@ -8,8 +8,10 @@
 		"default_specs.scd",
 		"misc/pdemul.scd",
 		"misc/selector.scd",
+		"misc/overlayMenu.scd",
 		"experimental/eventFactory.scd",
 		"player_groups.scd",
+		"GlobalLibrary.scd",
 		"timeline_utils.scd",
 		"timeline.scd",
 		"timeline_sample.scd",
@@ -27,7 +29,7 @@
 	].do({ arg file;
 		var path = (ParamProto.base_path +/+ file);
 		("loading " ++ path).debug;
-		path.load
+		FileSystemProject.load(path)
 	});
 
 );

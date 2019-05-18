@@ -493,7 +493,7 @@ TagSpec : XNonFloatSpec {
 	}
 
 	associationList {
-		var ret = list.value.copy;
+		var ret = list.copy;
 		dynamicLists.do({ arg dlist;
 			try {
 				dlist.value.value.do { arg x; // asso.value then execute

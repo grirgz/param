@@ -3378,6 +3378,18 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 	VLayout (
 		HLayout (
 			BasicButton.new.string_("Add").action_({ arg view;
+				WindowDef(\TrackList_NewInstrument).front({}, { arg libId, label;
+					Log(\Param).debug("OK!");
+					model.addTrack(libId, label);
+
+					if(name.notNil and: {name.trim != ""}) {
+						var inst = fac.className.new(name.asSymbol);
+						model.addClipIdToClipList([fac.key, inst.key]);
+						def.closeWindow;
+					} {
+						"no name".debug;
+					}
+				})
 				var menu = MenuSpec(
 					[
 						"clipTimeline", 
@@ -3447,7 +3459,7 @@ WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 			Param(
 				Message(model),
 				\outBus, 
-				MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k).index }) )
+				MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
 			).asPopUpMenu,
 		),
 		BasicButton.new.string_("Piano keyboard").action_({ 
