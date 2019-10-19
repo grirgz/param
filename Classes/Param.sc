@@ -116,38 +116,6 @@ Param {
 					Association, {
 						//"Ndef: an asso".debug;
 						property_dispatcher.(property, NdefParamSlot, NdefParamEnvSlot);
-						//property_dispatcher.(property, NdefParam);
-						//wrapper = NdefParam(*args);
-						//switch(property.key.class,
-						//	Association, { // index of ((\adsr -> \levels) -> 0)
-						//		var subpro = property.key.value;
-						//		var idx = property.value;
-						//		//"Ndef: a double asso".debug;
-						//		args[1] = property.key.key;
-						//		//(args++[subpro, idx]).debug("NdefParamEnvSlot args");
-						//		wrapper = NdefParamEnvSlot(*args++[subpro, idx]);
-						//	},
-						//	{
-						//		//"Ndef: a simple asso".debug;
-						//		switch(property.value, 
-						//			Symbol, { // env named segment: (\adsr -> \sustain) 
-						//				// need to get spec, but spec is determined after wrapper creation :(
-						//				"Ndef: env named segment".debug;
-						//				"NOT IMPLEMENTED YET!".debug;
-						//			},
-						//			// else: an index into an array: (\delaytab -> 0)
-						//			{ 
-						//				var idx;
-						//				//"Ndef: an index into an array".debug;
-						//				args[1] = property.key;
-						//				idx = property.value;
-						//				//(args++[idx]).debug("NdefParamSlot args");
-						//				wrapper = NdefParamSlot(*args++[idx]);
-						//			}
-
-						//		)
-						//	}
-						//);
 					},
 					Symbol, { // a simple param : \freq
 						//"Param.newWrapper: Ndef: a symbol".debug;
@@ -169,51 +137,19 @@ Param {
 				switch(property.class,
 					Association, {
 						property_dispatcher.(property, PdefParamSlot, PdefParamEnvSlot);
-						//switch(property.key.class,
-						//	Association, {
-						//		var subpro = property.key.value;
-						//		var idx = property.value;
-						//		args[1] = property.key.key;
-						//		//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
-						//		wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
-						//	},
-						//	// else: an index
-						//	{
-						//		var idx;
-						//		args[1] = property.key;
-						//		idx = property.value;
-						//		//(args++[idx]).debug("PdefParamSlot args");
-						//		wrapper = PdefParamSlot(*args++[idx]);
-						//	}
-						//);
 					},
 					Symbol, {
 						wrapper = PdefParam(*args);
 					}
 				);
 			}, 
+			EventPatternProxy: {
+				wrapper = EventPatternProxyParam(*args);
+			},
 			PbindSeqDef: {
 				switch(property.class,
 					Association, {
 						property_dispatcher.(property, PdefParamSlot, PdefParamEnvSlot);
-
-						//switch(property.key.class,
-						//	Association, {
-						//		var subpro = property.key.value;
-						//		var idx = property.value;
-						//		args[1] = property.key.key;
-						//		//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
-						//		wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
-						//	},
-						//	// else: an index
-						//	{
-						//		var idx;
-						//		args[1] = property.key;
-						//		idx = property.value;
-						//		//(args++[idx]).debug("PdefParamSlot args");
-						//		wrapper = PdefParamSlot(*args++[idx]);
-						//	}
-						//);
 					},
 					Symbol, {
 						wrapper = PbindSeqDefParam(*args);
@@ -239,24 +175,6 @@ Param {
 				switch(property.class,
 					Association, {
 						property_dispatcher.(property, DictionaryParamSlot, DictionaryParamEnvSlot);
-
-						//switch(property.key.class,
-						//	Association, {
-						//		var subpro = property.key.value;
-						//		var idx = property.value;
-						//		args[1] = property.key.key;
-						//		//(args++[subpro, idx]).debug("PdefParamEnvSlot args");
-						//		wrapper = PdefParamEnvSlot(*args++[subpro, idx]);
-						//	},
-						//	// else: an index
-						//	{
-						//		var idx;
-						//		args[1] = property.key;
-						//		idx = property.value;
-						//		//(args++[idx]).debug("PdefParamSlot args");
-						//		wrapper = PdefParamSlot(*args++[idx]);
-						//	}
-						//);
 					},
 					Symbol, {
 						wrapper = DictionaryParam(*args);
@@ -761,9 +679,18 @@ Param {
 		var pm = view;
 		//[keys, this.spec, this.spec.labelList].debug("mapIndexPopUpMenu: whatXXX");
 		view.refreshChangeAction = { arg me;
-			if(keys.isNil and: {this.spec.isKindOf(MenuSpec)}) {
-				//[keys, this.spec, this.spec.labelList].debug("whatXXX");
-				keys = this.spec.labelList;
+			if(keys.isNil) {
+				var spec;
+				if(this.spec.isKindOf(XBusSpec) or: { this.spec.isKindOf(XBufferSpec) }) {
+					spec = this.spec.tagSpec;
+				} {
+					spec = this.spec;
+				};
+
+				if(spec.isKindOf(TagSpec)) {
+					//[keys, this.spec, this.spec.labelList].debug("whatXXX");
+					keys = spec.labelList;
+				};
 			};
 			if(keys.notNil) {
 				pm.items = keys.asArray; // because PopUpMenu doesn't accept List
@@ -786,15 +713,27 @@ Param {
 		//debug("mapValuePopUpMenu:1");
 		view.refreshChangeAction = {
 			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
-			view.items = this.spec.labelList.asArray;
-			view.value = this.spec.unmapIndex(this.get);
+			var spec;
+			if(this.spec.isKindOf(XBusSpec) or: { this.spec.isKindOf(XBufferSpec) }) {
+				spec = this.spec.tagSpec;
+			} {
+				spec = this.spec;
+			};
+			view.items = spec.labelList.asArray;
+			view.value = spec.unmapIndex(this.get);
 		};
 		view.refreshChange;
 		//[this.spec, this.get].debug("mapValuePopUpMenu:2");
 		//view.value.debug("mapValuePopUpMenu:3");
 		pm.action = {
 			//view.value.debug("mapValuePopUpMenu:4 (action)");
-			this.set(this.spec.mapIndex(view.value));
+			var spec;
+			if(this.spec.isKindOf(XBusSpec) or: { this.spec.isKindOf(XBufferSpec) }) {
+				spec = this.spec.tagSpec;
+			} {
+				spec = this.spec;
+			};
+			this.set(spec.mapIndex(view.value));
 			//this.get.debug("mapValuePopUpMenu:5 (action)");
 		};
 		pm.onChange(this.controllerTarget, \set, { arg me;
@@ -1287,6 +1226,30 @@ BaseParam {
 		^false
 	}
 
+	*getInstrumentFromPbind { arg inval;
+		^if(inval.notNil) {
+			if(inval.class == Pbind) {
+				inval = inval.patternpairs.clump(2).detect { arg pair;
+					pair[0] == \instrument
+				};
+				if(inval.notNil) {
+					inval = inval[1];
+					if(inval.class == Symbol || inval.class == String) {
+						inval;
+					} {
+						nil
+					}
+				} {
+					nil
+				}
+			} {
+				nil
+			};
+		} {
+			nil
+		};
+	}
+
 }
 
 StandardConstructorParam : BaseParam {
@@ -1574,27 +1537,7 @@ PdefParam : BaseParam {
 		var val;
 		val = target.getHalo(\instrument) ?? { 
 			var inval = target.source;
-			if(inval.notNil) {
-				if(inval.class == Pbind) {
-					inval = inval.patternpairs.clump(2).detect { arg pair;
-						pair[0] == \instrument
-					};
-					if(inval.notNil) {
-						inval = inval[1];
-						if(inval.class == Symbol) {
-							inval;
-						} {
-							nil
-						}
-					} {
-						nil
-					}
-				} {
-					nil
-				};
-			} {
-				nil
-			};
+			this.getInstrumentFromPbind(inval);
 		};
 		^val;
 	}
@@ -2672,6 +2615,69 @@ StepEventParam : BaseParam {
 		controller.put(\set, { arg ...args; 
 			action.(view, param);
 		});
+	}
+}
+
+EventPatternProxyParam : StepEventParam {
+
+	unset {
+		target.set(property, nil)
+	}
+
+	isSet {
+		^target.envir.notNil and: {
+			target.envir.includes(property)
+		}
+	}
+
+	setBusMode { arg enable=true, free=true;
+		target.setBusMode(property, enable, free);
+	}
+
+	inBusMode {
+		^target.inBusMode(property)
+	}
+
+	instrument {
+		// before setting any key, the .envir is nil and .get(\instrument) return nil
+		// after, it return \default even if \instrument is not defined (default event)
+		// so if result is \default, i still check halo instrument to be sure
+		var res = target.get(\instrument);
+		if(res == \default) {
+			if(target.getHalo(\instrument).notNil) {
+				res = target.getHalo(\instrument)
+			}
+		};
+		^res ?? { 
+			target.getHalo(\instrument) ?? {
+				(target !? { this.class.getInstrumentFromPbind(target.source) }) ? \default;
+			};
+		}
+	}
+
+	getRaw {
+		var val;
+		val = target.getVal(property) ?? { 
+			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			this.default
+		};
+		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			val = Pdef.nestOff(val); 
+			Log(\Param).debug("Val unNested! %", val);
+		};
+		// FIXME: this function is called four times, why ? maybe one for each widget so it's normal
+		//Log(\Param).debug("get:final Val %", val); 
+		^val;
+	}
+
+	setRaw { arg val;
+		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			val = Pdef.nestOn(val); 
+			Log(\Param).debug("Val Nested! %", val);
+		};
+		target.setVal(property, val);
+		//Log(\Param).debug("set:final Val %", val);
+		target.changed(\set, property, val);
 	}
 }
 

@@ -91,7 +91,7 @@ FileSystemProject : TrackDef {
 		loadingFiles = List.new;
 	}
 
-	*loadFileTillEnd { arg path;
+	*loadFileTillEnd { arg path, silent=false;
 		var res = path;
 		var ret;
 		if(loadingFiles.includesEqual(path)) {
@@ -127,19 +127,23 @@ FileSystemProject : TrackDef {
 				};
 				loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }))
 			} {
-				Log(\Param).error("FileSystemProject: File don't exists: %", path);
+				if(silent == false) {
+					Log(\Param).error("FileSystemProject: File don't exists: %", path);
+				};
 				^nil
 			};
 		};
 		^ret;
 	}
 
-	*load { arg path;
+	*load { arg path, silent=false;
 		var rpath = this.resolve(path);
 		if(rpath.notNil and: { rpath.isFile }) {
-			^this.loadFileTillEnd(rpath.fullPath);
+			^this.loadFileTillEnd(rpath.fullPath, silent);
 		} {
-			Log(\Param).error("FileSystemProject.load: file doesnt exists or is a directory: " ++ path );
+			if(silent == false) {
+				Log(\Param).error("FileSystemProject.load: file doesnt exists or is a directory: " ++ path );
+			};
 			^nil
 		};
 	}

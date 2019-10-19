@@ -178,6 +178,7 @@
 
 ));
 
+// used in SampleTimeline
 ProtoTemplateDef(\SampleTimelineRecorder, (
 	isRecording: false,
 	new: { arg self, timeline;
@@ -209,6 +210,23 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 	},
 
 
+	recBus: 0,
+
+	trackIndex: { arg self;
+		var tl = self.timeline;
+		(tl.selection_cursor.startPoint !? _.y ? 0).trunc(tl.quant_ref.value.y)
+	},
+
+	trackAbsTime: { arg self;
+		var tl = self.timeline;
+		tl.selection_cursor.startPosition ? 0
+	},
+
+	addEvent: { arg self, ev;
+		var tl = self.timeline;
+		tl.eventList.addEvent(ev);
+		tl.eventList.reorder;
+	},
 
 	startRecording: { arg self, numChannels=2;
 		var name = "rec_%_%".format(self.timeline.key, Date.localtime.stamp);
@@ -220,7 +238,6 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 			"prepare Start recording".debug(name);
 
 			self.recordName = name;
-			self.startRecordingTime = self.tempoClock.beats;
 			self.filename = "/tmp/%.wav".format(name);
 			if(self.recordOnClipTimelineEnabled == true) {
 				clip = SampleTimeline(name.asSymbol);
@@ -246,9 +263,11 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 			};
 			self.recordedClip.fileName = self.filename;
 			self.recorder.prepareForRecord(path:self.filename, numChannels:numChannels);
-			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant), {
-				"Start recording".debug(name);
-				self.recorder.record(path:self.filename, numChannels:numChannels);
+			//self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant)-( s.latency*~t ), {
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, s.latency * self.tempoClock.tempo), {
+				Log(\Param).debug("Start recording: %: bus:%, chan:%, file:%, beats:%, quant:%, tempo:%", name, self.recBus, numChannels, self.filename, self.tempoClock.beats, self.quant, self.tempoClock.tempo);
+				self.startRecordingTime = self.tempoClock.beats; // NOTE: doesnt account for latency but is used to compute duration so not a problem for the moment
+				self.recorder.record(path:self.filename, bus:self.recBus, numChannels:numChannels);
 			});
 		} {
 			"Already recording".debug;
@@ -258,7 +277,7 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 	stopRecording: { arg self;
 		if(self.isRecording == true) {
 			"prepare Stop recording".debug(self.filename);
-			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant), {
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, s.latency * self.tempoClock.tempo), {
 				"Stop recording".debug(self.filename);
 				self[\isRecording] = false;
 
@@ -282,8 +301,186 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 
 ));
 
-// record in ClipTimeline directly
+// i think it's deprecated by SampleClipTimelineMultiTrackRecorder
 ProtoTemplateDef(\SampleClipTimelineRecorder, (
 	parent: ProtoTemplateDef(\SampleTimelineRecorder),
 	recordOnClipTimelineEnabled: true,
 ));
+
+// individual track for SampleClipTimelineMultiTrackRecorder
+ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
+	recordOnClipTimelineEnabled: true,
+	isRecording: false,
+	new: { arg self, timeline, track;
+		self = self.deepCopy;
+	
+		self.init(timeline, track);
+		
+	
+		self;
+	},
+	tempoClock: { arg self; self.timeline.tempoClock ? TempoClock.default },
+	quant: { arg self; self.timeline.quant },
+	init: { arg self, timeline, track;
+		"ini".debug;
+		self.timeline = timeline;
+		self.track = track;
+		self.recorder = Recorder(Server.default);
+		self.drawTask = TaskProxy.new;
+		self.tempoClock = TempoClock.default;
+		self.tempoClock.debug("clock");
+
+		self;
+	},
+	isRecording_: { arg self, val;
+		if(val == true) {
+			self.startRecording;
+		} {
+			self.stopRecording;
+		}
+	},
+
+
+	recBus: { arg self;
+		self.track.recordBus
+	},
+
+	trackIndex: { arg self;
+		self.track.index
+	},
+
+	trackAbsTime: { arg self;
+		var tl = self.timeline;
+		tl.selection_cursor.startPosition ? 0
+	},
+
+	addEvent: { arg self, ev;
+		var tl = self.timeline;
+		tl.eventList.addEvent(ev);
+		tl.eventList.reorder;
+	},
+
+	startRecording: { arg self, numChannels=2;
+		var name = "rec_%_t%_%".format(self.timeline.key, self.trackIndex, Date.localtime.stamp);
+		var clip;
+		var ev;
+		var tl = self.timeline;
+		if(self.isRecording == false) {
+			self[\isRecording] = true;
+			"prepare Start recording".debug(name);
+
+			self.recordName = name;
+			self.filename = "/tmp/%.wav".format(name);
+			if(self.recordOnClipTimelineEnabled == true) {
+				clip = SampleTimeline(name.asSymbol);
+				ev = clip.asPatternEvent;
+				self.recordedEvent = ev;
+				self.recordedClip = clip;
+				ev[\absTime] = self.trackAbsTime;
+				ev[\sustain] = 1/2;
+				ev[\midinote] = self.trackIndex;
+				self.addEvent(ev);
+				self.drawTask.source = {
+					inf.do { arg idx;
+						1.wait;
+						ev[\sustain] = idx + 1;
+						ev.changed(\refresh);
+					}
+				};
+				self.drawTask.play;
+			} {
+				// recordedClip is already the model
+				self.recordedClip = self.timeline;
+			};
+			self.recordedClip.fileName = self.filename;
+			self.recorder.prepareForRecord(path:self.filename, numChannels:numChannels);
+			//self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant)-( s.latency*~t ), {
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, s.latency * self.tempoClock.tempo), {
+				Log(\Param).debug("Start recording: %: bus:%, chan:%, file:%, beats:%, quant:%, tempo:%", name, self.recBus, numChannels, self.filename, self.tempoClock.beats, self.quant, self.tempoClock.tempo);
+				self.startRecordingTime = self.tempoClock.beats; // NOTE: doesnt account for latency but is used to compute duration so not a problem for the moment
+				self.recorder.record(path:self.filename, bus:self.recBus, numChannels:numChannels);
+			});
+		} {
+			"Already recording".debug;
+		}
+
+	},
+	stopRecording: { arg self;
+		if(self.isRecording == true) {
+			"prepare Stop recording".debug(self.filename);
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, s.latency * self.tempoClock.tempo), {
+				"Stop recording".debug(self.filename);
+				self[\isRecording] = false;
+
+				self.recorder.stopRecording;
+				self.recordedDuration = self.tempoClock.beats - self.startRecordingTime;
+
+				if(self.recordOnClipTimelineEnabled == true) {
+					self.drawTask.stop;
+					self.recordedEvent[\sustain] = self.recordedDuration;
+					self.recordedEvent.changed(\refresh);
+				};
+				{
+					self.recordedClip.buffer = BufDef(self.filename.asSymbol);
+					self.recordedClip.eventList.setEndPosition(self.recordedDuration);
+				}.defer(2);
+			});
+		} {
+			"Was not recording".debug;
+		}
+	},
+
+));
+
+// used in ClipTimeline to record a SampleTimeline per armed track
+// by creating an array of SampleClipTimelineTrackRecorder
+ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder, (
+	isRecording: false,
+	new: { arg self, timeline;
+		self = self.deepCopy;
+	
+		self.init(timeline);
+	
+		self;
+	},
+	quant: { arg self; self.timeline.quant },
+	init: { arg self, timeline;
+		"ini".debug;
+		self.timeline = timeline;
+		self.updateTrackRecorders;
+
+		self;
+	},
+
+	updateTrackRecorders: { arg self;
+		self.recorders = self.recorders ?? { List.new };
+		self.recorders = self.timeline.tracks.collect({ arg track, idx;
+			self.recorders[idx] ?? { 
+				ProtoTemplateDef(\SampleClipTimelineTrackRecorder).new(self.timeline, track) 
+			}
+		})
+	},
+
+	isRecording_: { arg self, val;
+		if(val == true) {
+			self.startRecording;
+		} {
+			self.stopRecording;
+		}
+	},
+
+	startRecording: { arg self, numChannels=2;
+		if(self.isRecording) {
+			"Already recording".debug;
+		} {
+			self.recorders.select({ arg r; r.track.recordArmed }).do(_.startRecording);
+			self[\isRecording] = true;
+		}
+	},
+	stopRecording: { arg self;
+		self[\isRecording] = false;
+		self.recorders.do(_.stopRecording);
+	},
+
+));
+

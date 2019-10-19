@@ -65,6 +65,7 @@ TimelineView : SCViewHolder {
 
 	var <>selectionCursor;
 	var <>selectionCursorController;
+	var <>previousNormSelRect;
 
 	//// keys
 
@@ -137,6 +138,7 @@ TimelineView : SCViewHolder {
 		font = Font("Arial", 9);
 		fontColor = Color.black;
 		pen	= GUI.pen;
+		previousNormSelRect = Rect(0,0,1,1);
 
 		selectionView.drawFunc_({ this.drawSelection });
 
@@ -227,7 +229,7 @@ TimelineView : SCViewHolder {
 
 	//////////////////////////
 
-	startSelPoint_ { arg npoint;
+	startSelPoint_ { arg npoint; // in norm units
 		if(this.selectionCursor.notNil) {
 			if(npoint.isNil) {
 				this.selectionCursor.startPoint = nil;
@@ -238,7 +240,7 @@ TimelineView : SCViewHolder {
 		startSelPoint = npoint;
 	}
 
-	endSelPoint_ { arg npoint;
+	endSelPoint_ { arg npoint; // in norm units
 		if(this.selectionCursor.notNil) {
 			if(npoint.isNil) {
 				this.selectionCursor.endPoint = nil;
@@ -249,7 +251,7 @@ TimelineView : SCViewHolder {
 		endSelPoint = npoint;
 	}
 
-	startSelPoint { arg npoint;
+	startSelPoint { arg npoint; // in norm units
 		if(this.selectionCursor.notNil) {
 			if(this.selectionCursor.startPoint.notNil) {
 				^this.gridPointToNormPoint(this.selectionCursor.startPoint);
@@ -261,7 +263,7 @@ TimelineView : SCViewHolder {
 		}
 	}
 
-	endSelPoint { arg npoint;
+	endSelPoint { arg npoint; // in norm units
 		if(this.selectionCursor.notNil) {
 			if(this.selectionCursor.startPoint.notNil) {
 				^this.gridPointToNormPoint(this.selectionCursor.endPoint);
@@ -293,7 +295,7 @@ TimelineView : SCViewHolder {
 		this.changed(\lastGridPos);
 		Log(\Param).debug("mouseDownAction_ px %,py %, npos %, gpos %", px, py, npos, gpos);
 
-		chosennode = this.findNode(gpos.x, gpos.y);
+		chosennode = this.findNodeHandle(gpos.x, gpos.y);
 		//[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
 		//[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
 		mouseDownAction.(me, px, py, mod, buttonNumber, clickCount, chosennode);
@@ -419,7 +421,7 @@ TimelineView : SCViewHolder {
 			// find which nodes are selected
 			var rect;
 			var wasSelected = false;
-			Log(\Param).debug("mouseUpAction st %, en %", this.startSelPoint, this.endSelPoint);
+			//Log(\Param).debug("mouseUpAction st %, en %", this.startSelPoint, this.endSelPoint);
 			if(this.startSelPoint.notNil and: {this.endSelPoint.notNil}) {
 
 				rect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
@@ -431,11 +433,16 @@ TimelineView : SCViewHolder {
 					this.endSelPoint = 0@0;
 					this.refreshSelectionView;
 				};
+			} {
+				// FIXME: refresh is buggy, need to think again algo
+				wasSelected = selNodes.size > 0;
+				selNodes = IdentitySet.new;
 			};
 			if(wasSelected or:{ selNodes.size > 0 }) {
 				this.refresh;
 			}
 		});
+		this.previousNormSelRect = Rect.fromPoints(this.startSelPoint ? Point(0,0), this.endSelPoint ? Point(0,0));
 	}
 
 	mouseMoveActionBase {|me, px, py, mod|
@@ -500,20 +507,11 @@ TimelineView : SCViewHolder {
 
 				if(chosennode != nil) { // a node is selected
 					var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
+					var norm_diff;
 					//debug("---------mouseMoveAction: move mode");
 					//Log(\Param).debug("---------mouseMoveAction: move mode");
 					//debug("======= selected nodes will be moved!!!");
 					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
-
-					// old move algo
-					//if(selNodes.matchItem(chosennode)) {// if the mousedown box is one of selected
-					//	selNodes.do({arg node; // move selected boxes
-					//		node.setLoc(
-					//			newpos.(node)
-					//		);
-					//		trackAction.value(node, node.spritenum, this.normPointToGridPoint(node.nodeloc));
-					//	});
-					//};
 
 					// ----------new algo
 					// - pixel_click_offset = determine diff in pixel from clicked point to origin point of chosennode (chosennode_old_origin)
@@ -540,6 +538,11 @@ TimelineView : SCViewHolder {
 					selNodes.do { arg node;
 						node.setLoc(node.refloc + grid_diff)
 					};
+
+					norm_diff = this.gridPointToNormPoint(grid_diff);
+
+					this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
+					this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
 
 					// ----------debug algo
 					//pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
@@ -736,6 +739,27 @@ TimelineView : SCViewHolder {
 		}
 	}
 
+	copyAtSelectionEdges {
+		var selrect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
+		var el = this.model.clone;
+		var nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
+		this.findCrossedNodes(selrect.leftTop, selrect.leftBottom, nodes).do { arg node;
+			this.copySplitNode(el, node, selrect.left)
+		};
+		nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
+		this.findCrossedNodes(selrect.rightTop, selrect.rightBottom, nodes).do { arg node;
+			this.copySplitNode(el, node, selrect.right)
+		};
+		nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
+		^this.findContainedNodes(selrect, nodes).collect(_.model);
+		//^noel.select { arg ev;
+			//var node = this.nodeClass.new(this, 0, ev);
+			//Log(\Param).debug("copyAtSelectionEdges: selrect:%, noderect:%, contains:%", selrect, node.rect, selrect.contains(node.rect));
+			//selrect.contains(node.rect);
+		//}
+				//Rect(5,5,10,10).contains(Rect(6,6,9,3))
+	}
+
 	splitAtSelectionEdges {
 		var selrect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
 		this.findCrossedNodes(selrect.leftTop, selrect.leftBottom).do { arg node;
@@ -744,11 +768,15 @@ TimelineView : SCViewHolder {
 		this.findCrossedNodes(selrect.rightTop, selrect.rightBottom).do { arg node;
 			this.splitNode(node, selrect.right)
 		};
-				//Rect(5,5,10,10).intersects(Rect(9,4,0,3))
 	}
 
 	splitNode { arg node, gridY;
 		var newevent = this.model.splitEvent(node.model, gridY - node.model[node.timeKey]);
+		node.decorateCopy(newevent);
+	}
+
+	copySplitNode { arg el, node, gridY;
+		var newevent = el.splitEvent(node.model, gridY - node.model[node.timeKey]);
 		node.decorateCopy(newevent);
 	}
 
@@ -972,7 +1000,7 @@ TimelineView : SCViewHolder {
 	
 	setBackgrDrawFunc_ { arg func;
 		backgrDrawFunc = func;
-		this.refresh;
+		this.efresh;
 	}
 
 	/////////////////////////////////////////////////////////
@@ -1531,6 +1559,12 @@ TimelineView : SCViewHolder {
 		});
 	}
 
+	findNodeHandle { arg x, y;
+		// this return only node if clicked on the label part
+		// this allow to start dragged selection even when screen is crowded by nodes
+		// only useful in ClipTimelineView
+		^this.findNode(x,y)
+	}
 	
 	// local function
 	findNode {arg x, y;
@@ -1551,8 +1585,8 @@ TimelineView : SCViewHolder {
 		^nil;
 	}
 
-	findCrossedNodes { arg startPoint, endPoint;
-		^paraNodes.collect({arg node; 
+	findCrossedNodes { arg startPoint, endPoint, nodes;
+		^(nodes ? paraNodes).collect({arg node; 
 			var point = node.origin;
 			//node.spritenum.debug("spritnum");
 			//[rect, point].debug("findNodes");
@@ -1563,12 +1597,24 @@ TimelineView : SCViewHolder {
 		}).select(_.notNil);
 	}
 
-	findNodes { arg rect;
-		^paraNodes.collect({arg node; 
+	findNodes { arg rect, nodes;
+		^(nodes ? paraNodes).collect({arg node; 
 			var point = node.origin;
 			//node.spritenum.debug("spritnum");
 			//[rect, point].debug("findNodes");
 			if(node.selectable and: {rect.containsPoint(point)}, {
+				//[node.rect, point].debug("findNode: found!!");
+				node;
+			});
+		}).select(_.notNil);
+	}
+
+	findContainedNodes { arg rect, nodes;
+		^(nodes ? paraNodes).collect({arg node; 
+			var point = node.origin;
+			//node.spritenum.debug("spritnum");
+			//[rect, point].debug("findNodes");
+			if(node.selectable and: {rect.contains(node.rect)}, {
 				//[node.rect, point].debug("findNode: found!!");
 				node;
 			});
@@ -1765,6 +1811,26 @@ PdefTimelineView : TimelineView { // deprecated name
 }
 
 ClipTimelineView : TimelineView {
+	findNodeHandle { arg x, y;
+		// this return only node if clicked on the label part
+		// this allow to start dragged selection even when screen is crowded by nodes
+		// findNode take x and y in grid coordinates, because TimelineNode.rect is in grid coordinates
+		var point = Point.new(x,y);
+		if(chosennode.notNil and: {chosennode.handleRect.containsPoint(point)}) {
+			// priority to the already selected node
+			^chosennode;
+		};
+		paraNodes.reverse.do({arg node;  // reverse because topmost is last
+			//node.spritenum.debug("spritnum");
+			//[node.rect, point].debug("findNode");
+			if(node.selectable and: {node.handleRect.containsPoint(point)}, {
+				//[node.rect, point].debug("findNode: found!!");
+				^node;
+			});
+		});
+		^nil;
+	}
+	
 
 }
 
@@ -1938,7 +2004,12 @@ TimelineViewEventNode : TimelineViewNodeBase {
 	}
 
 	rect {
+		// in grid coordinates
 		^Rect(origin.x, origin.y, extent.x, extent.y)
+	}
+
+	handleRect {
+		^this.rect
 	}
 
 	width {
@@ -1998,15 +2069,15 @@ TimelineViewEventNode : TimelineViewNodeBase {
 	}
 
 	draw {
-		var rect;
+		var myrect;
 		var pos;
 		Pen.color = this.color;
 		pos = this.origin;
-		rect = parent.gridRectToPixelRect(this.rect);
+		myrect = parent.gridRectToPixelRect(this.rect);
 		//[spritenum, rect, this.class].debug("draw");
-		Pen.fillRect(rect);
+		Pen.fillRect(myrect);
 		Pen.color = this.outlineColor;
-		Pen.strokeRect(rect);
+		Pen.strokeRect(myrect);
 		//Pen.stroke;
 	}
 
@@ -2034,6 +2105,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	// if timeline, can display content of timeline
 	var <>label;
 	var <>preview;
+	var <>labelheight = 20;
 	//*new { arg parent, nodeidx, event;
 	//	^super.new.init(parent, nodeidx, event);
 	//}
@@ -2122,12 +2194,21 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		Pen.lineTo(rect.perform(poslist.wrapAt(startIdx+3)));
 	}
 
+	handleRect {
+		var prect;
+		var hrect;
+		prect = parent.gridRectToPixelRect(this.rect);
+		prect = prect.insetAll(0,0,1,1); // cleaner drawing
+		hrect = prect.insetAll(0,0,0,prect.height-labelheight);
+		//Log(\Param).debug("pixel rect:%, grid rect:%, pixel hrect:%, grid hrect:%", prect, this.rect, hrect, parent.pixelRectToGridRect(hrect));
+		^parent.pixelRectToGridRect(hrect);
+	}
+
 	draw {
 		var rect;
 		var pos;
 		var previewrect;
 		var labelrect;
-		var labelheight = 20;
 		//var preview_background = Color.new255(101, 166, 62);
 		//var label_background = Color.new255(130, 173, 105);
 		var preview_background = ParamViewToolBox.color_ligth;
@@ -2140,7 +2221,8 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		rect = rect.insetAll(0,0,1,1); // cleaner drawing
 		// now rect is in screen coordinates
 		previewrect = rect.insetAll(0,labelheight,0,0);
-		labelrect = rect.insetAll(0,0,0,rect.height-labelheight);
+		labelrect = rect.insetAll(0,0,0,rect.height-labelheight); // should be same as handleRect but in pixel
+		//Log(\Param).debug("label px rect:%", labelrect);
 
 		//labelrect.debug("labelrect");
 		//previewrect.debug("previewrect");

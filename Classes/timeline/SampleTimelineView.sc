@@ -30,6 +30,7 @@ SampleTimelineView : TimelineView {
 					resampleRateLight = nil;
 					resampledData = nil;
 					resampledDataLight = nil;
+					model.askBufferData;
 
 				};
 

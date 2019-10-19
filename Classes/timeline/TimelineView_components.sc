@@ -735,6 +735,7 @@ CursorTimelineView : TimelineView {
 	var <>cursor;
 	var <>cursorController;
 	var <>isPlaying = false;
+	var <>refreshRate = 16;
 
 	drawFunc {
 		var cpos;
@@ -812,7 +813,49 @@ CursorTimelineView : TimelineView {
 	}
 
 	play {
-		"==================************-----------(##############)".debug("cursor PLAY");
+		//"==================************-----------(##############)".debug("cursor PLAY");
+		if(playtask.isNil) {
+			playtask = TaskProxy.new;
+			playtask.quant = 0;
+		};
+
+		fork {
+			Server.default.latency.wait; // compense for pattern latency
+
+			playtask.source = {
+				var sloop = this.cursor.loopMaster;
+				var startAbsTime = sloop.currentLoopStartAbsTime;
+				var finalDur = sloop.currentLoopDur;
+				var currentDur = 0;
+				var start_beat = TempoClock.default.beats;
+
+				while({
+					currentDur < finalDur;
+					//true;
+				}, {
+					currentDur = TempoClock.default.beats - start_beat;
+					cursorPos = startAbsTime + currentDur;
+					//cursorPos.debug("cursorPos");
+					{
+						if(this.view.isNil or: { this.view.isClosed }) {
+							this.stop;
+						} {
+							this.view.refresh;
+						};
+					}.defer;
+					( this.refreshRate.reciprocal * this.clock.tempo).wait; 
+				});
+				cursorPos = startAbsTime + finalDur;
+				{ this.view.refresh; }.defer;
+				nil;
+			};
+			playtask.play(TempoClock.default)
+		}
+
+	}
+
+	play_old {
+		//"==================************-----------(##############)".debug("cursor PLAY");
 		//if(playtask.notNil) {
 		//	{
 		//	//	Server.default.latency.wait;

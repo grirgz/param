@@ -284,7 +284,7 @@ PlayerWrapper_Base {
 	//	"ERROR: %.loadPresetCompileString: not implemented for %".format(this, this.targetClass).postln;
 	//}
 
-	*savePresetCompileStringHelper { arg mypath, onDoneAction, refCompileString, presetCompileString;
+	*savePresetCompileStringHelper { arg mypath, onDoneAction, refCompileString, presetCompileString, writePath=true;
 		if(mypath.notNil) {
 			var myfolderpath = PathName(mypath).pathOnly;
 			var myfolderpathname;
@@ -296,7 +296,9 @@ PlayerWrapper_Base {
 					var relpath = FileSystemProject.unresolve(mypath);
 					var preset;
 					//refCompileString.interpret.presetCompileStringSavePath = relpath; // commented because moved higher in call chain
-					file.write("%.presetCompileStringSavePath = %;\n\n".format(refCompileString, relpath.asCompileString));
+					if(writePath==true) {
+						file.write("%.presetCompileStringSavePath = %;\n\n".format(refCompileString, relpath.asCompileString));
+					};
 
 					preset = presetCompileString;
 					if(preset.isNil) {

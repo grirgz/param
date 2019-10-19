@@ -380,6 +380,10 @@ XTrigSpec : XNonFloatSpec {
 
 XBufferSpec : XNonFloatSpec {
 	// arg: channel count
+	var >tagSpec;
+	tagSpec { arg self;
+		^tagSpec ?? { TagSpecDef(\BufDef) }
+	}
 
 	default { ^0 } // maybe return an empty buffer
 
@@ -404,6 +408,27 @@ XWavetableSpec : XBufferSpec {
 
 XBusSpec : XNonFloatSpec {
 	// arg: channel count
+	var >tagSpec;
+	tagSpec { arg self;
+		^tagSpec ?? { TagSpecDef(\BusDef) }
+	}
+
+}
+
+XAudioBusSpec : XBusSpec {
+	// arg: channel count
+	var >tagSpec;
+	tagSpec { arg self;
+		^tagSpec ?? { TagSpecDef(\BusDef) }
+	}
+}
+
+XControlBusSpec : XBusSpec {
+	// arg: channel count
+	var >tagSpec;
+	tagSpec { arg self;
+		^tagSpec ?? { TagSpecDef(\BusDef) }
+	}
 
 }
 
@@ -522,13 +547,13 @@ TagSpec : XNonFloatSpec {
 
 	addUnique { arg key, val;
 		if(key.class == Association) {
-			if(this.labelList.includes(key.value).not) {
+			if(this.labelList.includes(key.key).not) {
 				list.add(key.key -> key.value);
 				//dirty = true;
 			}
 		} {
 			var xval = val ? key;
-			if(this.labelList.includes(xval).not) {
+			if(this.labelList.includes(key).not) {
 				list.add(key -> xval);
 				//dirty = true;
 			}

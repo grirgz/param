@@ -36,6 +36,11 @@ ClipTimeline {
 
 SampleTimeline {
 	classvar <>proto;
+
+	*all { // needed by clipEditor if no env var defined
+		^proto.all
+	}
+
 	*new { arg ... args;
 		ParamProto.init;
 		^proto.new(*args);
@@ -60,6 +65,7 @@ CursorTimeline {
 	var <>clock;
 	var <>controller;
 	var <>enableSwapIfNegative = true;
+	var <>loopMaster;
 
 	startPosition {
 		^(startPoint !? _.x);
@@ -78,6 +84,18 @@ CursorTimeline {
 
 	endPoint_ { arg point;
 		endPoint = point;
+		this.swapIfNegative;
+		this.changed(\startPosition, startPosition);
+		this.changed(\refresh);
+	}
+
+	rect {
+		^Rect.fromPoints(this.startPoint, this.endPoint)
+	}
+
+	rect_ { arg rect;
+		startPoint = rect.origin;
+		endPoint = rect.rightBottom;
 		this.swapIfNegative;
 		this.changed(\startPosition, startPosition);
 		this.changed(\refresh);

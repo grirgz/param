@@ -14,6 +14,7 @@
 		"GlobalLibrary.scd",
 		"timeline_utils.scd",
 		"timeline.scd",
+		"timeline_gui.scd",
 		"timeline_sample.scd",
 		"timeline_recorders.scd",
 		"experimental/drumrack.scd",

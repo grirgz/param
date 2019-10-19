@@ -2,21 +2,26 @@
 ////////////////// nice storages for resources
 
 BufDef {
-	classvar <>client = \BufDef;
-	classvar <>all;
 	classvar <>root;
 	classvar <>paths;
 
+	*all {
+		^PresetDictionary.new(\BufDef);
+	}
+
+	*bufferChannelCache {
+		^PresetDictionary.new(\BufDef_bufferChannelCache);
+	}
+
 	*initClass {
-		all = IdentityDictionary.new;
 		root = "~/Musique/sc/samplekit".standardizePath;
 		paths = List[root,"~/Musique/sc/reckit".standardizePath];
 	}
 
-	*new { arg name, path, channels=2;
+	*new { arg name, path, channels;
 		if(path.isNil) {
 			// getter
-			if(all.at(name).isNil) {
+			if(this.all.at(name).isNil) {
 				if(name.asString.contains("/")) {
 					// special constructor with file path as name
 					name = this.abspath_to_relpath(name);
@@ -25,12 +30,13 @@ BufDef {
 					^nil
 				}
 			} {
-				var path = all.at(name);
+				var path = this.all.at(name);
 				if(path.isKindOf(Buffer)) {
 					^path;
 				} {
 					path = this.relpath_to_abspath(path);
-					^BufferPool.get_stereo_sample(client, path);
+					^this.getBufferForPath(path, channels);
+					//^BufferPool.get_stereo_sample(client, path);
 				}
 			}
 		} {
@@ -38,35 +44,101 @@ BufDef {
 			if(path.isKindOf(Number)) {
 				//// buffer in memory only
 				// path is in fact the frame count
-				if(all.at(name).isNil) {
-					var buf = Buffer.alloc(Server.default, path, channels);
+				if(this.all.at(name).isNil) {
+					var buf = Buffer.alloc(this.server, path, channels ? 2);
 					buf.key = name;
-					all.put(name, buf);
-					^all.at(name);
+					this.all.put(name, buf);
+					^this.all.at(name);
 				} {
 					// already defined
-					^all.at(name);
+					^this.all.at(name);
 				}
 
 			} {
 				//// file buffer
-				if(all.at(name).isNil) {
+				if(this.all.at(name).isNil) {
 					// doesn't exists, define it
-					all.put(name, path);
+					this.all.put(name, path);
 					path = this.relpath_to_abspath(path);
-					^BufferPool.get_stereo_sample(client, path).key_(name);
+					^this.getBufferForPath(path, channels).key_(name);
+					//^BufferPool.get_stereo_sample(client, path).key_(name);
 				} {
 					// already defined
-					var path = all.at(name);
+					var path = this.all.at(name);
 					if(path.isKindOf(Buffer)) {
 						^path;
 					} {
 						path = this.relpath_to_abspath(path);
-						^BufferPool.get_stereo_sample(client, path);
+						^this.getBufferForPath(path, channels);
+						//^BufferPool.get_stereo_sample(client, path);
 					}
 				}
 			}
 		};
+	}
+
+	*server {
+		^Server.default;
+	}
+
+	*getBufferForPath { arg path, channels, action;
+		this.watchServer(this.server);
+		path = path.asSymbol;
+		this.bufferChannelCache[path] = this.bufferChannelCache[path] ? Dictionary.new; // channels can be an array so no Identity
+		if(this.bufferChannelCache[path][\numChannels].isNil) {
+			var numchan = SoundFile.use(path.asString, { arg f;
+				f.numChannels;
+			});
+			//numchan.debug("numchan!!!!!!!!");
+			this.bufferChannelCache[path][\numChannels] = numchan
+		};
+		if(this.bufferChannelCache[path][\wantedChannels].isNil) {
+			this.bufferChannelCache[path][\wantedChannels] = channels ? this.bufferChannelCache[path][\numChannels];
+		};
+		if(channels.isNil) {
+			channels = this.bufferChannelCache[path][\wantedChannels]
+		};
+		//channels.debug("channels");
+		if(this.bufferChannelCache[path][channels].isNil) {
+			//~f.(1,2) == [0];
+			//~f.(2,1) == [0,0];
+			//~f.(3,1) == [0,0,0];
+			//~f.(1,3) == [0];
+			//~f.(2,3) == [0,1];
+			//~f.(3,2) == [0,1,0];
+			//~f.(5,3) == [0,1,2,0,1];
+			//~f.(3,5) == [0,1,2];
+			//~f.(5,5) == nil == [0,1,2,3,4]
+			var chanArray = { arg want, have;
+				want = (want-1).clip(0,inf);
+				have = (have-1).clip(0,inf);
+				(0..have).wrapAt((0..want)).collect(_.asInteger); // fail silently if float
+			};
+
+			var have = this.bufferChannelCache[path][\numChannels];
+			var want = channels;
+			if(want == have) {
+				this.bufferChannelCache[path][channels] = Buffer.read(this.server, path.asString, 0, -1, action);
+			} {
+				var chan;
+				chan = if(want.isSequenceableCollection) {
+					want.collect(_.asInteger);
+				} {
+					chanArray.(want, have);
+				};
+				//[channels, path, chan].collect(_.asCompileString).debug("asked chan!!!!");
+				this.bufferChannelCache[path][channels] = Buffer.readChannel(this.server, path.asString, 0, -1, chan, action);
+			};
+		}; 
+		^this.bufferChannelCache[path][channels]
+	}
+
+	*watchServer { |server|
+		if(NotificationCenter.registrationExists(server,\newAllocators,this).not,{
+			NotificationCenter.register(server,\newAllocators,this,{
+				this.freeAll;
+			});
+		});
 	}
 
 	*loadDialog { arg name;
@@ -80,35 +152,33 @@ BufDef {
 		^nil;
 	}
 
+
 	*mono { arg name, path;
-		// FIXME: majority of other method doesnt take in account the possibility of mono buffers
-		path = this.my_new(name, path);
-		if(path.notNil) {
-			^BufferPool.get_mono_sample(client, path);
-		} {
-			"%: Path not found: %, %".format(this.name, name, path).error;
-			^nil
-		}
+		^this.new(name, path, 1);
+	}
+
+	*stereo { arg name, path;
+		^this.new(name, path, 2);
 	}
 
 	*my_new { arg name, path, channels;
 		// FIXME: this store the thing without knowing if it exists
 		if(path.isNil) {
-			if(all.at(name).isNil) {
+			if(this.all.at(name).isNil) {
 				if(name.asString.contains("/")) {
 					// special constructor with file path as name
 					path = this.abspath_to_relpath(name.asString);
-					all.put(name.asSymbol, path.asString);
+					this.all.put(name.asSymbol, path.asString);
 					path = this.relpath_to_abspath(path);
 				} {
 					^nil
 				}
 			} {
-				path = all.at(name);
+				path = this.all.at(name);
 				path = this.relpath_to_abspath(path);
 			}
 		} {
-			all.put(name, path);
+			this.all.put(name, path);
 			path = this.relpath_to_abspath(path);
 		};
 		^path;
@@ -136,71 +206,134 @@ BufDef {
 		^path;
 	}
 
-	*freeClient {
-		BufferPool.release_client(client)
-	}
-
 	*freeAll {
-		BufferPool.reset;	
+		//BufferPool.reset;	
+		this.bufferChannelCache.do({ arg path; path.do(_.free) });
+		this.all.do({ arg x; 
+			if(x.isKindOf(Buffer)) { 
+				x.free 
+			}
+	   	});
+		this.bufferChannelCache.clear;
+		this.all.clear;
 	}
 
-	*reload { arg name;
-		if(all.at(name).isNil) {
-			if(name.asString.contains("/")) {
-				// special constructor with file path as name
-				name = this.abspath_to_relpath(name);
-				^BufDef(name.asSymbol, name.asString)
-			} {
-				^nil
-			}
+	*free { arg name, channels;
+		var buf = this.all[name];
+		if(buf.isKindOf(Buffer)) {
+			buf.free;
+			this.all[name] = nil;
 		} {
-			var path = all.at(name);
-			if(path.isKindOf(Buffer)) {
-				^path;
+			if(buf.isKindOf(String) or: { buf.isKindOf(Symbol) }) {
+				var path = this.relpath_to_abspath(buf);
+				this.bufferChannelCache[path.asSymbol].do({ arg buf;
+					if(buf.isKindOf(Buffer)) {
+						buf.free;
+					};
+			   	});
+				this.bufferChannelCache[path.asSymbol] = nil;
+				this.all[name] = nil;
 			} {
-				var buf;
-				path = this.relpath_to_abspath(path);
-				buf = BufferPool.get_stereo_sample(client, path);
-				BufferPool.release(buf, client);
-				^BufferPool.get_stereo_sample(client, path);
+				"BufDef: %: can't free: doesn't exists".format(name).warn;
 			}
 		}
 	}
 
-	*clear { arg name;
-		if(all.at(name).isNil) {
-			^nil
+	*reload { arg name, channels;
+		var buf = this.all[name];
+		if(buf.isKindOf(Buffer)) {
+			var numFrames = buf.numFrames, numChannels = buf.numChannels;
+			buf.free;
+			this.all[name] = nil;
+			^BufDef(name, numFrames, numChannels)
 		} {
-			var path = all.at(name);
-			if(path.isKindOf(Buffer)) {
-				^path
+			if(buf.isKindOf(String) or: { buf.isKindOf(Symbol) }) {
+				var path = this.relpath_to_abspath(buf);
+				this.bufferChannelCache[path.asSymbol].do({ arg buf;
+					if(buf.isKindOf(Buffer)) {
+						buf.free;
+					};
+			   	});
+				this.bufferChannelCache[path.asSymbol] = nil;
+				this.all[name] = nil;
+				^BufDef(name, buf, channels)
 			} {
-				var buf;
-				path = this.relpath_to_abspath(path);
-				buf = BufferPool.get_stereo_sample(client, path);
-				BufferPool.release(buf, client);
-				^nil;
+				"BufDef: %: can't free: doesn't exists".format(name).warn;
 			}
-		}
+		};
+	}
+
+	*clear { arg name, channels;
+		//this.all[name] = nil;
+		^this.free(name, channels);
 	}
 
 }
 
 WavetableDef : BufDef {
 
-	classvar <>client = \veco;
-	classvar <>all;
 	classvar <>root;
 
+	*all {
+		^PresetDictionary.new(\WavetableDef);
+	}
+
+	*bufferChannelCache {
+		^PresetDictionary.new(\WavetableDef_bufferChannelCache);
+	}
+
 	*initClass {
-		all = IdentityDictionary.new;
 		root = "~/Musique/sc/samplekit/wavetable".standardizePath;
 	}
-	
-	*new { arg name, path;
-		path = this.my_new(name, path);
-		path.debug("WavetableDef.new: path");
-		^BufferPool.get_wavetable_sample(client, path);
+
+	*getBufferForPath { arg path, channels, action;
+		path = path.asSymbol;
+		this.bufferChannelCache[path] = this.bufferChannelCache[path] ? Dictionary.new; // channels can be an array so no Identity
+		if(this.bufferChannelCache[path][\numChannels].isNil) {
+			var numchan = SoundFile.use(path.asString, { arg f;
+				f.numChannels;
+			});
+			numchan.debug("numchan!!!!!!!!");
+			this.bufferChannelCache[path][\numChannels] = numchan
+		};
+		if(channels.isNil) {
+			if(this.bufferChannelCache[path][\wantedChannels].isNil) {
+				this.bufferChannelCache[path][\wantedChannels] = this.bufferChannelCache[path][\numChannels];
+			};
+			channels = this.bufferChannelCache[path][\wantedChannels]
+		};
+		this.bufferChannelCache[path][\wantedChannels] = channels;
+		if(this.bufferChannelCache[path][channels].isNil) {
+			//~f.(1,2) == [0];
+			//~f.(2,1) == [0,0];
+			//~f.(3,1) == [0,0,0];
+			//~f.(1,3) == [0];
+			//~f.(2,3) == [0,1];
+			//~f.(3,2) == [0,1,0];
+			//~f.(5,3) == [0,1,2,0,1];
+			//~f.(3,5) == [0,1,2];
+			//~f.(5,5) == nil == [0,1,2,3,4]
+			var chanArray = { arg want, have;
+				want = (want-1).clip(0,inf);
+				have = (have-1).clip(0,inf);
+				(0..have).wrapAt((0..want))
+			};
+
+			var have = this.bufferChannelCache[path][\numChannels];
+			var want = channels;
+			if(want == have) {
+				this.bufferChannelCache[path][channels] = Buffer.read(this.server, path.asString, 0, -1, action);
+			} {
+				var chan;
+				chan = if(want.isSequenceableCollection) {
+					want;
+				} {
+					chanArray.(want, have);
+				};
+				this.bufferChannelCache[path][channels] = Buffer.readChannel(this.server, path.asString, 0, -1, chan, action);
+			};
+		}; 
+		^this.bufferChannelCache[path][channels]
 	}
 
 
@@ -208,7 +341,6 @@ WavetableDef : BufDef {
 
 BusDef : Bus {
 	
-	classvar <>client = \veco;
 	classvar <>all;
 	classvar <>root;
 	var <>key;

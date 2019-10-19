@@ -359,7 +359,7 @@ ParamGroupLayout {
 		var layout;
 		var gridlayout;
 		var biglayout;
-		var scalarlist, biglist;
+		var scalarlist, biglist, busbuflist;
 		var layout_type;
 
 		label_mode = label_mode ? \full; // \full, \property
@@ -376,8 +376,29 @@ ParamGroupLayout {
 				}
 			}
 		});
+		busbuflist = pg.select( { arg param;
+			param.spec.isKindOf(XBusSpec) or: {
+				param.spec.isKindOf(XBufferSpec) or: {
+					param.spec.isKindOf(TagSpec)
+				}
+			}
+		});
 
 		gridlayout = GridLayout.rows(*
+			busbuflist.collect({ arg param;
+
+				var statictext = if(label_mode == \full) {
+				param.asStaticTextLabel;
+				} {
+					StaticText.new.string_(param.property)
+				};
+				ParamViewToolBox.attachContextMenu(param, statictext);
+				[
+					statictext,
+					param.asPopUpMenu,
+					//param.asTextField,
+				]
+			}) ++
 			scalarlist.collect({ arg param;
 
 				var statictext = if(label_mode == \full) {
@@ -392,6 +413,7 @@ ParamGroupLayout {
 					param.asTextField,
 				]
 			}) 
+
 		);
 		gridlayout.setColumnStretch(0,2);
 		gridlayout.setColumnStretch(1,6);

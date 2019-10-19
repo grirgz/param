@@ -45,6 +45,8 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	// replace all following function by one class: Pembed, this is the prototype
 
 	new: { arg self, pat, start_offset, stop_offset;
+		// start_offset is relative to first event which is time=0, 
+		// 		not \absTime used only in TimelineEventList
 		// FIXME: stop_offset not used (user should use Pfindur instead)
 		if(pat.isKindOf(Pattern)) {
 			self.embed_pattern(pat, start_offset);

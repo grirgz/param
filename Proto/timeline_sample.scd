@@ -7,7 +7,9 @@ SynthDef(\SampleTimeline_player, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, 
 	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.01,0.1,1,0.01)), gate, doneAction:2);
 	sig = sig * gain;
 	Out.ar(out, sig);
-}).add;
+}, metadata:(specs:(
+	startSeconds: ControlSpec(0,8,\lin, 0, 0),
+))).add;
 
 
 SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with key and prAdd
@@ -15,21 +17,24 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	all: { PresetDictionary.new(\sampleTimeline) },
 	eventType: \sampleTimeline,
 	recordDirectory: "~/Musique/sc/cliprec/".standardizePath, // FIXME: don't hardcode
+	fixedResampleCount: 500,
+	enableFixedResampling: true,
+	resampleRate: 10,
 
-	new: { arg self, name;
+	new: { arg self, name, path;
 		//"so many strange".debug;
 
 		if(self.all[name].notNil) {
 			self = self.all[name]
 		} {
 			self = self.deepCopy;
-			self.addInstance(name).init;
+			self.addInstance(name).init(path);
 		};
 	
 		self;
 	},
 
-	init: { arg self;
+	init: { arg self, path;
 		// TODO: make accept a PlayerWrapperGroup as optional argument to handle recording
 		self.basicInit;
 		self.areasize = 10@4;
@@ -44,6 +49,15 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		self.tracks_bypassed = Set.new;
 		self.recorder = ProtoTemplateDef(\SampleTimelineRecorder).new(self);
 		//"=============clipTimeline: end init".debug;
+
+		if(path.notNil) {
+			if(path.isKindOf(String) or: {path.isKindOf(Symbol)})  {
+				self.buffer = BufDef(self.key.asSymbol, path.asString);
+			};
+			if(path.isKindOf(Buffer))  {
+				self.buffer = path;
+			};
+		};
 
 		self;
 	},
@@ -66,16 +80,48 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		(self.fileName ? "").beginsWith(self.recordDirectory)
 	},
 
+	postProxy: { arg self;
+		self[\postProxy] = EventPatternProxy.new.source_(Pbind());
+		self[\postProxy].addHalo(\instrument, \SampleTimeline_player);
+		self[\postProxy];
+	},
+
+	postPatternPreset: { arg self;
+		self.postProxy.envir.keys.asList.collect({ arg key;
+			key -> self.postProxy.getVal(key)
+		}).asEvent
+	},
+
+	postPatternPreset_: { arg self, ev;
+		ev.keys.collect({ arg key;
+			self.postProxy.setVal(key, ev[key])
+		})
+	},
+
 	samplePattern: { arg self, startSeconds=0;
-		Pmono(\SampleTimeline_player,
+		var pat;
+		startSeconds.debug("samplePattern");
+		pat = self.postProxy <> Pmono(\SampleTimeline_player,
 			\bufnum, self.buffer ? 0,
 			\startSeconds, startSeconds,
 			\dur, 1,
+			\out, Pfunc({ self.outBus ? 0 }),
 			\amp, 0.1,
-		);
+		).trace;
 	},
 
-	asPattern: { arg self, relStartTime, totalDur;
+	cutPatternFunction: { arg self;
+		{ arg sloop, offset, dur;
+			sloop.cutPattern(
+				Pn(self.samplePattern(offset+self.eventList.startTime), 1),
+				offset,
+				dur
+			).embedInStream
+		}
+	},
+
+
+	asPattern_old: { arg self, relStartTime, totalDur;
 		var pat;
 		pat = Plazy({
 			var eventlist = self.eventList;
@@ -120,6 +166,13 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		"SampleTimeline(%)".format(name)
 	},
 
+	presetCompileString: { arg self;
+
+		"%.eventList = %\n".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString)
+		++
+		"%.buffer = %;".format(self.refCompileString(self.key.asCompileString), self.buffer.asCompileString) 
+	},
+
 	bufferInfo: { arg self;
 		self.eventList.extraData
 	},
@@ -138,9 +191,11 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		if(self.bufferInfo.isNil) {
 			self.bufferInfo = ProtoClass(());
 		};
-		self.bufferInfo.buffer = buffer;
-		if(self.buffer.notNil) {
-			self.refreshBufferData;
+		if(self.bufferInfo.buffer != buffer) {
+			self.bufferInfo.buffer = buffer;
+			if(self.buffer.notNil) {
+				//self.refreshBufferData;
+			}
 		}
 	},
 
@@ -157,6 +212,17 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		self.bufferInfo.fileName = fileName;
 	},
 
+	askBufferData: { arg self;
+		if(self.buffer.notNil) {
+			if(self.bufferInfo.bufferData.isNil) {
+				self.refreshBufferData;
+			} {
+				self.changed(\areasize);
+				self.changed(\data);
+			}
+		}
+	},
+
 	refreshBufferData: { arg self;
 		{
 			block { arg break;
@@ -170,10 +236,22 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 							var sampleRate = buffer.sampleRate;
 							var numFrames = buffer.numFrames;
 							var bufferData = data;
-							var resamplePerSecond = 10;
-							var resampleCount = (numFrames/sampleRate*resamplePerSecond).asInteger;
+							var resamplePerSecond = self.resampleRate;
+							var resampleCount;
 							var numChannels = buffer.numChannels;
-							var resample =bufferData.clump(numChannels).flop.collect(_.resamp1(resampleCount)).flop; 
+							var resample;
+							if(self.enableFixedResampling) {
+								resamplePerSecond = self.fixedResampleCount/numFrames*sampleRate
+							};
+							resampleCount = (numFrames/sampleRate*resamplePerSecond).asInteger;
+							resample = bufferData.clump(numChannels).flop;
+							0.01.wait;
+							resample = resample.collect({ arg chan;
+							   	chan.resamp1(resampleCount);
+								0.05.wait;
+						   	}).flop; 
+							self.bufferInfo.enableFixedResampling = self.enableFixedResampling; 
+							self.bufferInfo.fixedResampleCount = self.fixedResampleCount; 
 							self.bufferInfo.bufferData = bufferData; 
 							self.bufferInfo.resampledData = resample;
 							self.bufferInfo.resampleRate = resamplePerSecond;
@@ -194,7 +272,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	},
 ));
 ~sampleTimeline = SampleTimeline.proto;
-
+BufDef.paths = (BufDef.paths ++ [ SampleTimeline.proto.recordDirectory ]).as(Set).as(List);
 
 
 
@@ -252,6 +330,15 @@ ProtoTemplateDef(\SampleTimelineView, (
 				});
 			},
 			Param(Message(self.timeline_model.recorder), \isRecording, XBoolSpec()).asButton("Rec"),
+			Param(Message(self.timeline_model.recorder), \recBus, TagSpecDef(\BusDef)).asPopUpMenu,
+			BasicButton.new.label_("Edit").action_({
+				WindowDef(\EventPatternProxyEditor_ +++ self.timeline_model.key, { arg me, target, label, group;
+					VLayout(
+						PlayerWrapper(target).label_(label).asView,
+						ParamGroupLayout.two_panes(group),
+					);
+				}).front(self.timeline_model.postProxy, self.timeline_model.label, SynthDesc(\SampleTimeline_player).asParamGroup(self.timeline_model.postProxy));
+			});
 		);
 		
 		self.header_layout;
@@ -322,6 +409,9 @@ ProtoTemplateDef(\SampleTimelineView, (
 			//}
 
 		//};
+		self.locatorbar.keyDownAction = self.getTimelineKeyDownAction;
+		self.ruler_x_beat.keyDownAction = self.getTimelineKeyDownAction;
+		self.ruler_x_second.keyDownAction = self.getTimelineKeyDownAction;
 		
 		VLayout(
 			locatorbar.view,

@@ -60,7 +60,7 @@ a.collect(_.type);
 // totalDur is set by finish
 
 
-XEventList : List {
+TimelineEventList : List {
 	var <totalDur = 0, <playingDur = 0;
 	var >startTime, <>endTime;
 	var <>extraData; // for storing buffer data or other things sync with his eventlist
@@ -136,7 +136,7 @@ XEventList : List {
 	}
 
 	addEvent { |ev|
-		if (array.size == 0) { this.start(ev[\absTime]) };
+		if (array.size == 0) { this.start(ev[\absTime] ? 0) };
 		super.add(ev);
 		this.setRelDurInPrev(ev, this.lastIndex);
 		this.changed(\refresh); // added by ggz
@@ -253,8 +253,11 @@ XEventList : List {
 	embedInStream { arg in;
 		var res;
 		var seq = this.copy;
-		seq[0] = seq[0].copy;
-		seq[0][\type] = \rest;
+		// FIXME: this assert that first event is the start event, but it's not true, 
+		// may be a bug
+		// and why not change the type of end event too ?
+		//seq[0] = seq[0].copy;
+		//seq[0][\type] = \rest;
 		//seq[0][\sustain] = 0;
 		in = in ? Event.default;
 		seq = seq.collect({ arg ev; ev[\dur] = ev[\playDur] });
@@ -267,7 +270,9 @@ XEventList : List {
 
 	asPattern { arg in;
 		^Prout({ arg inpat;
-			this.changed(\cursor, \play);
+			this.changed(\cursor, \play); // FIXME: should be an event
+			// but if it's an event, it would be cut by outer Pembed
+			// only work because cutting the pattern is really fast
 			inpat = this.embedInStream(inpat)
 		})
 	}
@@ -390,6 +395,7 @@ XEventList : List {
 
 }
 
+XEventList : TimelineEventList {}
 
 XEventLoop {
 

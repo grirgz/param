@@ -8,6 +8,7 @@
 		\dur, 1,
 		\amp, 0.1
 	));
+	ParamProto.init;
 );
 NoteTimeline(\test_notetimeline, Param(Pdef(\test_pdef), \midinote)).edit
 NoteTimeline(\test_notetimeline).repeatCount = 1

@@ -1,5 +1,6 @@
 
-+Pdef {
+// PDef was replaced by EventPatternProxy as a hope to generalize it easily
++EventPatternProxy {
 	*nestOn { arg val;
 		// see also .bubble and .unbubble
 		if(val.isSequenceableCollection) {

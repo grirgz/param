@@ -37,6 +37,12 @@ PlayerEvent : Event {
 		Event.addEventType(\player, playfun);
 		Event.addEventType(\pattern, playfun); // just for compat
 
+		// make start and stop event silent
+		// FIXME: would be better to have only one type of event instead of polluting namespace
+		//		but this would break so much things and definitely break compat with original EventList
+		Event.addEventType(\start, {});
+		Event.addEventType(\end, {});
+
 		defaultParent = (
 			type: \player,
 			parent: Event.default,

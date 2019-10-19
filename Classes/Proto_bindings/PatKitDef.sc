@@ -8,6 +8,7 @@ PatKitDef {
 	}
 
 	*all {
+		ParamProto.init;
 		^~patKitDef.all;
 	}
 }

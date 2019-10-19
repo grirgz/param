@@ -149,6 +149,23 @@
 		self.play_ev[\isRest] = false;
 		self.play_ev[\sustain] = inf;
 		self.play_ev[\latency] = Ref(0);
+		self.play_ev.releaseServerNode = #{ |releaseTime|
+			var sendGate, msg;
+			~latency = 0;
+			if(~id.notNil) {
+
+				releaseTime = if(releaseTime.isNil) { 0.0 } { -1.0 - releaseTime };
+				sendGate = ~sendGate ? ~hasGate;
+
+				if(sendGate) {
+					~server.sendBundle(~latency,
+						*["/n_set", ~id, "gate", releaseTime].flop);
+					} {
+						~server.sendBundle(~latency, ["/n_free"] ++ ~id);
+					};
+					~isPlaying = false;
+				};
+			};
 		self.cur_ev = self.play_ev.play;
 		self.changed(\play);
 		Log(\Param).debug("play: raw_ev:%, idx:%, h:%", self.raw_ev, self.index, self.hash);
