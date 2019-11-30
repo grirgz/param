@@ -712,8 +712,8 @@ Param {
 		var pm = view;
 		//debug("mapValuePopUpMenu:1");
 		view.refreshChangeAction = {
-			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
 			var spec;
+			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
 			if(this.spec.isKindOf(XBusSpec) or: { this.spec.isKindOf(XBufferSpec) }) {
 				spec = this.spec.tagSpec;
 			} {
@@ -721,13 +721,14 @@ Param {
 			};
 			view.items = spec.labelList.asArray;
 			view.value = spec.unmapIndex(this.get);
+			//view.value.debug("mapValuePopUpMenu:1.5");
 		};
 		view.refreshChange;
 		//[this.spec, this.get].debug("mapValuePopUpMenu:2");
 		//view.value.debug("mapValuePopUpMenu:3");
-		pm.action = {
-			//view.value.debug("mapValuePopUpMenu:4 (action)");
+		view.action = {
 			var spec;
+			//view.value.debug("mapValuePopUpMenu:4 (action)");
 			if(this.spec.isKindOf(XBusSpec) or: { this.spec.isKindOf(XBufferSpec) }) {
 				spec = this.spec.tagSpec;
 			} {
@@ -736,12 +737,18 @@ Param {
 			this.set(spec.mapIndex(view.value));
 			//this.get.debug("mapValuePopUpMenu:5 (action)");
 		};
-		pm.onChange(this.controllerTarget, \set, { arg me;
+		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
+		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
 			// TODO: do not change the whole row when just one value is updated!
-			//view.value.debug("mapValuePopUpMenu:6 (onchange)");
-			view.refreshChange;
+			//[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
+			if(arg1 == this.property or: { arg1.isKindOf(SequenceableCollection) and: {
+				arg1.includes(this.property)
+			} }) {
+				aview.refreshChange;
+			};
 			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
 		});
+		//view.value.debug("mapValuePopUpMenu:8");
 	}
 
 	unmapPopUpMenu { arg view;
@@ -1395,6 +1402,7 @@ NdefParam : BaseParam {
 			//args.debug("args");
 
 			// update only if concerned key is set
+			// do not update if no key is specified
 			// FIXME: may break if property is an association :(
 			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
 
@@ -1404,9 +1412,11 @@ NdefParam : BaseParam {
 			var spec = param.spec;
 
 			// action
-			if(args[2].any({ arg x; x == param.property })) {
+			if(args[2].notNil and: {
+				args[2].any({ arg x; x == param.property })
+			}) {
 				action.(view, param);
-			}
+			};
 		});
 	}
 }

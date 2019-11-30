@@ -25,7 +25,7 @@ BufDef {
 				if(name.asString.contains("/")) {
 					// special constructor with file path as name
 					name = this.abspath_to_relpath(name);
-					^BufDef(name.asSymbol, name.asString)
+					^BufDef(name.asSymbol, name.asString, channels)
 				} {
 					^nil
 				}
@@ -196,11 +196,34 @@ BufDef {
 		^path
 	}
 
+	*addTrailingSlash { arg path;
+		^if(path.endsWith("/")) {
+			path
+		} {
+			path++"/"
+		}
+	}
+
+	*removeTrailingSlash { arg path;
+		^if(path.endsWith("/")) {
+			path.drop(1)
+		} {
+			path
+		}
+	}
+
 	*abspath_to_relpath { arg path;
 		path = path.asString.standardizePath;
 		this.paths.do { arg folder;
+			folder = this.addTrailingSlash(folder);
 			if(path.beginsWith(folder)) {
-				^path.drop(folder.size+1);
+				var newpath;
+				newpath = path.drop(folder.size);
+				if(newpath.contains("/").not) {
+					// magic path constructor doesnt recognize it when no slash
+					newpath = "./"++newpath;
+				};
+				^newpath;
 			};
 		};
 		^path;

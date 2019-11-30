@@ -311,20 +311,20 @@ ProtoTemplateDef(\SampleClipTimelineRecorder, (
 ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 	recordOnClipTimelineEnabled: true,
 	isRecording: false,
-	new: { arg self, timeline, track;
+	new: { arg self, timeline, trackGetter;
 		self = self.deepCopy;
 	
-		self.init(timeline, track);
+		self.init(timeline, trackGetter);
 		
 	
 		self;
 	},
 	tempoClock: { arg self; self.timeline.tempoClock ? TempoClock.default },
 	quant: { arg self; self.timeline.quant },
-	init: { arg self, timeline, track;
+	init: { arg self, timeline, trackGetter;
 		"ini".debug;
 		self.timeline = timeline;
-		self.track = track;
+		self.track = trackGetter;
 		self.recorder = Recorder(Server.default);
 		self.drawTask = TaskProxy.new;
 		self.tempoClock = TempoClock.default;
@@ -456,7 +456,8 @@ ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder, (
 		self.recorders = self.recorders ?? { List.new };
 		self.recorders = self.timeline.tracks.collect({ arg track, idx;
 			self.recorders[idx] ?? { 
-				ProtoTemplateDef(\SampleClipTimelineTrackRecorder).new(self.timeline, track) 
+				var trackGetter = { self.timeline.tracks[idx] };
+				ProtoTemplateDef(\SampleClipTimelineTrackRecorder).new(self.timeline, trackGetter) 
 			}
 		})
 	},
@@ -473,8 +474,13 @@ ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder, (
 		if(self.isRecording) {
 			"Already recording".debug;
 		} {
-			self.recorders.select({ arg r; r.track.recordArmed }).do(_.startRecording);
-			self[\isRecording] = true;
+			var toRec = self.recorders.select({ arg r; r.track.recordArmed });
+			if(toRec.size == 0) {
+				"No track is armed for record".debug;
+			} {
+				toRec.do(_.startRecording);
+				self[\isRecording] = true;
+			};
 		}
 	},
 	stopRecording: { arg self;

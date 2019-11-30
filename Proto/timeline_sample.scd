@@ -11,6 +11,21 @@ SynthDef(\SampleTimeline_player, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, 
 	startSeconds: ControlSpec(0,8,\lin, 0, 0),
 ))).add;
 
+TagSpecDef(\SampleTimeline_player).addUnique(\SampleTimeline_player);
+
+SynthDef(\SampleTimeline_player_rhpf, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, speed=1, trigger=1, loop=0, bufnum=0, startSeconds=0, gain=1;
+	var sig;
+	sig = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * speed, trigger, startPos: (startSeconds*BufSampleRate.kr(bufnum)), doneAction:2, loop: loop);
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.01,0.1,1,0.01)), gate, doneAction:2);
+	sig = RHPF.ar(sig, \hpf.kr(10), \rq.kr(0.5));
+	sig = sig * gain;
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	startSeconds: ControlSpec(0,8,\lin, 0, 0),
+))).add;
+
+TagSpecDef(\SampleTimeline_player).addUnique(\SampleTimeline_player_rhpf);
+
 
 SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with key and prAdd
 	parent: ~eventTimeline,
@@ -98,12 +113,20 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		})
 	},
 
+	playerSynthDef: \SampleTimeline_player,
+
+	playerSynthDef_: { arg self, instr;
+		self[\playerSynthDef] = instr;
+		self.postProxy.addHalo(\instrument, instr);
+	},
+
 	samplePattern: { arg self, startSeconds=0;
 		var pat;
 		startSeconds.debug("samplePattern");
-		pat = self.postProxy <> Pmono(\SampleTimeline_player,
+		pat = self.postProxy <> Pmono(self.playerSynthDef,
 			\bufnum, self.buffer ? 0,
-			\startSeconds, startSeconds,
+			\startSeconds, startSeconds / self.tempoClock.tempo,
+			\legato, 1,
 			\dur, 1,
 			\out, Pfunc({ self.outBus ? 0 }),
 			\amp, 0.1,
@@ -193,6 +216,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		};
 		if(self.bufferInfo.buffer != buffer) {
 			self.bufferInfo.buffer = buffer;
+			self.bufferInfo.fileName = buffer.path;
 			if(self.buffer.notNil) {
 				//self.refreshBufferData;
 			}
@@ -334,11 +358,20 @@ ProtoTemplateDef(\SampleTimelineView, (
 			BasicButton.new.label_("Edit").action_({
 				WindowDef(\EventPatternProxyEditor_ +++ self.timeline_model.key, { arg me, target, label, group;
 					VLayout(
-						PlayerWrapper(target).label_(label).asView,
+						HLayout (
+							PlayerWrapper(target).label_(label).asView,
+							Param(Message(self.timeline_model), \playerSynthDef, TagSpecDef(\SampleTimeline_player)).asPopUpMenu,
+						),
 						ParamGroupLayout.two_panes(group),
 					);
-				}).front(self.timeline_model.postProxy, self.timeline_model.label, SynthDesc(\SampleTimeline_player).asParamGroup(self.timeline_model.postProxy));
-			});
+				}).front(self.timeline_model.postProxy, self.timeline_model.label, self.timeline_model.postProxy.asParamGroup(nil, false, [\gate, \doneAction, \bufnum]));
+			}),
+
+			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				WindowDef(\SampleTimelineOverlayMenu).front(self.timeline_model, view, x, y)
+			}).maxWidth_(20),
+
 		);
 		
 		self.header_layout;
@@ -447,3 +480,36 @@ ProtoTemplateDef(\SampleTimelineView, (
 	},
 ));
 )
+
+WindowDef(\SampleTimelineOverlayMenu, { arg def, model, view, x=600, y=600;
+	var inview, layout;
+	[x, y].debug("xy");
+	def.windowDo { arg win;
+		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
+		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
+		win.endFrontAction = { win.close };
+	};
+	inview = View.new;
+
+
+	layout = VLayout (
+		HLayout(
+			StaticText.new.string_("outBus:"),
+			Param(
+				Message(model),
+				\outBus, 
+				TagSpecDef(\BusDef),
+				//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
+			).asPopUpMenu,
+		),
+		BasicButton.new.string_("Clipboard refString").action_({ 
+			model.refCompileString.pbcopy;
+		}),
+		nil
+	);
+	//def.windowDo { arg win;
+		//win.setInnerExtent(view.bounds.extent.min(20));
+	//};
+	inview.layout_(layout);
+	
+}).border_(false);

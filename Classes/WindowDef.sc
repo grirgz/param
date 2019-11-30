@@ -90,6 +90,11 @@ WindowDef {
 		}
 	}
 
+	saveWindowPropertiesOnDisk {
+		// TODO
+		
+	}
+
 	loadWindowProperties {
 		[\alwaysOnTop, \bounds].do { arg k;
 			window.perform(k.asSetter, windowProperties[k]);

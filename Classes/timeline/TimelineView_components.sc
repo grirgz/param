@@ -3,7 +3,7 @@
 ////// x rulers
 
 TimelineRulerView : TimelineView {
-	// this is X ruler actually, with graduated bars to measure time in beats
+	// this is a X ruler with graduated bars to measure time in beats
 	// you can define start and stop of timeline interactively
 	// also draw the red rectangle for current position (useful for pasting)
 	//var <>mygrid; // debug, already in parentclass
@@ -1098,6 +1098,8 @@ TimelineDrawer {
 
 
 TimelineScroller : SCViewHolder {
+	// Horizontal and vertical range sliders to allow moving and zooming
+
 	var myOrientation;
 
 	*new {
@@ -1117,7 +1119,8 @@ TimelineScroller : SCViewHolder {
 
 	mapTimeline { arg timeline;
 		this.view.action = { arg slider;
-			var range = slider.range.clip(0.01,1); // prevent division by 0
+			var range;
+			range = slider.range.clip(0.01,1); // prevent division by 0
 			if(this.orientation == \horizontal) {
 				// prevent unneeded updates
 				if(timeline.viewport.left != slider.lo or: { timeline.viewport.width != range }) {

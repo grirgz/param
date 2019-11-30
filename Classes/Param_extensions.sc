@@ -131,14 +131,14 @@
 		// TODO: find a better name for 'notes' argument (this is for adding \dur and \legato)
 		var list;
 
-		instrument = PdefParam.instrument(this);
+		instrument = instrument ?? { PdefParam.instrument(this) };
 		if(instrument.isNil) {
 			//"ERROR: Pdef:asParamGroup: Can't create paramGroup: no instrument is defined".postln;
 			//^nil
 			list = List.new;
 		} {
 			var synthdesc;
-			exclude = exclude ? [\out, \gate, \doneAction, \bufnum];
+			exclude = exclude ? [\gate, \doneAction];
 
 			synthdesc = SynthDescLib.global.synthDescs[instrument];
 			if(synthdesc.isNil) {
@@ -369,21 +369,31 @@
 	}
 
 	followChange { arg model, key, fun, init=true;
-		var con = SimpleController.new(model).put(key, { arg ...args;
+		var con;
+		[model, key, fun, init].debug("model, key, fun, init");
+	   	con = SimpleController.new(model).put(key, { arg ...args;
+			[model, key, fun, init].debug("update followChange");
 			if(this.isClosed) {
+				[model, key, fun, init].debug("update followChange2");
 				con.remove;
 			} {
+				[model, key, fun, init].debug("update followChange3");
 				try {
 					fun.(* [this] ++ args);
+				[model, key, fun, init].debug("update followChange4");
 				} { arg err;
+				[model, key, fun, init].debug("update followChange5");
 					"In View.followChange: key:%".format(key).error;
 					err.reportError;
 				}
 			};
 		});
+				[model, key, fun, init].debug("update followChange6");
 		if(init==true) { 
+				[model, key, fun, init].debug("update followChange7");
 			model.changed(key);	
 		};
+				[model, key, fun, init].debug("update followChange8");
 	}
 
 	refreshChangeAction_ { arg fun;

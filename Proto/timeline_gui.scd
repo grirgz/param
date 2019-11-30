@@ -223,7 +223,7 @@
 						Param(Message(self.timeline_model.tracks[idx]), \recordArmed, XBoolSpec()).asButton("R").maxWidth_(20),
 					).spacing_(0).margins_(2),
 					HLayout (
-						Param(Message(self.timeline_model.tracks[idx]), \recordBus, TagSpecDef(\BusDef)).asPopUpMenu.maxWidth_(100),
+						Param(Message(self.timeline_model.tracks[idx]), \recordBus, TagSpecDef(\BusDef_object)).asPopUpMenu.maxWidth_(100),
 						nil,
 					).spacing_(0).margins_(2),
 				).spacing_(0).margins_(0)
@@ -323,10 +323,15 @@
 		self.track_header = track_header;
 
 		self.vrange_track_header_action = { arg self, slider;
-			self.track_header_view.fixedHeight = 1/slider.range * track_header.bounds.height;
-			//( 1/slider.range * track_header.bounds.height ).debug("vrange.view.action: fixedHeight");
-			track_header.visibleOrigin = Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height;
-			//( Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height ).debug("vrange.view.action: visibleOrigin");
+			if(slider.isNil) {
+				//Log(\Param).debug("dont know why there is two actions with one nil: % %", self.key, self.vrange.view.action.array);
+			} {
+
+				self.track_header_view.fixedHeight = 1/slider.range * track_header.bounds.height;
+				//( 1/slider.range * track_header.bounds.height ).debug("vrange.view.action: fixedHeight");
+				track_header.visibleOrigin = Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height;
+				//( Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height ).debug("vrange.view.action: visibleOrigin");
+			};
 		};
 
 		self.vrange.view.addAction({ arg slider;
@@ -2219,7 +2224,7 @@ WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 			Param(
 				Message(model),
 				\outBus, 
-				TagSpecDef(\BufDef),
+				TagSpecDef(\BusDef),
 				//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
 			).asPopUpMenu,
 		),

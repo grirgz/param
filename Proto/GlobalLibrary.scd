@@ -809,7 +809,11 @@ TagSpecDef(\Pdef, {
 });
 
 TagSpecDef(\Ndef, {
-	Ndef.all.asAssociations;
+	if(Ndef.all[\localhost].notNil) {
+		Ndef.all[\localhost].envir.asAssociations
+	} {
+		[];
+	}
 });
 
 TagSpecDef(\SampleTimeline, {
@@ -838,7 +842,16 @@ TagSpecDef(\PatKitDef, {
 });
 
 TagSpecDef(\BusDef, {
+	TagSpecDef(\BusDef_object).list
+});
+
+TagSpecDef(\BusDef_index, {
 	[\0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k).index }) 
+});
+
+// harder to get a presetCompileString when the bus is numeric
+TagSpecDef(\BusDef_object, {
+	[\0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) 
 });
 
 TagSpecDef(\BufDef, {
@@ -911,6 +924,7 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\TrackListChannelPart,
 	\Clip,
 	\Timeline,
+	\Editable,
 ]);
 
 TagSpecDef('GlobalLibrary.type.TrackInstrument', [
@@ -943,6 +957,18 @@ TagSpecDef('GlobalLibrary.type.Timeline', [
 	\SampleTimeline,
 	\ClipTimeline,
 	\ParamTimeline,
+]);
+
+TagSpecDef('GlobalLibrary.type.Editable', [
+	\NoteTimeline,
+	\TrackTimeline,
+	\KitTimeline,
+	\SampleTimeline,
+	\ClipTimeline,
+	\ParamTimeline,
+	\PatKitDef,
+	\Pdef,
+	\Ndef,
 ]);
 
 TagSpecDef('GlobalLibrary.type.TrackListPart', [

@@ -252,6 +252,9 @@
 		self.proxy.quant = val;  // so PlayerEvent can set quant of timelines
 	},
 
+	tempoClock: { arg self;
+		TempoClock.default
+	},
 
 	repeatCount: inf,
 
@@ -582,10 +585,26 @@ ClipTimeline.proto = ProtoClass((
 		"ClipTimeline(%)".format(name)
 	},
 
+	samplesPresetCompileString: { arg self;
+		var samples = self.eventList.select({ arg ev;
+			ev.timeline.notNil and: {
+				ev.timeline.eventType == \sampleTimeline
+			}
+		});
+		var str = samples.collect({ arg ev; 
+			ev.timeline.key -> ev.timeline.presetCompileString 
+		}).asDict.values.join("\n");
+		"\n(\n%\n)\n".format(str);
+	},
+
 	presetCompileString: { arg self;
-		"%.tracks = %;\n".format(self.refCompileString(self.key.asCompileString), self.tracks.asCompileString)
-		++
-		"%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString)
+		var str = "";
+		if(self.label != self.key) {
+			str = str ++ "%.label = %;\n".format(self.refCompileString(self.key.asCompileString), self.label.asCompileString);
+		};
+		str = str ++ "%.tracks = %;\n".format(self.refCompileString(self.key.asCompileString), self.tracks.asCompileString);
+		str = str ++ "%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString);
+		str;
 	},
 
 ));
