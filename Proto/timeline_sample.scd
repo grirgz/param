@@ -479,7 +479,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 		self.layout;
 	},
 ));
-)
+);
 
 WindowDef(\SampleTimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 	var inview, layout;
