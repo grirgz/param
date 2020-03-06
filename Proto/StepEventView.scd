@@ -1,5 +1,5 @@
 
-"init event.scd".postln;
+"init StepEventView.scd".postln;
 
 ~stepEventView = (
 	// FIXME: find a better name, this is a special kind of stepEventView

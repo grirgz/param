@@ -360,6 +360,10 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 		tl.eventList.reorder;
 	},
 
+	addSample: { arg self, event;
+		self.timeline.recordedEvents = self.timeline.recordedEvents.add(event);
+	},
+
 	startRecording: { arg self, numChannels=2;
 		var name = "rec_%_t%_%".format(self.timeline.key, self.trackIndex, Date.localtime.stamp);
 		var clip;
@@ -380,6 +384,7 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 				ev[\sustain] = 1/2;
 				ev[\midinote] = self.trackIndex;
 				self.addEvent(ev);
+				self.addSample(ev);
 				self.drawTask.source = {
 					inf.do { arg idx;
 						1.wait;
@@ -395,6 +400,9 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 			self.recordedClip.fileName = self.filename;
 			self.recorder.prepareForRecord(path:self.filename, numChannels:numChannels);
 			//self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant)-( s.latency*~t ), {
+			if(tl.bindPlayWithRecord == true) {
+				tl.play;
+			};
 			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, s.latency * self.tempoClock.tempo), {
 				Log(\Param).debug("Start recording: %: bus:%, chan:%, file:%, beats:%, quant:%, tempo:%", name, self.recBus, numChannels, self.filename, self.tempoClock.beats, self.quant, self.tempoClock.tempo);
 				self.startRecordingTime = self.tempoClock.beats; // NOTE: doesnt account for latency but is used to compute duration so not a problem for the moment

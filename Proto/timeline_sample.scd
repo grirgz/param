@@ -91,8 +91,12 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		
 	},
 
-	recordedFileIsKept: { arg self;
+	isRecordedFileKept: { arg self;
 		(self.fileName ? "").beginsWith(self.recordDirectory)
+	},
+
+	recordedFileIsKept: { arg self;
+		self.isRecordedFileKept;
 	},
 
 	postProxy: { arg self;
@@ -504,6 +508,12 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 		),
 		BasicButton.new.string_("Clipboard refString").action_({ 
 			model.refCompileString.pbcopy;
+		}),
+		BasicButton.new.string_("Edit with audacity").action_({ 
+			"audacity %".format(model.bufferInfo.fileName).unixCmd { arg res, pid;
+				BufDef.reload(model.bufferInfo.fileName);
+				"done.".debug;
+			};
 		}),
 		nil
 	);

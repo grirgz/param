@@ -383,12 +383,22 @@
 			if(self.presetCompileStringSavePath.notNil and: { force_dialog==false }) {
 				save_it.(self.presetCompileStringSavePath)
 			} {
-				Dialog.savePanel({ arg mypath;
-					//path.postln;
-					save_it.(mypath)
-				},{
-					//"cancelled".postln;
-				});
+				if(WindowDef(\filedialog_save).notNil) {
+					WindowDef(\filedialog_save).front(
+						PathName(Document.current.path).pathOnly +/+ "ClipTimeline_%.scd".format(self.key),
+						{ arg dir, filename;
+							save_it.(dir+/+filename)
+						}
+					)
+				} {
+					Log(\Param).debug("filedialog_save not defined, use old dialog");
+					Dialog.savePanel({ arg mypath;
+						//path.postln;
+						save_it.(mypath)
+					},{
+						//"cancelled".postln;
+					});
+				}
 			}
 
 		};
@@ -455,6 +465,8 @@ ClipTimeline.proto = ProtoClass((
 
 		self;
 	},
+
+	bindPlayWithRecord: true,
 
 	track_count: { arg self;
 		self.tracks.size;
@@ -585,6 +597,21 @@ ClipTimeline.proto = ProtoClass((
 		"ClipTimeline(%)".format(name)
 	},
 
+	keepSamplesInUse: { arg self;
+		self.recordedEvents.do({ arg ev;
+			var tl;
+			ev.debug("recorded ev");
+			tl = ev.timeline;
+			if(self.eventList.any{ arg xev; 
+				xev.debug("eventList ev");
+				xev.timeline.value === tl 
+		   	}) {
+				tl.debug("yep i keep");
+				tl.keepRecordedFile;
+			}
+		})
+	},
+
 	samplesPresetCompileString: { arg self;
 		var samples = self.eventList.select({ arg ev;
 			ev.timeline.notNil and: {
@@ -594,7 +621,7 @@ ClipTimeline.proto = ProtoClass((
 		var str = samples.collect({ arg ev; 
 			ev.timeline.key -> ev.timeline.presetCompileString 
 		}).asDict.values.join("\n");
-		"\n(\n%\n)\n".format(str);
+		"%\n".format(str);
 	},
 
 	presetCompileString: { arg self;
@@ -603,7 +630,12 @@ ClipTimeline.proto = ProtoClass((
 			str = str ++ "%.label = %;\n".format(self.refCompileString(self.key.asCompileString), self.label.asCompileString);
 		};
 		str = str ++ "%.tracks = %;\n".format(self.refCompileString(self.key.asCompileString), self.tracks.asCompileString);
-		str = str ++ "%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString);
+		str = str ++ "%.eventList = %\n".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString);
+		if(self.recordedEvents.notNil) {
+			str = str ++ "%.recordedEvents = %;\n".format(self.refCompileString(self.key.asCompileString), self.recordedEvents.asCompileString);
+		};
+		self.keepSamplesInUse;
+		str = str ++ "\n%\n".format(self.samplesPresetCompileString);
 		str;
 	},
 
@@ -1285,12 +1317,13 @@ ClipTimeline.proto = ProtoClass((
 			var pat;
 			pat = sloop.cutPattern(
 				Pn(self.eventList.clone, 1), // clone avoid lose of sync when adding note but require to wait the end of loop
+				// TODO: schedule added notes on clock to have a virtual real-time refresh
 				offset, dur
 			);
 
 
 			if(self.kit.notNil and: {self.composeParamPattern == true}) {
-				pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
+				pat = PdrumStep(self.kit, pat, 1, key: \kitIndex).trace;
 				if(self.wrapper.postChain.notNil) {
 					//"post!".debug;
 					pat = self.wrapper.postChain <> pat;
@@ -1632,7 +1665,7 @@ ProtoClassDef(\LoopMaster, (
 	},
 
 	cutPattern: { arg self, pat, firstEventOffset, dur;
-		// do not embed to allow composing it
+		// do not embedInStream to allow composing it
 		if(firstEventOffset < 0) {
 			Pfindur(dur, 
 				Pseq([

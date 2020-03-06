@@ -947,6 +947,10 @@
 			self.make_quant_popup,
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			Param(Message(self.timeline_model.recorder), \isRecording, XBoolSpec()).asButton("Rec"),
+			Param(Message(self.timeline_model), \bindPlayWithRecord, XBoolSpec()).asButton("PlayRec"),
+			XSimpleButton.new.label_("Samples").action_({
+				WindowDef("%_SampleManager".format(self.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(self.timeline_model);
+			}),
 		);
 		
 		self.header_layout;
@@ -1471,6 +1475,12 @@
 				["Rec", Color.black, Color.white],
 				["Rec", Color.black, Color.red],
 			]),
+			Param(
+				Message(self.timeline_model),
+				\outBus, 
+				TagSpecDef(\BusDef),
+				//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
+			).asPopUpMenu,
 			BasicButton.new.string_("Edit kit").action_({ self.timeline_model.wrapper.edit }),
 		);
 		
@@ -2408,3 +2418,89 @@ WindowDef(\ClipTimelineNewClip, { arg def, model, fac; // deprecated
 	)
 });
 
+
+///////////////////////////////
+
+
+(
+WindowDef(\ClipTimeline_SampleManager, { arg def, timeline;
+	var list, refresh;
+	var timelines;
+	list = ListView.new;
+	refresh = {
+		var sel = list.selection;
+		list.items = timeline.recordedEvents.collect({ arg x; 
+			var flags = "";
+			var tl;
+			x.debug("xxxx");
+			tl = x.timeline.value;
+			if(timeline.eventList.includes(x).not and: {
+				timeline.eventList.every({ arg ev; ev.timeline.value !== tl  })
+			}) {
+				flags = "[Masked]"
+			};
+			if(tl.recordedFileIsKept) {
+				flags = "% (kept)".format(flags)
+			};
+			"% %".format(tl.label, flags);
+		});
+		timelines = timeline.recordedEvents.collect({ arg x; x.timeline.value });
+		list.selection = sel;
+	};
+	list.selectionMode = \extended;
+	refresh.();
+	VLayout(
+		HLayout (
+			BasicButton.new.string_("play").action_({
+				list.selection.do { arg i;
+					timelines[i].play;
+				};
+			}),
+			BasicButton.new.string_("stop").action_({
+				list.selection.do { arg i;
+					timelines[i].stop;
+				};
+			}),
+			BasicButton.new.string_("label").action_({
+				list.selection.first !? { arg x; 
+					var tl = timelines[x];
+					WindowDef(\SampleTimelineManager_RenameDialog, WindowDef(\RenameDialog).front(
+						"Change timeline label ?\n\nCurrent label: %\nKey: %\nBuffer: %".format(tl.label, tl.key, tl.buffer.asCompileString),
+						tl.label,
+						{ arg newlabel;
+							tl.label = newlabel;
+							refresh.();
+						}
+					))
+				}
+			}),
+			BasicButton.new.string_("keep").action_({
+				list.selection.do { arg i;
+					timelines[i].keepRecordedFile;
+				};
+				refresh.();
+			}),
+			BasicButton.new.string_("clipboard preset").action_({
+				"\n(\n%\n)\n".format(list.selection.collect { arg i;
+					timelines[i].presetCompileString;
+				}.join("\n\n")).pbcopy;
+			}),
+			BasicButton.new.string_("remove").action_({
+				var flist = list.selection.collect { arg i;
+					timelines[i].key
+				};
+				WindowDef(\SampleTimelineManager_ConfirmDialog, WindowDef(\ConfirmDialog)).front(
+					"Are you sure you want to delete theses timelines ?\n\n%".format(flist.collect(_.asString).join("\n")),
+					{
+						list.selection.do { arg i;
+							SampleTimeline.proto.all[timelines[i].key] = nil; // should remove .proto after recompile
+						};
+						refresh.();
+					}
+				)
+			}),
+		),
+		list
+	)
+});
+);
