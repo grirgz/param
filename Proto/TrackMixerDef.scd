@@ -98,6 +98,14 @@
 		}
 	},
 
+	set: { arg self, key, val;
+		self.asParam(key).set(val);
+	},
+
+	get: { arg self, key;
+		self.asParam(key).get;
+	},
+
 	asParamGroup: { arg self;
 		self.proxy.asParamGroup
 	},

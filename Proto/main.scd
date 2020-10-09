@@ -26,11 +26,12 @@
 		//"experimental/old_track.scd", // deprecated
 		"TrackMixerDef.scd",
 
-		"experimental/drumrack_synth.scd",
+		//"experimental/drumrack_synth.scd",
 	].do({ arg file;
 		var path = (ParamProto.base_path +/+ file);
 		("loading " ++ path).debug;
-		FileSystemProject.load(path)
+		FileSystemProject.load(path);
+		RandDelayNetwork(\deldefault).define_specs[\posthpf].debug(">>> ");
 	});
 
 );

@@ -28,6 +28,9 @@ ParamViewToolBox {
 				val = param.asTextField,
 			)
 		);
+		view.addUniqueMethod(\label, { label });
+		view.addUniqueMethod(\slider, { slider });
+		view.addUniqueMethod(\textfield, { val });
 		view.addUniqueMethod(\mapParam, { arg view, param;
 			if(label_mode == \full) {
 				label.string  = param.asLabel;

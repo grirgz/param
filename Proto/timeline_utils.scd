@@ -43,6 +43,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 ~pembed = ProtoClass((
 	// replace all following function by one class: Pembed, this is the prototype
+	// Pembed is defined in Param/custom_events.sc and redirect to here
 
 	new: { arg self, pat, start_offset, stop_offset;
 		// start_offset is relative to first event which is time=0, 

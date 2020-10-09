@@ -1241,7 +1241,7 @@ BaseParam {
 				};
 				if(inval.notNil) {
 					inval = inval[1];
-					if(inval.class == Symbol || inval.class == String) {
+					if(inval.class == Symbol or:{ inval.class == String }) {
 						inval;
 					} {
 						nil
@@ -1250,7 +1250,11 @@ BaseParam {
 					nil
 				}
 			} {
-				nil
+				if(inval.isKindOf(Pmono)) {
+					inval.synthName
+				} {
+					nil
+				}
 			};
 		} {
 			nil
@@ -1665,7 +1669,9 @@ PdefParam : BaseParam {
 			// update only if concerned key is set
 			// FIXME: may break if property is an association :(
 			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
-			if(args[2].any({ arg x; x == param.property })) {
+			if(args[2].notNil and: {
+				args[2].any({ arg x; x == param.property })
+			}) {
 				action.(view, param);
 			}
 		});

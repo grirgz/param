@@ -134,14 +134,14 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 			\dur, 1,
 			\out, Pfunc({ self.outBus ? 0 }),
 			\amp, 0.1,
-		).trace;
+		);
 	},
 
 	cutPatternFunction: { arg self;
 		{ arg sloop, offset, dur;
 			sloop.cutPattern(
 				Pn(self.samplePattern(offset+self.eventList.startTime), 1),
-				offset,
+				0, //offset,
 				dur
 			).embedInStream
 		}
@@ -508,6 +508,9 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 		),
 		BasicButton.new.string_("Clipboard refString").action_({ 
 			model.refCompileString.pbcopy;
+		}),
+		BasicButton.new.string_("Edit buffer").action_({ 
+			WindowDef(\BufferEditor).front(model.bufferInfo.buffer);
 		}),
 		BasicButton.new.string_("Edit with audacity").action_({ 
 			"audacity %".format(model.bufferInfo.fileName).unixCmd { arg res, pid;

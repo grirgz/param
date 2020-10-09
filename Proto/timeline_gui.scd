@@ -78,6 +78,9 @@
 			.action_({ arg me;
 				if(self.timeline_model.presetCompileStringSavePath.notNil) {
 					var dialog;
+					if(PathName(self.timeline_model.presetCompileStringSavePath).isFolder) {
+						self.timeline_model.presetCompileStringSavePath = self.timeline_model.presetCompileStringSavePath +/+ self.timeline_model.key.asString ++ ".scd"
+					};
 					dialog = Window.new("Save").layout_(
 						VLayout(
 							StaticText.new.string_("Save this object to the file % ?".format(self.timeline_model.presetCompileStringSavePath.asCompileString)),
@@ -91,7 +94,7 @@
 								BasicButton.new.string_("Choose").action_({ 
 									self.timeline_model.savePresetCompileString(nil, {
 										me.refreshChange;
-									}, false);
+									}, true);
 									dialog.close;
 								}),
 								BasicButton.new.string_("Cancel").action_({

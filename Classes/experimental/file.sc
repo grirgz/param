@@ -22,6 +22,6 @@ FileSystemResolver {
 
 +PathName {
 	exists {
-		^this.isFile.not and: { this.isFolder.not }
+		^this.isFile or: { this.isFolder }
 	}
 }

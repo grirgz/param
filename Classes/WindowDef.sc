@@ -211,7 +211,9 @@ WindowDef {
 	}
 
 	windowDo { arg fun;
-		^if(this.window.notNil and: { this.window.isClosed.not }, fun.(this.window)) 
+		^if(this.window.notNil and: { this.window.isClosed.not }) {
+			fun.(this.window)
+		}; 
 	}
 
 	closeWindow {

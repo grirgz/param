@@ -124,11 +124,12 @@ PdrumStep : Pattern {
 					//scoreev[key].debug("midinote (or specified key)");
 					xscoreev[key] = nil;
 					padevs = this.dictStream(scoreev[key]).next(inval);
-					padevs.debug("padevs");
+					//padevs.debug("padevs");
 					if(padevs.isSequenceableCollection.not) {
 						padevs = [padevs]
 					};
-					padevs = padevs.collect({ arg x; Event.newFrom(x) }).debug("padevs as event"); // FIXME: convert StepEvent to Event as a workaround because when embedInStream the StepEvent is repeated instead of one shot (see PatKitDef doc)
+					padevs = padevs.collect({ arg x; Event.newFrom(x) }); // FIXME: convert StepEvent to Event as a workaround because when embedInStream the StepEvent is repeated instead of one shot (see PatKitDef doc)
+					//padevs.debug("padevs as event"); 
 					padevs.collect{ arg padev, x;
 						if(x == ( padevs.size-1 )) {
 							ev = padev.composeEvents(xscoreev).yield(ev);

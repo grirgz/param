@@ -151,6 +151,10 @@ ProtoClass : Event {
 			this[\numChannels] = args[0]
 		}
 	}
+
+	set { arg ... args;
+		^this[\set].(this, * args)
+	}
 }
 
 

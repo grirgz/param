@@ -185,6 +185,7 @@ BufDef {
 	}
 
 	*relpath_to_abspath { arg path;
+		path = path.standardizePath;
 		if(PathName(path).isRelativePath) {
 			this.paths.do { arg folder;
 				var abspath = folder +/+ path;
@@ -305,28 +306,110 @@ WavetableDef : BufDef {
 		^PresetDictionary.new(\WavetableDef_bufferChannelCache);
 	}
 
+	*bufferMultiCache {
+		^PresetDictionary.new(\WavetableDef_bufferMultiCache);
+	}
+
 	*initClass {
 		root = "~/Musique/sc/samplekit/wavetable".standardizePath;
 	}
 
-	*getBufferForPath { arg path, channels, action;
-		path = path.asSymbol;
-		this.bufferChannelCache[path] = this.bufferChannelCache[path] ? Dictionary.new; // channels can be an array so no Identity
-		if(this.bufferChannelCache[path][\numChannels].isNil) {
+	*new { arg name, path, channels;
+		var multipath, keypath;
+		keypath = path;
+		if(path.isKindOf(Array)) {
+			multipath = path;
+			keypath = multipath.join(":");
+			path = path.first;
+		};
+		if(path.isNil) {
+			// getter
+			if(this.all.at(name).isNil) {
+				if(name.asString.contains("/")) {
+					// special constructor with file path as name
+					name = this.abspath_to_relpath(name);
+					^BufDef(name.asSymbol, name.asString, channels)
+				} {
+					^nil
+				}
+			} {
+				var path = this.all.at(name);
+				if(path.isKindOf(Buffer)) { 
+					// buffer in memory only
+					^path;
+				} {
+					// buffer is at some path
+					if(this.bufferMultiCache[path].notNil) {
+						// this is a multi wavetable. In this.all[name], path is a :-separated path
+						^this.bufferMultiCache[path].first;  
+					} {
+						// standard wavetable
+						path = this.relpath_to_abspath(path);
+						^this.getBufferForPath(path, channels, nil, multipath);
+					};
+				}
+			}
+		} {
+			// setter
+			if(path.isKindOf(Number)) {
+				//// buffer in memory only
+				// path is in fact the frame count
+				if(this.all.at(name).isNil) {
+					var buf = Buffer.alloc(this.server, path, channels ? 2);
+					buf.key = name;
+					this.all.put(name, buf);
+					^this.all.at(name);
+				} {
+					// already defined
+					^this.all.at(name);
+				}
+
+			} {
+				//// file buffer
+				if(this.all.at(name).isNil) {
+					// doesn't exists, define it
+					this.all.put(name, keypath);
+					path = this.relpath_to_abspath(path);
+					^this.getBufferForPath(path, channels, nil, multipath).key_(name);
+					//^BufferPool.get_stereo_sample(client, path).key_(name);
+				} {
+					// already defined
+					var path = this.all.at(name);
+					if(path.isKindOf(Buffer)) {
+						^path;
+					} {
+						path = this.relpath_to_abspath(path);
+						^this.getBufferForPath(path, channels, nil, multipath);
+						//^BufferPool.get_stereo_sample(client, path);
+					}
+				}
+			}
+		};
+	}
+
+	*getBufferForPath { arg path, channels, action, multipath;
+		var keypath = path.asSymbol;
+		this.watchServer(this.server);
+		if(multipath.notNil) {
+			keypath = multipath.join(":").asSymbol;
+			path = multipath.first.asSymbol;
+		};
+		this.bufferChannelCache[keypath] = this.bufferChannelCache[keypath] ? Dictionary.new; // channels can be an array so no Identity
+		if(this.bufferChannelCache[keypath][\numChannels].isNil) {
 			var numchan = SoundFile.use(path.asString, { arg f;
 				f.numChannels;
 			});
-			numchan.debug("numchan!!!!!!!!");
-			this.bufferChannelCache[path][\numChannels] = numchan
+			//numchan.debug("numchan!!!!!!!!");
+			this.bufferChannelCache[keypath][\numChannels] = numchan
+		};
+		if(this.bufferChannelCache[keypath][\wantedChannels].isNil) {
+			this.bufferChannelCache[keypath][\wantedChannels] = channels ? this.bufferChannelCache[keypath][\numChannels];
 		};
 		if(channels.isNil) {
-			if(this.bufferChannelCache[path][\wantedChannels].isNil) {
-				this.bufferChannelCache[path][\wantedChannels] = this.bufferChannelCache[path][\numChannels];
-			};
-			channels = this.bufferChannelCache[path][\wantedChannels]
+			channels = this.bufferChannelCache[keypath][\wantedChannels]
 		};
-		this.bufferChannelCache[path][\wantedChannels] = channels;
-		if(this.bufferChannelCache[path][channels].isNil) {
+		//channels.debug("channels");
+		if(this.bufferChannelCache[keypath][channels].isNil) {
 			//~f.(1,2) == [0];
 			//~f.(2,1) == [0,0];
 			//~f.(3,1) == [0,0,0];
@@ -339,26 +422,50 @@ WavetableDef : BufDef {
 			var chanArray = { arg want, have;
 				want = (want-1).clip(0,inf);
 				have = (have-1).clip(0,inf);
-				(0..have).wrapAt((0..want))
+				(0..have).wrapAt((0..want)).collect(_.asInteger); // fail silently if float
 			};
 
-			var have = this.bufferChannelCache[path][\numChannels];
+			var have = this.bufferChannelCache[keypath][\numChannels];
 			var want = channels;
 			if(want == have) {
-				this.bufferChannelCache[path][channels] = Buffer.read(this.server, path.asString, 0, -1, action);
+				if(multipath.notNil) {
+					this.bufferMultiCache[keypath] = multipath.collect({ arg ipath;
+						this.readWavetableFromPath(ipath);
+					});
+					this.bufferChannelCache[keypath][channels] = this.bufferMultiCache[keypath].first;
+					this.bufferChannelCache[keypath][channels].consecutive = this.bufferMultiCache[keypath];
+				} {
+					this.bufferChannelCache[keypath][channels] = this.readWavetableFromPath(path);
+				};
 			} {
 				var chan;
+				"not implemented: wavetable custom channel".throw;
 				chan = if(want.isSequenceableCollection) {
-					want;
+					want.collect(_.asInteger);
 				} {
 					chanArray.(want, have);
 				};
-				this.bufferChannelCache[path][channels] = Buffer.readChannel(this.server, path.asString, 0, -1, chan, action);
+				//[channels, keypath, chan].collect(_.asCompileString).debug("asked chan!!!!");
+				this.bufferChannelCache[keypath][channels] = Buffer.readChannel(this.server, keypath.asString, 0, -1, chan, action);
 			};
 		}; 
-		^this.bufferChannelCache[path][channels]
+		^this.bufferChannelCache[keypath][channels]
 	}
 
+	*readWavetableFromPath { arg path;
+		var buf, table, sf;
+		sf = SoundFile.openRead(path.asString);
+		table = FloatArray.newClear(sf.numFrames);
+		sf.readData(table);
+		sf.close; // close the file
+		table = table.as(Signal);
+		table = table.asWavetable;
+		if(log2(table.size) % 1 != 0) {
+			Log(\Param).warning("WavetableDef: Buffer size not power of 2: %".format(table.size, path));
+		};
+		buf = Buffer.loadCollection(this.server, table);
+		^buf;
+	}
 
 }
 

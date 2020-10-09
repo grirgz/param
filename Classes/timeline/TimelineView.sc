@@ -820,14 +820,28 @@ TimelineView : SCViewHolder {
 			grid.draw;
 		} {
 			TimelineRulerView.vertical_grid_do(this, { arg factor, x, oidx, idx;
-				if( oidx % 4 == 0 ) { 
-					Pen.alpha = 0.9;
-				} { 
-					Pen.alpha = 0.5;
-				};
-				Pen.color = Color.black;
-				Pen.line(Point(x,0), Point(x,this.virtualBounds.height));
-				Pen.stroke;
+				Pen.use{
+					//~mygridx.(factor, x, oidx, idx);
+					Pen.lineDash = FloatArray[1];
+					Pen.color = Color.black;
+					if( oidx % 16 == 0 ) { 
+						Pen.alpha = 0.6;
+						Pen.width = 2;
+					} { 
+						if(oidx % 4 == 0) {
+							Pen.alpha = 0.4;
+							Pen.width = 1;
+
+						} {
+							Pen.alpha = 0.4;
+							Pen.width = 1;
+							Pen.lineDash = FloatArray[2.0,2.0];
+						}
+					};
+
+					Pen.line(Point(x,0), Point(x,this.virtualBounds.height));
+					Pen.stroke;
+				}
 			});
 
 		};

@@ -49,6 +49,7 @@ TimelineRulerView : TimelineView {
 		if(cursor.notNil) {
 			if(cursor.startPosition.notNil) {
 				Pen.color = Color.blue;
+				Pen.width = 2;
 				start_ppos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
 			};
 			//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
@@ -58,6 +59,7 @@ TimelineRulerView : TimelineView {
 			if(cursor.endPosition.notNil) {
 				//var 
 				Pen.color = Color.blue.alpha_(0.4);
+				Pen.width = 2;
 				end_ppos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
 				//[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
 				//Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
@@ -219,6 +221,7 @@ TimelineSecondRulerView : TimelineRulerView {
 		if(cursor.notNil) {
 			if(cursor.startPosition.notNil) {
 				Pen.color = Color.blue;
+				Pen.width = 2;
 				start_ppos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
 			};
 			//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
@@ -228,6 +231,7 @@ TimelineSecondRulerView : TimelineRulerView {
 			if(cursor.endPosition.notNil) {
 				//var 
 				Pen.color = Color.blue.alpha_(0.4);
+				Pen.width = 2;
 				end_ppos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
 				//[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
 				//Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
@@ -620,7 +624,22 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 		var point;
 		Pen.use {
 
-			Pen.color = Color.black;
+			Pen.lineDash = FloatArray[1];
+			if(model.type == \start) {
+				Pen.color = ParamViewToolBox.color_ligth;
+				Pen.width = 2;
+			} {
+				if(model.type == \end) {
+					Pen.color = ParamViewToolBox.color_ligth;
+					Pen.lineDash = FloatArray[4,1];
+					Pen.width = 2;
+				} {
+					Pen.color = ParamViewToolBox.color_ligth;
+					//Pen.color = Color.black;
+					Pen.width = 2;
+					Pen.lineDash = FloatArray[2,2];
+				};
+			};
 			Pen.alpha = alpha;
 			point = parent.gridPointToPixelPoint(this.origin);
 			// now in screen coordinates
@@ -748,6 +767,7 @@ CursorTimelineView : TimelineView {
 		if(cursor.notNil) {
 			if(cursor.startPosition.notNil) {
 				Pen.color = Color.blue;
+				Pen.width = 2;
 				spos = this.gridPointToPixelPoint(Point(cursor.startPosition, 0)).x;
 				//[cursor.startPosition, spos].debug("CursorTimelineView: start, spos");
 				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
@@ -756,6 +776,7 @@ CursorTimelineView : TimelineView {
 
 			if(cursor.endPosition.notNil) {
 				Pen.color = Color.blue;
+				Pen.width = 2;
 				spos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
 				//[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
 				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));

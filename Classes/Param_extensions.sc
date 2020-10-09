@@ -168,6 +168,10 @@
 		^this.envir.collect({ arg x; x.asCompileString })
 	}
 
+	presetCompileString {
+		^this.asParamGroup.getSetCompileString;
+	}
+
 	asPatternCompileString {
 		var res;
 		res = "Pbind(\n".format(this.key);
@@ -370,30 +374,30 @@
 
 	followChange { arg model, key, fun, init=true;
 		var con;
-		[model, key, fun, init].debug("model, key, fun, init");
+		//[model, key, fun, init].debug("model, key, fun, init");
 	   	con = SimpleController.new(model).put(key, { arg ...args;
-			[model, key, fun, init].debug("update followChange");
+			//[model, key, fun, init].debug("update followChange");
 			if(this.isClosed) {
-				[model, key, fun, init].debug("update followChange2");
+				//[model, key, fun, init].debug("update followChange2");
 				con.remove;
 			} {
-				[model, key, fun, init].debug("update followChange3");
+				//[model, key, fun, init].debug("update followChange3");
 				try {
 					fun.(* [this] ++ args);
-				[model, key, fun, init].debug("update followChange4");
+				//[model, key, fun, init].debug("update followChange4");
 				} { arg err;
-				[model, key, fun, init].debug("update followChange5");
+				//[model, key, fun, init].debug("update followChange5");
 					"In View.followChange: key:%".format(key).error;
 					err.reportError;
 				}
 			};
 		});
-				[model, key, fun, init].debug("update followChange6");
+				//[model, key, fun, init].debug("update followChange6");
 		if(init==true) { 
-				[model, key, fun, init].debug("update followChange7");
+				//[model, key, fun, init].debug("update followChange7");
 			model.changed(key);	
 		};
-				[model, key, fun, init].debug("update followChange8");
+				//[model, key, fun, init].debug("update followChange8");
 	}
 
 	refreshChangeAction_ { arg fun;
@@ -584,4 +588,82 @@
 }
 
 
+
+///////////////////////// dont know where to put that
+
++ Buffer {
+	saveDialog { arg numFrames=( -1 ), startFrame=0, fun;
+		Dialog.savePanel({ arg file;
+			var format = PathName(file).extension;
+			if(format == "") { 
+				file = file ++ ".flac";
+				format = "FLAC"
+			};
+			format = format.toUpper;
+			this.write(file, format, numFrames:numFrames, startFrame:startFrame);
+			fun.(file, format);
+		});
+	}
+
+	asCompileString {
+		if(this.key.notNil) {
+			^"BufDef('%')".format(this.key)
+		} {
+			^super.asCompileString;
+		}
+	}
+
+	clear {
+		if(this.key.notNil) {
+			BufDef.clear(this.key);
+		}
+	}
+
+	key {
+		// used to get back the key of BufDef from a Buffer
+		^this.getHalo(\key);
+	}
+
+	key_ { arg val;
+		this.addHalo(\key, val)
+	}
+
+	consecutive_ { arg val; 
+		// when allocating consecutives buffer in WavetableDef, this property contains the count
+		this.addHalo(\consecutive, val)
+	}
+
+	consecutive { 
+		^this.getHalo(\consecutive)
+	}
+}
+
+
++ List {
+	sortLike { arg model;
+		var ar = Array.new(this.size);
+		model.do({ arg key;
+			if(array.includes(key)) {
+				ar = ar.add( array.remove(key) );
+			}
+		});
+		//array.do { arg val;
+		//	if(val.notNil) {
+		//		ar = ar.add(val)
+		//	}
+		//}
+		ar = ar ++ array;
+		array = ar
+	}
+}
+
++ Boolean {
+	blend { arg that, blendfact;
+		if(blendfact < 0.5) {
+			^this
+		} {
+			^that
+		}
+	}
+}
 

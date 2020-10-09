@@ -3,8 +3,16 @@
 // Add also useful spec for list of labels associated with a value: MenuSpec, MenuSpecDef
 // X is because name is already taken in cruciallib, should find a better name, but it's core API of Param quark :/
 
+ParamBaseSpec : Spec {
+	setFrom {
+		// since 3.11 this is needed
 
-XArraySpec : Spec {
+	}
+
+}
+
+
+XArraySpec : ParamBaseSpec {
 	var <array, <default;
 	var <>size, <>isMonoSpec;
 	var <>isDynamic;
@@ -110,7 +118,7 @@ StepListSpec : XArraySpec {
 	}
 }
 
-XEnvSpec : Spec {
+XEnvSpec : ParamBaseSpec {
 	var <levels, <times, <curves;
 	var <default;
 	var <size;
@@ -346,14 +354,19 @@ XEnvSpec : Spec {
 	
 }
 
-XAudioSpec : Spec {
-	
+XAudioSpec : ParamBaseSpec {
 }
 
 
-XNonFloatSpec : Spec { // maybe a parent for all others special spec to exclude them when making a gui ?
+XNonFloatSpec : ParamBaseSpec { // maybe a parent for all others special spec to exclude them when making a gui ?
 	var <>default;
 	constrain { arg val;
+		^val;
+	}
+	map { arg val;
+		^val;
+	}
+	unmap { arg val;
 		^val;
 	}
 }
@@ -612,6 +625,14 @@ TagSpec : XNonFloatSpec {
 
 	unmapIndex { arg val;
 		^this.valueList.detectIndex({ arg x; x == val })
+	}
+
+	mapKey { arg val;
+		^this.associationList.asDict[val];
+	}
+
+	unmapKey { arg val;
+		^this.associationList.detect({ arg x; x.value == val }) !? _.key
 	}
 
 	map { arg val;

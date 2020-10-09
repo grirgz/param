@@ -350,6 +350,16 @@
 		ret;
 	},
 
+	presetCompileStringSaveFile: { arg self;
+		if(self.presetCompileStringSavePath.notNil) {
+			if( self.presetCompileStringSavePath.isFolder) {
+				self.presetCompileStringSavePath +/+ "ClipTimeline_%.scd".format(self.key)
+			} {
+				self.presetCompileStringSavePath
+			}
+		}
+	},
+
 	savePresetCompileString: { arg self, path, action, force_dialog=false;
 		var save_it = { arg mypath;
 			var myfolderpath = PathName(mypath).pathOnly;
@@ -380,8 +390,8 @@
 		if(path.notNil) {
 			save_it.(path)
 		} {
-			if(self.presetCompileStringSavePath.notNil and: { force_dialog==false }) {
-				save_it.(self.presetCompileStringSavePath)
+			if(self.presetCompileStringSaveFile.notNil and: { force_dialog==false }) {
+				save_it.(self.presetCompileStringSaveFile)
 			} {
 				if(WindowDef(\filedialog_save).notNil) {
 					WindowDef(\filedialog_save).front(

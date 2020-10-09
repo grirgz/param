@@ -67,8 +67,10 @@ SynthDef(\dr_kick, { |out=0, amp=0.1, pan=0, fratio=1.5, freqpan=0.01, spread=0.
 	
 	OffsetOut.ar(out, son);
 }, metadata:(specs:(
-	env0: XEnvSpec( ControlSpec(0,9,\lin)!4, ControlSpec(0,2,\lin)!4 ),
-	env1: XEnvSpec( ControlSpec(0,127,\lin)!3, ControlSpec(0,2,\lin)!3 ),
+	// FIXME: disabled because error ^^ The preceding error dump is for ERROR: Message 'setFrom' not understood.
+
+	//env0: XEnvSpec( ControlSpec(0,9,\lin)!4, ControlSpec(0,2,\lin)!4 ),
+	//env1: XEnvSpec( ControlSpec(0,127,\lin)!3, ControlSpec(0,2,\lin)!3 ),
 	timeScale: ControlSpec(0.001,4,\lin, 0, 1),
 ))).store;
 

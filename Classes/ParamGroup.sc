@@ -92,6 +92,18 @@ ParamGroup : List {
 		)
 	}
 
+	getSetCompileString { arg targetCompileString;
+		^"%\n".format(
+			this.collect({ arg p; 
+				if(p.target.class == Message) {
+					"%.% = %;".format(targetCompileString ?? { p.target.receiver.asCompileString }, p.property, p.get.asCompileString)
+				} {
+					"%.set(%, %);".format(targetCompileString ?? { p.target.asCompileString }, p.property.asCompileString, p.get.asCompileString)
+				};
+			}).join("\n")
+		)
+	}
+
 	presetCompileString {
 		var ret;
 		var params, presets;

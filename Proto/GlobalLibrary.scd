@@ -14,6 +14,9 @@ ProtoDef(\GlobalLibrary, (
 		var fac;
 		if(target.isKindOf(ProtoClass)) {
 			if(target.eventType.notNil) {
+				if(self.clipFactories.isNil) {
+					self.init_default_clip_factories;
+				};
 				if(self.clipFactories_keys.includes(target.eventType)) {
 					fac = self.clipFactories[target.eventType];
 					libId = [fac.libIdKey, target.key -> target]
@@ -793,6 +796,14 @@ ProtoDef(\GlobalLibrary, (
 
 //TagSpecDef(\SynthDef).clear; // to debug;
 
+/////////////////////////////
+///// Tag definitions
+// there is raw tags like Pdef or Ndef in the form \name -> object
+// all theses tags are registered in the GlobalLibraryType tag
+// Since there is a lot of types, we want to group them in categories, 
+//		the list is stored in GlobalLibraryCategory tag
+// Each category is defined in the tag GlobalLibrary.type.CATEGORYNAME with the list of raw tags
+
 TagSpecDef(\SynthDef_all, {
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat;
 });
@@ -897,6 +908,17 @@ TagSpecDef(\TrackListChannelPart, {
 	}).flatten(2);
 }).list;
 
+TagSpecDef('TrackInstrument', [
+	\ClipTimelineTrack,
+	\KitTimelineTrack,
+	\NoteTimelineTrack,
+	\SampleTimelineTrack,
+]);
+
+
+//////////////////////////////////////
+////////////////////////// Categories
+
 TagSpecDef(\GlobalLibraryType, [
 	\BusDef,
 	\BufDef,
@@ -913,6 +935,7 @@ TagSpecDef(\GlobalLibraryType, [
 	\Sample,
 	\TrackListPart,
 	\TrackListChannelPart,
+	\TrackInstrument,
 ]);
 
 TagSpecDef(\GlobalLibraryCategory, [
@@ -927,7 +950,17 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\Editable,
 ]);
 
+//TagSpecDef('GlobalLibrary.type.TrackInstrument', [
+	//\ClipTimelineTrackX,
+//]);
+
+
 TagSpecDef('GlobalLibrary.type.TrackInstrument', [
+	\TrackInstrument,
+]);
+
+
+TagSpecDef('GlobalLibrary.type.TrackInstrumentTarget', [
 	\SynthDef,
 	\Pdef,
 	\Ndef,
