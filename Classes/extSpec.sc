@@ -457,7 +457,7 @@ XOutBusSpec : XBusSpec {
 
 XBoolSpec : XNonFloatSpec {
 	*new { 
-		^super.new;
+		^super.new.default_(false);
 	}
 
 	map { arg val;

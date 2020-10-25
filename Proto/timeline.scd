@@ -75,17 +75,20 @@
 	},
 
 	cutPatternFunction: { arg self;
+		// this function should be overwritten by subclasses to provide a cutting function to their pattern
+		// all other patterns methods will depend on it
 		{ arg sloop, offset, dur;
 			sloop.cutPattern(
-				self.bypass_pattern( Pn(self.eventList.clone, 1) ),
+				//self.bypass_pattern( Pn(self.eventList.clone, 1) ), // bypassing in upstream is cpu friendlier but prevent unmuting while already in pattern
+				Pn(self.eventList.clone, 1),
 				offset,
 				dur
 			).embedInStream
 		}
 	},
 
-	asPattern: { arg self, startEventOffset, totalDur, repeatCount;
-		self.loopMaster.getClipLoopPattern(self.cutPatternFunction, startEventOffset, totalDur, repeatCount ? self.repeatCount);
+	asPattern: { arg self, startEventOffset, totalDur, repeatCount, parentEvent, parentTimeline;
+		self.loopMaster.getClipLoopPattern(self.cutPatternFunction(parentEvent, parentTimeline), startEventOffset, totalDur, repeatCount ? self.repeatCount);
 	},
 
 	previewPattern: { arg self, absStart, absEnd, repeatCount;
@@ -520,6 +523,7 @@ ClipTimeline.proto = ProtoClass((
 			recordBus: 0,
 			recordArmed: false,
 			muted: false,
+			solo: false,
 		));
 		self.areasize = Point(self.areasize.x, self.tracks.size ); // areasize is deprecated, use track_count
 	},
@@ -533,7 +537,16 @@ ClipTimeline.proto = ProtoClass((
 		self.changed(\tracks);
 	},
 
+	//muteTrack: { arg self, index, val=true;
+		//self.tracks[index].muted = val;
+	//},
+
+	//soloTrack: { arg self, index, val=true;
+		//self.tracks[index].solo = val;
+	//},
+
 	bypass_track: { arg self, track_index, val=true;
+		// used by steptimeline, maybe deprecated
 		if(val) {
 			self.tracks_bypassed.add(track_index);
 		} {
@@ -542,6 +555,7 @@ ClipTimeline.proto = ProtoClass((
 	},
 
 	toggle_bypass_track: { arg self, track_index;
+		// used by steptimeline, maybe deprecated
 		if(self.is_track_bypassed(track_index)) {
 			self.bypass_track(track_index, false)
 		} {
@@ -550,14 +564,41 @@ ClipTimeline.proto = ProtoClass((
 	},
 
 	is_track_bypassed: { arg self, track_index;
-		self.tracks[track_index] !? _.muted ? false or: {self.tracks_bypassed.includes(track_index)};
+		// used by steptimeline, maybe deprecated
+		//self.tracks[track_index] !? _.muted ? false or: {self.tracks_bypassed.includes(track_index)};
+		if(self.soloTracks.notNil) {
+			self.soloTracks.includes(track_index).not
+		} {
+			false
+		};
+	},
+
+	computeSoloMute: { arg self;
+		var trackAssos = self.tracks.collect({ arg track, idx; idx -> track });
+		var soloTracks = trackAssos.select({ arg trackasso; trackasso.value.solo == true });
+		if(soloTracks.size == 0) {
+			soloTracks = trackAssos.select({ arg trackasso; trackasso.value.muted != true })
+		};
+		self.soloTracks = soloTracks.collect(_.key).asSet;
+	},
+
+	mutingPattern: { arg self, parentEvent;
+		Pbind(
+			\type, Pfunc({ arg ev;
+				if(self.is_track_bypassed(parentEvent.use({ ~midinote.value.asInteger }))) {
+					\rest;
+				} {
+					ev[\type];
+				}
+			})
+		)
 	},
 
 	bypass_pattern: { arg self, pat;
 		Pcollect({ arg ev;
 			//"entering pcollect".debug;
 			ev = ev.copy;
-			if(self.is_track_bypassed(ev.use({ev.midinote}))) {
+			if(self.is_track_bypassed(ev.use({ev.midinote.asInteger}))) {
 				ev[\type] = \rest;
 				ev[\eventType] = nil;
 				ev[\nodeType] = nil;
@@ -567,28 +608,28 @@ ClipTimeline.proto = ProtoClass((
 		}, pat)	
 	},
 
-	asPattern_old: { arg self, relStartTime, totalDur, repeatCount;
-		self.proxy.source = Plazy({
-			var eventlist = self.eventList;
-			var xrelStartTime, xtotalDur;
+	//asPattern_old: { arg self, relStartTime, totalDur, repeatCount;
+		//self.proxy.source = Plazy({
+			//var eventlist = self.eventList;
+			//var xrelStartTime, xtotalDur;
 
-			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
-			xtotalDur = totalDur.value ? eventlist.totalDur;
+			//xrelStartTime = relStartTime.value ? eventlist.relStartTime;
+			//xtotalDur = totalDur.value ? eventlist.totalDur;
 
-			//[xrelStartTime, xtotalDur].debug("clip xasPattern: plazy: relstart, totdur");
-			if(xtotalDur <= 0) {
-				"ERROR: totalDur is negative or zero".postln;
-				xtotalDur = 2
-			};
+			////[xrelStartTime, xtotalDur].debug("clip xasPattern: plazy: relstart, totdur");
+			//if(xtotalDur <= 0) {
+				//"ERROR: totalDur is negative or zero".postln;
+				//xtotalDur = 2
+			//};
 
-			self.eventloop.list.changed(\cursor, \play); // FIXME: should be an event
-			Pfindur(xtotalDur, Pembed(
-				self.bypass_pattern( Pn(eventlist.clone, 1) ),
-				xrelStartTime
-			));
-		}).repeat(repeatCount ? self.repeatCount);
-		self.proxy;
-	},
+			//self.eventloop.list.changed(\cursor, \play); // FIXME: should be an event
+			//Pfindur(xtotalDur, Pembed(
+				//self.bypass_pattern( Pn(eventlist.clone, 1) ),
+				//xrelStartTime
+			//));
+		//}).repeat(repeatCount ? self.repeatCount);
+		//self.proxy;
+	//},
 
 	edit: { arg self;
 		var x = ~clipTimelinePanelView.new(self);
@@ -640,7 +681,8 @@ ClipTimeline.proto = ProtoClass((
 			str = str ++ "%.label = %;\n".format(self.refCompileString(self.key.asCompileString), self.label.asCompileString);
 		};
 		str = str ++ "%.tracks = %;\n".format(self.refCompileString(self.key.asCompileString), self.tracks.asCompileString);
-		str = str ++ "%.eventList = %\n".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString);
+		// enclose in function to workaround the selector table size limit
+		str = str ++ "{\n%.eventList = %\n }.value;\n".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString);
 		if(self.recordedEvents.notNil) {
 			str = str ++ "%.recordedEvents = %;\n".format(self.refCompileString(self.key.asCompileString), self.recordedEvents.asCompileString);
 		};
@@ -855,61 +897,61 @@ ClipTimeline.proto = ProtoClass((
 		}
 	},
 
-	asPattern_old: { arg self, relStartTime, totalDur, repeatCount;
-		//[relStartTime.value, totalDur.value].debug("relstart, totaldur");
-		// there is 3 kinds of call to asPattern:
-		// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
-		// - the live code: no startPosition given, defaulting to start event : asPattern
-		// - when embedded in bigger timeline: startPosition is relative to start event : embedInTimeline
-		//		if startOffset, relStartTime is adjusted
+	//asPattern_old: { arg self, relStartTime, totalDur, repeatCount;
+		////[relStartTime.value, totalDur.value].debug("relstart, totaldur");
+		//// there is 3 kinds of call to asPattern:
+		//// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
+		//// - the live code: no startPosition given, defaulting to start event : asPattern
+		//// - when embedded in bigger timeline: startPosition is relative to start event : embedInTimeline
+		////		if startOffset, relStartTime is adjusted
 
-		// timeline_pattern take a start time relative to firstEvent
-		// XEventList.relStartTime is relative to firstEvent
-		// FIXME: replacing source in proxy at call time means that a playing proxy will play immediately the new source when asked its pattern
-		//		could have nasty side effects
-		//self.proxy.source = Plazy({
-		var pat = Plazy({
-			var eventlist = self.eventloop.list;
-			var pat;
-			var xrelStartTime, xtotalDur;
+		//// timeline_pattern take a start time relative to firstEvent
+		//// XEventList.relStartTime is relative to firstEvent
+		//// FIXME: replacing source in proxy at call time means that a playing proxy will play immediately the new source when asked its pattern
+		////		could have nasty side effects
+		////self.proxy.source = Plazy({
+		//var pat = Plazy({
+			//var eventlist = self.eventloop.list;
+			//var pat;
+			//var xrelStartTime, xtotalDur;
 
-			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
-			xtotalDur = totalDur.value ? eventlist.totalDur;
+			//xrelStartTime = relStartTime.value ? eventlist.relStartTime;
+			//xtotalDur = totalDur.value ? eventlist.totalDur;
 
-			self.eventloop.list.changed(\cursor, \play);
-			//pat = Pfindur(xtotalDur, ~timeline_pattern.(
-			//	Pn(self.eventloop.list, 1),
-			//	xrelStartTime
+			//self.eventloop.list.changed(\cursor, \play);
+			////pat = Pfindur(xtotalDur, ~timeline_pattern.(
+			////	Pn(self.eventloop.list, 1),
+			////	xrelStartTime
+			////));
+
+			////[xrelStartTime, relStartTime.value, eventlist.relStartTime].debug("xrel, rel, evrel");
+			////[xtotalDur, totalDur.value, eventlist.totalDur].debug("xrel, rel, evrel");
+
+			//if(xtotalDur <= 0) {
+				//"ERROR: totalDur is negative or zero".postln;
+				//xtotalDur = 2
+			//};
+
+			//pat = self.postChain <> Pfindur(xtotalDur, Pembed(
+				//Pn(self.eventloop.list.clone, 1),
+				//xrelStartTime
 			//));
 
-			//[xrelStartTime, relStartTime.value, eventlist.relStartTime].debug("xrel, rel, evrel");
-			//[xtotalDur, totalDur.value, eventlist.totalDur].debug("xrel, rel, evrel");
+			//if(self.param.notNil and: {self.composeParamPattern == true}) {
+				//if(self.eventFactory.notNil and: {self.eventFactory.mode == \event}) {
+					////"Event mode!".debug;
+					//pat = self.param.target <> pat;
+				//} {
+					////"Normal mode!".debug;
+					//pat = pat <> self.param.target;
+				//}
+			//};
 
-			if(xtotalDur <= 0) {
-				"ERROR: totalDur is negative or zero".postln;
-				xtotalDur = 2
-			};
-
-			pat = self.postChain <> Pfindur(xtotalDur, Pembed(
-				Pn(self.eventloop.list.clone, 1),
-				xrelStartTime
-			));
-
-			if(self.param.notNil and: {self.composeParamPattern == true}) {
-				if(self.eventFactory.notNil and: {self.eventFactory.mode == \event}) {
-					//"Event mode!".debug;
-					pat = self.param.target <> pat;
-				} {
-					//"Normal mode!".debug;
-					pat = pat <> self.param.target;
-				}
-			};
-
-			pat;
-		}).repeat(repeatCount ? self.repeatCount);
-		//self.proxy;
-		pat;
-	},
+			//pat;
+		//}).repeat(repeatCount ? self.repeatCount);
+		////self.proxy;
+		//pat;
+	//},
 
 
 	edit: { arg self;
@@ -1128,91 +1170,91 @@ ClipTimeline.proto = ProtoClass((
 		}
 	},
 
-	asPattern_old: { arg self, relStartTime, totalDur;
-		//[relStartTime, totalDur].debug("xasPattern: relstart, totdur");
-		self.proxy.source = Plazy({ arg inval;
-			var eventlist = self.eventloop.list;
-			var pat;
-			var str;
-			var first;
-			var first_level;
-			var xrelStartTime, xtotalDur;	
-			var postpat, prepat;
+	//asPattern_old: { arg self, relStartTime, totalDur;
+		////[relStartTime, totalDur].debug("xasPattern: relstart, totdur");
+		//self.proxy.source = Plazy({ arg inval;
+			//var eventlist = self.eventloop.list;
+			//var pat;
+			//var str;
+			//var first;
+			//var first_level;
+			//var xrelStartTime, xtotalDur;	
+			//var postpat, prepat;
 
-			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
-			xtotalDur = totalDur.value ? eventlist.totalDur;
+			//xrelStartTime = relStartTime.value ? eventlist.relStartTime;
+			//xtotalDur = totalDur.value ? eventlist.totalDur;
 
-			//[xrelStartTime, xtotalDur].debug("xasPattern: prout: relstart, totdur");
-			self.eventloop.list.changed(\cursor, \play);
+			////[xrelStartTime, xtotalDur].debug("xasPattern: prout: relstart, totdur");
+			//self.eventloop.list.changed(\cursor, \play);
 
-			if(xtotalDur <= 0) {
-				"ERROR: totalDur is negative or zero".postln;
-				xtotalDur = 2
-			};
+			//if(xtotalDur <= 0) {
+				//"ERROR: totalDur is negative or zero".postln;
+				//xtotalDur = 2
+			//};
 
 
-			// FIXME: this should be an event
-			if(self.param.notNil and:{ self.param.target.isKindOf(Bus).not }) {
-				// FIXME: bus mode should be generic
-				if(self.param.target.class == Pdef) {
-					self.param.target.set(self.param.property, self.outBus.asMap)
-				} {
-					self.param.set(self.outBus.asMap);
-				};
-				//default = self.param.default;
-			};
+			//// FIXME: this should be an event
+			//if(self.param.notNil and:{ self.param.target.isKindOf(Bus).not }) {
+				//// FIXME: bus mode should be generic
+				//if(self.param.target.class == Pdef) {
+					//self.param.target.set(self.param.property, self.outBus.asMap)
+				//} {
+					//self.param.set(self.outBus.asMap);
+				//};
+				////default = self.param.default;
+			//};
 
-			~remove_envlist_duplicate.(eventlist);
-			~compute_eventenv_sustain.(eventlist);
+			//~remove_envlist_duplicate.(eventlist);
+			//~compute_eventenv_sustain.(eventlist);
 
-			postpat = Pbind(
-				\out, self.outBus,
-				//\level, Pfunc({ arg ev; ev[self.param.property] ? default }),
-				\time, Pfunc({ arg ev; ev.use { 
-					// absTime is in beats (but maybe should be in seconds ?)
-					// need to convert to seconds
-					//(ev.next_absTime ? ev.absTime) - ev.absTime / thisThread.clock.tempo
-					// use dur instead
-					( ev[\sustain] ? 1 ) / thisThread.clock.tempo
-				} }),
-				\type, Pfunc({  arg ev;
+			//postpat = Pbind(
+				//\out, self.outBus,
+				////\level, Pfunc({ arg ev; ev[self.param.property] ? default }),
+				//\time, Pfunc({ arg ev; ev.use { 
+					//// absTime is in beats (but maybe should be in seconds ?)
+					//// need to convert to seconds
+					////(ev.next_absTime ? ev.absTime) - ev.absTime / thisThread.clock.tempo
+					//// use dur instead
+					//( ev[\sustain] ? 1 ) / thisThread.clock.tempo
+				//} }),
+				//\type, Pfunc({  arg ev;
 
-					if(ev[\type].isNil or: { ev[\type] == \note }) {
-						if(ev[\next_level].isNil) { // last one should be rest
-							\rest
-						} {
-							if(ev[\time].notNil and: {ev[\time] < 0.051}, {
-								ev[\array] = [ ev[\level] ];
-								//ev.debug("envTimeline: asPattern: busmode!");
-								\bus;
-							}, { 
-								\note;
-							});
-						}
+					//if(ev[\type].isNil or: { ev[\type] == \note }) {
+						//if(ev[\next_level].isNil) { // last one should be rest
+							//\rest
+						//} {
+							//if(ev[\time].notNil and: {ev[\time] < 0.051}, {
+								//ev[\array] = [ ev[\level] ];
+								////ev.debug("envTimeline: asPattern: busmode!");
+								//\bus;
+							//}, { 
+								//\note;
+							//});
+						//}
 
-					} {
-						ev[\type]
-					}
-				})
-			);
-			//postpat = postpat.trace(prefix:"MAIIIIIIIIIIIIIIIIIIIIIIII"); // debug
-			prepat = Pbind(
-				\instrument, \env_segment,
-				\curve, 0,
-			);
+					//} {
+						//ev[\type]
+					//}
+				//})
+			//);
+			////postpat = postpat.trace(prefix:"MAIIIIIIIIIIIIIIIIIIIIIIII"); // debug
+			//prepat = Pbind(
+				//\instrument, \env_segment,
+				//\curve, 0,
+			//);
 
-			pat = Pfindur(xtotalDur, Pembed(
-				Pn(self.eventloop.list.clone, 1), 
-				xrelStartTime
-			));
-			pat = postpat <> pat <> prepat;
+			//pat = Pfindur(xtotalDur, Pembed(
+				//Pn(self.eventloop.list.clone, 1), 
+				//xrelStartTime
+			//));
+			//pat = postpat <> pat <> prepat;
 
-			//~pattern_to_envpattern.(pat).embedInStream(inval ? ()); 
-			~pattern_to_envpattern.(pat);
+			////~pattern_to_envpattern.(pat).embedInStream(inval ? ()); 
+			//~pattern_to_envpattern.(pat);
 
-		}).repeat(self.repeatCount);
-		self.proxy;
-	},
+		//}).repeat(self.repeatCount);
+		//self.proxy;
+	//},
 
 	edit: { arg self;
 		var x = ~envTimelinePanelView.new(self);
@@ -1357,75 +1399,75 @@ ClipTimeline.proto = ProtoClass((
 	},
 
 
-	asPattern_old: { arg self, relStartTime, totalDur, repeatCount;
-		// there is 3 kinds of call to asPattern:
-		// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
-		// - the live code: no startPosition given, defaulting to start event : asPattern
-		// - when embedded in bigger timeline: startPosition is relative to start event : embedInTimeline
+	//asPattern_old: { arg self, relStartTime, totalDur, repeatCount;
+		//// there is 3 kinds of call to asPattern:
+		//// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
+		//// - the live code: no startPosition given, defaulting to start event : asPattern
+		//// - when embedded in bigger timeline: startPosition is relative to start event : embedInTimeline
 
-		// timeline_pattern take a start time relative to firstEvent
-		// XEventList.relStartTime is relative to firstEvent
-		//self.proxy.source = Plazy({
-		var pat = Plazy({
-			var eventlist = self.eventloop.list;
-			var pat;
-			var xrelStartTime, xtotalDur;
+		//// timeline_pattern take a start time relative to firstEvent
+		//// XEventList.relStartTime is relative to firstEvent
+		////self.proxy.source = Plazy({
+		//var pat = Plazy({
+			//var eventlist = self.eventloop.list;
+			//var pat;
+			//var xrelStartTime, xtotalDur;
 
-			xrelStartTime = relStartTime.value ? eventlist.relStartTime;
-			xtotalDur = totalDur.value ? eventlist.totalDur;
+			//xrelStartTime = relStartTime.value ? eventlist.relStartTime;
+			//xtotalDur = totalDur.value ? eventlist.totalDur;
 
-			self.eventloop.list.changed(\cursor, \play);
-			//pat = Pfindur(xtotalDur, ~timeline_pattern.(
-			//	Pn(self.eventloop.list, 1),
-			//	xrelStartTime
-			//));
-			if(xtotalDur <= 0) {
-				"ERROR: totalDur is negative or zero".postln;
-				xtotalDur = 2
-			};
-
-
-			pat = Pfindur(xtotalDur, Pembed(
-				Pn(self.eventloop.list.clone, 1), // clone avoid lose of sync when adding note but require to wait the end of loop
-				xrelStartTime
-			));
-
-
-			if(self.kit.notNil and: {self.composeParamPattern == true}) {
-				pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
-				if(self.wrapper.postChain.notNil) {
-					//"post!".debug;
-					pat = self.wrapper.postChain <> pat;
-				};
-				if(self.postChain.notNil) {
-					//"post!".debug;
-					pat = self.postChain <> pat;
-				};
-				if(self.wrapper.preChain.notNil) {
-					//"pre!".debug;
-					pat = pat <> self.wrapper.preChain;
-				};
-				if(self.preChain.notNil) {
-					//"pre!".debug;
-					pat = pat <> self.preChain;
-				};
-			};
-
-			//if(self.param.notNil and: {self.composeParamPattern == true}) {
-			//	if(self.eventFactory.mode == \event) {
-			//		"Event mode!".debug;
-			//		pat = self.param.target <> pat;
-			//	} {
-			//		"Normal mode!".debug;
-			//		pat = pat <> self.param.target;
-			//	}
+			//self.eventloop.list.changed(\cursor, \play);
+			////pat = Pfindur(xtotalDur, ~timeline_pattern.(
+			////	Pn(self.eventloop.list, 1),
+			////	xrelStartTime
+			////));
+			//if(xtotalDur <= 0) {
+				//"ERROR: totalDur is negative or zero".postln;
+				//xtotalDur = 2
 			//};
 
-			pat;
-		}).repeat(repeatCount ? self.repeatCount);
-		//self.proxy;
-		pat
-	},
+
+			//pat = Pfindur(xtotalDur, Pembed(
+				//Pn(self.eventloop.list.clone, 1), // clone avoid lose of sync when adding note but require to wait the end of loop
+				//xrelStartTime
+			//));
+
+
+			//if(self.kit.notNil and: {self.composeParamPattern == true}) {
+				//pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
+				//if(self.wrapper.postChain.notNil) {
+					////"post!".debug;
+					//pat = self.wrapper.postChain <> pat;
+				//};
+				//if(self.postChain.notNil) {
+					////"post!".debug;
+					//pat = self.postChain <> pat;
+				//};
+				//if(self.wrapper.preChain.notNil) {
+					////"pre!".debug;
+					//pat = pat <> self.wrapper.preChain;
+				//};
+				//if(self.preChain.notNil) {
+					////"pre!".debug;
+					//pat = pat <> self.preChain;
+				//};
+			//};
+
+			////if(self.param.notNil and: {self.composeParamPattern == true}) {
+			////	if(self.eventFactory.mode == \event) {
+			////		"Event mode!".debug;
+			////		pat = self.param.target <> pat;
+			////	} {
+			////		"Normal mode!".debug;
+			////		pat = pat <> self.param.target;
+			////	}
+			////};
+
+			//pat;
+		//}).repeat(repeatCount ? self.repeatCount);
+		////self.proxy;
+		//pat
+	//},
 
 	edit: { arg self;
 		var x = ~kitTimelinePanelView.new(self);
@@ -1671,7 +1713,7 @@ ProtoClassDef(\LoopMaster, (
 		self.currentLoopDur = dur;
 		self.currentLoopStartAbsTime = firstEventOffset + self.firstEventAbsTime;
 		self.startCursorEvent.yield;
-		Pfindur(dur, Pembed(pat.value, firstEventOffset)).embedInStream;
+		Pfindur(dur, Pembed(pat.value, firstEventOffset, self.timeline)).embedInStream;
 	},
 
 	cutPattern: { arg self, pat, firstEventOffset, dur;
@@ -1680,12 +1722,12 @@ ProtoClassDef(\LoopMaster, (
 			Pfindur(dur, 
 				Pseq([
 					Event.silent(firstEventOffset.abs),
-					Pembed(pat.value, 0)
+					Pembed(pat.value, 0, self.timeline)
 				],1),
 			);
 		} {
 			Pfindur(dur, 
-				Pembed(pat.value, firstEventOffset)
+				Pembed(pat.value, firstEventOffset, self.timeline)
 			);
 		}
 	},
@@ -1706,6 +1748,10 @@ ProtoClassDef(\LoopMaster, (
 		//"hello 2".debug;
 		// repeat pattern when outside clip loop
 		// we want to give time since start event
+		// cutFunction is rather a SliceGenerator that take offset and dur and return a slice of the pattern
+		// 		it is provided by the timeline because the timeline know better how to cut the pattern
+		//		it generally call sloop.cutPattern but can do other things
+		//		for example this allow to start inside a sample without having to fast forward events manually
 		Prout({
 			var sloop = self;
 			var repeatCount = customRepeatCount ? sloop.repeatCount;

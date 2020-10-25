@@ -1,11 +1,12 @@
 
 (
 
-SynthDef(\SampleTimeline_player, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, speed=1, trigger=1, loop=0, bufnum=0, startSeconds=0, gain=1;
+SynthDef(\SampleTimeline_player, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, speed=1, trigger=1, loop=0, bufnum=0, startSeconds=0, gain=1, muteGain=1, parentGain=1;
 	var sig;
 	sig = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * speed, trigger, startPos: (startSeconds*BufSampleRate.kr(bufnum)), doneAction:2, loop: loop);
 	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.01,0.1,1,0.01)), gate, doneAction:2);
 	sig = sig * gain;
+	sig = sig * muteGain * parentGain;
 	Out.ar(out, sig);
 }, metadata:(specs:(
 	startSeconds: ControlSpec(0,8,\lin, 0, 0),
@@ -124,7 +125,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		self.postProxy.addHalo(\instrument, instr);
 	},
 
-	samplePattern: { arg self, startSeconds=0;
+	samplePattern: { arg self, startSeconds=0, parentEvent, parentTimeline;
 		var pat;
 		startSeconds.debug("samplePattern");
 		pat = self.postProxy <> Pmono(self.playerSynthDef,
@@ -132,15 +133,28 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 			\startSeconds, startSeconds / self.tempoClock.tempo,
 			\legato, 1,
 			\dur, 1,
+			\parentGain, Pfunc({ 
+				if(parentEvent.notNil) {
+					parentEvent.gain ? 1 
+				} {
+					1
+				};
+			}),
+			\muteGain, Pfunc({ 
+				if(parentTimeline.notNil) {
+					parentTimeline.is_track_bypassed(parentEvent.use({ ~midinote.value.asInteger })).not.asInteger 
+				} {
+					1
+				};
+			}),
 			\out, Pfunc({ self.outBus ? 0 }),
-			\amp, 0.1,
 		);
 	},
 
-	cutPatternFunction: { arg self;
+	cutPatternFunction: { arg self, parentEvent, parentTimeline;
 		{ arg sloop, offset, dur;
 			sloop.cutPattern(
-				Pn(self.samplePattern(offset+self.eventList.startTime), 1),
+				Pn(self.samplePattern(offset+self.eventList.startTime, parentEvent, parentTimeline), 1),
 				0, //offset,
 				dur
 			).embedInStream

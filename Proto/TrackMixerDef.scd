@@ -118,13 +118,15 @@
 		BusDef(\zero+++self.numchannels, \audio, self.numchannels)
 	},
 
-	build_sender: { arg self, idx;
-		var sendkey = \send+++idx;
-		self.proxy.addSpec(sendkey, \unipolar);
-		self.proxy.put(idx+self.stages.sends, \filter -> { arg in;
-			Out.ar(( \sendbus+++idx ).kr(self.zerobus), in * sendkey.kr(0));
-			in;
-		}, now:self.proxy.isPlaying);
+	build_sender: { arg self, idx, force=false;
+		if(force or: {self.proxy[idx+self.stages.sends].isNil}) {
+			var sendkey = \send+++idx;
+			self.proxy.addSpec(sendkey, \unipolar);
+			self.proxy.put(idx+self.stages.sends, \filter -> { arg in;
+				Out.ar(( \sendbus+++idx ).kr(self.zerobus), in * sendkey.kr(0));
+				in;
+			}, now:self.proxy.isPlaying);
+		}
 		// if proxy not playing, adding a source will create it on server, so set its group
 		//self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter); 
 	},

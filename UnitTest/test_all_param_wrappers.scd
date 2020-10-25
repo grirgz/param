@@ -32,7 +32,11 @@
 // test all path for default
 // test all subparam
 // test all busmode
+// TODO: test if target value is nil
 (
+s.boot;
+
+/////////////////////// define target objects
 
 Ndef(\target_object, { arg freq=200, pan=0, amp=0.1;
 	var sig;
@@ -51,6 +55,7 @@ SynthDef(\target_synthdef, { arg freq=200, pan=0, amp=0.1;
 	Out.ar(\out.kr(0), sig);
 }, metadata:(specs:(
 		env_param: XEnvSpec(\unipolar ! 4),
+		array_param: XArraySpec(), // FIXME: this should be commented, Param should detect spec from default value, but bug in 3.11
 ))).add;
 
 ~envspec = XEnvSpec(\unipolar ! 4);
@@ -78,7 +83,7 @@ Builder(\target_object, { arg scalar_param=10; "bla" });
 
 ~variable = 10;
 
-////////////////
+///////////////////////// define list of params to test
 
 ~three = { arg target;
 	[\scalar_param, \array_param, \env_param].collect({ arg prop;
@@ -103,12 +108,21 @@ Builder(\target_object, { arg scalar_param=10; "bla" });
 
 	Param({ ~variable }, { arg x; ~variable = x }), // no gui update
 	Param(s.volume, \volume),
+
+	/// test for nil values
+	Param(Pdef(\target_object), \inexistant),
+	Param(Ndef(\target_object), \inexistant),
+	Param(Message(()), \inexistant, ControlSpec(0,1,\lin)),
+	Param(Message(()), \inexistant, XBoolSpec()),
+	Param(Message(()), \inexistant),
 ].flatten;
 
 ParamGroupDef(\all_targets, ~all_targets);
 ~pg = ParamGroup(~all_targets);
 
 ParamProto.init; // for preset menu
+
+/////////////////////// display every param
 
 WindowDef(\testgui, {
 	var layout;
@@ -142,6 +156,14 @@ WindowDef(\testgui, {
 				\env, {
 					HLayout(*
 						[\asStaticTextLabel, \asStaticText, \asTextField, \asView].collect({ arg method;
+							param.perform(method);
+						})
+					)
+
+				},
+				\other, {
+					HLayout(*
+						[\asButton].collect({ arg method;
 							param.perform(method);
 						})
 					)
@@ -218,7 +240,8 @@ WindowDef(\testgui, {
 		),
 		ScrollView.new.canvas_(View.new.layout_(layout)),
 	)
-}).front;
+}) .front
+;
 
 );
 
@@ -251,6 +274,22 @@ WindowDef(\testgui, {
 
 ////////////////////////////// debug
 
+Param(Pdef('target_object'), 'array_param').edit
+Param(Pdef('target_object'), 'array_param').spec
+Param(Pdef('target_object'), 'array_param').default
+PdefParam.toSpec(nil, Pdef(\target_object), \array_param)
+Pdef('target_object').getSpec('array_param')
+PdefParam.instrument(Pdef('target_object'))
+Param.getSynthDefSpec(\array_param, \target_synthdef)
+		SynthDescLib.global.synthDescs[\target_synthdef].metadata.specs[\array_param];
+		SynthDescLib.global.synthDescs[\target_synthdef].metadata.specs[\out];
+		SynthDescLib.global.synthDescs[\target_synthdef].metadata.specs.keys;
+'array_param'.asSpec
+Param.specFromDefaultValue(\array_param, \target_synthdef)
+Param.getSynthDefDefaultValue(\array_param, \target_synthdef)
+Param.defaultSpec
+
+
 Param(Pdef('target_object'), 'env_param').get.asCompileString
 Param(Pdef('target_object'), 'env_param').edit
 Param(StepEventDef('target_object'), 'env_param').spec
@@ -280,3 +319,7 @@ Param(~bus, \value).type
 bus
 ~bb = Bus.control
 ~bb.type
+
+	Param(Message(()), \inexistant, XBoolSpec()).type
+
+	Param()~three.(Pdef(\target_object)),

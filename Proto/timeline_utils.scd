@@ -45,21 +45,21 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	// replace all following function by one class: Pembed, this is the prototype
 	// Pembed is defined in Param/custom_events.sc and redirect to here
 
-	new: { arg self, pat, start_offset, stop_offset;
+	new: { arg self, pat, start_offset, parent;
 		// start_offset is relative to first event which is time=0, 
 		// 		not \absTime used only in TimelineEventList
 		// FIXME: stop_offset not used (user should use Pfindur instead)
 		if(pat.isKindOf(Pattern)) {
-			self.embed_pattern(pat, start_offset);
+			self.embed_pattern(pat, start_offset, parent);
 		} {
 			Pspawner({ arg spawner;
-				self.embed_event(spawner, pat);
+				self.embed_event(spawner, pat, parent);
 			})
 		};
 		
 	},
 
-	embed_pattern: { arg self, pat, start_offset;
+	embed_pattern: { arg self, pat, start_offset, parent;
 		Pspawner({ arg spawner;
 			var stream = pat.asStream;
 			//[pat, start_offset].debug("timeline_pattern: start");
@@ -68,7 +68,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 
 			if(stream.notNil) {
 				stream.do({ arg ev;
-					self.embed_event(spawner, ev);
+					self.embed_event(spawner, ev, parent);
 				}, Event.default)
 			};
 
@@ -76,13 +76,13 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 		
 	},
 
-	embed_event: { arg self, spawner, ev;
+	embed_event: { arg self, spawner, ev, parent;
 		//Log(\Param).debug("EMBED event %", ev);
 		if(ev.type == \pattern) {
 			ev = PatternEvent(ev); // because normal Event have embedInStream which replace parent by Event.default
 			//Log(\Param).debug("EMBED event parent keys (pattern) %", ev.parent.keys);
 			//ev.debug("embed_event: ev");
-			spawner.par(ev.embedPattern);
+			spawner.par(ev.embedPattern(parent));
 			spawner.wait(ev.use{ev.delta} ? ev.use {ev.dur}); // FIXME: use delta ?
 			//spawner.seq(ev.embedPattern);
 		} {

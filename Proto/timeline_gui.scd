@@ -222,11 +222,16 @@
 					HLayout(
 						//XSimpleButton.new.label_("track %".format(x)).
 						self.track_selector.views[idx],
-						Param(Message(self.timeline_model.tracks[idx]), \muted, XBoolSpec()).asButton("M").maxWidth_(20),
-						Param(Message(self.timeline_model.tracks[idx]), \recordArmed, XBoolSpec()).asButton("R").maxWidth_(20),
+						Param(Message(self.timeline_model.tracks[idx]), \muted, XBoolSpec()).asButton("M").maxWidth_(20).addAction({
+							self.timeline_model.computeSoloMute;
+						}),
+						Param(Message(self.timeline_model.tracks[idx]), \solo, XBoolSpec()).asButton("S").maxWidth_(20).addAction({
+							self.timeline_model.computeSoloMute;
+						}),
 					).spacing_(0).margins_(2),
 					HLayout (
 						Param(Message(self.timeline_model.tracks[idx]), \recordBus, TagSpecDef(\BusDef_object)).asPopUpMenu.maxWidth_(100),
+						Param(Message(self.timeline_model.tracks[idx]), \recordArmed, XBoolSpec()).asButton("R").maxWidth_(20),
 						nil,
 					).spacing_(0).margins_(2),
 				).spacing_(0).margins_(0)
@@ -254,7 +259,7 @@
 				).spacing_(0).margins_(0)
 			);
 			self.track_header_view
-		).maxWidth_(110);
+		).maxWidth_(130);
 		self.update_track_header_size;
 		self.track_header.onResize = { self.update_track_header_size };
 		if(self.track_header_controller.notNil) {
@@ -1921,7 +1926,64 @@
 		self.type_popup.valueAction = 0;
 	},
 
-	edit_selected: { arg self, model;
+	edit_selected: { arg self, xmodel;
+		// edit event
+		if((xmodel ? self.model).notNil) {
+			WindowDef(\EventEditor, { arg def, model;
+				var type_popup, name_popup;
+				//var clipLabelField, startOffsetField, sustainField;
+				var params;
+				var clipkey, clipfac;
+				type_popup = PopUpMenu.new;
+				name_popup = PopUpMenu.new;
+				type_popup.items = self.clipFactories_keys.collect({ arg x; self.clipFactories[x].label });
+				type_popup.action = {
+					name_popup.items = self.clipFactories[ self.clipFactories_keys[type_popup.value] ].keylist;
+				};
+				//type_popup.valueAction = 0;
+
+				clipkey = self.event_to_clipFactory_key(model);
+				//clipkey.debug("makeUpdater: clipkey");
+				if(clipkey.notNil) {
+					//clipkey.debug("makeUpdater: clipkey not nil");
+					clipfac = self.clipFactories[clipkey];
+					type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
+					name_popup.items = clipfac.keylist;
+					name_popup.value = name_popup.items.detectIndex({ arg x; 
+						x == clipfac.getName(model)
+					});
+				};
+
+				params = [
+					Param(Message(self.model), \label),
+					Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)),
+					Param(self.model, \gain, \gain.asSpec),
+					Param(self.model, \absTime),
+					Param(self.model, Pembed.sustainKey),
+				];
+				name_popup.action = {
+					var curname = name_popup.items[name_popup.value];
+					var model = self.model;
+					self.clipFactories[self.clipFactories_keys[type_popup.value]].redefineClip(curname, model);
+				};
+				VLayout (
+					[type_popup, stretch:2],
+					[name_popup, stretch:2],
+					Button.new.string_("Edit target").action_({
+						self.edit_selected_target;
+					}),
+					* params.collect({ arg param;
+						HLayout(
+							StaticText.new.string_(param.property).minWidth_(110),
+							TextField.new.mapParam(param),
+						);
+					}) ++ [nil]
+				);
+			}).front(xmodel ? self.model);
+		}
+	},
+
+	edit_selected_target: { arg self, model;
 		var clipkey, clipfac;
 		model = model ? self.model;
 		//[model.type, model].debug("Edit: type");

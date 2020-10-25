@@ -290,7 +290,7 @@ PlayerWrapper_Base {
 			var myfolderpathname;
 			myfolderpathname = FileSystemProject.resolve(myfolderpath);
 			if(myfolderpathname.notNil) {
-				mypath = myfolderpathname.fullPath ++ PathName(mypath).fileName;
+				mypath = myfolderpathname.fullPath +/+ PathName(mypath).fileName;
 				"Trying to write preset to file %".format(mypath.asCompileString).postln;
 				File.use(mypath, "w", { arg file;
 					var relpath = FileSystemProject.unresolve(mypath);
@@ -404,7 +404,12 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		if(val.isKindOf(Bus)) {
 			val = val.index;
 		};
-		this.target.initMonitor.out = val;
+		if(val.isNil) {
+			// prevent assigning nil because it raise exception
+			this.target.initMonitor.clear;
+		} {
+			this.target.initMonitor.out = val;
+		}
 	}
 
 	outBus { arg val;

@@ -621,7 +621,7 @@ Param {
 			param.set(view.value.asFloat);
 		}, { arg view, param;
 			{
-				view.value = param.get;
+				view.value = param.get ? 0;
 			}.defer;
 		}, nil, action)
 	}
@@ -972,6 +972,7 @@ Param {
 		var val;
 		var rval;
 		val = SynthDescLib.global.synthDescs[defname];
+		[argName, defname, val].debug("synthdesc");
 		if(val.notNil) {
 			val = val.metadata;
 			if(val.notNil) {
@@ -1283,7 +1284,7 @@ StandardConstructorParam : BaseParam {
 
 	normGet {
 		var val = this.get;
-		^this.spec.unmap(this.get)
+		^this.spec.unmap(this.get ?? {this.spec.default})
 	}
 
 	normSet { arg val;
@@ -1568,23 +1569,26 @@ PdefParam : BaseParam {
 			// Param arg
 			xspec ?? {
 				// halo
-				//debug("1");
+				debug("1");
 				xtarget.getSpec(xproperty) ?? {
 					var mysp;
-				//debug("2");
+				debug("2");
 					// instrument metadata spec
 					instr = PdefParam.instrument(xtarget);
 					if(instr.notNil) {
-				//debug("3");
+				[xproperty, instr, Param.getSynthDefSpec(xproperty, instr)].debug("3");
 						mysp = Param.getSynthDefSpec(xproperty, instr);
+						
 						// arg name in Spec
 						mysp ?? {
-				//debug("4");
+				debug("4");
 							// arg name in Spec
 							xproperty.asSpec ?? {
-				//debug("5");
+				debug("5");
 								// default value in SynthDef
+				Param.specFromDefaultValue(xproperty, instr).debug("what");
 								Param.specFromDefaultValue(xproperty, instr) ?? {
+				debug("5.1");
 									Param.defaultSpec
 								}
 							}
@@ -1611,8 +1615,8 @@ PdefParam : BaseParam {
 		^sp.asSpec;
 	}
 
-	toSpec { arg spec;
-		^this.class.toSpec(spec, target, property)
+	toSpec { arg xspec;
+		^this.class.toSpec(xspec, target, property)
 	}
 	
 	setBusMode { arg enable=true, free=true;

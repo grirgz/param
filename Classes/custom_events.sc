@@ -151,21 +151,25 @@ PatternEvent : Event {
 					self.eventList.asPattern;
 				};
 			},
-			embedPattern: { arg self;
+			embedPattern: { arg self, parent;
 
 				var sus = self.use { self.sustain };
 				// NOTE: dur is not used because only Pembed at event list level can embed pattern which have dur < sustain
 				if(self.timeline.notNil) {
-					// FIXME: ugly hack to allow sampleTimeline
-					// fixed: it should be the default
-					//if(self.timeline.eventType == \sampleTimeline) {
-						Pfindur(sus, self.timeline.asPattern(self.startOffset ? self.event_dropdur));
-					//} {
-						//Pfindur(sus, self.timeline.asPattern);
-					//}
+					// FIXME: Pfindur is useless because in theory every timeline use sloop.cutPattern, in practice this fail
+					Pfindur(sus, self.timeline.asPattern(self.startOffset ? self.event_dropdur, sus, nil, self, parent));
 				} {
+					var pat = Pembed(self.pattern, self.startOffset ? self.event_dropdur);
+					var mp;
+					if(parent.notNil) {
+						mp = parent.mutingPattern(self);
+					};
+					if(mp.notNil) {
+						pat = Pfindur(sus, mp <> pat );
+					} {
+						pat = Pfindur(sus, pat );
+					};
 					// event_dropdur is the old key, should replace by startOffset
-					var pat = Pfindur(sus, Pembed(self.pattern, self.startOffset ? self.event_dropdur));
 					pat;
 					//Pspawner({ arg sp;
 						//sp.par(
