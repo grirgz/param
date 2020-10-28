@@ -2294,6 +2294,9 @@ WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 
 
 	layout = VLayout (
+		BasicButton.new.string_("Edit").action_({ 
+			PlayerWrapper(model.param.target).edit;
+		}),
 		HLayout(
 			StaticText.new.string_("outBus:"),
 			Param(

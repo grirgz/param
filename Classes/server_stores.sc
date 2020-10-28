@@ -510,7 +510,7 @@ BusDef : Bus {
 
 	storeOn { arg stream;
 		//stream << "BusDef(%%)".format("\\", this.key)
-		stream << "BusDef(%%)".format("\\", this.key)
+		stream << "BusDef(%)".format(this.key.asCompileString)
 	}
 
 	*new { arg name, rate, channels;

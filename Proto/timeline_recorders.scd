@@ -1,7 +1,7 @@
 
 ////////// recorders
 
-// can record seqPlayerGroup and parPlayerGroup
+// can record seqPlayerGroup (NoteTimeline) and parPlayerGroup (KitTimeline)
 ~playerGroupRecorder = ProtoClass((
 	new: { arg self, group;
 		self = self.deepCopy;
@@ -48,6 +48,7 @@
 					player.recordedEvent[\sustain] = self.tempoClock.beats - player.recordedEvent[\clockTime];
 					Log(\Param).debug("listener: stop: recordedEvent:%", player.recordedEvent);
 					player.recordedEvent.changed(\refresh);
+					player.recordedEvent = nil; // prevent setting sustain again at end of record
 				} {
 					Log(\Param).debug("listener: don't know what to do with %: recordedEvent:%", status.asCompileString, player.recordedEvent);
 
