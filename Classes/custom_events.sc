@@ -157,7 +157,8 @@ PatternEvent : Event {
 				// NOTE: dur is not used because only Pembed at event list level can embed pattern which have dur < sustain
 				if(self.timeline.notNil) {
 					// FIXME: Pfindur is useless because in theory every timeline use sloop.cutPattern, in practice this fail
-					Pfindur(sus, self.timeline.asPattern(self.startOffset ? self.event_dropdur, sus, nil, self, parent));
+					// DO NOT use "sus" as argument of asPattern because it is used to change the eventList size, you just want to repeat the eventList without changing its size, but you can use offset
+					Pfindur(sus, self.timeline.asPattern(self.startOffset ? self.event_dropdur, nil, nil, self, parent));
 				} {
 					var pat = Pembed(self.pattern, self.startOffset ? self.event_dropdur);
 					var mp;

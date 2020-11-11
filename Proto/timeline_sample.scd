@@ -125,12 +125,12 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		self.postProxy.addHalo(\instrument, instr);
 	},
 
-	samplePattern: { arg self, startSeconds=0, parentEvent, parentTimeline;
+	samplePattern: { arg self, startBeats=0, parentEvent, parentTimeline;
 		var pat;
-		startSeconds.debug("samplePattern");
+		[startBeats, startBeats / self.tempoClock.tempo].debug("samplePattern: startBeats, startSeconds");
 		pat = self.postProxy <> Pmono(self.playerSynthDef,
 			\bufnum, self.buffer ? 0,
-			\startSeconds, startSeconds / self.tempoClock.tempo,
+			\startSeconds, startBeats / self.tempoClock.tempo,
 			\legato, 1,
 			\dur, 1,
 			\parentGain, Pfunc({ 
@@ -148,7 +148,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 				};
 			}),
 			\out, Pfunc({ self.outBus ? 0 }),
-		);
+		).trace;
 	},
 
 	cutPatternFunction: { arg self, parentEvent, parentTimeline;

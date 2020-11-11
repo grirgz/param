@@ -25,6 +25,7 @@ TimelineView : SCViewHolder {
 	var <>mouseDownAction;
 	var <>mouseUpAction;
 	var <>mouseMoveAction;
+	var <>deleteSelectedNodesHook;
 	var backgrDrawFunc;
 	var background, fillcolor;
 	var nodeCount, shape;
@@ -442,6 +443,10 @@ TimelineView : SCViewHolder {
 				this.refresh;
 			}
 		});
+		this.updatePreviousNormSelRect;
+	}
+
+	updatePreviousNormSelRect {
 		this.previousNormSelRect = Rect.fromPoints(this.startSelPoint ? Point(0,0), this.endSelPoint ? Point(0,0));
 	}
 
@@ -624,15 +629,23 @@ TimelineView : SCViewHolder {
 		});
 	}
 
+	deleteSelectedNodes {
+		selNodes.copy.do({arg node; 
+			this.deleteNode(node, false)
+		});
+	}
+
 	keyDownActionBase { |me, key, modifiers, unicode, keycode |
 		//[key, modifiers, unicode, keycode].debug("keyDownActionBase: key, modifiers, unicode, keycode");
 
 		// deleting nodes
 
 		if(unicode == 127, {
-			selNodes.copy.do({arg node; 
-				this.deleteNode(node, false)
-			});
+			if(this.deleteSelectedNodesHook.notNil) {
+				this.deleteSelectedNodesHook.value(this) // hack to be able to addHistorySnapshot
+			} {
+				this.deleteSelectedNodes;
+			}
 		});
 
 		// quantize

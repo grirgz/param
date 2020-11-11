@@ -6,9 +6,7 @@
 	proxyQuantIsDefault: true, // the only way to preserve default proxy quant
 
 	prAdd: { arg self, name;
-		[self.all, name].debug("prAdd");
 		self.all[name] = self;
-		[self.all, name].debug("prAdd2");
 		self.key = name;
 		self;
 	},
@@ -46,7 +44,7 @@
 
 
 	makeDefaultEventList: { arg self;
-		var el = XEventList.new;
+		var el = TimelineEventList.new;
 		el.start;
 		el.finish(8);
 		el;
@@ -144,7 +142,7 @@
 			xx = (( ep ? eventlist.endTime ) - absStart);
 			// prevent empty (infinite loop)
 			if(xx < 0.01) {
-				Log(\Param).debug("timeline.asPattern: loop too short, setting it to 2: xx", xx);
+				Log(\Param).debug("timeline.asPattern: loop too short, setting it to 2: xx:%", xx);
 				2;
 			} {
 				xx
@@ -349,7 +347,7 @@
 				}).join
 			)
 		}).join;
-		ret = "XEventList.newFrom([\n%]);".format(ret);
+		ret = "TimelineEventList.newFrom([\n%]);".format(ret);
 		ret;
 	},
 
@@ -431,6 +429,11 @@
 		}).fixedHeight_(40);
 	},
 
+	addHistorySnapshot: { arg self;
+		self.eventLoop.pushList;
+		self.eventList = self.eventList.clone;
+		self.eventLoop.pushList;
+	},
 ));
 
 //if(~clipTimeline_all.isNil) {
@@ -651,13 +654,13 @@ ClipTimeline.proto = ProtoClass((
 	keepSamplesInUse: { arg self;
 		self.recordedEvents.do({ arg ev;
 			var tl;
-			ev.debug("recorded ev");
+			Log(\Param).debug("recorded ev: %".format(ev));
 			tl = ev.timeline;
 			if(self.eventList.any{ arg xev; 
-				xev.debug("eventList ev");
+				Log(\Param).debug("eventList ev: %".format(xev));
 				xev.timeline.value === tl 
 		   	}) {
-				tl.debug("yep i keep");
+				Log(\Param).debug("yep i keep: %".format(tl));
 				tl.keepRecordedFile;
 			}
 		})
@@ -1521,7 +1524,7 @@ ProtoClassDef(\ClipTimelineClipList, (
 
 	eventToClipId: { arg self, ev;
 		var libId;
-		ev.debug("eventToClipId: ev");
+		Log(\Param).debug("eventToClipId: ev: %".format(ev));
 		if([\rest, \start,\end].includes(ev.type)) {
 			nil
 		} {
@@ -1536,8 +1539,8 @@ ProtoClassDef(\ClipTimelineClipList, (
 	},
 
 	clipIdToEvent: { arg self, clipId;
-		var ev = self.lib.libIdToWrapper(clipId).debug("clipIdToEvent: wrapper").getEvent;
-		[ev, ev[\label]].debug("clipIdToEvent ev");
+		var ev = self.lib.libIdToWrapper(clipId).getEvent;
+		//[ev, ev[\label]].debug("clipIdToEvent ev");
 		ev
 	},
 
@@ -1581,7 +1584,7 @@ ProtoClassDef(\ClipTimelineClipList, (
 	},
 
 	gatherClips: { arg self;
-		"gat".debug;
+		//"gat".debug;
 		self.timeline.eventList.do { arg clip;
 			self.addToClipList(clip)
 		}
@@ -1602,7 +1605,7 @@ ProtoClassDef(\ClipTimelineClipList, (
 	defineEventFactory: { arg self;
 		self.timeline.eventFactory = { 
 			{ arg pos, nodesize;
-				var ev = (absTime: pos.x, midinote: pos.y, legato:1, sustain: nodesize).debug("ev add ###");
+				var ev = (absTime: pos.x, midinote: pos.y, legato:1, sustain: nodesize);
 				var clipev;
 				Log(\Param).debug("ev fac: brush:%, clipev:%", self.brushClipId, clipev);
 				if(self.brushClipId.isNil) {
@@ -1706,6 +1709,7 @@ ProtoClassDef(\LoopMaster, (
 	},
 
 	cutAndEmbedPattern: { arg self, pat, firstEventOffset, dur;
+		// deprecated. Now I use embedPattern with a cutFunction as argument
 		if(dur < 0.01) {
 			dur = 1;
 			Log(\Param).debug("prevent too short loop");
@@ -1760,6 +1764,7 @@ ProtoClassDef(\LoopMaster, (
 				var startEventOffset;
 				var totalDur = customTotalDur ? sloop.totalDur;
 				var dur;
+				// if the event if longer than the eventList, repeat it, but the offset is only for the first repetition
 				if(count == 0) {
 					startEventOffset = (customStartEventOffset ? 0) % totalDur; // will never exceed the clip loop
 				} {

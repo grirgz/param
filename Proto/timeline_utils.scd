@@ -240,6 +240,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 			}
 		};
 
+		// advance to start event
 		while (
 			{
 				val = eventlist.removeAt(0);
@@ -254,6 +255,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 					//[val.dur, val.sustain].debug("eventlist_aspattern: val: dur, sustain");
 					previous_offset = current_offset;
 					current_offset = current_offset + val.dur; 
+					// if some event started before the start event but continue after, cut them
 					if(
 						val[\type] != \start and: {
 							val.sustain.notNil and: {

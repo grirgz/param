@@ -122,7 +122,7 @@
 		if(self.eventLoop.list[0].dur != 0) {
 			ret = "Pseq([ Event.silent(%), % ])".format(self.eventLoop.list[0].dur, ret)
 		};
-		ret = "XEventList.newFrom(%);".format(ret);
+		ret = "TimelineEventList.newFrom(%);".format(ret);
 		ret;
 	},
 

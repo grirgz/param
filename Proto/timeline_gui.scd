@@ -395,12 +395,14 @@
 		};
 		if(selnodes.size > 0) {
 			~clipTimeline_clipboard = selnodes;
+			~clipTimeline_selection_rect = self.selection_cursor.rect;
 		};
 	},
 
 	pasteAction: { arg self;
 		if(~clipTimeline_clipboard.notNil) {
 			var delta;
+			var newnodes;
 			var first = ~clipTimeline_clipboard.as(Array).inject(nil, { arg a, b; 
 				if(a.isNil) {
 					b
@@ -413,19 +415,41 @@
 				};
 			});
 			//first.debug("first");
-			delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
+			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
+			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - ~clipTimeline_selection_rect.origin;
 			//~clipTimeline_clipboard.debug("clipboard");
+			self.timeline_model.addHistorySnapshot;
 			~clipTimeline_clipboard.do({ arg event;
 				var new;
 				new = event.copy;
 				//[new, delta].debug("new, delta");
-				new[\absTime] = new[\absTime] + delta;
+				new[\absTime] = new[\absTime] + delta.x;
+				new[self.timeline.valueKey] = new[self.timeline.valueKey] + delta.y;
 				self.timeline.model.addEvent(new);
 			});
+			//self.timeline.model.changed(\refresh);
+
+			self.selection_cursor.rect = ~clipTimeline_selection_rect.moveBy(delta.x, delta.y);
+			self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
+			self.timeline.deselectAllNodes;
+			//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
+			newnodes = self.timeline.findNodes(self.selection_cursor.rect);
+			//Log(\Param).debug("new nodes %".format(newnodes));
+			self.timeline.selectNodes(newnodes);
 			//self.timeline.model.changed(\refresh);
 			self.timeline.model.reorder;
 		}
 	},
+
+
+	deleteSelectedNodesHook: { arg self;
+		{ arg tl;
+			self.timeline_model.eventLoop.cloneAndPushList;
+			//Log(\Param).debug("hook qui foire");
+			self.timeline.deleteSelectedNodes;
+			self.timeline_model.eventLoop.pushList;
+		}
+	};
 
 	getTimelineKeyDownAction: { arg self;
 		//Window.keyDownActionTest
@@ -843,6 +867,7 @@
 		//self.zoom_fit;
 
 		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
+		self.timeline.deleteSelectedNodesHook = self.deleteSelectedNodesHook;
 
 		layout;
 	},
@@ -1037,6 +1062,8 @@
 		});
 		//"clipTimelinePanelView.makeLayout: end init".debug;
 		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
+		self.timeline.deleteSelectedNodesHook = self.deleteSelectedNodesHook;
+
 		self.layout;
 	},
 
@@ -1055,6 +1082,7 @@
 	pasteAction: { arg self;
 		if(~clipTimeline_clipboard.notNil) {
 			var delta;
+			var newnodes;
 			var first = ~clipTimeline_clipboard.as(Array).inject(nil, { arg a, b; 
 				if(a.isNil) {
 					b
@@ -1070,6 +1098,7 @@
 			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
 			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - ~clipTimeline_selection_rect.origin;
 			//~clipTimeline_clipboard.debug("clipboard");
+			self.timeline_model.addHistorySnapshot;
 			~clipTimeline_clipboard.do({ arg event;
 				var new;
 				new = event.copy;
@@ -1079,12 +1108,19 @@
 				self.timeline.model.addEvent(new);
 			});
 			self.selection_cursor.rect = ~clipTimeline_selection_rect.moveBy(delta.x, delta.y);
+			self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
+			self.timeline.deselectAllNodes;
+			//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
+			newnodes = self.timeline.findNodes(self.selection_cursor.rect);
+			//Log(\Param).debug("new nodes %".format(newnodes));
+			self.timeline.selectNodes(newnodes);
 			//self.timeline.model.changed(\refresh);
 			self.timeline.model.reorder;
 		}
 	},
 
 	splitAction: { arg self;
+		self.timeline_model.addHistorySnapshot;
 		self.timeline.splitAtSelectionEdges;
 	},
 
@@ -1315,6 +1351,8 @@
 			self.refresh;
 		});
 		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
+		self.timeline.deleteSelectedNodesHook = self.deleteSelectedNodesHook;
+
 		self.layout;
 	},
 );
@@ -1526,7 +1564,7 @@
 						}
 					})
 				});
-				target = kit.reject(_.isNil).debug("xxx").first;	
+				target = kit.reject(_.isNil).first;	
 				Log(\Param).debug("target %", target);
 			} {
 				Log(\Param).error("kit is nil for this timeline %", self.timeline_model);
@@ -1682,7 +1720,7 @@
 						player.asParamGroup.edit;
 					}
 				} {
-					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+					"clipFactories.pdef: ERROR: edit: don't know what type!!!".inform;
 				}
 			},
 
@@ -1885,7 +1923,7 @@
 		self.controller.remove;
 		self.controller = SimpleController(self.model).put(\refresh, {
 			var ev = self.model;
-			[self.type_popup, ev].debug("entering clipEditor updater");
+			Log(\Param).debug("entering clipEditor updater: %, %", self.type_popup, ev);
 			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
 				self.controller.remove;
 			} {
@@ -1893,12 +1931,12 @@
 				var clipfac;
 				self.refreshPopups;
 				clipkey = self.event_to_clipFactory_key(ev);
-				clipkey.debug("makeUpdater: clipkey");
+				Log(\Param).debug("makeUpdater: clipkey", clipkey);
 				self.startOffsetField.mapParam(Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)));
 				self.clipLabelField.mapParam(Param(Message(self.model), \label));
 				self.sustainField.mapParam(Param(self.model, Pembed.sustainKey));
 				if(clipkey.notNil) {
-					clipkey.debug("makeUpdater: clipkey not nil");
+					//clipkey.debug("makeUpdater: clipkey not nil");
 					clipfac = self.clipFactories[clipkey];
 					self.type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
 					self.name_popup.items = clipfac.keylist;
@@ -2016,7 +2054,37 @@
 		self.refreshPopups;
 		//"clipEditor.makeLayout: part 2".debug;
 		self.clipLabelField = TextField.new.fixedWidth_(60);
-		self.startOffsetField = TextField.new.fixedWidth_(60);
+		self.startOffsetField = TextField.new
+					.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
+						// FIXME: this doesn't work because parent_model is the EventList and not the timeline. refactor: Timeline GUI should provide the keyDownAction function directly
+						[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+						
+						if(modifiers.isCtrl and: {keycode == $ .ascii}) { // ^s
+							"play/stop now!".debug;
+							if(self.parent_model.selection_cursor.notNil) {
+								self.parent_model.cursor.setPositions(
+									self.parent_model.selection_cursor.startPosition ? 0,
+									self.parent_model.selection_cursor.endPosition
+								);
+							} {
+								Log(\Param).debug("no selection cursor");
+							};
+							self.parent_model.playNow(1);
+						};
+						if(keycode == 65307) { // esc
+							"Focus!".inform;
+							me.focus(false;) // FIXME: this outfocus but do not focus on the timeline
+						};
+						if(keycode == 65481) { // F12
+							"Panic!".inform;
+							CmdPeriod.run;
+						};
+						if(keycode == 65474) { // F5
+							"play!".inform;
+							self.timeline_model.play;
+						}
+					})
+			.fixedWidth_(60);
 		self.sustainField = TextField.new.fixedWidth_(60);
 
 		header = HLayout(
@@ -2253,7 +2321,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 		}).followChange(model, \clipList, { arg view;
 			view.items_(model.clipList.collect({ arg clipId;
 				Log(\Param).debug("clipList: add to listview: %", clipId);
-				model.clipIdLabel(clipId).debug("label")
+				model.clipIdLabel(clipId)
 			}))
 		}).followChange(model, \brushClipId, { arg view;
 			view.value = model.clipList.detectIndex({ arg clipId;
@@ -2261,7 +2329,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 				clipId == model.brushClipId;
 			})
 		}).followChange(FileSystemProject.current, \tracklist_selected_track, { 
-			"ClipTimelineClipList: change!!!".debug;
+			//"ClipTimelineClipList: change!!!".debug;
 			FileSystemProject.current.notNil and: {
 				FileSystemProject.current.tracklist_selected_track.notNil and: {
 					model.addAndSelectClipId(FileSystemProject.current.tracklist_selected_track)
@@ -2284,7 +2352,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 
 WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 	var inview, layout;
-	[x, y].debug("xy");
+	Log(\Param).debug("xy: %, %", x, y);
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
 		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
@@ -2307,8 +2375,8 @@ WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 			).asPopUpMenu,
 		),
 		BasicButton.new.string_("Piano keyboard").action_({ 
-			model.debug("m");
-			model.target.debug("t");
+			//model.debug("m");
+			//model.target.debug("t");
 			WindowDef(\TimelinePianoKeyboard).front(model.wrapper)
 		}),
 		HLayout(
@@ -2334,7 +2402,6 @@ WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 	var lib = ProtoDef(\GlobalLibrary);
 	var selectedLibId;
 	var selectedCallback = { arg libid, strings, clickCount;
-		"selectedCallback".debug;
 		Log(\Param).debug("selectedCallback itemId:%, str:%", libid, strings);
 		trackInstrumentLabel.string = lib.libIdToLabel(libid);
 		selectedLibId = libid;
@@ -2362,7 +2429,6 @@ WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 			}),
 			BasicButton.new.string_("OK").action_({
 				var label;
-				"okHook".debug;
 				def.closeWindow;
 				if(namefield.string.trim != "") {
 					label = namefield.name;
@@ -2412,7 +2478,6 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook; // TODO: should cr
 	var lib = ProtoDef(\GlobalLibrary);
 	var selectedLibId;
 	var selectedCallback = { arg libid, strings, clickCount;
-		"selectedCallback".debug;
 		Log(\Param).debug("selectedCallback itemId:%, str:%", libid, strings);
 		trackInstrumentLabel.string = lib.libIdToLabel(libid);
 		selectedLibId = libid;
@@ -2443,7 +2508,6 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook; // TODO: should cr
 			}),
 			BasicButton.new.string_("OK").action_({
 				var label;
-				"okHook".debug;
 				def.closeWindow;
 				if(namefield.string.trim != "") {
 					label = namefield.name;
@@ -2500,7 +2564,6 @@ WindowDef(\ClipTimeline_SampleManager, { arg def, timeline;
 		list.items = timeline.recordedEvents.collect({ arg x; 
 			var flags = "";
 			var tl;
-			x.debug("xxxx");
 			tl = x.timeline.value;
 			if(timeline.eventList.includes(x).not and: {
 				timeline.eventList.every({ arg ev; ev.timeline.value !== tl  })

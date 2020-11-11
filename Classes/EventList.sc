@@ -672,7 +672,7 @@ XEventLoop {
 
 	prepRec {
 		this.addList;
-		this.list_(XEventList[]);
+		this.list_(TimelineEventList[]);
 		then = recStartTime = nil;
 		this.resetLoop;
 	}
@@ -725,6 +725,13 @@ XEventLoop {
 
 	pushList { // beter name
 		this.addList
+	}
+
+	cloneAndPushList {
+		if (list.notNil and: { list.notEmpty }) {
+			lists.addFirst(list.clone);
+			numLists = lists.size;
+		}
 	}
 
 	listInfo { ^lists.collect { |l, i| [i, l.size] } }

@@ -97,7 +97,14 @@ WindowDef {
 
 	loadWindowProperties {
 		[\alwaysOnTop, \bounds].do { arg k;
-			window.perform(k.asSetter, windowProperties[k]);
+			if(k == \bounds) {
+				// in 3.11.1, setting nil to bounds put the window in bottom left corner, almost not visible
+				if( windowProperties[k].notNil ) {
+					window.perform(k.asSetter, windowProperties[k]);
+				};
+			} {
+				window.perform(k.asSetter, windowProperties[k]);
+			}
 		};
 	}
 	
