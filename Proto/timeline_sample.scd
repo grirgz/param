@@ -147,7 +147,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 					1
 				};
 			}),
-			\out, Pfunc({ self.outBus ? 0 }),
+			\out, Pfunc({ parentEvent.outBus ? self.outBus ? 0 }), // since \out is never nil in an event because default to 0, i must use another key
 		).trace;
 	},
 

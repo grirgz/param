@@ -449,7 +449,7 @@
 			self.timeline.deleteSelectedNodes;
 			self.timeline_model.eventLoop.pushList;
 		}
-	};
+	},
 
 	getTimelineKeyDownAction: { arg self;
 		//Window.keyDownActionTest
@@ -1996,6 +1996,7 @@
 					Param(Message(self.model), \label),
 					Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)),
 					Param(self.model, \gain, \gain.asSpec),
+					Param(self.model, \outBus, TagSpecDef(\BusDefDefault)),
 					Param(self.model, \absTime),
 					Param(self.model, Pembed.sustainKey),
 				];
@@ -2013,7 +2014,11 @@
 					* params.collect({ arg param;
 						HLayout(
 							StaticText.new.string_(param.property).minWidth_(110),
-							TextField.new.mapParam(param),
+							if(param.spec.isKindOf(TagSpec)) {
+								param.asPopUpMenu;
+							} {
+								TextField.new.mapParam(param);
+							},
 						);
 					}) ++ [nil]
 				);

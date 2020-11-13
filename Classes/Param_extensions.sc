@@ -183,6 +183,12 @@
 	}
 }
 
++Pdef {
+	edit { 
+		WindowDef(\PdefEditor).front(this)
+	}
+}
+
 +Ndef {
 	asParamGroup { 
 		// TODO: add method argument (find a better name) for adding volume

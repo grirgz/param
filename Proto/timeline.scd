@@ -824,7 +824,7 @@ ClipTimeline.proto = ProtoClass((
 			param = Param(Pdef(\NoteTimeline_default, Pbind()), \midinote);
 		};
 		if(param.isKindOf(Pdef)) {
-			param = Param(param, \note);
+			param = Param(param, \midinote);
 		};
 		self[\param] = param;
 		self.wrapper = ~seqPlayerGroup.new(self.param.target);
@@ -879,13 +879,13 @@ ClipTimeline.proto = ProtoClass((
 
 	cutPatternFunction: { arg self;
 		{ arg sloop, offset, dur;
-			var pat = self.postChain <> sloop.cutPattern(
-				Pn(self.eventList.clone, 1),
-				offset, dur,
-			);
+			var inpat;
+			var pat;
+			inpat = Pn(self.eventList.clone, 1);
 			//Log(\Param).debug("now in cutPatternFunction of NoteTimeline, off:%, dur:%", offset, dur);
 
-			//if(self.param.notNil and: {self.composeParamPattern == true}) {
+			if(self.param.notNil and: {self.composeParamPattern == true}) {
+				inpat = self.param.target <> inpat;
 				//if(self.eventFactory.notNil and: {self.eventFactory.mode == \event}) {
 					////"Event mode!".debug;
 					//pat = self.param.target <> pat;
@@ -893,7 +893,12 @@ ClipTimeline.proto = ProtoClass((
 					////"Normal mode!".debug;
 					//pat = pat <> self.param.target;
 				//}
-			//};
+			};
+
+			pat = self.postChain <> sloop.cutPattern(
+				inpat,
+				offset, dur,
+			);
 
 			pat.embedInStream;
 			//Log(\Param).debug("now in cutPatternFunction after embed");
