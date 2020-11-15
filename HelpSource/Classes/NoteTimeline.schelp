@@ -1,0 +1,255 @@
+TITLE:: NoteTimeline
+summary:: A timeline editor for notes
+categories:: GUI
+related:: Param
+
+DESCRIPTION::
+NoteTimeline is a timeline for editing events representing notes. Currently only the \midinote is supported in the GUI but the implementation is just a list of events, so it can virtually contains anything.
+
+There is two special events, the start event and the end event, they delimit the clip loop which will be played when using the CODE::play:: method or when embeded in another pattern.
+
+However, there is two other markers which are displayed as blue lines, this is the preview loop. It provide the ability to temporaly listen to a specific part of your clip without changing the intended start and end of the clip. 
+
+There is no true undo system for the moment, so you must take care of not messing up. In the waiting time, there is a kind of history stack available. You can change it using the number box at right of the metronome (use mouse wheel). For example, if you delete a note, go to index 1 and the note will be back. Then hit Ctrl-K to copy the current eventList to the top of the eventList stack, and go back to index 0. The reason is only the index 0 is saved on disk so you will lose everything you do in other indexes. There is no history stacked when moving notes however.
+
+Recording is working, but you need to write some code for your controller to be able to communicate with NoteTimeline. In the waiting you can use the virtual keyboard in the special menu (button named "...")
+
+SECTION:: Graphical interfaces:
+
+Top bar: 
+
+table::
+    ## Play Button || Play the preview loop or the clip loop if there is no preview loop defined. Infinite repeat by default (use quant)
+    ## Stop button || Stop playing and erase the preview loop markers (with quant)
+    ## Save as / Save || Open a dialog to select a file in which save the timeline. If a file was already selected, the button is called "Save" and directly save to the previous file.
+    ## Repeat count || The number of time the clip is repeated when played or embeded
+    ## Grid quant menu || quantize selection, new notes, moving notes
+    ## Metronome || Play/stop the Pdef(\metronome)
+    ## History stack number box || represent the index of the displayed event list in the history stack
+    ## Rec button || Start/stop recording. Recording really start when first note is played
+    ## ... button || Show a special menu for additionnal parameters
+::
+
+Special menu:
+table::
+    ## Edit button || Edit the baseObject Pdef (note that keys in the Pdef override theses settings)
+    ## outBus menu || Change the out bus of the events
+    ## Piano keyboard || A virtual keyboard where you can play and record notes
+    ## Controller menu || Select the controller used to record new notes
+::
+
+Z button at the right of time ruler is used to zoom vertically to the notes of the event list.
+
+< and > buttons at the bottom right are used to grow or shrink the viewport of the timeline. Use it when you have no more room for writing your melody. Note that even if notes are not visible in the viewport, they are still present and played.
+
+Velocity panel:
+This panel is not very usable for the moment.
+table::
+    ## > button || show/hide the velocity panel
+    ## parameter choose menu || Show the current parameter which is edited in the velocity panel
+    ## parameter value || Show the value of the selected note for current parameter
+::
+
+
+SECTION:: Keyboard shortcuts:
+
+On the time ruler:
+table::
+    ## Define start of the preview loop || Left click
+    ## Define end of the preview loop || Right click
+    ## Add a marker || Ctrl + left click
+    ## Edit marker name || Double click on marker. Hit Enter to save the new name
+    ## Delete a marker || Delete
+::
+
+
+On the main panel:
+table::
+    ## Add a note || Ctrl + Left click, hold mouse button to adjust the sustain of the note
+    ## Resize a note || Shift + Left click, hold mouse button to adjust the sustain of the note
+    ## Select a note || Click on the note to select it
+    ## Select several note || Click somewhere with no note and drag to form a selection rectangle
+    ## Play immediatly the selected part of the timeline (set preview loop) || Space
+    ## Delete selected note(s) || use Delete key
+    ## Define the end of the clip || Ctrl + Right click
+    ## Copy selected notes || Ctrl + c
+    ## Paste selected notes || Ctrl + v (click first where you want to paste)
+    ## Double the clip by repeating notes || Ctrl + d
+    ## Copy the current event list and add it to the top of the history stack || Ctrl + k
+    ## Add a new empty event list to the top of the history stack || Ctrl + n
+    ## Quantize selected notes || q
+    ## Move up or down selected notes by a semitone || Up or Down arrow keys
+    ## Move up or down selected notes by an octave || Ctrl + Up or Ctrl + Down arrow keys
+    ## Move left or right selected notes by grid quant || Left or Right arrow keys
+    ## Move left or right selected notes by grid quant * 8 || Ctrl + Left or Ctrl + Right arrow keys
+::
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new instance of NoteTimeline, or redefine the baseObject
+
+ARGUMENT:: name
+the key under which the object which be stored
+
+ARGUMENT:: baseObject
+A Pdef providing the default values for the events created in the timeline. Usually, the Pdef contains only the \instrument key for specifying a custom SynthDef
+
+returns:: a NoteTimeline
+
+
+INSTANCEMETHODS::
+
+METHOD:: play
+Play the timeline
+
+METHOD:: stop
+Stop the timeline
+
+METHOD:: isPlaying_
+Play/stop the timeline pattern
+ARGUMENT:: val
+true to start, false to stop
+
+METHOD:: isPlaying
+Play the timeline
+
+METHOD:: edit
+Show the graphical editor
+
+METHOD:: eventList
+Return the current event list of the timeline
+returns:: a TimelineEventList
+
+METHOD:: startRecording
+Start the recording
+
+METHOD:: stopRecording
+Stop the recording
+
+METHOD:: isRecording_
+Start/Stop the recording
+ARGUMENT:: val
+true to start, false to stop
+
+METHOD:: isRecording
+Return weither the timeline is recording
+returns:: a Bool
+
+METHOD:: asPattern
+Return the timeline pattern for embeding in other patterns
+ARGUMENT:: startOffset
+Start startOffset beats after the start event
+FIXME: broken
+ARGUMENT:: dur
+Cut the length of the pattern to dur
+ARGUMENT:: repeatCount
+repeat the pattern repeatCount times
+returns:: a Prout
+
+METHOD:: asPatternAbs
+Same as asPattern but use absolute time instead
+ARGUMENT:: startBeat
+Start the loop at startBeat
+ARGUMENT:: endBeat
+End the loop at endBeat
+ARGUMENT:: repeatCount
+repeat the pattern repeatCount times
+returns:: a Prout
+
+METHOD:: asPatternSlices
+Slices are delimited by markers (\start, \end, and custom markers). Return every slices of the clip loop
+returns:: an array of Prout
+
+METHOD:: asPatternSlice
+Slices are delimited by markers.
+Return a specific slice from marker startMarker and endMarker.
+A marker can be \start, \end, or a String containing the label of the custom marker
+ARGUMENT:: startMarker
+ARGUMENT:: endMarker
+ARGUMENT:: repeatCount
+repeat the pattern repeatCount times
+returns:: a Prout
+
+METHOD:: presetCompileString
+Return a preset string so you can save the state of the timeline on disk. To load the timeline again, just interpret the string, it's human readable code.
+returns:: a TimelineEventList
+
+METHOD:: outBus_
+METHOD:: outBus
+Get or set the out bus of the pattern (key \out)
+
+METHOD:: label_
+METHOD:: label
+Get or set the label of the timeline (default to key)
+
+METHOD:: key
+The key to identify the timeline (first argument at creation)
+
+METHOD:: quant_
+METHOD:: quant
+Get or set the quant of the pattern player (EventPatternProxy). Do not confuse it with the grid quant
+
+EXAMPLES::
+
+code::
+// a simple SynthDef for demo purpose
+(
+SynthDef(\saw, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+	var sig;
+	sig = LFSaw.ar(freq);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}).add;
+);
+
+// just accessing a key automatically create the timeline since there is no other required arguments
+NoteTimeline(\mynotes);
+
+// show the GUI
+NoteTimeline(\mynotes).edit;
+
+// play/stop it
+NoteTimeline(\mynotes).play;
+NoteTimeline(\mynotes).stop;
+
+// embed in a pattern
+(
+Pdef(\mypat, Ppar([
+	Pbind(
+		\instrument, Pseq([\default, \saw],inf),
+	) <> NoteTimeline(\mynotes).asPattern,
+])).play;
+)
+
+// use a Pdef as the source of event to be able to change it live
+(
+Pdef(\myinstrument, 
+	// the Pdef should contains a Pbind else NoteTimeline will not find the \instrument key to guess arguments of the SynthDef
+	Pbind(
+		\instrument, \saw,
+		\lpfr, 1,
+	)
+);
+)
+
+NoteTimeline(\mynotes, Pdef(\myinstrument));
+
+// create an event list from a pattern
+// FIXME: broken
+(
+	NoteTimeline(\mynotes).eventList = TimelineEventList.newFrom(
+		Pbind(
+			\instrument, \default,
+			\degree, Pseq((1..20),1),
+			\dur, 1/8,
+			\amp, 0.1,
+		),
+		100 // maximum number of notes, required else infinite pattern will hang forever (default: FIXME)
+	);
+)
+::
+

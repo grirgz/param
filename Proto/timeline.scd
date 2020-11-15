@@ -42,6 +42,23 @@
 		}
 	},
 
+	eventList: { arg self;
+		self.eventloop.list
+	},
+
+	eventList_: { arg self, val;
+		self.eventloop.list = val;
+		self;
+	},
+
+	eventLoop: { arg self;
+		self.eventloop;
+	},
+
+	eventLoop_: { arg self, val;
+		self.eventloop = val;
+		self;
+	},
 
 	makeDefaultEventList: { arg self;
 		var el = TimelineEventList.new;
@@ -64,6 +81,26 @@
 	outBus_: { arg self, val;
 		self.postChain.set(\out, val)
 	},
+
+	label: { arg self;
+		self.key;
+	},
+
+	quant: { arg self;
+		self.proxy.quant;
+	},
+
+	quant_: { arg self, val;
+		self.proxyQuantIsDefault = val.isNil;
+		self.proxy.quant = val;  // so PlayerEvent can set quant of timelines
+	},
+
+	tempoClock: { arg self;
+		TempoClock.default
+	},
+
+	repeatCount: inf,
+
 
 	asPatternAbs: { arg self ...args;
 		self.previewPattern(*args)
@@ -100,6 +137,73 @@
 	asPatternSlices: { arg self, repeatCount=1;
 		self.loopMaster.getPatternSlices(self.cutPatternFunction, repeatCount ? self.repeatCount);
 	},
+
+	asSelectedPattern: { arg self, repeatCount;
+		self.asPatternAbs({self.cursor.startPosition}, {self.cursor.endPosition}, repeatCount)
+	},
+
+	embedInTimeline: { arg self, drop_dur, sustain;
+		var relStartTime;
+		relStartTime = self.eventList.relStartTime + drop_dur;
+		self.xasPattern(relStartTime, self.eventList.totalDur min: sustain);
+	},
+
+	embedInStream: { arg self, inval;
+		self.asPattern
+	},
+
+	play: { arg self;
+		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
+		var pat = self.asSelectedPattern;
+		if(self.proxy != pat) {
+			self.proxy.source = pat;
+		};
+		self.proxy.play;
+	},
+
+	playNow: { arg self, repeatCount;
+		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
+		var pat = self.asSelectedPattern(repeatCount);
+		if(self.proxy != pat) {
+			// FIXME: this destroy use of defaultQuant, with little workaround, ugly
+			var oldquant = self.proxy.quant; 
+			self.proxy.quant = 0;
+			self.proxy.setSource(pat);
+			self.proxy.stop;// Pmono doesnt supprot doReset
+			self.proxy.play(quant:0);
+			//self.proxy.play(quant:0, doReset:true);
+			//PlayerWrapper(self.proxy).playNow;
+			if(self.proxyQuantIsDefault) {
+				self.proxy.quant = nil
+			} {
+				self.proxy.quant = oldquant;
+			}
+		} {
+			//self.proxy.play(quant:0, doReset:true);
+			self.proxy.stop;// Pmono doesnt supprot doReset
+			self.proxy.play(quant:0);
+			//PlayerWrapper(self.proxy).playNow;
+		};
+	},
+
+	stopNow: { arg self;
+		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
+		PlayerWrapper(self.proxy).stopNow;
+		self.eventloop.list.changed(\cursor, \stop);
+	},
+
+	stop: { arg self;
+		self.proxy.stop;
+		PlayerWrapper(self.proxy).doWithQuant({
+			self.eventloop.list.changed(\cursor, \stop);
+		})
+	},
+
+	isPlaying: { arg self;
+		self.proxy.isPlaying;
+	},
+
+	/////////////// backward compat (old way before ProtoClass)
 
 	asPatternAbs_old: { arg self, startPosition, endPosition, repeatCount;
 		var relStartTime, totalDur;
@@ -153,113 +257,6 @@
 		self.xasPattern(relStartTime, totalDur, repeatCount);
 	},
 
-	eventList: { arg self;
-		self.eventloop.list
-	},
-
-	eventList_: { arg self, val;
-		self.eventloop.list = val;
-		self;
-	},
-
-	eventLoop: { arg self;
-		self.eventloop;
-	},
-
-	eventLoop_: { arg self, val;
-		self.eventloop = val;
-		self;
-	},
-
-	embedInTimeline: { arg self, drop_dur, sustain;
-		var relStartTime;
-		relStartTime = self.eventList.relStartTime + drop_dur;
-		self.xasPattern(relStartTime, self.eventList.totalDur min: sustain);
-	},
-
-	embedInStream: { arg self, inval;
-		self.asPattern
-	},
-
-	xembedInStream: { arg self, inval;
-		self.embedInStream(inval);
-	},
-
-	play: { arg self;
-		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
-		var pat = self.asSelectedPattern;
-		if(self.proxy != pat) {
-			self.proxy.source = pat;
-		};
-		self.proxy.play;
-	},
-
-	playNow: { arg self, repeatCount;
-		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
-		var pat = self.asSelectedPattern(repeatCount);
-		if(self.proxy != pat) {
-			// FIXME: this destroy use of defaultQuant, with little workaround, ugly
-			var oldquant = self.proxy.quant; 
-			self.proxy.quant = 0;
-			self.proxy.setSource(pat);
-			self.proxy.stop;// Pmono doesnt supprot doReset
-			self.proxy.play(quant:0);
-			//self.proxy.play(quant:0, doReset:true);
-			//PlayerWrapper(self.proxy).playNow;
-			if(self.proxyQuantIsDefault) {
-				self.proxy.quant = nil
-			} {
-				self.proxy.quant = oldquant;
-			}
-		} {
-			//self.proxy.play(quant:0, doReset:true);
-			self.proxy.stop;// Pmono doesnt supprot doReset
-			self.proxy.play(quant:0);
-			//PlayerWrapper(self.proxy).playNow;
-		};
-	},
-
-	stopNow: { arg self;
-		//[ self.cursor.startPosition, self.cursor.endPosition ].debug("eventPlay: start, end");
-		PlayerWrapper(self.proxy).stopNow;
-		self.eventloop.list.changed(\cursor, \stop);
-	},
-
-	asSelectedPattern: { arg self, repeatCount;
-		self.asPatternAbs({self.cursor.startPosition}, {self.cursor.endPosition}, repeatCount)
-	},
-
-	stop: { arg self;
-		self.proxy.stop;
-		PlayerWrapper(self.proxy).doWithQuant({
-			self.eventloop.list.changed(\cursor, \stop);
-		})
-	},
-
-	isPlaying: { arg self;
-		self.proxy.isPlaying;
-	},
-
-	label: { arg self;
-		self.key;
-	},
-
-	quant: { arg self;
-		self.proxy.quant;
-	},
-
-	quant_: { arg self, val;
-		self.proxyQuantIsDefault = val.isNil;
-		self.proxy.quant = val;  // so PlayerEvent can set quant of timelines
-	},
-
-	tempoClock: { arg self;
-		TempoClock.default
-	},
-
-	repeatCount: inf,
-
-	/////////////// backward compat (old way before ProtoClass)
 
 	eventIsPlaying: { arg self;
 		self.isPlaying;
@@ -280,6 +277,12 @@
 	xasPattern: { arg self ...args;
 		self.asPattern(*args);
 	},
+
+	xembedInStream: { arg self, inval;
+		self.embedInStream(inval);
+	},
+
+	///////// control and recording
 
 	startControl: { arg self;
 		if(self.controller.notNil) {
