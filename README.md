@@ -38,16 +38,16 @@ Disclaimer: this is a work in progress, some parts are broken, some parts are un
 - Integrated with JITLib and pattern system: you can mix code and GUI/control/record as you please
 - Saving system for everything that is not in code file: a value set with your controller is lost at reboot, save it easily, the format of save files is human readable code so you can recover it even if the savefile is corrupt
 
-## Dependences
+## Dependencies
 
-quarks
+Quarks
 - JITLibExtensions: getHalo/addHalo
 - WindowViewRecall
-- Collapse: dependence de WindowRecallView
+	- Collapse: dependency of WindowRecallView
 - Log
-- Singleton
+	- Singleton: dependency of Log
 	
-optional quarks
+Optional quarks
 - Modality-toolkit
 - vim patch loadRelative
 
