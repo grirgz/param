@@ -204,6 +204,103 @@
 		^true
 	}
 
+	setBusMode { arg key, enable=true, free=true;
+		//"whatktktj".debug;
+		if(enable) {
+			//"1whatktktj".debug;
+			if(this.inBusMode(key)) {
+				// NOOP
+				//"2whatktktj".debug;
+			} {
+				var val = this.getVal(key);
+				var numChannels = 1;
+				var bus;
+				//"3whatktktj".debug;
+				//val.debug("setBusMode: val");
+				if(val.isSequenceableCollection) {
+					numChannels = val.size;
+				};
+				//numChannels.debug("setBusMode: nc");
+				bus = CachedBus.control(Server.default,numChannels );
+					// FIXME: hardcoded server
+					// hardcoded rate, but can't convert audio buffer to a number, so it's ok
+				//bus.debug("setBusMode: bus");
+				if(val.isSequenceableCollection) {
+					bus.setn(val);
+				} {
+					bus.set(val);
+				};
+				//val.debug("setBusMode: val");
+				this.set(key, bus.asMap);
+				//bus.asMap.debug("setBusMode: busmap");
+			}
+		} {
+			if(this.inBusMode(key).not) {
+				// NOOP
+			} {
+				var val = this.getVal(key);
+				var map = this.get(key);
+				var numChannels = 1;
+				var bus;
+				bus = map.asCachedBus;
+				this.set(key, val);
+				if(free) {
+					bus.free;
+				};
+			}
+
+		}
+
+	}
+
+	inBusMode { arg key;
+		var val = this.get(key);
+		if(val.isSequenceableCollection) {
+			// multichannel
+			if(val[0].isSequenceableCollection) {
+				// nested
+				^(val[0][0].class == Symbol)
+			} {
+				^(val[0].class == Symbol)
+			}
+		} {
+			^(val.class == Symbol)
+		}
+	}
+
+	getVal { arg key;
+		var curval;
+		//if(this.envir.isNil) { this.envir = this.class.event };
+		curval = this.get(key);
+		if(this.inBusMode(key)) {
+			var bus = curval.asCachedBus;
+			^bus.getCached;
+		} {
+			^curval;
+		};
+	}
+
+	setVal { arg key, val;
+		if(val.isKindOf(Env)) {
+			this.set(key, val)
+		} {
+			if(this.inBusMode(key)) {
+				var bus;
+				var curval;
+				curval = this.get(key);
+				bus = curval.asCachedBus;
+				if(curval.isSequenceableCollection) {
+					bus.setn(val);
+				} {
+					bus.set(val);
+				};
+				//this.changed(\set, [key, val]);
+			} {
+				this.set(key, val)
+			};
+		}
+	}
+
 }
 
 +String {
@@ -544,23 +641,6 @@
 		//times.debug("times");
 		//curves.debug("curves");
 		^Env(levels.asArray, times.asArray, curves.asArray, releaseNode, loopNode)
-	}
-}
-
-+Bus {
-	// now a multi-channel bus can be mapped as an array of symbol like patterns expect it
-	asMap {
-		^mapSymbol ?? {
-			if(index.isNil) { MethodError("bus not allocated.", this).throw };
-			mapSymbol = if(rate == \control) { "c" } { "a" };
-			if(this.numChannels > 1) {
-				mapSymbol = numChannels.collect({ arg x;
-					(mapSymbol ++ ( index + x)).asSymbol;
-				})
-			} {
-				mapSymbol = (mapSymbol ++ index).asSymbol;
-			}
-		}
 	}
 }
 

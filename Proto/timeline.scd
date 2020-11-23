@@ -1048,9 +1048,9 @@ ClipTimeline.proto = ProtoClass((
 			if(param.target.isKindOf(Bus)) {
 				self[\outBus] = param.target;
 			} {
-				// FIXME: should always call newInstance with a bus param
+				// FIXME: should always call newInstance with a bus param or custom bus
 				// else everything write to the same bus
-				self[\outBus] = BusDef(self.key, \control);
+				self[\outBus] = BusDef("ParamTimeline_%".format(self.key), \control);
 			};
 		} {
 			self[\outBus] = self.customBus;
@@ -1123,8 +1123,9 @@ ClipTimeline.proto = ProtoClass((
 			// FIXME: this should be an event
 			if(self.param.notNil and:{ self.param.target.isKindOf(Bus).not }) {
 				// FIXME: bus mode should be generic
-				if(self.param.target.class == Pdef) {
-					self.param.target.set(self.param.property, self.outBus.asMap)
+				if([EventPatternProxy, NodeProxy].any({ arg x; self.param.target.isKindOf(x) })) {
+					self.param.target.set(self.param.property, self.outBus.asMap);
+					self.param.changed(\inBusMode);
 				} {
 					self.param.set(self.outBus.asMap);
 				};

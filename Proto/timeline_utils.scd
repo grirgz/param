@@ -36,7 +36,7 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	var sig;
 	var in = In.kr(out);
 	sig = EnvGen.kr(Env([in,level], [time], curve),1,doneAction:2);
-	sig.poll(label:"env segment");
+	//sig.poll(label:"env segment");
 	Out.kr(out, sig);
 }).add;
 

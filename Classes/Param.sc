@@ -1980,6 +1980,14 @@ PdefParam : BaseAccessorParam {
 		^target.inBusMode(property)
 	}
 
+	inBusMode_ { arg val;
+		if(val == true) {
+			this.setBusMode(true)
+		} {
+			this.setBusMode(false)
+		}
+	}
+
 	*instrument { arg target;
 		var val;
 		val = target.getHalo(\instrument) ?? { 
@@ -2075,9 +2083,25 @@ NdefParam : BaseAccessorParam {
 		^sp.asSpec;
 	}
 
+	setBusMode { arg enable=true, free=true;
+		target.setBusMode(property, enable, free);
+	}
+
+	inBusMode {
+		^target.inBusMode(property)
+	}
+
+	inBusMode_ { arg val;
+		if(val == true) {
+			this.setBusMode(true)
+		} {
+			this.setBusMode(false)
+		}
+	}
+
 	getRaw {
 		var val;
-		val = target.get(property) ?? { 
+		val = target.getVal(property) ?? { 
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
 			this.default
 		};
@@ -2093,7 +2117,7 @@ NdefParam : BaseAccessorParam {
 		if(Param.trace == true) {
 			"%: setRaw: %".format(this, val.asCompileString).postln;
 		};
-		target.set(property, val);
+		target.setVal(property, val);
 		//Log(\Param).debug("set:final Val %, prop %", val, property);
 		//target.changed(\set, property, val); // Ndef already send a set message
 	}

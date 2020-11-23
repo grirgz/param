@@ -1,3 +1,20 @@
++Bus {
+	// now a multi-channel bus can be mapped as an array of symbol like patterns expect it
+	asMap {
+		^mapSymbol ?? {
+			if(index.isNil) { MethodError("bus not allocated.", this).throw };
+			mapSymbol = if(rate == \control) { "c" } { "a" };
+			if(this.numChannels > 1) {
+				mapSymbol = numChannels.collect({ arg x;
+					(mapSymbol ++ ( index + x)).asSymbol;
+				})
+			} {
+				mapSymbol = (mapSymbol ++ index).asSymbol;
+			}
+		}
+	}
+}
+
 
 +Symbol {
 	asBus { arg numChannels=1, busclass;

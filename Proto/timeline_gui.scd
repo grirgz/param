@@ -1318,6 +1318,7 @@
 				PlayerWrapperView(PlayerWrapper(self.param.target)).view;
 			},
 			self.param.asKnob,
+			Param(Message(self.param), \inBusMode, XBoolSpec()).asButton("Bus mode"),
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
