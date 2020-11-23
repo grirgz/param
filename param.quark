@@ -1,0 +1,7 @@
+(
+	\name:		"param",
+	\summary:	"Framework for GUI and controllers",
+	\author:	"grirgz",
+	\version:	"0.2",
+	\url:		"https://github.com/grirgz/param"
+)

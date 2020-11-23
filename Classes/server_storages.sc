@@ -14,9 +14,23 @@ BufDef {
 	}
 
 	*initClass {
-		root = "~/Musique/sc/samplekit".standardizePath;
-		paths = List[root,"~/Musique/sc/reckit".standardizePath];
+		//root = "~/Musique/sc/samplekit".standardizePath;
+		//paths = List[root,"~/Musique/sc/reckit".standardizePath];
+		paths = List.new;
 	}
+
+	*addPath { arg path;
+		//var rpath = FileSystemProject.resolve(path);
+		var rpath = path.standardizePath;
+		if(rpath.notNil) {
+			if(paths.includesEqual(rpath).not) {
+				paths.add(rpath);
+			}
+		} {
+			Log(\Param).error("Path not found: " ++ path );
+		}
+	}
+
 
 	*new { arg name, path, channels;
 		if(path.isNil) {
@@ -296,8 +310,6 @@ BufDef {
 
 WavetableDef : BufDef {
 
-	classvar <>root;
-
 	*all {
 		^PresetDictionary.new(\WavetableDef);
 	}
@@ -308,10 +320,6 @@ WavetableDef : BufDef {
 
 	*bufferMultiCache {
 		^PresetDictionary.new(\WavetableDef_bufferMultiCache);
-	}
-
-	*initClass {
-		root = "~/Musique/sc/samplekit/wavetable".standardizePath;
 	}
 
 	*new { arg name, path, channels;

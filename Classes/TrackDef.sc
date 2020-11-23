@@ -183,7 +183,7 @@ FileSystemProject : TrackDef {
 	*addPath { arg path;
 		var rpath = this.resolve(path);
 		if(rpath.notNil) {
-			if(paths.includesEqual(rpath).not) {
+			if(paths.includesEqual(rpath.fullPath).not) {
 				paths.add(rpath.fullPath);
 			}
 		} {

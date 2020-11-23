@@ -1,73 +1,73 @@
-# param
+# Param
 
-Param Quark for SuperCollider
+Param is a framework that allow you to easily develop your custom graphical interface and connect your controllers to it.
 
-The goal of this quark is to ease the controlling of sounds objects parameters (Ndef, Pdef, etc) using GUI, MIDI, and OSC.
+Disclaimer: this is a work in progress, some parts are broken, some parts are unfinished, some API can change. Help is welcome
 
-```
-(
-Ndef(\ndef_scalar, { arg freq=200, pan=0, amp=0.1;
-	var sig;
-	sig = SinOsc.ar(freq);
-	sig = Pan2.ar(sig, pan, amp);
-}).play;
-);
+## Design your sound
+- use the standard SynthDef, Pdef and Ndef
+- BusDef: never worry about allocating or freeing your bus, just name them
+- BufDef: never load two times the same sample, just type the filename in the path
+- WavetableDef: load wavetable from files
+- GroupDef: name groups
 
-// create a reference to a parameter of a Ndef
-~p = Param(Ndef(\ndef_scalar), \freq, \freq.asSpec);
+## Build a GUI:
+- [WindowDef:](file:///home/ggz/Notebooks/Notes/Param/Documentation/WindowDef.txt) group and reuse your GUI code and remember window position and size
+- Param: build automatically GUI for your SynthDefs, control any synth parameter with GUI or controller, support for arrays and enveloppes
+- PlayerWrapper: a nice wrapper to control any player (Pdef, Timeline, ...) with a standard interface
+- Timelines: [NoteTimelines](file:///home/ggz/Notebooks/Notes/Param/Documentation/NoteTimelines.txt) for notes, [KitTimeline](file:///home/ggz/Notebooks/Notes/Param/Documentation/KitTimeline.txt) for drums, [SampleTimeline](file:///home/ggz/Notebooks/Notes/Param/Documentation/SampleTimeline.txt) for Buffers, [ParamTimeline](file:///home/ggz/Notebooks/Notes/Param/Documentation/ParamTimeline.txt) for automations, [ClipTimeline](file:///home/ggz/Notebooks/Notes/Param/Documentation/ClipTimeline.txt) to sequence any player
+- Builder: a special function that is executed each time an argument change value, you can control it with GUI/controllers
 
-// now the slider control the Ndef parameter \freq
-Slider.new.mapParam(~p);
+## Use your controllers:
+- ControllerDef: group your controller code and define standard interfaces to instantly control your objects with your controller
+- MIDIMap: a quick way to assign your often used midi controller buttons
+- PlayerGroup: control any Pdef with your piano controller and record it in a timeline
+- integration with Modality
 
-// now the MIDI knob number 16 controls the Ndef parameter \freq
-MIDIMap([16], ~p); 
-```
+## DAW tools that can be saved as a project or used independently
+- Main window: with main level view, tempo, quant and lot of useful buttons
+- Mixer: with level view and send busses
+- Fx manger: setup and control reverb, eq, compressors and any other fx SynthDef in a GUI
+- Drum Kit Sampler: create drum kit from code or GUI, play and record it in timelines
+- PlayerGrid: a grid of player which can be connected to launchpad or other controllers
+- Tag system: every object can be tagged and retrieved in the tag explorer
+- Project system to group everything and save it in a project folder
 
-The benefit is you have the same API for controlling Ndef, Pdef, Synth, Bus, ... and you can easily control arrays and envelopes in the same way. Setting .action and updating of GUI, and freeing resources like MIDIFunc and buses are done for you in the background.
+## Design goals:
+- Modular: you can use any tool from the framework without loading the others, GUI is optional, you can replace any part
+- Integrated with JITLib and pattern system: you can mix code and GUI/control/record as you please
+- Saving system for everything that is not in code file: a value set with your controller is lost at reboot, save it easily, the format of save files is human readable code so you can recover it even if the savefile is corrupt
 
-Using this library, you can quickly write custom GUI, but more importantly, you can build complex GUI which are completely independent of the sounds objects you control, just pass to your GUI a list a Param you want to control. Mapping any of theses parameters with MIDI is easy too.
+Dependences
+-----------
 
-```
-// if you have a GUI with 8 sliders, you can simply send it the list of parameters you want to control:
-~mygui.set_params( [
-	[Pdef(\plop), \freq],
-	[Pdef(\plop), \lpfreq],
-	[Pdef(\plop), \rq],
-	[Ndef(\echo), \shift1],
-	[Ndef(\echo), \shift2],
-] )
-```
-
-Dependencies : please install the following quark before trying Param:
-- JITLibExtensions
-
-Current features:
-- map any Ndef of Pdef parameter to a GUI object, including arrays and envelopes parameters
-- map any Ndef of Pdef parameter to a MIDI control
-- write easily a GUI showing current parameters mapped to your MIDI controls
-- save and load presets, persistent across SC reboot
-- morph between selected presets
-- switch quickly between normal mode and bus mode in patterns (bus mode is the way to continuously control a parameter)
-- block the MIDI until the MIDI value match the Param value to avoid sudden value jump
-- GUI can be updated in synchronous or polling mode
-- replace default GUI used by .edit
-
-Controlled objects
-- Ndef
-- Pdef
-- Ndef volume
-- Volume (eg: s.volume)
-- TempoClock
+quarks
+- JITLibExtensions: getHalo/addHalo
+- WindowViewRecall
+- Collapse: dependence de WindowRecallView
+- Log
+- Singleton
+	
+optional quarks
+- Modality-toolkit
+- vim patch loadRelative
 
 
-Planned features:
-- control others objects:
-	- Bus
-	- Synth
-	- Instr
-	- list (to have an array of slider sequencing the sound in a pattern for example)
-- map Param to others GUI objects like PopupMenu
-- integration with Modality toolkit
-- easy step sequencer creation with visual feedback
-- OSC mapping
+Configuration
+-------------
+
+For you projects to be independent of location on your disk, you can add paths
+So instead of writing 
+```BufDef("~/mysamples/kicks/kick.wav") ```
+you can write
+BufDef("kicks/kick.wav")
+If you move your samples elsewhere, no need to update every code file, just change the path in your startup.scd
+
+// paths for loading files and projects
+FileSystemProject.addPath("~/code/sc/projects/"); // change by your own paths
+FileSystemProject.addPath("~/drafts/");
+// paths for loading buffers and wavetables
+BufDef.addPath("~/Musique/samples/");
+WavetableDef.addPath("~/Musique/wavetables/");
+
 
