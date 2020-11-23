@@ -3,5 +3,6 @@
 	\summary:	"Framework for GUI and controllers",
 	\author:	"grirgz",
 	\version:	"0.2",
+	\dependencies: ["JITLibExtensions", "WindowViewRecall", "Log"],
 	\url:		"https://github.com/grirgz/param"
 )
