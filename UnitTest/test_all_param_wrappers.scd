@@ -40,7 +40,7 @@ s.boot;
 
 Ndef(\target_object, { arg freq=200, pan=0, amp=0.1;
 	var sig;
-	sig = SinOsc.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5)).mean;
+	sig = SinOsc.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5)).mean;
 	sig = sig * EnvGen.kr(\env_param.kr(Env([0,1,0.5,0],[0.1,0.8,0.1])), Impulse.kr(1/2));
 	sig = Pan2.ar(sig, pan, amp);
 });
@@ -49,13 +49,13 @@ Ndef(\target_object).addSpec(\env_param, XEnvSpec(\unipolar ! 4));
 
 SynthDef(\target_synthdef, { arg freq=200, pan=0, amp=0.1;
 	var sig;
-	sig = SinOsc.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5)).mean;
+	sig = SinOsc.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5)).mean;
 	sig = sig * EnvGen.kr(\env_param.kr(Env([0,1,0.5,0],[0.1,0.8,0.1])), \gate.kr(1), doneAction:2);
 	sig = Pan2.ar(sig, pan, amp);
 	Out.ar(\out.kr(0), sig);
 }, metadata:(specs:(
 		env_param: XEnvSpec(\unipolar ! 4),
-		array_param: XArraySpec(), // FIXME: this should be commented, Param should detect spec from default value, but bug in 3.11
+		//array_param: XArraySpec(), // FIXME: this should be commented, Param should detect spec from default value, but bug in 3.11
 ))).add;
 
 ~envspec = XEnvSpec(\unipolar ! 4);
@@ -91,11 +91,41 @@ Builder(\target_object, { arg scalar_param=10; "bla" });
 	})
 };
 
+~env_individual_params = { arg target;
+	[
+		Param(target, \env_param -> \times -> 0),
+		Param(target, \env_param).at(\times, 0),
+		Param(target, \env_param -> \times -> 1),
+		Param(target, \env_param -> \times -> 2),
+		Param(target, \env_param -> \levels -> 0),
+		Param(target, \env_param).at(\levels, 0),
+		Param(target, \env_param -> \levels -> 1),
+		Param(target, \env_param -> \levels -> 2),
+		Param(target, \env_param -> \levels -> 3),
+	]
+};
+
+~array_individual_params = { arg target;
+	[
+		Param(target, \array_param -> 0),
+		Param(target, \array_param).at(0),
+		Param(target, \array_param -> 1),
+	]
+};
+
+Param.trace = true;
+//Param.trace = false;
+
 ~all_targets = [
 	~three.(Ndef(\target_object)),
+	~env_individual_params.(Ndef(\target_object)),
+	~array_individual_params.(Ndef(\target_object)),
 	~three.(Pdef(\target_object)),
+	~env_individual_params.(Pdef(\target_object)),
+	~array_individual_params.(Pdef(\target_object)),
 	~three.(StepEventDef(\target_object)),
 	~three.(~dict),
+	Param(Pdef(\target_object), \scalar_bus_param).setBusMode, // bus mode for Pdef
 	Param(~steplist, \list), // this bug preset
 	Param(~list, \list), // this bug preset
 	Param(TempoClock.default, \tempo),
@@ -115,6 +145,7 @@ Builder(\target_object, { arg scalar_param=10; "bla" });
 	Param(Message(()), \inexistant, ControlSpec(0,1,\lin)),
 	Param(Message(()), \inexistant, XBoolSpec()),
 	Param(Message(()), \inexistant),
+
 ].flatten;
 
 ParamGroupDef(\all_targets, ~all_targets);
@@ -131,9 +162,6 @@ WindowDef(\testgui, {
 	var viewList = List.new;
 
 	layoutAs = VLayout (
-		PlayerWrapper(Ndef(\target_object)).asView,
-		EventClass.presetSelectorView.(ParamGroupDef(\all_targets)),
-		EventClass.presetSelectorView.(~pg),
 		* ~all_targets.collect { arg param;
 			var playout;
 			param.debug("=============================================================== TESTING param");
@@ -230,13 +258,19 @@ WindowDef(\testgui, {
 		//layoutMap, // TODO
 	);
 	VLayout(
+		//HLayout (
+			//BasicButton.new.string_("Map param").action_({
+			
+			//}),
+			//BasicButton.new.string_("Unmap param").action_({
+			
+			//}),
+		//),
 		HLayout (
-			BasicButton.new.string_("Map param").action_({
-			
-			}),
-			BasicButton.new.string_("Unmap param").action_({
-			
-			}),
+			PlayerWrapper(Ndef(\target_object)).asView,
+			PlayerWrapper(Pdef(\target_object)).asView,
+			EventClass.presetSelectorView.(ParamGroupDef(\all_targets)),
+			EventClass.presetSelectorView.(~pg),
 		),
 		ScrollView.new.canvas_(View.new.layout_(layout)),
 	)

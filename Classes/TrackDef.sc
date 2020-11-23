@@ -27,6 +27,7 @@ FileSystemProject : TrackDef {
 	classvar <>paths;
 	classvar <cwd;
 	classvar <>loadingFiles;
+	classvar <>loadedFiles;
 	classvar <>current;
 
 	*all {
@@ -125,7 +126,9 @@ FileSystemProject : TrackDef {
 					loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }));
 					e.throw;
 				};
-				loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }))
+				loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }));
+				loadedFiles = loadedFiles ?? { Set.new };
+				loadedFiles.add(path);
 			} {
 				if(silent == false) {
 					Log(\Param).error("FileSystemProject: File don't exists: %", path);
@@ -146,6 +149,26 @@ FileSystemProject : TrackDef {
 			};
 			^nil
 		};
+	}
+
+	*loadOnce { arg path, silent=false;
+		var rpath = this.resolve(path);
+		loadedFiles = loadedFiles ?? { Set.new };
+		if(loadedFiles.includes(rpath)) {
+			if(silent == false) {
+				Log(\Param).debug("FileSystemProject.load: file already loaded: " ++ path );
+			};
+		} {
+			if(rpath.notNil and: { rpath.isFile }) {
+				^this.loadFileTillEnd(rpath.fullPath, silent);
+			} {
+				if(silent == false) {
+					Log(\Param).error("FileSystemProject.load: file doesnt exists or is a directory: " ++ path );
+				};
+				^nil
+			}
+		};
+
 	}
 
 	*cwd_ { arg path;

@@ -357,6 +357,63 @@ ParamGroupLayout {
 
 	}
 
+	*formEntry { arg item, label_mode;
+		// if player, show a button
+		// if param scalar, show horizontally a label, horizontal slider and textField
+		// if param env or array, show vertically a label, an env/array, a textField
+   
+		var scalar_entry = { arg param;
+			var lay;
+			lay = if(param.isNil) {
+				nil;
+			} {
+				HLayout(
+					if(label_mode == \full) {
+						var st = param.asStaticTextLabel;
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
+					} {
+						var st = StaticText.new.string_(param.property);
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
+					},
+					param.asSlider.orientation_(\horizontal).minWidth_(150),
+					param.asTextField.minWidth_(70),
+				)
+			};
+			lay;
+		};
+		var env_entry = { arg param;
+			var lay;
+			lay = if(param.isNil) {
+				nil;
+			} {
+				VLayout(
+					if(label_mode == \full) {
+						param.asStaticTextLabel;
+					} {
+						StaticText.new.string_(param.property)
+					},
+					param.asView.minHeight_(150),
+					param.asTextField,
+				)
+			};
+			lay;
+		};
+		
+		^if(item.isKindOf(Param)) {
+			if(item.type == \scalar) {
+				scalar_entry.(item)
+			} {
+				if([\array, \env].includes(item.type)) {
+					env_entry.(item)
+				}
+			}
+		} {
+			PlayerWrapper(item).asView
+		}
+	}
+
 	*two_panes { arg pg, label_mode;
 
 		var layout;

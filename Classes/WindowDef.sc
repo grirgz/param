@@ -20,13 +20,14 @@ WindowDef {
 	classvar <>all;
 	var <>key;
 	var <>source;
-	var <>window;
+	var >window;
 	var <>windowProperties;
 	var <>alwaysRecreate = true;
 	var <>windowName;
 	var <>simpleController;
 	var <>startRenderingTime;
 	var <>border = true;
+	var <>parentDef;
 
 
 	// FIXME: window is not restored at the exact same position but is shifted downward, maybe a ubuntu unity bug
@@ -130,6 +131,24 @@ WindowDef {
 		^res;
 	}
 
+	embedView { arg def ...args;
+		var res;
+		this.parentDef = def;
+		res = source.value(this, *args);
+		res.addUniqueMethod(\windowName, { this.windowName });
+		^res;
+	}
+
+	window {
+		^if(window.notNil) {
+			window
+		} {
+			if(parentDef.notNil) {
+				parentDef.window;
+			}
+		}
+	}
+
 	updateView { arg ... args;
 		var val, layout;
 		if(window.notNil) {
@@ -140,6 +159,11 @@ WindowDef {
 					val = source.value(this, *args);
 				} { arg err;
 					"In WindowDef: %".format(key).error;
+					//err.errorString.postln;
+					//err.what.postln;
+					//err.adviceLink.postln;
+					//err.postProtectedBacktrace;
+					err.dumpBackTrace;
 					err.reportError;
 				};
 				window.name = this.windowName ? key ? "";
