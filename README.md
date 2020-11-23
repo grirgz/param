@@ -38,8 +38,7 @@ Disclaimer: this is a work in progress, some parts are broken, some parts are un
 - Integrated with JITLib and pattern system: you can mix code and GUI/control/record as you please
 - Saving system for everything that is not in code file: a value set with your controller is lost at reboot, save it easily, the format of save files is human readable code so you can recover it even if the savefile is corrupt
 
-Dependences
------------
+## Dependences
 
 quarks
 - JITLibExtensions: getHalo/addHalo
@@ -53,21 +52,21 @@ optional quarks
 - vim patch loadRelative
 
 
-Configuration
--------------
+## Configuration
 
 For you projects to be independent of location on your disk, you can add paths
 So instead of writing 
-```BufDef("~/mysamples/kicks/kick.wav") ```
+```BufDef("~/mysamples/kicks/kick.wav")```
 you can write
-BufDef("kicks/kick.wav")
+```BufDef("kicks/kick.wav")```
+
 If you move your samples elsewhere, no need to update every code file, just change the path in your startup.scd
 
+```
 // paths for loading files and projects
 FileSystemProject.addPath("~/code/sc/projects/"); // change by your own paths
 FileSystemProject.addPath("~/drafts/");
 // paths for loading buffers and wavetables
 BufDef.addPath("~/Musique/samples/");
 WavetableDef.addPath("~/Musique/wavetables/");
-
-
+```
