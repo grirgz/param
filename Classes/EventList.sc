@@ -291,7 +291,7 @@ TimelineEventList : List {
 			ins.start(absTime);
 			inval = inval ? Event.default;
 			block { arg break;
-				size.do {
+				( size ).do {
 					prev = ev;
 					ev = str.next(inval);  // no need to change inval because we are not chaining a pattern
 					if(first) {
@@ -307,23 +307,23 @@ TimelineEventList : List {
 								absTime = ev.use{~delta.value} ? ev.use{~dur.value};
 							}
 						}
+					};
+					if(ev.notNil) {
+						Log(\Param).debug("ev %", ev);
+						ev[\absTime] = absTime;
+						Log(\Param).debug("XEventList.newFrom: absTime: %, evdur: %", absTime, ev[\dur]);
+						absTime = absTime + ( ev.use{~delta.value} ? ev.use{~dur.value} );
+						// FIXME: hardcode sustain because it's in function of \dur which is overwritten in calcRelDurs
+						// 		should maybe use \delta in calcRelDurs, but this can break everything!
+						ev[\sustain] = ev.use{~sustain.value};
+						ev[\midinote] = ev.use{~midinote.value}; // FIXME: midinote is hardcoded because NoteTimeline does not know how to display \degree and never compute \midinote function
+						// now that absTime is calculated, should get rid of it because not handled everywhere but used instead of \dur in pattern.play
+						ev[\delta] = nil; 
+						ins.addEvent(ev);
+						//ev.debug("endev");
+						Log(\Param).debug("endev:%", ev);
 					} {
-						if(ev.notNil) {
-							Log(\Param).debug("ev %", ev);
-							ev[\absTime] = absTime;
-							Log(\Param).debug("XEventList.newFrom: absTime: %, evdur: %", absTime, ev[\dur]);
-							absTime = absTime + ev.use{~delta.value} ? ev.use{~dur.value};
-							// FIXME: hardcode sustain because it's in function of \dur which is overwritten in calcRelDurs
-							// 		should maybe use \delta in calcRelDurs, but this can break everything!
-							ev[\sustain] = ev.use{~sustain.value};
-							// now that absTime is calculated, should get rid of it because not handled everywhere but used instead of \dur in pattern.play
-							ev[\delta] = nil; 
-							ins.addEvent(ev);
-							//ev.debug("endev");
-							Log(\Param).debug("endev:%", ev);
-						} {
-							break.value;
-						};
+						break.value;
 					};
 					first = false;
 				}
@@ -450,7 +450,7 @@ XEventLoop {
 	printOn { |stream| ^this.storeOn(stream) }
 
 	init { |argFunc|
-		func = func ?? { "defaultFunc!".postln; this.defaultFunc };
+		func = argFunc ?? { this.defaultFunc };
 		lists = List.new; // ggz: should not be XEventList
 
 		this.initTask;
