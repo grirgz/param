@@ -12,7 +12,7 @@ ParamBaseSpec : Spec {
 }
 
 
-XArraySpec : ParamBaseSpec {
+ParamArraySpec : ParamBaseSpec {
 	var <array, <default;
 	var <>size, <>isMonoSpec;
 	var <>isDynamic;
@@ -29,7 +29,7 @@ XArraySpec : ParamBaseSpec {
 
 		array.do({ arg sp;
 			if(sp.isNil) {
-				Error("XArraySpec: spec is nil or not in Spec library: "++array.asCompileString).throw
+				Error("ParamArraySpec: spec is nil or not in Spec library: "++array.asCompileString).throw
 			}
 		});
 
@@ -112,13 +112,15 @@ XArraySpec : ParamBaseSpec {
 	}
 }
 
-StepListSpec : XArraySpec {
+XArraySpec : ParamArraySpec {}
+
+StepListSpec : ParamArraySpec {
 	default {
 		^StepList.newFrom(array.collect(_.default))
 	}
 }
 
-XEnvSpec : ParamBaseSpec {
+ParamEnvSpec : ParamBaseSpec {
 	var <levels, <times, <curves;
 	var <default;
 	var <size;
@@ -158,7 +160,7 @@ XEnvSpec : ParamBaseSpec {
 		levels = levels.collect(_.asSpec);
 		curves = curves.collect(_.asSpec);
 
-		curves.debug("XEnvSpec:curves");
+		curves.debug("ParamEnvSpec:curves");
 
 		if(
 			levels.any { arg val;
@@ -353,12 +355,14 @@ XEnvSpec : ParamBaseSpec {
 	}
 	
 }
+XEnvSpec : ParamEnvSpec {}
 
-XAudioSpec : ParamBaseSpec {
+ParamAudioSpec : ParamBaseSpec {
 }
+XAudioSpec : ParamAudioSpec {}
 
 
-XNonFloatSpec : ParamBaseSpec { // maybe a parent for all others special spec to exclude them when making a gui ?
+ParamNonFloatSpec : ParamBaseSpec { // maybe a parent for all others special spec to exclude them when making a gui ?
 	var <>default;
 	constrain { arg val;
 		^val;
@@ -370,8 +374,9 @@ XNonFloatSpec : ParamBaseSpec { // maybe a parent for all others special spec to
 		^val;
 	}
 }
+XNonFloatSpec : ParamNonFloatSpec {}
 
-XGateSpec : XNonFloatSpec {
+ParamGateSpec : ParamNonFloatSpec {
 	var <default;
 	*new {
 		^super.new(0,1,\lin,1,0);
@@ -381,8 +386,9 @@ XGateSpec : XNonFloatSpec {
 		default = val;
 	}
 }
+XGateSpec : ParamGateSpec {}
 
-XTrigSpec : XNonFloatSpec {
+ParamTrigSpec : ParamNonFloatSpec {
 	var <default;
 	*new {
 		^super.new(0,1,\lin,1,0);
@@ -392,8 +398,9 @@ XTrigSpec : XNonFloatSpec {
 		default = val;
 	}
 }
+XTrigSpec : ParamTrigSpec {}
 
-XBufferSpec : XNonFloatSpec {
+ParamBufferSpec : ParamNonFloatSpec {
 	// arg: channel count
 	var >tagSpec;
 	tagSpec { arg self;
@@ -403,8 +410,9 @@ XBufferSpec : XNonFloatSpec {
 	default { ^0 } // maybe return an empty buffer
 
 }
+XBufferSpec : ParamBufferSpec {}
 
-XSampleSpec : XBufferSpec {
+ParamSampleSpec : ParamBufferSpec {
 	// WIP
 	// FIXME: how to specify sampler parameters and list of available buffers/samples ?
 	var <>numChannels, <>startParamName, sustainParamName, endParamName, speedParamName, startType, sustainType, endType;
@@ -412,16 +420,19 @@ XSampleSpec : XBufferSpec {
 		^this.newCopyArgs(numChannels, startParamName, sustainParamName, endParamName, speedParamName, startType, sustainType, endType);
 	}
 }
+XSampleSpec : ParamSampleSpec {}
 
-XDoneActionSpec : XNonFloatSpec {
-
-}
-
-XWavetableSpec : XBufferSpec {
+ParamDoneActionSpec : ParamNonFloatSpec {
 
 }
+XDoneActionSpec : ParamDoneActionSpec {}
 
-XBusSpec : XNonFloatSpec {
+ParamWavetableSpec : ParamBufferSpec {
+
+}
+XWavetableSpec : ParamWavetableSpec {}
+
+ParamBusSpec : ParamNonFloatSpec {
 	// arg: channel count
 	var >tagSpec;
 	tagSpec { arg self;
@@ -429,33 +440,37 @@ XBusSpec : XNonFloatSpec {
 	}
 
 }
+XBusSpec : ParamBusSpec {}
 
-XAudioBusSpec : XBusSpec {
+ParamAudioBusSpec : ParamBusSpec {
 	// arg: channel count
 	var >tagSpec;
 	tagSpec { arg self;
 		^tagSpec ?? { TagSpecDef(\BusDef) }
 	}
 }
+XAudioBusSpec : ParamAudioBusSpec {}
 
-XControlBusSpec : XBusSpec {
+ParamControlBusSpec : ParamBusSpec {
 	// arg: channel count
 	var >tagSpec;
 	tagSpec { arg self;
 		^tagSpec ?? { TagSpecDef(\BusDef) }
 	}
+}
+XControlBusSpec : ParamControlBusSpec {}
+
+ParamInBusSpec : ParamBusSpec {
 
 }
+XInBusSpec : ParamInBusSpec {}
 
-XInBusSpec : XBusSpec {
-
-}
-
-XOutBusSpec : XBusSpec {
+ParamOutBusSpec : ParamBusSpec {
 
 }
+XOutBusSpec : ParamOutBusSpec {}
 
-XBoolSpec : XNonFloatSpec {
+ParamBoolSpec : ParamNonFloatSpec {
 	*new { 
 		^super.new.default_(false);
 	}
@@ -469,10 +484,11 @@ XBoolSpec : XNonFloatSpec {
 	}
 
 }
+XBoolSpec : ParamBoolSpec {}
 
 ///////////////////////////// Menu
 
-TagSpec : XNonFloatSpec {
+TagSpec : ParamNonFloatSpec {
 	var list; // forced to List
 	var <>dynamicLists;
 	//var dirty = true; // cache not really implemented
@@ -725,22 +741,4 @@ ListIndexSpec : XNonFloatSpec {
 
 }
 
-
-// ~a = XArraySpec( \freq.asSpec ! 15  ) // array of size 15
-// ~a = XArraySpec( [\freq, \unipolar]  ) // array of size two
-// ~a = XArraySpec( [\freq, \unipolar], [1,2]  ) // default value
-// ~a.size;
-// ~a.default;
-// ~a.array;
-// ~a.isMonoSpec;
-// 
-// 
-// ~b = XEnvSpec( \freq.asSpec ! 5, \dur.asSpec, \bipolar.asSpec) // env with 5 segments (times have 4 values)
-// ~b = XEnvSpec( [\freq.asSpec, \lofreq.asSpec] , [\dur.asSpec, \unipolar.asSpec], \bipolar.asSpec) // 2 segment, different spec for each segment
-// ~b = XEnvSpec( \freq.asSpec ! 5, \dur.asSpec, \bipolar.asSpec, Env([10,30,10,420],[1,2,1,2])) // default value
-// ~b.default.asCompileString
-// ~b.levels;
-// ~b.curves;
-// ~b.times;
-// ~b.isMonoSpec;
 

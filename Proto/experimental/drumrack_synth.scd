@@ -69,8 +69,8 @@ SynthDef(\dr_kick, { |out=0, amp=0.1, pan=0, fratio=1.5, freqpan=0.01, spread=0.
 }, metadata:(specs:(
 	// FIXME: disabled because error ^^ The preceding error dump is for ERROR: Message 'setFrom' not understood.
 
-	//env0: XEnvSpec( ControlSpec(0,9,\lin)!4, ControlSpec(0,2,\lin)!4 ),
-	//env1: XEnvSpec( ControlSpec(0,127,\lin)!3, ControlSpec(0,2,\lin)!3 ),
+	//env0: ParamEnvSpec( ControlSpec(0,9,\lin)!4, ControlSpec(0,2,\lin)!4 ),
+	//env1: ParamEnvSpec( ControlSpec(0,127,\lin)!3, ControlSpec(0,2,\lin)!3 ),
 	timeScale: ControlSpec(0.001,4,\lin, 0, 1),
 ))).store;
 
@@ -108,15 +108,15 @@ SynthDef(\dr_oscsampler, { arg out=0, amp=0.1, gate=1, pan=0, freq=200, bufnum, 
 }, metadata:(specs:(
 	finepos: ControlSpec(-0.001,0.001,\lin, 0, 1),
 	range: ControlSpec(-0.01,0.01,\lin, 0, 1),
-	adsr: XEnvSpec.adsr( ControlSpec(0,2,\lin) ),
-	posenv: XEnvSpec(\unipolar!5, ControlSpec(0,1,\lin)),
+	adsr: ParamEnvSpec.adsr( ControlSpec(0,2,\lin) ),
+	posenv: ParamEnvSpec(\unipolar!5, ControlSpec(0,1,\lin)),
 	fshift: ControlSpec(-2000,2000,\lin,0,0),
 	spread: \unipolar.asSpec,
-	bufnum: XSampleSpec.new,
+	bufnum: ParamSampleSpec.new,
 	pos: \unipolar.asSpec,
 	lpmix: \unipolar.asSpec,
 	ffreq: \freq.asSpec,
-	ffreqtab: XArraySpec( ControlSpec(1/8,8,\exp)!8 ),
+	ffreqtab: ParamArraySpec( ControlSpec(1/8,8,\exp)!8 ),
 	hpmix: \unipolar.asSpec,
 	hpfreq: \freq.asSpec,
 	distamp: \amp.asSpec,

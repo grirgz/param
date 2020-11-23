@@ -241,11 +241,11 @@ PlayerWrapper_Base {
 	}
 
 	outBus_ { arg val;
-		Param(this.target, \out, XBusSpec()).set(val);
+		Param(this.target, \out, ParamBusSpec()).set(val);
 	}
 
 	outBus { arg val;
-		^Param(this.target, \out, XBusSpec()).get;
+		^Param(this.target, \out, ParamBusSpec()).get;
 	}
 
 	quant {
@@ -539,11 +539,11 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 	// allow a protoclass to act as a PlayerWrapper
 
 	outBus_ { arg val;
-		Param(Message(this.target), \outBus, XBusSpec()).set(val);
+		Param(Message(this.target), \outBus, ParamBusSpec()).set(val);
 	}
 
 	outBus { arg val;
-		^Param(Message(this.target), \outBus, XBusSpec()).get;
+		^Param(Message(this.target), \outBus, ParamBusSpec()).get;
 	}
 
 	play {

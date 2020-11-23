@@ -131,9 +131,9 @@ ParamCombinator {
 		baseParam = Param(Ndef(name), \base, targetParam.spec);
 		baseParam.set(targetParam.get);
 		targetParam.target.set(targetParam.property, Ndef(name).asMap);
-		rangeParam = Param(Ndef(name), \ranges, XArraySpec(\bipolar ! rangeSize));
+		rangeParam = Param(Ndef(name), \ranges, ParamArraySpec(\bipolar ! rangeSize));
 		rangeParam.set(ranges.asArray); // whyyyy list doesnt do anything ????
-		inputParam = Param(Ndef(name), \inputs, XArraySpec(\unipolar ! rangeSize));
+		inputParam = Param(Ndef(name), \inputs, ParamArraySpec(\unipolar ! rangeSize));
 		inputParam.set(inputs.asArray);
 
 

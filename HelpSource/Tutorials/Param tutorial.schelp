@@ -519,7 +519,7 @@ Pdef(\pdef_scalar).setBusMode(\freq, false); // disable bus mode
 
 section:: Other parameters types
 
-Working with scalar values in SC is relatively easy even without Param, but using arrays or envelopes is more complicated. First there is no Spec equivalent for arrays or envelopes, so I created two new spec classes: XArraySpec and XEnvSpec
+Working with scalar values in SC is relatively easy even without Param, but using arrays or envelopes is more complicated. First there is no Spec equivalent for arrays or envelopes, so I created two new spec classes: ParamArraySpec and ParamEnvSpec
 
 Then you must know than when setting Pdef arrays or envelopes, contrary to Ndef, you must enclose it in bracket or else, Pbind will multi-channel-expand it to multple synth nodes. Param handle it transparently for you.
 
@@ -539,10 +539,10 @@ Ndef(\ndef_array, { arg pan=0, amp=0.1;
 );
 ::
 
-To specify the spec of the argument, use XArraySpec. XArraySpec take an array of specs as argument, here, three \freq.asSpec (asSpec is called automatically).
+To specify the spec of the argument, use ParamArraySpec. ParamArraySpec take an array of specs as argument, here, three \freq.asSpec (asSpec is called automatically).
 
 code::
-~p = Param(Ndef(\ndef_array), \freqtab, XArraySpec(\freq!3)); // define a Param pointing to the array
+~p = Param(Ndef(\ndef_array), \freqtab, ParamArraySpec(\freq!3)); // define a Param pointing to the array
 
 ~p.set([120,150,780]); // set the values of the array
 ~p.get;
@@ -571,7 +571,7 @@ MIDIMap(\k1, ~mp); // map the knob \k1 to the second slot of the array;
 You can also get access to an array slot with "at" method:
 
 code::
-~p = Param(Ndef(\ndef_array), \freqtab, XArraySpec(\freq!3)); // define a Param pointing to the array
+~p = Param(Ndef(\ndef_array), \freqtab, ParamArraySpec(\freq!3)); // define a Param pointing to the array
 ~p.at(0); // this is the Param for the array slot 0, equivalent to Param(Ndef(\ndef_array), \freqtab -> 0, \freq);
 ::
 
@@ -604,18 +604,18 @@ Ndef(\ndef_env).get(\freqenv).asEnv;
 Ndef(\ndef_env).get(\freqenv).asEnv.asCompileString; // use asCompileString to see the content of the envelope
 ::
 
-Now let's define a Param pointing to this Ndef envelope argument. We specify the spec using XEnvSpec, the arguments are:
+Now let's define a Param pointing to this Ndef envelope argument. We specify the spec using ParamEnvSpec, the arguments are:
 
 code::
-XEnvSpec( array_of_levels_specs, array_of_times_specs)
+ParamEnvSpec( array_of_levels_specs, array_of_times_specs)
 ::
 
-It's important to tell XEnvSpec the size of the envelope, because, as arrays, the size is fixed in SynthDef. the second argument of XEnvSpec is not required to be an array, if not, XEnvSpec will expand it automatically to match the size of the levels array. The curve argument is not provided because it's not mapped like levels or times
+It's important to tell ParamEnvSpec the size of the envelope, because, as arrays, the size is fixed in SynthDef. the second argument of ParamEnvSpec is not required to be an array, if not, ParamEnvSpec will expand it automatically to match the size of the levels array. The curve argument is not provided because it's not mapped like levels or times
 
 It's also important to define the spec of the envelope argument, else, Param has no way to know it's an envelope and not a regular array since they are the same internally.
 
 code::
-~p = Param(Ndef(\ndef_env), \freqenv, XEnvSpec(\freq!4, ControlSpec(0,2,\lin,0,0.1)));
+~p = Param(Ndef(\ndef_env), \freqenv, ParamEnvSpec(\freq!4, ControlSpec(0,2,\lin,0,0.1)));
 ::
 
 Same methods as always:

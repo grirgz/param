@@ -429,7 +429,7 @@ ParamGroupLayout {
 		});
 		biglist = pg.select({ arg param;
 			param.type != \scalar and: { 
-				param.spec.isKindOf(XAudioSpec).not
+				param.spec.isKindOf(ParamAudioSpec).not
 				and: { 
 					// FIXME: find a better way to handle this
 					param.type != \other 
@@ -437,8 +437,8 @@ ParamGroupLayout {
 			}
 		});
 		busbuflist = pg.select( { arg param;
-			param.spec.isKindOf(XBusSpec) or: {
-				param.spec.isKindOf(XBufferSpec) or: {
+			param.spec.isKindOf(ParamBusSpec) or: {
+				param.spec.isKindOf(ParamBufferSpec) or: {
 					param.spec.isKindOf(TagSpec)
 				}
 			}

@@ -231,7 +231,7 @@ Pdef(\myinstrument,
 	// the Pdef should contains a Pbind else NoteTimeline will not find the \instrument key to guess arguments of the SynthDef
 	Pbind(
 		\instrument, \saw,
-		\lpfr, 1,
+		\lpfr, Pseq([1,2],inf),
 	)
 );
 )
@@ -239,16 +239,15 @@ Pdef(\myinstrument,
 NoteTimeline(\mynotes, Pdef(\myinstrument));
 
 // create an event list from a pattern
-// FIXME: broken
 (
 	NoteTimeline(\mynotes).eventList = TimelineEventList.newFrom(
 		Pbind(
 			\instrument, \default,
-			\degree, Pseq((1..20),1),
+			\degree, Pseq((1..32),inf) % Pseq((8..16),inf),
 			\dur, 1/8,
 			\amp, 0.1,
 		),
-		100 // maximum number of notes, required else infinite pattern will hang forever (default: FIXME)
+		128 // maximum number of notes, required else infinite pattern will hang forever (default: 2000)
 	);
 )
 ::

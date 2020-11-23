@@ -64,7 +64,7 @@
 		self.proxy[self.stages.postfader] = \filter -> { arg in;
 			in * \postfader.kr(0).dbamp;
 		};
-		self.proxy.addSpec(\inbus, XBusSpec());
+		self.proxy.addSpec(\inbus, ParamBusSpec());
 		self.proxy.addSpec(\prefader, \db);
 		self.proxy.addSpec(\postfader, \db);
 		self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter);

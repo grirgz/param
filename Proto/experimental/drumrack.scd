@@ -60,10 +60,10 @@
 	isSpecialSpec: { arg self, obj;
 		// disable when new control GUIs are written
 		[
-			//XBufferSpec,
+			//ParamBufferSpec,
 			XTrigSpec,
 			XGateSpec,
-			XBusSpec,
+			ParamBusSpec,
 			XWavetableSpec,
 			XDoneActionSpec,
 		].any({ arg x; obj.isKindOf(x) })
@@ -417,10 +417,10 @@
 			self.env_panel.layout = HLayout(*
 				self.drumpad.list[self.drumpad_row_selector.selected_index].paramlist
 					.select({ arg x;
-						x.type != \scalar and: { x.type != \other or: { x.spec.isKindOf(XBufferSpec) } };
+						x.type != \scalar and: { x.type != \other or: { x.spec.isKindOf(ParamBufferSpec) } };
 					}).do({ arg x; x.property.debug("refresh_env_panel: selected params") })
 					.collect({ arg param;
-						if(param.spec.isKindOf(XBufferSpec)) {
+						if(param.spec.isKindOf(ParamBufferSpec)) {
 							VLayout(
 								StaticText.new.string_(param.property),
 								param.asView,

@@ -707,7 +707,7 @@ Param {
 		view.refreshChangeAction = { arg me;
 			if(keys.isNil) {
 				var spec;
-				if(this.spec.isKindOf(XBusSpec) or: { this.spec.isKindOf(XBufferSpec) }) {
+				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
 					spec = this.spec.tagSpec;
 				} {
 					spec = this.spec;
@@ -740,7 +740,7 @@ Param {
 		view.refreshChangeAction = {
 			var spec;
 			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
-			if(this.spec.isKindOf(XBusSpec) or: { this.spec.isKindOf(XBufferSpec) }) {
+			if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
 				spec = this.spec.tagSpec;
 			} {
 				spec = this.spec;
@@ -755,7 +755,7 @@ Param {
 		view.action = {
 			var spec;
 			//view.value.debug("mapValuePopUpMenu:4 (action)");
-			if(this.spec.isKindOf(XBusSpec) or: { this.spec.isKindOf(XBufferSpec) }) {
+			if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
 				spec = this.spec.tagSpec;
 			} {
 				spec = this.spec;
@@ -876,7 +876,7 @@ Param {
 
 	asEnvelopeView {
 		var view;
-		view = XEnvelopeView.new(nil, Rect(0, 0, 230, 80))
+		view = FixedEnvelopeView.new(nil, Rect(0, 0, 230, 80))
 			.drawLines_(true)
 			.selectionColor_(Color.red)
 			.drawRects_(true)
@@ -912,16 +912,16 @@ Param {
 
 	asView {
 		case(
-			{ this.spec.isKindOf(XEnvSpec) }, {
+			{ this.spec.isKindOf(ParamEnvSpec) }, {
 				^this.asEnvelopeView;
 			},
-			{ this.spec.isKindOf(XArraySpec) }, {
+			{ this.spec.isKindOf(ParamArraySpec) }, {
 				^this.asMultiSlider;
 			},
-			{ this.spec.isKindOf(MenuSpec) }, {
+			{ this.spec.isKindOf(TagSpec) }, {
 				^this.asPopUpMenu;
 			},
-			{ this.spec.isKindOf(XBufferSpec) }, {
+			{ this.spec.isKindOf(ParamBufferSpec) }, {
 				var scv = SampleChooserView.new;
 				^scv.mapParam(this).view.addHalo(\ViewHolder, scv);
 			}, {
@@ -962,10 +962,10 @@ Param {
 	*valueToSpec { arg val, default_spec;
 		var def = default_spec ? defaultSpec;
 		^if(val.isKindOf(Array) or: val.isKindOf(List)) {
-			XArraySpec( def ! val.size )
+			ParamArraySpec( def ! val.size )
 		} {
 			if(val.isKindOf(Env)) {
-				XEnvSpec( def ! val.levels.size )
+				ParamEnvSpec( def ! val.levels.size )
 			} {
 				def.asSpec
 			}
@@ -1019,7 +1019,7 @@ Param {
 			rval = default_spec;
 		} {
 			if(def.isSequenceableCollection) {
-				rval = XArraySpec(default_spec!def.size);
+				rval = ParamArraySpec(default_spec!def.size);
 			}
 		};
 		^rval;
@@ -1044,7 +1044,7 @@ Param {
 						rval = default_spec;
 					} {
 						if(def.class.isSequenceableCollection) {
-							rval = XArraySpec(default_spec!def.size);
+							rval = ParamArraySpec(default_spec!def.size);
 						}
 					};
 				};
@@ -1190,8 +1190,8 @@ BaseParam {
 	type {
 		// type according to spec
 		var res = [
-			[XEnvSpec, \env],
-			[XArraySpec, \array],
+			[ParamEnvSpec, \env],
+			[ParamArraySpec, \array],
 			[ControlSpec, \scalar],
 		].detect({ arg x;
 			this.spec.isKindOf(x[0])
@@ -1202,8 +1202,8 @@ BaseParam {
 			^\other
 		};
 		//^switch(this.spec.class,
-		//	XEnvSpec, \env,
-		//	XArraySpec, \array,
+		//	ParamEnvSpec, \env,
+		//	ParamArraySpec, \array,
 		//	\scalar,
 		//)
 	}
@@ -1223,8 +1223,8 @@ BaseParam {
 			^\other
 		};
 		//^switch(this.spec.class,
-		//	XEnvSpec, \env,
-		//	XArraySpec, \array,
+		//	ParamEnvSpec, \env,
+		//	ParamArraySpec, \array,
 		//	\scalar,
 		//)
 	}
@@ -1244,7 +1244,7 @@ BaseParam {
 		instr = this.instrument;
 		if(instr.notNil) {
 			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec !? _.default ? 0 };
-			if(spec.class == XEnvSpec) {
+			if(spec.isKindOf(ParamEnvSpec)) {
 				val = val.asEnv;
 			};
 		} {
@@ -1341,7 +1341,7 @@ ParamAccessor {
 			},
 
 			toSpec: { arg self, sp;
-				if(sp.isKindOf(XArraySpec)) {
+				if(sp.isKindOf(ParamArraySpec)) {
 					sp[idx]
 				} {
 					sp
@@ -1384,7 +1384,7 @@ ParamAccessor {
 			},
 
 			toSpec: { arg self, sp;
-				if(sp.isKindOf(XEnvSpec)) {
+				if(sp.isKindOf(ParamEnvSpec)) {
 					sp.perform(selector)[idx];
 				} {
 					sp
@@ -1429,7 +1429,7 @@ ParamAccessor {
 			},
 
 			toSpec: { arg self, sp;
-				if(sp.isKindOf(XArraySpec)) {
+				if(sp.isKindOf(ParamArraySpec)) {
 					sp[idx]
 				} {
 					sp
@@ -1464,7 +1464,7 @@ ParamAccessor {
 			},
 
 			toSpec: { arg self, sp;
-				if(sp.isKindOf(XEnvSpec)) {
+				if(sp.isKindOf(ParamEnvSpec)) {
 					sp.perform(selector);
 				} {
 					sp
@@ -2105,7 +2105,7 @@ NdefParam : BaseAccessorParam {
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
 			this.default
 		};
-		if(spec.class == XEnvSpec) {
+		if(spec.isKindOf(ParamEnvSpec)) {
 			val = val.asEnv;
 		};
 		//this.dumpBackTrace;
@@ -2320,7 +2320,7 @@ ListParam : BaseParam {
 	}
 
 	spec {
-		^XArraySpec(spec ! target.size);
+		^ParamArraySpec(spec ! target.size);
 	}
 
 	at { arg idx;
@@ -2423,7 +2423,7 @@ ListParamSlot : BaseParam {
 		if(val.isNil) {
 			val = spec.default;
 		};
-		if(spec.class == XEnvSpec) {
+		if(spec.isKindOf(ParamEnvSpec)) {
 			val = val.asEnv;
 		};
 		^val;
@@ -2464,14 +2464,14 @@ PbindSeqDefParam : PdefParam {
 		if(si == 0) {
 			^spec;
 		} {
-			^XArraySpec(spec ! si);
+			^ParamArraySpec(spec ! si);
 		}
 	}
 }
 
 PbindSeqDefParamSlot : PdefParamSlot {
 	//spec {
-	//	^XArraySpec(spec ! this.get.size);
+	//	^ParamArraySpec(spec ! this.get.size);
 	//}
 
 }
@@ -2576,8 +2576,8 @@ DictionaryParamSlot : DictionaryParam {
 	}
 
 	spec {
-		if(spec.class == XArraySpec) {
-			// FIXME: fail if imbricated XArraySpec, but it's not supported anyway
+		if(spec.isKindOf(ParamArraySpec)) {
+			// FIXME: fail if imbricated ParamArraySpec, but it's not supported anyway
 			^spec.at(index);
 		} {
 			^spec
@@ -2598,7 +2598,7 @@ DictionaryParamSlot : DictionaryParam {
 		if(val.isNil) {
 			val = spec.default;
 		};
-		if(spec.class == XEnvSpec) {
+		if(spec.isKindOf(ParamEnvSpec)) {
 			val = val.asEnv;
 		};
 		^val;
@@ -3008,7 +3008,7 @@ PdefParam_old : BaseParam {
 		property = meth;
 		spec = this.toSpec(sp);
 		key = obj.key;
-		if(spec.isKindOf(XArraySpec)) {
+		if(spec.isKindOf(ParamArraySpec)) {
 			multiParam = true;
 		};
 	}
@@ -3104,7 +3104,7 @@ PdefParam_old : BaseParam {
 		if(val.isNil) {
 			var instr = this.instrument;
 			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec.default };
-			if(spec.class == XEnvSpec) {
+			if(spec.isKindOf(ParamEnvSpec)) {
 				val = val.asEnv;
 			};
 			val = val.copy;
@@ -3173,8 +3173,8 @@ PdefParamSlot : PdefParam {
 	}
 
 	spec {
-		if(spec.class == XArraySpec) {
-			// FIXME: fail if imbricated XArraySpec, but it's not supported anyway
+		if(spec.isKindOf( ParamArraySpec )) {
+			// FIXME: fail if imbricated ParamArraySpec, but it's not supported anyway
 			^spec.at(index);
 		} {
 			^spec
@@ -3231,7 +3231,7 @@ PdefParamEnvSlot : PdefParam {
 	}
 
 	spec {
-		if(spec.class == XEnvSpec) {
+		if(spec.isKindOf(ParamEnvSpec)) {
 			^spec.perform(subproperty).at(index);
 		} {
 			^spec
@@ -3307,7 +3307,7 @@ NdefParam_old : BaseParam {
 		//	// mapped to a Ndef
 		//	val = 0
 		//};
-		if(spec.class == XEnvSpec) {
+		if(spec.isKindOf(ParamEnvSpec)) {
 			val = val.asEnv;
 		};
 		^val;
@@ -3385,7 +3385,7 @@ NdefParamSlot : NdefParam {
 	}
 
 	spec {
-		if(spec.class == XArraySpec) {
+		if(spec.isKindOf(ParamArraySpec)) {
 			^spec.at(index);
 		} {
 			^spec
@@ -3457,7 +3457,7 @@ NdefParamEnvSlot : NdefParam {
 	}
 
 	spec {
-		if(spec.class == XEnvSpec) {
+		if(spec.isKindOf(ParamEnvSpec)) {
 			^spec.perform(subproperty).at(index);
 		} {
 			^spec

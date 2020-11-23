@@ -1,6 +1,6 @@
 //////////////////////// Enhanceds SCLib views (X prefix because I don't know how to handle this)
 
-XEnvelopeView : QEnvelopeView {
+FixedEnvelopeView : QEnvelopeView {
 	// standard EnvelopeView doesn't provide a symetric getEnv/setEnv
 	var curves;
 	var <timeScale = 1;
@@ -114,8 +114,9 @@ XEnvelopeView : QEnvelopeView {
 		});
 	}
 }
+XEnvelopeView : FixedEnvelopeView {}
 
-XStaticText : QStaticText {
+ParamStaticText : QStaticText {
 	// no value method in StaticText make it less generic when mixed with others views
 	value {
 		this.string;
@@ -126,3 +127,4 @@ XStaticText : QStaticText {
 	}
 }
 
+XStaticText : ParamStaticText { }

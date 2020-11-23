@@ -70,3 +70,8 @@ FileSystemProject.addPath("~/drafts/");
 BufDef.addPath("~/Musique/samples/");
 WavetableDef.addPath("~/Musique/wavetables/");
 ```
+
+Disable annoying debug messages:
+```
+Log(\Param).level = \info;
+```

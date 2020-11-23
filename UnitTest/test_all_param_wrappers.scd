@@ -45,7 +45,7 @@ Ndef(\target_object, { arg freq=200, pan=0, amp=0.1;
 	sig = Pan2.ar(sig, pan, amp);
 });
 
-Ndef(\target_object).addSpec(\env_param, XEnvSpec(\unipolar ! 4));
+Ndef(\target_object).addSpec(\env_param, ParamEnvSpec(\unipolar ! 4));
 
 SynthDef(\target_synthdef, { arg freq=200, pan=0, amp=0.1;
 	var sig;
@@ -54,11 +54,11 @@ SynthDef(\target_synthdef, { arg freq=200, pan=0, amp=0.1;
 	sig = Pan2.ar(sig, pan, amp);
 	Out.ar(\out.kr(0), sig);
 }, metadata:(specs:(
-		env_param: XEnvSpec(\unipolar ! 4),
-		//array_param: XArraySpec(), // FIXME: this should be commented, Param should detect spec from default value, but bug in 3.11
+		env_param: ParamEnvSpec(\unipolar ! 4),
+		//array_param: ParamArraySpec(), // FIXME: this should be commented, Param should detect spec from default value, but bug in 3.11
 ))).add;
 
-~envspec = XEnvSpec(\unipolar ! 4);
+~envspec = ParamEnvSpec(\unipolar ! 4);
 
 Pdef(\target_object, Pbind(
 	\instrument, \target_synthdef
@@ -75,7 +75,7 @@ StepEventDef(\target_object)[\instrument] = \target_synthdef;
 ~dict[\scalar_param] = 10;
 ~dict[\array_param] = [10,20,30,10];
 ~dict[\env_param] = Env([0,1,0.5,0],[0.1,0.8,0.1]);
-~dict.addSpec(\env_param, XEnvSpec(\unipolar!4));
+~dict.addSpec(\env_param, ParamEnvSpec(\unipolar!4));
 
 ~list = List[12,43,45,12];
 
@@ -296,12 +296,12 @@ WindowDef(\testgui, {
 	~test.assertEquals(Param.getSynthDefDefaultValue(\env_param, \target_synthdef).asEnv.asCompileString, "Env([ 0.0, 1.0, 0.5, 0.0 ], [ 0.10000000149012, 0.80000001192093, 0.10000000149012 ], [ 0.0, 0.0, 0.0 ])");
 
 	~test.assertEquals(Param.specFromDefaultValue(\scalar_param, \target_synthdef), Param.defaultSpec);
-	~test.assertEquals(Param.specFromDefaultValue(\array_param, \target_synthdef), XArraySpec(Param.defaultSpec!8));
-	~test.assertEquals(Param.specFromDefaultValue(\env_param, \target_synthdef), XEnvSpec(Param.defaultSpec!8)); // Fail because no way to know it's an env
+	~test.assertEquals(Param.specFromDefaultValue(\array_param, \target_synthdef), ParamArraySpec(Param.defaultSpec!8));
+	~test.assertEquals(Param.specFromDefaultValue(\env_param, \target_synthdef), ParamEnvSpec(Param.defaultSpec!8)); // Fail because no way to know it's an env
 
 	~test.assertEquals(Param.valueToSpec(10), Param.defaultSpec);
-	~test.assertEquals(Param.valueToSpec([10,10]), XArraySpec(Param.defaultSpec!2));
-	~test.assertEquals(Param.valueToSpec(Env([10,10],[10])), XEnvSpec(Param.defaultSpec!2));
+	~test.assertEquals(Param.valueToSpec([10,10]), ParamArraySpec(Param.defaultSpec!2));
+	~test.assertEquals(Param.valueToSpec(Env([10,10],[10])), ParamEnvSpec(Param.defaultSpec!2));
 
 )
 

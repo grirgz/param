@@ -1,7 +1,7 @@
 TITLE:: Param
 summary:: Control sound objects parameters with GUI and MIDI
 categories:: Control, GUI, MIDI
-related:: Tutorials/Param tutorial, Classes/ParamGroup, Classes/ParamGroupDef, Classes/ParamMorpher, Classes/ParamMorpherDef, Classes/XArraySpec, Classes/XEnvSpec, Classes/XEnvelopeView
+related:: Tutorials/Param tutorial, Classes/ParamGroup, Classes/ParamGroupDef, Classes/ParamMorpher, Classes/ParamMorpherDef, Classes/ParamArraySpec, Classes/ParamEnvSpec, Classes/FixedEnvelopeView
 
 DESCRIPTION::
 Param is an abstraction to a sound object parameter (Ndef, Pdef, ...) which can easily be mapped to a GUI object and MIDI control. 
@@ -169,10 +169,10 @@ This create and show a window with the param.asView inside. Useful for quicly te
 
 METHOD:: asView
 Create the apropriate GUI component to display the param and map the param to it. This is determined by the spec of the param.
-If the param is an envelope (XEnvSpec), call asEnvelopeView.
-If the param is an array (XArraySpec), call asMultiSlider.
+If the param is an envelope (ParamEnvSpec), call asEnvelopeView.
+If the param is an array (ParamArraySpec), call asMultiSlider.
 If the param is an item from a list (MenuSpec), call asPopUpMenu.
-If the param is a buffer (XBufferSpec), use SampleChooserView.
+If the param is a buffer (ParamBufferSpec), use SampleChooserView.
 Else, call asKnob.
 
 returns:: a subclass of View
