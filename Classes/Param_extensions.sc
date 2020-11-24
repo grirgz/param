@@ -185,7 +185,12 @@
 
 +Pdef {
 	edit { 
-		WindowDef(\PdefEditor).front(this)
+		if(WindowDef(\PdefEditor).notNil) {
+			^WindowDef("PdefEditor_%".format(this.key).asSymbol, WindowDef(\PdefEditor)).front(this)
+		} {
+			Log(\Param).info("no editor found: WindowDef(\\PdefEditor) is not defined");
+			^nil
+		}
 	}
 }
 
@@ -495,6 +500,7 @@
 				}
 			};
 		});
+		this.addHalo(\followChangeController, con);
 				//[model, key, fun, init].debug("update followChange6");
 		if(init==true) { 
 				//[model, key, fun, init].debug("update followChange7");

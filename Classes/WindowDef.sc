@@ -27,7 +27,7 @@ WindowDef {
 	var <>simpleController;
 	var <>startRenderingTime;
 	var <>border = true;
-	var <>parentDef;
+	var <>parentDef; // deprecated
 
 
 	// FIXME: window is not restored at the exact same position but is shifted downward, maybe a ubuntu unity bug
@@ -132,9 +132,10 @@ WindowDef {
 	}
 
 	embedView { arg def ...args;
+		// pass the parent def as if it is the current one
 		var res;
-		this.parentDef = def;
-		res = source.value(this, *args);
+		//this.parentDef = def;
+		res = source.value(def, *args);
 		res.addUniqueMethod(\windowName, { this.windowName });
 		^res;
 	}

@@ -13,8 +13,8 @@ SampleTimelineView : TimelineView {
 	mapData { arg model;
 		this.view.onChange(model, \data, { 
 			{
-				"hey!! changed data".debug;
-				if(model.bufferInfo.notNil) {
+				Log(\Param).debug("SampleTimelineView: data change detected");
+				if(model.enableWaveformView == true and: {model.bufferInfo.bufferData.notNil}) {
 					numChannels = model.bufferInfo.numChannels;
 					this.areasize = Point(areasize.x, numChannels ? 2);
 					
@@ -50,7 +50,7 @@ SampleTimelineView : TimelineView {
 	}
 
 	drawWaveform {
-		Log(\Param).debug("draw waveform");
+		//Log(\Param).debug("draw waveform");
 		if(mydraw.notNil) {
 			mydraw.debug("mydraw");
 			mydraw.(this);
@@ -64,14 +64,14 @@ SampleTimelineView : TimelineView {
 					var p;
 					var offset = chanidx+0.5;
 					Pen.moveTo(this.secondPointToPixelPoint(Point(0,0+offset)));
-					Log(\Param).debug("drawWaveform: opening point: %",this.secondPointToPixelPoint(Point(0,0)) );
+					//Log(\Param).debug("drawWaveform: opening point: %",this.secondPointToPixelPoint(Point(0,0)) );
 					block { arg break;
 
 						chandata.do{|y, x|
 							y = y[chanidx] ? 0;
 							p = this.secondPointToPixelPoint(Point(x/this.resampleRate,y*yfac+offset));
 							if(x == 0) {
-								Log(\Param).debug("drawWaveform: first point: %", p );
+								//Log(\Param).debug("drawWaveform: first point: %", p );
 							};
 							//if(x%100==0) { p.debug("p % %".format(chanidx, yfac)); };
 							//if(x==0, {Pen.moveTo(p)}, {Pen.lineTo(p)});
@@ -82,9 +82,9 @@ SampleTimelineView : TimelineView {
 							}
 						};
 					};
-					Log(\Param).debug("drawWaveform: last point: %",p);
+					//Log(\Param).debug("drawWaveform: last point: %",p);
 					Pen.lineTo(Point(p.x, this.secondPointToPixelPoint(Point(0,0+offset)).y )); // finish at y center to close the path nicely
-					Log(\Param).debug("drawWaveform: closing point: %",Point(p.x, this.secondPointToPixelPoint(Point(0,0+offset)).y));
+					//Log(\Param).debug("drawWaveform: closing point: %",Point(p.x, this.secondPointToPixelPoint(Point(0,0+offset)).y));
 					Pen.lineTo(this.secondPointToPixelPoint(Point(0,0+offset)));
 				};
 				Pen.width = 1;

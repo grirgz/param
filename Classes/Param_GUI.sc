@@ -106,58 +106,14 @@ ParamViewToolBox {
 	}
 
 	*attachContextMenu { arg param, view;
-		var con = ContextMenuWindow.new();
-		con.action = { arg menu, selection;
-			switch(selection,
-				0, {
-					param.setBusMode(param.inBusMode.not);
-				},
-				1, {
-					param.unset
-				},
-				2, {
-					param.set(param.default)
-				},
-				3, {
-					var midi = param.target.getHalo(\MIDIFunc, param.property);
-					if(midi.notNil) {
-						midi.free;
-						param.target.addHalo(\MIDIFunc, param.property, nil);
-					};
-					midi = MIDIFunc.cc({ arg ... args;
-						//args.debug("MENU MIDI Func");
-						param.normSet(args[0]/127)
-					}).fix.learn;
-					param.target.addHalo(\MIDIFunc, param.property, midi);
-				},
-				4, {
-					var midi = param.target.getHalo(\MIDIFunc, param.property);
-					if(midi.notNil) {
-						midi.free;
-						param.target.addHalo(\MIDIFunc, param.property, nil);
-					};
+		view.mouseDownAction = {  arg vie, x, y, modifiers, buttonNumber, clickCount;
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+			if(buttonNumber == 1) {
+				if(WindowDef(\ParamGenericOverlayMenu).notNil) {
+					WindowDef(\ParamGenericOverlayMenu).front(vie, x, y, param)
 				}
-			)
+			}
 		};
-		con.attach(view, {
-			con.list = [ 
-				if(param.inBusMode) {
-					"Disable bus mode"
-				} {
-					"Enable bus mode"
-				},
-				"Unset",
-				"Default",
-				"MIDI CC learn and map",
-				if(param.target.getHalo(\MIDIFunc, param.property).notNil) {
-					"Clear MIDI (%)".format(param.target.getHalo(\MIDIFunc, param.property).msgNum);
-				} {
-					"Clear MIDI (not set)";
-				},
-			]
-		});
-		^con;
-
 	}
 }
 
@@ -376,9 +332,9 @@ ParamGroupLayout {
 						var st = StaticText.new.string_(param.property);
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
-					},
+					}.fixedWidth_(80),
 					param.asSlider.orientation_(\horizontal).minWidth_(150),
-					param.asTextField.minWidth_(70),
+					param.asTextField.fixedWidth_(80),
 				)
 			};
 			lay;
@@ -400,18 +356,45 @@ ParamGroupLayout {
 			};
 			lay;
 		};
-		
-		^if(item.isKindOf(Param)) {
-			if(item.type == \scalar) {
-				scalar_entry.(item)
+		var popup_entry = { arg param;
+			var lay;
+			lay = if(param.isNil) {
+				nil;
 			} {
-				if([\array, \env].includes(item.type)) {
-					env_entry.(item)
+				HLayout(
+					if(label_mode == \full) {
+						param.asStaticTextLabel;
+					} {
+						StaticText.new.string_(param.property)
+					}.fixedWidth_(80),
+					param.asPopUpMenu.minWidth_(150),
+					//param.asTextField.minWidth_(70),
+				)
+			};
+			lay;
+		};
+		
+		^case(
+			{ item.isKindOf(Param) }, {
+				if(item.type == \scalar) {
+					scalar_entry.(item)
+				} {
+					if([\array, \env].includes(item.type)) {
+						env_entry.(item)
+					} {
+						if(item.spec.isKindOf(TagSpec)) {
+							popup_entry.(item)
+						}
+					}
 				}
+			},
+			{ item.isKindOf(PlayerWrapper) }, {
+				item.asView.enableRightClickEditor_(true)
+			}, {
+				PlayerWrapper(item).asView.enableRightClickEditor_(true)
+
 			}
-		} {
-			PlayerWrapper(item).asView
-		}
+		)
 	}
 
 	*two_panes { arg pg, label_mode;

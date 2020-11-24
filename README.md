@@ -2,6 +2,8 @@
 
 Param is a framework that allow you to easily develop your custom graphical interface and connect your controllers to it.
 
+In an environment like Supercollider, you don't want a monolithic DAW that force you to work like the developpers have decided. Your interface should evolve with your workflow. But you don't want take hours to manage details of GUI building. The solution is a framework offering basic building blocks and managing internal circuitery for you.
+
 Disclaimer: this is a work in progress, some parts are broken, some parts are unfinished, some API can change. Help is welcome
 
 ## Design your sound
@@ -12,10 +14,10 @@ Disclaimer: this is a work in progress, some parts are broken, some parts are un
 - GroupDef: name groups
 
 ## Build a GUI:
-- [WindowDef:](file:///home/ggz/Notebooks/Notes/Param/Documentation/WindowDef.txt) group and reuse your GUI code and remember window position and size
+- WindowDef: group and reuse your GUI code and remember window position and size
 - Param: build automatically GUI for your SynthDefs, control any synth parameter with GUI or controller, support for arrays and enveloppes
 - PlayerWrapper: a nice wrapper to control any player (Pdef, Timeline, ...) with a standard interface
-- Timelines: [NoteTimelines](file:///home/ggz/Notebooks/Notes/Param/Documentation/NoteTimelines.txt) for notes, [KitTimeline](file:///home/ggz/Notebooks/Notes/Param/Documentation/KitTimeline.txt) for drums, [SampleTimeline](file:///home/ggz/Notebooks/Notes/Param/Documentation/SampleTimeline.txt) for Buffers, [ParamTimeline](file:///home/ggz/Notebooks/Notes/Param/Documentation/ParamTimeline.txt) for automations, [ClipTimeline](file:///home/ggz/Notebooks/Notes/Param/Documentation/ClipTimeline.txt) to sequence any player
+- Timelines: NoteTimelines for notes, KitTimeline for drums, SampleTimeline for Buffers, ParamTimeline for automations, ClipTimeline to sequence any player
 - Builder: a special function that is executed each time an argument change value, you can control it with GUI/controllers
 
 ## Use your controllers:
@@ -62,6 +64,7 @@ you can write
 
 If you move your samples elsewhere, no need to update every code file, just change the path in your startup.scd
 
+Place this code in your startup.scd
 ```
 // paths for loading files and projects
 FileSystemProject.addPath("~/code/sc/projects/"); // change by your own paths
@@ -69,6 +72,7 @@ FileSystemProject.addPath("~/drafts/");
 // paths for loading buffers and wavetables
 BufDef.addPath("~/Musique/samples/");
 WavetableDef.addPath("~/Musique/wavetables/");
+FileSystemProject.recordFolder = "~/Musique/records/";
 ```
 
 Disable annoying debug messages:

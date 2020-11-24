@@ -1263,30 +1263,48 @@ BaseParam {
 
 	*getInstrumentFromPbind { arg inval;
 		^if(inval.notNil) {
-			if(inval.class == Pbind) {
-				inval = inval.patternpairs.clump(2).detect { arg pair;
-					pair[0] == \instrument
-				};
-				if(inval.notNil) {
-					inval = inval[1];
-					if(inval.class == Symbol or:{ inval.class == String }) {
-						inval;
+			case(
+				{ inval.isKindOf(Pbind) }, {
+					inval = inval.patternpairs.clump(2).detect { arg pair;
+						pair[0] == \instrument
+					};
+					if(inval.notNil) {
+						inval = inval[1];
+						if(inval.class == Symbol or:{ inval.class == String }) {
+							inval;
+						} {
+							nil
+						}
 					} {
 						nil
 					}
-				} {
-					nil
-				}
-			} {
-				if(inval.isKindOf(Pmono)) {
+
+				},
+				{ inval.isKindOf(PbindProxy) }, {
+					inval = inval.pairs.clump(2).detect { arg pair;
+						pair[0] == \instrument
+					};
+					if(inval.notNil) {
+						inval = inval[1];
+						if(inval.isKindOf(PatternProxy)) {
+							inval = inval.source;
+						};
+						if(inval.class == Symbol or:{ inval.class == String }) {
+							inval;
+						} {
+							nil
+						}
+					} {
+						nil
+					}
+				},
+				{ inval.isKindOf(Pmono) }, {
 					inval.synthName
-				} {
+				}, {
 					nil
 				}
-			};
-		} {
-			nil
-		};
+			)
+		}
 	}
 }
 
@@ -1978,14 +1996,6 @@ PdefParam : BaseAccessorParam {
 
 	inBusMode {
 		^target.inBusMode(property)
-	}
-
-	inBusMode_ { arg val;
-		if(val == true) {
-			this.setBusMode(true)
-		} {
-			this.setBusMode(false)
-		}
 	}
 
 	*instrument { arg target;
@@ -2844,6 +2854,15 @@ EventPatternProxyParam : StepEventParam {
 	inBusMode {
 		^target.inBusMode(property)
 	}
+
+	inBusMode_ { arg val;
+		if(val == true) {
+			this.setBusMode(true)
+		} {
+			this.setBusMode(false)
+		}
+	}
+
 
 	instrument {
 		// before setting any key, the .envir is nil and .get(\instrument) return nil

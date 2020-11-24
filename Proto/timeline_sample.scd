@@ -32,10 +32,16 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	parent: ~eventTimeline,
 	all: { PresetDictionary.new(\sampleTimeline) },
 	eventType: \sampleTimeline,
-	recordDirectory: "~/Musique/sc/cliprec/".standardizePath, // FIXME: don't hardcode
 	fixedResampleCount: 500,
 	enableFixedResampling: true,
+	enableWaveformView: false,
 	resampleRate: 10,
+
+	recordFolder: { arg self;
+		(
+			FileSystemProject.current !? _.recordFolder ?? {FileSystemProject.recordFolder ?? { "~/Musique/"  }};
+		).standardizePath;
+	},
 
 	new: { arg self, name, path;
 		//"so many strange".debug;
@@ -81,8 +87,8 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	keepRecordedFile: { arg self;
 		var fileName = self.fileName;
 		if(fileName.notNil && self.recordedFileIsKept.not) { // can't use ProtoTemplateDef, clash with key and prAdd
-			var newfilename = self.recordDirectory +/+ PathName(fileName).fileName;
-			File.mkdir(self.recordDirectory);
+			var newfilename = self.recordFolder +/+ PathName(fileName).fileName;
+			File.mkdir(self.recordFolder);
 			File.copy(fileName, newfilename);
 			self.fileName = newfilename;
 			self.buffer = BufDef(newfilename.asSymbol);
@@ -93,7 +99,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	},
 
 	isRecordedFileKept: { arg self;
-		(self.fileName ? "").beginsWith(self.recordDirectory)
+		(self.fileName ? "").beginsWith(self.recordFolder)
 	},
 
 	recordedFileIsKept: { arg self;
@@ -147,7 +153,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 					1
 				};
 			}),
-			\out, Pfunc({ parentEvent.outBus ? self.outBus ? 0 }), // since \out is never nil in an event because default to 0, i must use another key
+			\out, Pfunc({ parentEvent !? _.outBus ? self.outBus ? 0 }), // since \out is never nil in an event because default to 0, i must use another key
 		).trace;
 	},
 
@@ -254,8 +260,13 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		self.bufferInfo.fileName = fileName;
 	},
 
+	enableWaveformView_: { arg self, val;
+		self[\enableWaveformView] = val;
+		self.changed(\data);
+	},
+
 	askBufferData: { arg self;
-		if(self.buffer.notNil) {
+		if(self.buffer.notNil and: { self.enableWaveformView == true }) {
 			if(self.bufferInfo.bufferData.isNil) {
 				self.refreshBufferData;
 			} {
@@ -289,8 +300,8 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 							resample = bufferData.clump(numChannels).flop;
 							0.01.wait;
 							resample = resample.collect({ arg chan;
-							   	chan.resamp1(resampleCount);
 								0.05.wait;
+							   	chan.resamp1(resampleCount);
 						   	}).flop; 
 							self.bufferInfo.enableFixedResampling = self.enableFixedResampling; 
 							self.bufferInfo.fixedResampleCount = self.fixedResampleCount; 
@@ -301,7 +312,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 							self.areasize = Point(self.areasize.x, self.bufferInfo.numChannels ? 2);
 							self.changed(\areasize);
 							self.changed(\data);
-							"loaded".debug;
+							"refreshBufferData: buffer loaded".debug;
 						});
 						break.value;
 					}
@@ -314,7 +325,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	},
 ));
 ~sampleTimeline = SampleTimeline.proto;
-BufDef.paths = (BufDef.paths ++ [ SampleTimeline.proto.recordDirectory ]).as(Set).as(List);
+BufDef.addPath(SampleTimeline.proto.recordFolder);
 
 
 
@@ -362,6 +373,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 
 
 	make_header: { arg self;
+		self.counterView = StaticText.new;
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
@@ -384,10 +396,11 @@ ProtoTemplateDef(\SampleTimelineView, (
 					);
 				}).front(self.timeline_model.postProxy, self.timeline_model.label, self.timeline_model.postProxy.asParamGroup(nil, false, [\gate, \doneAction, \bufnum]));
 			}),
+			self.counterView,
 
 			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-				WindowDef(\SampleTimelineOverlayMenu).front(self.timeline_model, view, x, y)
+				WindowDef(\SampleTimelineOverlayMenu).front(self, view, x, y)
 			}).maxWidth_(20),
 
 		);
@@ -494,13 +507,170 @@ ProtoTemplateDef(\SampleTimelineView, (
 		self.timeline_model.changed(\data);
 		//"clipTimelinePanelView.makeLayout: end init".debug;
 		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
+		self.timeline.mouseMoveAction = {|me, px, py, mod|
+			var scursor = self.timeline_model.selection_cursor;
+			var cursor = self.timeline_model.cursor;
+			var slen, lenbeat, lensec;
+			var str;
+			lenbeat = scursor.endPosition - scursor.startPosition;
+			if(slen == 0) {
+				if(cursor.endPosition.isNil) {
+					lenbeat = 0;
+				} {
+					lenbeat = cursor.endPosition - cursor.startPosition;
+				}
+			};
+			lensec = lenbeat/self.timeline_model.tempoClock.tempo;
+		   	str = "%b %:%s".format(lenbeat.round(0.01), ( lensec / 60 ).asInteger, ( lensec % 60 ).round(0.01));
+			self.counterView.string_(str)
+		};
 		self.layout;
 	},
+
+	copyAction: { arg self;
+		var selnodes;
+		var cursor = self.timeline_model.selection_cursor;
+		var startpos, endpos;
+		var buf = self.timeline_model.buffer;
+		var model = self.timeline_model;
+		[ cursor.startPosition, cursor.endPosition ].debug("copy start end");
+
+		buf.loadToFloatArray(action:{ arg arr;
+			startpos = cursor.startPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+			startpos = startpos.round.asInteger;
+			endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+			endpos = endpos.round.asInteger;
+			"ém1".debug;
+			~sampleTimeline_clipboard = arr[startpos..endpos];
+		})
+
+	},
+
+	deleteSelectedNodesHook: { arg self;
+		{ arg tl;
+			var cursor = self.timeline_model.selection_cursor;
+			var startpos, endpos;
+			var buf = self.timeline_model.buffer;
+			var model = self.timeline_model;
+
+			buf.loadToFloatArray(action:{ arg arr;
+				startpos = cursor.startPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+				startpos = startpos.round.asInteger;
+				endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+				endpos = endpos.round.asInteger;
+				arr[startpos..endpos] = 0;
+				"ém1".debug;
+				buf.loadCollection(arr, action:{
+					//model.bufferTempPath = nil;
+					//model.changed(\buffer);
+					//model.isModified = true;
+					model.refreshBufferData;
+					"erasing done".debug;
+				})
+			})
+		}
+	},
+
+	splitAction: { arg self;
+			var cursor = self.timeline_model.selection_cursor;
+			var startpos, endpos;
+			var buf = self.timeline_model.buffer;
+			var model = self.timeline_model;
+			var slice;
+
+			buf.loadToFloatArray(action:{ arg arr;
+				startpos = cursor.startPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+				startpos = startpos.round.asInteger;
+				endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+				endpos = endpos.round.asInteger;
+				slice = arr[startpos..endpos];
+				slice = slice.reverse;
+				arr.overWrite(slice, startpos);
+				"ém1".debug;
+				buf.loadCollection(arr, action:{
+					//model.bufferTempPath = nil;
+					//model.changed(\buffer);
+					//model.isModified = true;
+					model.refreshBufferData;
+					"reverse done".debug;
+				})
+			})
+	},
+
+	pasteAction: { arg self;
+		if(~sampleTimeline_clipboard.notNil) {
+			var cursor = self.timeline_model.selection_cursor;
+			var startpos, endpos;
+			var buf = self.timeline_model.buffer;
+			var model = self.timeline_model;
+
+			buf.loadToFloatArray(action:{ arg arr;
+				startpos = cursor.startPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+				startpos = startpos.round.asInteger;
+				endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+				endpos = endpos.round.asInteger;
+				arr.overWrite(~sampleTimeline_clipboard, startpos);
+				"ém1".debug;
+				buf.loadCollection(arr, action:{
+					//model.bufferTempPath = nil;
+					//model.changed(\buffer);
+					//model.isModified = true;
+					model.refreshBufferData;
+					"pasting done".debug;
+				})
+			})
+		}
+	},
+
+	exportSelectionToBufferEditor: { arg self;
+		var model = self.timeline_model;
+		var scursor = model.selection_cursor;
+		var cursor = model.cursor;
+		var startpos, endpos;
+		var exportedFrameCount;
+		var newbuf;
+		var buf = model.buffer;
+		if(scursor.startPosition == scursor.endPosition) { // when no selection
+			scursor = cursor; // use preview cursor instead
+		};
+		startpos = scursor.startPosition ? cursor.startPosition;
+		endpos = scursor.endPosition ? cursor.endPosition;
+		if(startpos.notNil) {
+
+			startpos = startpos/model.tempoClock.tempo * buf.sampleRate;
+			startpos = startpos.round.asInteger;
+			endpos = endpos/model.tempoClock.tempo * buf.sampleRate;
+			endpos = endpos.round.asInteger;
+			exportedFrameCount = endpos - startpos;
+
+			exportedFrameCount.debug("exportedFrameCount");
+			newbuf = Buffer.alloc(Server.default, exportedFrameCount+1, model.buffer.numChannels);
+			model.buffer.debug("now getting slice");
+			model.buffer.loadToFloatArray(startpos, exportedFrameCount, { arg col;
+				col.size.debug("got colsize");
+				newbuf.debug("now loading in newbuf");
+				newbuf.loadCollection(col, action: { arg xbuf;
+					newbuf.debug("newbuf loaded slice");
+					xbuf.debug("xbuf loaded slice");
+					{
+						newbuf.debug("newbuf loaded slice2");
+						xbuf.debug("xbuf loaded slice2");
+						~newbuf = newbuf;
+						WindowDef("%_%".format("BufferEditor", 100000000.rand).asSymbol, WindowDef(\BufferEditor)).front(newbuf);
+					}.defer
+				})
+			});
+		} {
+			Log(\Param).info("No selection");
+		}
+	},
+
 ));
 );
 
-WindowDef(\SampleTimelineOverlayMenu, { arg def, model, view, x=600, y=600;
+WindowDef(\SampleTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 	var inview, layout;
+	var model = viewmodel.timeline_model;
 	[x, y].debug("xy");
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
@@ -520,6 +690,7 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 				//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
 			).asPopUpMenu,
 		),
+		Param(Message(model), \enableWaveformView, ParamBoolSpec()).asButton("Display waveform"),
 		BasicButton.new.string_("Clipboard refString").action_({ 
 			model.refCompileString.pbcopy;
 		}),
@@ -531,6 +702,9 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 				BufDef.reload(model.bufferInfo.fileName);
 				"done.".debug;
 			};
+		}),
+		BasicButton.new.string_("Export selection to buffer").action_({ 
+			viewmodel.exportSelectionToBufferEditor;
 		}),
 		nil
 	);

@@ -29,6 +29,8 @@ FileSystemProject : TrackDef {
 	classvar <>loadingFiles;
 	classvar <>loadedFiles;
 	classvar <>current;
+	classvar <>temporaryRecordFolder = "/tmp/";
+	classvar <>recordFolder;
 
 	*all {
 		^PresetDictionary.new(\FileSystemProject);

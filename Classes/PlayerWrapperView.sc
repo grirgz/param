@@ -38,7 +38,20 @@ PlayerWrapperView {
 			})
 		);
 		lay.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
-		lay.addUniqueMethod(\parentView, { this }); // FIXME: why is button wrapped in a layout ?
+		lay.addUniqueMethod(\parentView, { this }); 
+		lay.addUniqueMethod(\enableRightClickEditor_, { arg self, val=true;
+			//Log(\Param).debug("enableRightClickEditor_ %", val);
+			if(val == true) {
+				button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+					//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+					if(buttonNumber == 1) {
+						this.model.edit;
+					} 
+				})
+			} {
+				button.mouseDownAction_({})
+			}
+		});
 		this.makeUpdater;
 		this.update;
 		^lay;
@@ -102,6 +115,7 @@ PlayerWrapperView {
 			}
 		}
 	}
+
 }
 
 PlayerWrapperSelectorView : PlayerWrapperView {

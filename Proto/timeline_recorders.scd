@@ -229,6 +229,12 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 		tl.eventList.reorder;
 	},
 
+	temporaryRecordFolder: { arg self;
+		(
+			FileSystemProject.current !? _.temporaryRecordFolder ?? {FileSystemProject.temporaryRecordFolder ?? { "/tmp/"  }};
+		).standardizePath
+	},
+
 	startRecording: { arg self, numChannels=2;
 		var name = "rec_%_%".format(self.timeline.key, Date.localtime.stamp);
 		var clip;
@@ -239,7 +245,7 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 			"prepare Start recording".debug(name);
 
 			self.recordName = name;
-			self.filename = "/tmp/%.wav".format(name);
+			self.filename = self.temporaryRecordFolder +/+ "%.wav".format(name);
 			if(self.recordOnClipTimelineEnabled == true) {
 				clip = SampleTimeline(name.asSymbol);
 				ev = clip.asPatternEvent;
