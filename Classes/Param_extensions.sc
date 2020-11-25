@@ -43,7 +43,7 @@
 				//numChannels.debug("setBusMode: nc");
 				bus = CachedBus.control(Server.default,numChannels );
 					// FIXME: hardcoded server
-					// hardcoded rate, but can't convert audio buffer to a number, so it's ok
+					// hardcoded rate, but can't convert audio data to a number, so it's ok
 				//bus.debug("setBusMode: bus");
 				if(val.isSequenceableCollection) {
 					bus.setn(val);
@@ -109,21 +109,27 @@
 		if(val.isKindOf(Env)) {
 			this.set(key, this.class.nestOn(val))
 		} {
-			if(this.inBusMode(key)) {
-				var bus;
-				var curval;
-				curval = this.get(key);
-				curval = this.class.nestOff(curval);
-				bus = curval.asCachedBus;
-				if(curval.isSequenceableCollection) {
-					bus.setn(val);
-				} {
-					bus.set(val);
-				};
-				this.changed(\set, [key, val]);
+			if(val.isKindOf(Symbol)) { 
+				// if the val is a bus, replace the bus
+				// used to map modulator bus to parameters
+				this.set(key, val)
 			} {
-				this.set(key, this.class.nestOn(val))
-			};
+				if(this.inBusMode(key)) {
+					var bus;
+					var curval;
+					curval = this.get(key);
+					curval = this.class.nestOff(curval);
+					bus = curval.asCachedBus;
+					if(curval.isSequenceableCollection) {
+						bus.setn(val);
+					} {
+						bus.set(val);
+					};
+					this.changed(\set, [key, val]);
+				} {
+					this.set(key, this.class.nestOn(val))
+				};
+			}
 		}
 	}
 
@@ -185,6 +191,7 @@
 
 +Pdef {
 	edit { 
+		ParamProto.init;
 		if(WindowDef(\PdefEditor).notNil) {
 			^WindowDef("PdefEditor_%".format(this.key).asSymbol, WindowDef(\PdefEditor)).front(this)
 		} {
@@ -375,11 +382,11 @@
 		}
 	}
 
-	mapParamLabel { arg param;
+	mapParamLabel { arg param, labelmode;
 		if(param.isNil) {
 			this.unmapParam
 		} {
-			param.mapStaticTextLabel(this);
+			param.mapStaticTextLabel(this, labelmode);
 		}
 	}
 }
@@ -459,12 +466,16 @@
 
 +PopUpMenu {
 	// map index of popupmenu to param 
-	mapParam { arg param;
-		param.mapPopUpMenu(this);
+	mapParam { arg param, keys;
+		param.mapPopUpMenu(this, keys);
 	}
 
-	mapValueParam { arg param;
-		param.mapValuePopUpMenu(this);
+	mapValueParam { arg param, keys;
+		param.mapValuePopUpMenu(this, keys);
+	}
+
+	mapBusParam { arg param, keys;
+		param.mapBusPopUpMenu(this, keys)
 	}
 
 	mapIndexParam { arg param, keys;
@@ -566,8 +577,8 @@
 		param.mapStaticText(this);
 	}
 
-	mapParamLabel { arg param;
-		param.mapStaticTextLabel(this);
+	mapParamLabel { arg param, labelmode;
+		param.mapStaticTextLabel(this, labelmode);
 	}
 }
 

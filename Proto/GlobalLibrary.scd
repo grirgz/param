@@ -856,6 +856,18 @@ TagSpecDef(\BusDef, {
 	TagSpecDef(\BusDef_object).list
 });
 
+TagSpecDef(\BusDef_asMap, {
+	[\0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k).asMap }) 
+});
+
+TagSpecDef(\BusDef_control_asMap, {
+	[\0->0] ++ BusDef.all.keys.as(Array).sort.select { arg k;
+		BusDef(k).rate == \control
+	}.collect({ arg k; 
+		k -> BusDef(k).asMap 
+	}) 
+});
+
 TagSpecDef(\BusDef_index, {
 	[\0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k).index }) 
 });

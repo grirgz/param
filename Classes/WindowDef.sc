@@ -111,7 +111,12 @@ WindowDef {
 	
 	isFullScreen {
 		if(window.notNil) {
-			^Window.availableBounds.extent == window.bounds.extent;
+			try {
+				^Window.availableBounds.extent == window.bounds.extent;
+			} { arg error;
+				Log(\Param).debug("error in WindowDef.isFullScreen %", this.key);
+				error.reportError;
+			}
 		} {
 			^false
 		}

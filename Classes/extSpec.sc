@@ -460,6 +460,22 @@ ParamControlBusSpec : ParamBusSpec {
 }
 XControlBusSpec : ParamControlBusSpec {}
 
+ParamMappedControlBusSpec : ParamBusSpec {
+	// arg: channel count
+	var >tagSpec;
+	tagSpec { arg self;
+		^tagSpec ?? { TagSpecDef(\BusDef_control_asMap) }
+	}
+}
+
+ParamMappedBusSpec : ParamBusSpec {
+	// arg: channel count
+	var >tagSpec;
+	tagSpec { arg self;
+		^tagSpec ?? { TagSpecDef(\BusDef_asMap) }
+	}
+}
+
 ParamInBusSpec : ParamBusSpec {
 
 }
@@ -669,6 +685,7 @@ TagSpecDef : TagSpec {
 	}
 
 	*new { arg key, val;
+		ParamProto.init; // to load GlobalLibrary
 		if(all[key].isNil) {
 			if(val.notNil) {
 				^super.new.init(val).prAdd(key)

@@ -277,12 +277,12 @@ Param {
 		^this
 	}
 
-	asLabel {
-		^this.label
+	asLabel { arg labelmode;
+		^this.label(labelmode)
 	}
 
-	label {
-		^(label ?? { wrapper.label })
+	label { arg labelmode;
+		^(label ?? { wrapper.label(labelmode) })
 	}
 
 	fullLabel {
@@ -307,6 +307,10 @@ Param {
 
 	inBusMode {
 		^wrapper.inBusMode
+	}
+
+	inBusMode_ { arg ...args;
+		^wrapper.inBusMode_(*args)
 	}
 
 	numChannels {
@@ -380,6 +384,14 @@ Param {
 
 	normSet { arg val;
 		wrapper.normSet(val);
+	}
+
+	getBus {
+		^wrapper.getBus
+	}
+
+	setBus { arg val;
+		wrapper.setBus(val)
 	}
 
 	/////////////////// MIDI mapping
@@ -612,10 +624,10 @@ Param {
 		}, nil, nil)
 	}
 
-	mapStaticTextLabel { arg view;
+	mapStaticTextLabel { arg view, labelmode;
 		this.makeSimpleController(view, {}, {}, { arg view, param;
 			{
-				view.string = param.asLabel;
+				view.string = param.asLabel(labelmode);
 			}.defer;
 		}, nil)
 	}
@@ -701,6 +713,7 @@ Param {
 	}
 
 	mapIndexPopUpMenu { arg view, keys;
+		// this method i used when the target parameter contains an integer used as an index into the TagSpec's list
 		// FIXME: mapIndexPopUpMenu does not use updater
 		var pm = view;
 		//[keys, this.spec, this.spec.labelList].debug("mapIndexPopUpMenu: whatXXX");
@@ -732,7 +745,84 @@ Param {
 		});
 	}
 
-	mapValuePopUpMenu { arg view;
+	mapValuePopUpMenu { arg view, keys;
+		// this method is used when the target parameter contains a value, TagSpec find the key symbol associated to it in its list
+		// FIXME: mapIndexPopUpMenu does not use updater
+		// TODO: define a listener when the list change
+		var pm = view;
+		//debug("mapValuePopUpMenu:1");
+
+		if(keys.notNil and: { keys.isKindOf(TagSpec).not }) {
+			keys = TagSpec(keys);
+		};
+
+		view.refreshChangeAction = {
+			var spec;
+			var val;
+			//var isMapped = false;
+			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
+			if(keys.notNil) {
+				spec = keys;
+				val = this.get;
+			} {
+				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
+					if(this.spec.isKindOf(ParamMappedControlBusSpec)) {
+						val = this.getBus;
+					} {
+						val = this.get;
+					};
+					spec = this.spec.tagSpec;
+				} {
+					val = this.get;
+					spec = this.spec;
+				};
+			};
+			view.items = spec.labelList.asArray;
+			view.value = spec.unmapIndex(val);
+			//view.value.debug("mapValuePopUpMenu:1.5");
+		};
+		view.refreshChange;
+		//[this.spec, this.get].debug("mapValuePopUpMenu:2");
+		//view.value.debug("mapValuePopUpMenu:3");
+		view.action = {
+			var spec;
+			var isMapped = false;
+			//view.value.debug("mapValuePopUpMenu:4 (action)");
+			if(keys.notNil) {
+				spec = keys;
+			} {
+				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
+					if(this.spec.isKindOf(ParamMappedControlBusSpec)) {
+						isMapped = true
+					};
+					spec = this.spec.tagSpec;
+				} {
+					spec = this.spec;
+				};
+			};
+			if(isMapped) {
+				this.setBus(spec.mapIndex(view.value));
+			} {
+				this.set(spec.mapIndex(view.value));
+			};
+			//this.get.debug("mapValuePopUpMenu:5 (action)");
+		};
+		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
+		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
+			// TODO: do not change the whole row when just one value is updated!
+			//[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
+			if(arg1 == this.property or: { arg1.isKindOf(SequenceableCollection) and: {
+				arg1.includes(this.property)
+			} }) {
+				aview.refreshChange;
+			};
+			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
+		});
+		//view.value.debug("mapValuePopUpMenu:8");
+	}
+
+	mapBusPopUpMenu { arg view;
+		// this method is used when the target parameter contains a mapped bus, use getBus instead of get to avoid bus mode to return the bus value instead of the bus
 		// FIXME: mapIndexPopUpMenu does not use updater
 		// TODO: define a listener when the list change
 		var pm = view;
@@ -746,7 +836,7 @@ Param {
 				spec = this.spec;
 			};
 			view.items = spec.labelList.asArray;
-			view.value = spec.unmapIndex(this.get);
+			view.value = spec.unmapIndex(this.getBus);
 			//view.value.debug("mapValuePopUpMenu:1.5");
 		};
 		view.refreshChange;
@@ -760,7 +850,7 @@ Param {
 			} {
 				spec = this.spec;
 			};
-			this.set(spec.mapIndex(view.value));
+			this.setBus(spec.mapIndex(view.value));
 			//this.get.debug("mapValuePopUpMenu:5 (action)");
 		};
 		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
@@ -858,8 +948,8 @@ Param {
 		^StaticText.new.mapParam(this);
 	}
 
-	asStaticTextLabel {
-		^StaticText.new.mapParamLabel(this);
+	asStaticTextLabel { arg labelmode;
+		^StaticText.new.mapParamLabel(this, labelmode);
 	}
 
 	asTextField {
@@ -902,32 +992,41 @@ Param {
 		^but;
 	}
 
-	asPopUpMenu {
-		^PopUpMenu.new.mapParam(this) // is Param.mapPopUpMenu
+	asPopUpMenu { arg keys;
+		^PopUpMenu.new.mapParam(this, keys) // is Param.mapPopUpMenu
 	}
 
-	asIndexPopUpMenu {
-		^PopUpMenu.new.mapIndexParam(this)
+	asValuePopUpMenu { arg keys;
+		^PopUpMenu.new.mapValueParam(this, keys) // is Param.mapValuePopUpMenu
 	}
 
-	asView {
-		case(
-			{ this.spec.isKindOf(ParamEnvSpec) }, {
-				^this.asEnvelopeView;
-			},
-			{ this.spec.isKindOf(ParamArraySpec) }, {
-				^this.asMultiSlider;
-			},
-			{ this.spec.isKindOf(TagSpec) }, {
-				^this.asPopUpMenu;
-			},
-			{ this.spec.isKindOf(ParamBufferSpec) }, {
-				var scv = SampleChooserView.new;
-				^scv.mapParam(this).view.addHalo(\ViewHolder, scv);
-			}, {
-				^this.asKnob;
-			}
-		)
+	asBusPopUpMenu { arg keys;
+		^PopUpMenu.new.mapBusParam(this, keys) // is Param.mapBusPopUpMenu
+	}
+
+	asIndexPopUpMenu { arg keys;
+		^PopUpMenu.new.mapIndexParam(this, keys) // is Param.mapIndexPopUpMenu
+	}
+
+	asView { arg labelmode;
+		^ParamGroupLayout.formEntry(this, labelmode)
+		//case(
+			//{ this.spec.isKindOf(ParamEnvSpec) }, {
+				//^this.asEnvelopeView;
+			//},
+			//{ this.spec.isKindOf(ParamArraySpec) }, {
+				//^this.asMultiSlider;
+			//},
+			//{ this.spec.isKindOf(TagSpec) }, {
+				//^this.asPopUpMenu;
+			//},
+			//{ this.spec.isKindOf(ParamBufferSpec) }, {
+				//var scv = SampleChooserView.new;
+				//^scv.mapParam(this).view.addHalo(\ViewHolder, scv);
+			//}, {
+				//^this.asKnob;
+			//}
+		//)
 
 	}
 
@@ -937,21 +1036,15 @@ Param {
 			var label, widget, val;
 			win = Window.new;
 
-			label = param.asStaticTextLabel;
-			label.align = \center;
-
-			widget = param.asView;
-
-			val = param.asStaticText;
-			//val.background = Color.red;
-			val.align = \center;
-
 			win.layout = VLayout.new(
-				label, 
-				widget, 
-				val
+				if(WindowDef(\ParamEditorSimple).notNil) {
+					WindowDef(\ParamEditorSimple).asView(param)
+				} {
+					param.asView(\full)
+				},
+				nil,
 			);
-			win.alwaysOnTop = true;
+			//win.alwaysOnTop = true;
 			win.front;
 		};
 		fun.(this);
@@ -1118,12 +1211,12 @@ BaseParam {
 		^"% % %".format(this.typeLabel, this.targetLabel, this.propertyLabel)
 	}
 
-	asLabel { // backward compat
-		^this.label
+	asLabel { arg labelmode; // backward compat
+		^this.label(labelmode)
 	}
 	
-	label {
-		if(labelmode == \full) {
+	label { arg alabelmode;
+		if(( alabelmode ? labelmode ) == \full) {
 			^this.fullLabel
 		} {
 			^this.propertyLabel
@@ -1829,6 +1922,14 @@ BaseAccessorParam : BaseParam {
 		this.set(spec.map(val))
 	}
 
+	getBus {
+		^target.get(property)
+	}
+
+	setBus { arg val;
+		^target.set(property, val)
+	}
+
 	//putListener { arg param, view, controller, action;
 		//controller.put(\set, { arg ...args; 
 			//action.(view, param);
@@ -1997,6 +2098,15 @@ PdefParam : BaseAccessorParam {
 	inBusMode {
 		^target.inBusMode(property)
 	}
+
+	inBusMode_ { arg val;
+		if(val == true) {
+			this.setBusMode(true)
+		} {
+			this.setBusMode(false)
+		}
+	}
+
 
 	*instrument { arg target;
 		var val;

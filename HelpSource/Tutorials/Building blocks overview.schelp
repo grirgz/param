@@ -1,0 +1,397 @@
+title:: Bulding blocks overview
+summary:: Introduction to basic objects of Param quark
+categories:: Control, GUI, MIDI
+
+In this guide, you will discover the basic building block available in this quark:
+
+LIST::
+## Param: a pointer to a synth parameter, can be transformed into a GUI or bound to a controller knob
+## WindowDef: group all your GUI code in a convenient way
+## PlayerWrapper: wrap all kind of players (Pdef, Ndef, ...) to have a standard interface
+## BusDef/BufDef: manipulate busses and buffers 
+## ControllerDef: group all your controller code in a convenient way
+## ProtoDef: 
+## SaveHelper: help you add a saving system to your prototype
+::
+
+The design of theses objects are inspired by Pdef:
+
+LIST::
+## you don't have to store the object in a variable, it is stored by name
+## you can execute the code several times, there will only be one instance
+## specify only the name to get the object, give arguments in addition to name to redefine the content
+::
+
+The exception is the Param object which is only a pointer to data and do not store it.
+
+Note::
+	GUI is Graphical User Interface
+::
+
+section:: Param
+
+code::
+(
+s.boot;
+SynthDef(\saw, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+	var sig;
+	sig = LFSaw.ar(freq);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpfr: ControlSpec(0.1,4,\lin, 0, 1)
+))).add;
+
+Pdef(\melo, 
+	Pbind(
+		\instrument, \saw,
+		\degree, Pseq((1..20),inf) % Pseq((3..15),inf),
+		\dur, 1/4,
+		\amp, 0.1,
+	)
+);
+);
+
+Pdef(\melo).play;
+
+~p = Param(Pdef(\melo), \lpfr); // now ~p is a Param pointing to \lpfr argument of the synth
+~p.set(2); // set value of \lpfr
+~p.get // get value
+~p.edit; // a basic gui to quickly test your param
+
+// you can provide your own spec
+// else Param will look for it in Pdef, SynthDef, Spec.specs and finally \widefreq
+
+Param(Pdef(\melo), \lpfr, ControlSpec(0.1,2,\lin)).edit; 
+Param(Pdef(\melo), \lpfr, \unipolar).edit; 
+
+::
+
+section:: WindowDef
+
+Now that you know how to point to parameters, it's time to build a GUI.
+The first reason for using WindowDef is preventing opening the same windows multiple times.
+It can happen when you don't see the window was already open, or when you develop your GUI and run the same code several times with a few changes. Or when a button open a window.
+
+WindowDef also remember size and position of the window. 
+
+code::
+(
+// define a window
+WindowDef(\mywindow, {
+	Button.new.string_("hello");
+});
+)
+
+// Now you can open your window with .front, it will always close the previous window if already open:
+
+WindowDef(\mywindow).front;
+::
+
+A convenient thing with Param is you can transform them into GUI object directly.
+Note that changing the value update all graphic elements at once, even when done with code or controller
+
+code::
+(
+WindowDef(\mywindow, {
+	var param = Param(Pdef(\melo), \lpfr); 
+	var param2 = Param(Pdef(\melo), \rq); 
+	VLayout (
+		
+		// use the default view
+		param.asView,
+
+		// or build your own
+		HLayout (
+			VLayout (
+				param.asStaticTextLabel.align_(\center),
+				param.asKnob,
+				param.asTextField.maxWidth_(80),
+			),
+			VLayout (
+				param2.asStaticTextLabel.align_(\center),
+				param2.asKnob,
+				param2.asTextField.maxWidth_(80),
+			),
+			nil,
+		),
+		nil // create bottom space
+	)
+}).front;
+)
+::
+
+You can embed WindowDef in another WindowDef to reuse code. And also pass arguments;
+
+code::
+(
+WindowDef(\bigwindow, { arg def, param; // def is the WindowDef instance
+	VLayout (
+		param.asView,  // param as an argument
+		StaticText.new.string_("here is mywindow content:"),
+		WindowDef(\mywindow).asView; // include the WindowDef
+	)
+});
+)
+
+WindowDef(\bigwindow).front( Param(Pdef(\melo), \pan) ); // front can take arguments
+::
+
+section:: PlayerWrapper
+
+It would be nice it there was a button to play/stop the Pdef. By using PlayerWrapper, you can quickly create a play button.
+
+code::
+(
+WindowDef(\mywindow, {
+	var param = Param(Pdef(\melo), \lpfr); 
+	VLayout (
+		PlayerWrapper(Pdef(\melo)).asView,
+		param.asView,
+		nil
+	)
+}).front;
+)
+::
+
+section:: BusDef, BufDef and PopUpMenu
+
+
+For a complete tutorial on BusDef and BufDef, see TODO
+
+BusDef can be used to create and retrieve a bus. 
+
+code::
+(
+SynthDef(\modulator, { arg out=0, gate=1, freq=1, modScale=1, modBias=0.5;
+	var sig;
+	sig = SinOsc.kr(freq).unipolar * modScale + modBias;
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	Out.kr(out, sig);
+}).add;
+
+Pdef(\demo, 
+	Ppar([
+		Pdef(\mod1, // need a Pdef around Pbind to control it
+			Pmono( \modulator,
+				\out, BusDef(\mod1, \control),
+				\dur, 1,
+			),
+		),
+		Pdef(\mod2, 
+			Pmono( \modulator,
+				\out, BusDef(\mod2, \control), 
+				\dur, 1,
+			),
+		),
+		Pdef(\melo, 
+			Pbind(
+				\instrument, \saw,
+				\degree, Pseq((1..20).mirror,inf) % Pseq((3..15),inf),
+				\dur, 1/4,
+				\amp, 0.1,
+			)
+		)
+	]),
+).play;
+);
+::
+
+A convenient way to display bus parameters is to use Popup menus containing a list of available busses.
+You can easily create a Popup menu with the method .asPopUpMenu
+
+code::
+(
+WindowDef(\mywindow, {
+	var param = Param(Pdef(\melo), \lpfr); 
+	VLayout (
+		PlayerWrapper(Pdef(\melo)).asView,
+		param.asView,
+		
+		// provide values directly
+		param.asValuePopUpMenu([
+			0.7,
+			1.1,
+			1.6,
+			2.2
+		]),
+
+		// or give them a name
+		param.asValuePopUpMenu([
+			\low -> 0.7,
+			\mid -> 1.2,
+			\high -> 2.7,
+		]),
+		nil
+	)
+}).front;
+)
+::
+
+In this case, the value we want to change is a mapped bus. We want to change the bus and not set the bus value. To do this, we should use ParamMappedControlBusSpec as a spec.
+
+code::
+(
+WindowDef(\mywindow, {
+	VLayout (
+		PlayerWrapper(Pdef(\demo)).asView,
+		Param(Pdef(\melo), \lpfr, ParamMappedControlBusSpec()).asValuePopUpMenu, 
+		StaticText.new.string_("Mod 1").align_(\center),
+		Param(Pdef(\mod1), \freq, \lofreq).asView,
+		Param(Pdef(\mod1), \modScale, ControlSpec(0,4,\lin)).asView,
+		StaticText.new.string_("Mod 2").align_(\center),
+		Param(Pdef(\mod2), \freq, \lofreq).asView,
+		Param(Pdef(\mod2), \modScale,  ControlSpec(0,4,\lin)).asView,
+		nil
+	)
+}).front;
+)
+::
+
+
+section:: MIDI and ControllerDef
+
+There is two way to work with controllers: change your controller mapping to control other parameters, or change your parameters mapping to be controlled by another knob.
+The first is easier but the last approach allow you to be independent of the configuration capabilities of your controller, for example by adding virtual pages.
+
+
+code::
+(
+MIDIdef.cc(\knob1, { arg val, channel, deviceId;
+	[ val, channel, deviceId ].debug;
+	Param(Pdef(\melo), \lpfr).normSet(val/127); // normSet automatically map from 0..1 according to the spec of the param
+}, 16); // change your midi cc number for your first knob
+)
+::
+
+Since it's a bit verbose there is a class to assign names to each knob
+
+code::
+// define a symbol for each cc number
+MIDIMap.define(0,[\knob1, 16, \knob2, 17]); // MIDIMap.define([channel, deviceID], [ .... ])
+
+// now map
+MIDIMap(\knob1, Param(Pdef(\melo), \lpfr));
+::
+
+If you have Modality-toolkit quark installed, you can also use mapParam on it.
+
+code::
+MKtl(\mycontroller).elAt(\knob, 0).mapParam( Param(Pdef(\melo), \lpfr) )
+::
+
+Now maybe you are tired of defining manually which knob connect to which Param. You can simply define a function, but you can also use ControllerDef for the same effect.
+
+code::
+(
+ControllerDef(\knobline, { arg def, params;
+	// map 4 knobs with cc number given in the list
+	// note that you can also use OSC protocol here, or anything you want
+	[16,17,21,22].collect({ arg ccnum, idx;
+		if(params[idx].notNil) {
+			MIDIdef.cc(\knob+++idx, { arg val, channel, deviceId;
+				[ val, channel, deviceId ].debug;
+				params[idx].normSet(val/127); 
+			}, ccnum);
+		}
+	})
+})
+)
+
+// Now control some params
+(
+ControllerDef(\knobline).startControl([ 
+	Param(Pdef(\melo), \lpfr),
+	Param(Pdef(\melo), \rq),
+])
+)
+
+Param(Pdef(\melo), \lpfr).edit; // visualize changes
+::
+
+Your ControllerDefs can be tagged, then when writing a GUI, you can display the list of all compatible controller definitions
+
+section:: ProtoDef
+
+Now that you have all the building blocks, you need a way to gather them all in one place for ease of use
+
+code::
+(
+// the main object. It is a kind of generic rack for params that you can display in a GUI and control with your controller
+ProtoDef(\myrack, (
+	paramlist: [
+		Param(Pdef(\melo), \lpfr),
+		Param(Pdef(\melo), \rq),
+		Param(Pdef(\melo2), \lpfr),
+		Param(Pdef(\melo2), \rq),
+	],
+
+	proxy: Pdef(\demo),
+
+	play: { arg self;
+		self.proxy.play;
+	},
+
+	stop: { arg self;
+		self.proxy.stop;
+	},
+
+	edit: { arg self;
+		WindowDef(\rack).front(self.paramlist)
+	},
+
+	startControl: { arg self;
+		ControllerDef(\knobline).startControl(self.paramlist)
+	},
+));
+
+// define a GUI which accept a list of param as an argument
+WindowDef(\rack, { arg def, paramlist;
+	VLayout (
+		* paramlist.collect { arg param, idx;
+			param.asView(\full);
+		} ++ [nil];
+	)
+});
+
+Pdef(\demo, 
+	Ppar([
+		Pdef(\melo, 
+			Pbind(
+				\instrument, \saw,
+				\degree, Pseq((1..20).mirror,inf) % Pseq((3..15),inf),
+				\dur, 1/4,
+				\amp, 0.1,
+			)
+		),
+		Pdef(\melo2, 
+			Pbind(
+				\instrument, \saw,
+				\degree, Pseq((1..20).reverse,inf) % Pseq((3..15),inf),
+				\dur, 1/2,
+				\amp, 0.1,
+			)
+		)
+	]),
+);
+)
+
+/// now you can use it for your performance
+ProtoDef(\myrack).play;
+ProtoDef(\myrack).edit;
+ProtoDef(\myrack).startControl;
+
+ProtoDef(\myrack2, ProtoDef(\myrack)); // copy to a new prototype
+ProtoDef(\myrack2).paramlist = [ Param(Pdef(\melo2), \rq)  ]; // and change it
+ProtoDef(\myrack2).edit;
+WindowDef(\xx, { PlayerWrapper(ProtoDef(\myrack2)).asView }).front; // can be used as a player
+
+::
+
+section:: SaveHelper
+
+TODO
+
+

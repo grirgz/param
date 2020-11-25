@@ -12,6 +12,7 @@
 		"experimental/eventFactory.scd",
 		"player_groups.scd",
 		"GlobalLibrary.scd",
+		"editors.scd",
 		"timeline_utils.scd",
 		"timeline.scd",
 		"timeline_gui.scd",

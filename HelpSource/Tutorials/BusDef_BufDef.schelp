@@ -1,0 +1,33 @@
+
+// control example
+(
+SynthDef(\modulator, { arg out=0, gate=1, freq=1, modScale=1, modBias=0.5;
+	var sig;
+	sig = SinOsc.kr(freq).unipolar * modScale + modBias;
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	Out.kr(out, sig);
+}).add;
+);
+(
+Pdef(\demo, 
+	Ppar([
+		Pbind(
+			\instrument, \modulator,
+			\freq, Pseq([1,8],inf),
+			\out, BusDef(\mycontrolbus, \control), // you can define and use at the same time
+			\dur, 1,
+		),
+		Pbind(
+			\instrument, \saw,
+			\degree, Pseq((1..20),inf) % Pseq((3..15),inf),
+			\lpfr, BusDef(\mycontrolbus, \control).asMap, // map bus to lpfr
+			\dur, 1/4,
+			\amp, 0.1,
+		)
+	]),
+).play;
+);
+
+BusDef(\mycontrolbus).set(1); // once defined, no need to specify the rate
+BusDef(\mycontrolbus).set(2);
+

@@ -317,6 +317,8 @@ ParamGroupLayout {
 		// if player, show a button
 		// if param scalar, show horizontally a label, horizontal slider and textField
 		// if param env or array, show vertically a label, an env/array, a textField
+
+		// do not call .asView here because it call recursively formEntry !
    
 		var scalar_entry = { arg param;
 			var lay;
@@ -325,7 +327,7 @@ ParamGroupLayout {
 			} {
 				HLayout(
 					if(label_mode == \full) {
-						var st = param.asStaticTextLabel;
+						var st = param.asStaticTextLabel(\full);
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					} {
@@ -346,11 +348,11 @@ ParamGroupLayout {
 			} {
 				VLayout(
 					if(label_mode == \full) {
-						param.asStaticTextLabel;
+						param.asStaticTextLabel(\full);
 					} {
 						StaticText.new.string_(param.property)
 					},
-					param.asView.minHeight_(150),
+					param.asEnvelopeView.minHeight_(150),
 					param.asTextField,
 				)
 			};
@@ -363,7 +365,7 @@ ParamGroupLayout {
 			} {
 				HLayout(
 					if(label_mode == \full) {
-						param.asStaticTextLabel;
+						param.asStaticTextLabel(\full);
 					} {
 						StaticText.new.string_(param.property)
 					}.fixedWidth_(80),
@@ -382,7 +384,7 @@ ParamGroupLayout {
 					if([\array, \env].includes(item.type)) {
 						env_entry.(item)
 					} {
-						if(item.spec.isKindOf(TagSpec)) {
+						if(item.spec.isKindOf(TagSpec) or: { item.spec.isKindOf(ParamBusSpec) }) {
 							popup_entry.(item)
 						}
 					}
