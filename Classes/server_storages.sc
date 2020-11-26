@@ -512,6 +512,18 @@ BusDef : Bus {
 		^super.new(\audio, alloc, numChannels, server)
 	}
 
+	*newFromIndex { arg arate, idx, numchan;
+		var foundbus;
+		foundbus = this.all.detect({ arg busdef;
+			busdef.index == idx and: {
+				// not sure chan check is needed
+				// you can't allocate 2 bus with same index and different number of chan
+				busdef.numChannels == numchan 
+			}
+		});
+		^foundbus
+	}
+
 	printOn { arg stream;
 		this.storeOn(stream)
 	}

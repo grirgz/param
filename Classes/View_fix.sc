@@ -1,6 +1,6 @@
-//////////////////////// Enhanceds SCLib views (X prefix because I don't know how to handle this)
+//////////////////////// Enhanceds SCLib views
 
-FixedEnvelopeView : QEnvelopeView {
+FixedEnvelopeView : EnvelopeView {
 	// standard EnvelopeView doesn't provide a symetric getEnv/setEnv
 	var curves;
 	var <timeScale = 1;
@@ -11,6 +11,7 @@ FixedEnvelopeView : QEnvelopeView {
 	var autoTimeScale = true;
 	var <totalDur = 8;
 	var <loopNode, <releaseNode;
+	var <rightClickZoomEnabled = false;
 
 	curves {
 		^curves
@@ -45,6 +46,35 @@ FixedEnvelopeView : QEnvelopeView {
 
 	value_ { arg val;
 		this.setEnv(val);
+	}
+
+	rightClickZoomEnabled_ { arg val;
+		rightClickZoomEnabled = val;
+		if(val == true) {
+			this.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				if(buttonNumber == 1) {
+					view.addHalo(\mouseDownPosition, Point(x, y));
+					view.addHalo(\mouseDownTotalDur, view.totalDur);
+				};
+			}).mouseMoveAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				var delta;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				if(view.getHalo(\mouseDownPosition).notNil) {
+					delta = x - view.getHalo(\mouseDownPosition).x / 500;
+					view.totalDur = view.getHalo(\mouseDownTotalDur) + delta;
+				}
+			}).mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				if(buttonNumber == 1) {
+					view.addHalo(\mouseDownPosition, nil);
+				};
+			});
+		} {
+			this.mouseDownAction_({});
+			this.mouseMoveAction_({});
+			this.mouseUpAction_({});
+		}
 	}
 
 	zoomFit {
@@ -87,6 +117,9 @@ FixedEnvelopeView : QEnvelopeView {
 		var times;
 		var levels;
 		var env;
+		if(val.isInteger) { 
+			val = this.valueXY;
+		};
 		if(val.isNil) {
 			val = this.valueXY;
 		};

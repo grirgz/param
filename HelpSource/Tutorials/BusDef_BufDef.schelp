@@ -1,4 +1,9 @@
+title:: Using BusDef and BufDef
+summary:: Using BusDef and BufDef to manage server resources
+categories:: Control, GUI, MIDI
 
+
+code::
 // control example
 (
 SynthDef(\modulator, { arg out=0, gate=1, freq=1, modScale=1, modBias=0.5;
@@ -31,3 +36,4 @@ Pdef(\demo,
 BusDef(\mycontrolbus).set(1); // once defined, no need to specify the rate
 BusDef(\mycontrolbus).set(2);
 
+code::

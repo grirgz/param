@@ -352,7 +352,24 @@ ParamGroupLayout {
 					} {
 						StaticText.new.string_(param.property)
 					},
-					param.asEnvelopeView.minHeight_(150),
+					param.asEnvelopeView.minHeight_(110),
+					param.asTextField,
+				)
+			};
+			lay;
+		};
+		var array_entry = { arg param;
+			var lay;
+			lay = if(param.isNil) {
+				nil;
+			} {
+				VLayout(
+					if(label_mode == \full) {
+						param.asStaticTextLabel(\full);
+					} {
+						StaticText.new.string_(param.property)
+					},
+					param.asMultiSlider.minHeight_(110),
 					param.asTextField,
 				)
 			};
@@ -375,19 +392,45 @@ ParamGroupLayout {
 			};
 			lay;
 		};
+		var popup_busmap_entry = { arg param;
+			var lay;
+			lay = if(param.isNil) {
+				nil;
+			} {
+				HLayout(
+					if(label_mode == \full) {
+						param.asStaticTextLabel(\full);
+					} {
+						StaticText.new.string_(param.property)
+					}.fixedWidth_(80),
+					param.asBusPopUpMenu.minWidth_(150),
+					//param.asTextField.minWidth_(70),
+				)
+			};
+			lay;
+		};
 		
 		^case(
 			{ item.isKindOf(Param) }, {
 				if(item.type == \scalar) {
 					scalar_entry.(item)
 				} {
-					if([\array, \env].includes(item.type)) {
-						env_entry.(item)
-					} {
-						if(item.spec.isKindOf(TagSpec) or: { item.spec.isKindOf(ParamBusSpec) }) {
+					case(
+						{ item.type == \env }, {
+							env_entry.(item)
+						},
+						{ item.type == \array }, {
+							array_entry.(item)
+						},
+						{ item.spec.isKindOf(TagSpec) }, {
 							popup_entry.(item)
+						},
+						{ item.spec.isKindOf(ParamBusSpec) }, {
+							popup_busmap_entry.(item)
+						}, {
+							nil
 						}
-					}
+					);
 				}
 			},
 			{ item.isKindOf(PlayerWrapper) }, {

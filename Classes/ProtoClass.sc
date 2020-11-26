@@ -26,7 +26,6 @@ EventClass : ClassMethodDictionary {}
 // FIXME: should be better named EventClass (but now is used everywhere)
 ProtoClass : Event {
 	//var <>protoclass_event;
-	// FIXME: parent does not work!
 
 
 	*new { arg xevent;
@@ -159,6 +158,8 @@ ProtoClass : Event {
 
 
 ProtoDef : ProtoClass {
+	classvar <>instanceClasses = #[\ProtoDef, \TrackDef, \FileSystemProject];
+	classvar <>templateClasses = #[\ProtoTemplateDef, \TrackTemplateDef];
 	//var <>key;
 
 	*all {
@@ -166,18 +167,33 @@ ProtoDef : ProtoClass {
 	}
 
 	*new { arg key, val;
+		var inst;
 		if(this.all[key].isNil) {
 			if(val.notNil) {
-				^super.new(val).protoDef_prAdd(key)
+				// if value is a template class
+				if(templateClasses.includes(val.class.name) and: { instanceClasses.includes(this.class.name) } ) {
+					Log(\Param).debug("use parent!!! %", val);
+					inst = super.new(()).protoDef_prAdd(key);
+					inst[\parent] = val;
+					inst.initProto; // constructor
+					^inst
+				} {
+					^super.new(val).protoDef_prAdd(key)
+				}
 			} {
 				^super.new(()).protoDef_prAdd(key)
 			}
 		} {
 			var ret = this.all[key];
 			if(val.notNil) {
-				ret.putAll(val);
-				ret[\key] = key;
-				ret[\parent] = val[\parent];
+				if(templateClasses.includes(val.class.name) and: { instanceClasses.includes(this.class.name) } ) {
+					Log(\Param).debug("replace parent!!! %", val);
+					ret[\parent] = val;
+				} {
+					ret.putAll(val);
+					ret[\key] = key;
+					ret[\parent] = val[\parent];
+				}
 			};
 			^ret;
 		}

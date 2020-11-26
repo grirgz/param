@@ -55,6 +55,32 @@ FileSystemProject : TrackDef {
 				}
 			},
 
+			loadProject: { arg self, path;
+				var projectfile;
+				var proj;
+				if(path.endsWith("data/project.scd")) {
+					projectfile = path;
+				} {
+					projectfile = path +/+ "data/project.scd";
+				};
+				proj = FileSystemProject.load(projectfile);
+				FileSystemProject.current = proj;
+				PathName(proj.dataPath).files.do { arg file;
+					if(file.extension == "scd" and: { file.fileName != "project.scd" }) {
+						FileSystemProject.load(file.fullPath)
+					}
+				};
+				// load first level of folders in data/ (for grids)
+				PathName(proj.dataPath).folders.do { arg folder;
+					folder.files.do { arg file;
+						if(file.extension == "scd" and: { file.fileName != "project.scd" }) {
+							FileSystemProject.load(file.fullPath)
+						}
+					};
+				};
+				proj;
+			},
+
 			load: { arg self, val;
 				FileSystemProject.load(self.path +/+ val);
 			},
@@ -88,6 +114,20 @@ FileSystemProject : TrackDef {
 			File.mkdir(cwd);
 		};
 		this.addPath(cwd);
+	}
+
+	*new { arg key, val;
+		var rkey = this.resolve(key.asString);
+		if(rkey.notNil) {
+			if(this.all[rkey].isNil) {
+				^super.new(rkey.fullPath.asSymbol, val ? this.defaultProject);
+			} {
+				^super.new(rkey.fullPath.asSymbol, val);
+			}
+		} {
+			"FileSystemProject: can't resolve this project".error;  
+		};
+		^nil
 	}
 
 	*clearLoadingFiles {
@@ -133,7 +173,7 @@ FileSystemProject : TrackDef {
 				loadedFiles.add(path);
 			} {
 				if(silent == false) {
-					Log(\Param).error("FileSystemProject: File don't exists: %", path);
+					Log(\Param).error("ERROR: FileSystemProject: File don't exists: %", path);
 				};
 				^nil
 			};
@@ -194,6 +234,9 @@ FileSystemProject : TrackDef {
 	}
 
 	*resolve { arg val;
+		var abspath;
+		// need to decide if it should return only existing files
+		// currently do not check for existance if path starts with ./ or is absolute, only if it need to find it in this.paths
 		// note: return a pathname
 		// FIXME: why a pathname ???
 		val = val.standardizePath;
@@ -203,17 +246,19 @@ FileSystemProject : TrackDef {
 		if(PathName(val).isAbsolutePath) {
 			^PathName(val)
 		};
+		abspath = this.relativeToAbsolutePath(val);
+		if(abspath.notNil) {
+			^PathName(abspath)
+		};
 		( [ this.cwd ] ++ paths ).do({ arg path;
 			var pn;
 			//Log(\Param).debug("try resolve %", [path, val]);
 			if(val == "") {
+				// FIXME: why one would pass an empty string ?
+				// why return the first path ??
 				pn = PathName(path);
 			} {
-				pn = PathName(val);
-				//Log(\Param).debug("fp:%", pn.fullPath.asCompileString);
-				if(pn.isAbsolutePath.not) {
-					pn = PathName(path +/+ val);
-				};
+				pn = PathName(path +/+ val);
 			};
 			//Log(\Param).debug("fp2:%", pn.fullPath.asCompileString);
 			if(pn.isFile or: { pn.isFolder }) {
@@ -236,18 +281,18 @@ FileSystemProject : TrackDef {
 		^val;
 	}
 
-	*new { arg key, val;
-		var rkey = this.resolve(key.asString);
-		if(rkey.notNil) {
-			if(this.all[rkey].isNil) {
-				^super.new(rkey.fullPath.asSymbol, val ? this.defaultProject);
+	*relativeToAbsolutePath { arg val;
+		var curpath;
+		if(val.beginsWith("./")) {
+			curpath = Document.current.path;
+			if(curpath.notNil) {
+				^PathName(Document.current.path).pathOnly +/+ val.drop(2)
 			} {
-				^super.new(rkey.fullPath.asSymbol, val);
-			}
+				^val;
+			};
 		} {
-			"FileSystemProject: can't resolve this project".error;  
+			^nil
 		};
-		^nil
 	}
 
 }

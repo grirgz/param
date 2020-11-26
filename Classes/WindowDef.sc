@@ -110,12 +110,16 @@ WindowDef {
 	}
 	
 	isFullScreen {
+		//^false
 		if(window.notNil) {
-			try {
-				^Window.availableBounds.extent == window.bounds.extent;
+			// FIXME: strange bug, when adding the try, no error is reported anymore in post
+			// nil.xxxx does not show anything, not even the return value
+			^try {
+				Window.availableBounds.extent == window.bounds.extent;
 			} { arg error;
 				Log(\Param).debug("error in WindowDef.isFullScreen %", this.key);
 				error.reportError;
+				nil
 			}
 		} {
 			^false

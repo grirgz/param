@@ -974,6 +974,7 @@ Param {
 			.thumbSize_(10)
 			.elasticSelection_(true)
 			.keepHorizontalOrder_(true)
+			.rightClickZoomEnabled_(true)
 			.mapParam(this)
 			.grid_(Point(this.spec.times[0].unmap(1/8),1/8))
 			.totalDur_(this.spec.times[0].unmap(2))
@@ -1091,7 +1092,7 @@ Param {
 		var val;
 		var rval;
 		val = SynthDescLib.global.synthDescs[defname];
-		Log(\Param).debug("synthdesc % % %", argName, defname, val);
+		//Log(\Param).debug("synthdesc % % %", argName, defname, val);
 		if(val.notNil) {
 			val = val.metadata;
 			if(val.notNil) {
@@ -2155,6 +2156,14 @@ PdefParam : BaseAccessorParam {
 	}
 }
 
+EventPatternProxyParam : PdefParam {
+
+	targetLabel {
+		^target.hash.asString;
+	}
+
+}
+
 ////////////////// Ndef
 
 NdefParam : BaseAccessorParam {
@@ -2944,81 +2953,80 @@ StepEventParam : BaseParam {
 		});
 	}
 }
+//EventPatternProxyParam : StepEventParam {
 
-EventPatternProxyParam : StepEventParam {
+	//unset {
+		//target.set(property, nil)
+	//}
 
-	unset {
-		target.set(property, nil)
-	}
+	//isSet {
+		//^target.envir.notNil and: {
+			//target.envir.includes(property)
+		//}
+	//}
 
-	isSet {
-		^target.envir.notNil and: {
-			target.envir.includes(property)
-		}
-	}
+	//setBusMode { arg enable=true, free=true;
+		//target.setBusMode(property, enable, free);
+	//}
 
-	setBusMode { arg enable=true, free=true;
-		target.setBusMode(property, enable, free);
-	}
+	//inBusMode {
+		//^target.inBusMode(property)
+	//}
 
-	inBusMode {
-		^target.inBusMode(property)
-	}
-
-	inBusMode_ { arg val;
-		if(val == true) {
-			this.setBusMode(true)
-		} {
-			this.setBusMode(false)
-		}
-	}
+	//inBusMode_ { arg val;
+		//if(val == true) {
+			//this.setBusMode(true)
+		//} {
+			//this.setBusMode(false)
+		//}
+	//}
 
 
-	instrument {
-		// before setting any key, the .envir is nil and .get(\instrument) return nil
-		// after, it return \default even if \instrument is not defined (default event)
-		// so if result is \default, i still check halo instrument to be sure
-		var res = target.get(\instrument);
-		if(res == \default) {
-			if(target.getHalo(\instrument).notNil) {
-				res = target.getHalo(\instrument)
-			}
-		};
-		^res ?? { 
-			target.getHalo(\instrument) ?? {
-				(target !? { this.class.getInstrumentFromPbind(target.source) }) ? \default;
-			};
-		}
-	}
+	//instrument {
+		//// before setting any key, the .envir is nil and .get(\instrument) return nil
+		//// after, it return \default even if \instrument is not defined (default event)
+		//// so if result is \default, i still check halo instrument to be sure
+		//var res = target.get(\instrument);
+		//if(res == \default) {
+			//if(target.getHalo(\instrument).notNil) {
+				//res = target.getHalo(\instrument)
+			//}
+		//};
+		//^res ?? { 
+			//target.getHalo(\instrument) ?? {
+				//(target !? { this.class.getInstrumentFromPbind(target.source) }) ? \default;
+			//};
+		//}
+	//}
 
-	getRaw {
-		var val;
-		val = target.getVal(property) ?? { 
-			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
-			this.default
-		};
-		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
-			val = Pdef.nestOff(val); 
-			Log(\Param).debug("Val unNested! %", val);
-		};
-		// FIXME: this function is called four times, why ? maybe one for each widget so it's normal
-		//Log(\Param).debug("get:final Val %", val); 
-		^val;
-	}
+	//getRaw {
+		//var val;
+		//val = target.getVal(property) ?? { 
+			////this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			//this.default
+		//};
+		//if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			//val = Pdef.nestOff(val); 
+			//Log(\Param).debug("Val unNested! %", val);
+		//};
+		//// FIXME: this function is called four times, why ? maybe one for each widget so it's normal
+		////Log(\Param).debug("get:final Val %", val); 
+		//^val;
+	//}
 
-	setRaw { arg val;
-		if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
-			val = Pdef.nestOn(val); 
-			Log(\Param).debug("Val Nested! %", val);
-		};
-		if(Param.trace == true) {
-			"%: setRaw: %".format(this, val).postln;
-		};
-		target.setVal(property, val);
-		//Log(\Param).debug("set:final Val %", val);
-		target.changed(\set, property, val);
-	}
-}
+	//setRaw { arg val;
+		//if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			//val = Pdef.nestOn(val); 
+			//Log(\Param).debug("Val Nested! %", val);
+		//};
+		//if(Param.trace == true) {
+			//"%: setRaw: %".format(this, val).postln;
+		//};
+		//target.setVal(property, val);
+		////Log(\Param).debug("set:final Val %", val);
+		//target.changed(\set, property, val);
+	//}
+//}
 
 ////////////////// Object property (message)
 MessageParam : StandardConstructorParam {

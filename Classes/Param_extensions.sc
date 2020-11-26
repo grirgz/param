@@ -633,6 +633,10 @@
 		^this.at(0).asBus(this.size)
 	}
 
+	asBusDef {
+		^this.at(0).asBusDef(this.size)
+	}
+
 	asEnv {
 		var val = this.value.deepCopy;
 		var first;
@@ -710,7 +714,7 @@
 
 	asCompileString {
 		if(this.key.notNil) {
-			^"BufDef('%')".format(this.key)
+			^"BufDef(%)".format(this.key.asCompileString)
 		} {
 			^super.asCompileString;
 		}
@@ -741,6 +745,25 @@
 	}
 }
 
++ Bus {
+	key {
+		// used to get back the key of BufDef from a Buffer
+		^this.getHalo(\key);
+	}
+
+	key_ { arg val;
+		this.addHalo(\key, val)
+	}
+
+	asCompileString {
+		if(this.key.notNil) {
+			^"BusDef(%)".format(this.key.asCompileString)
+		} {
+			^super.asCompileString;
+		}
+	}
+
+}
 
 + List {
 	sortLike { arg model;

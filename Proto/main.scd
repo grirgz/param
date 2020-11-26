@@ -13,6 +13,7 @@
 		"player_groups.scd",
 		"GlobalLibrary.scd",
 		"editors.scd",
+		"misc/FileDialog.scd",
 		"timeline_utils.scd",
 		"timeline.scd",
 		"timeline_gui.scd",
@@ -32,7 +33,7 @@
 		var path = (ParamProto.base_path +/+ file);
 		("loading " ++ path).debug;
 		FileSystemProject.load(path);
-		RandDelayNetwork(\deldefault).define_specs[\posthpf].debug(">>> ");
+		//RandDelayNetwork(\deldefault).define_specs[\posthpf].debug(">>> ");
 	});
 
 );

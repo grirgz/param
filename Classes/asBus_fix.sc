@@ -38,6 +38,26 @@
 		^busclass.new(rate, index, numChannels, Server.default);
 	}
 
+	asBusDef { arg numChannels=1;
+		var rate;
+		var index;
+		var map;
+		map = this;
+		map = map.asString;
+		switch(map[0],
+			$c, {
+				rate = \control;
+			},
+			$a, {
+				rate = \audio;
+			}, {
+				"get_bus_from_map: error, not a bus: %".format(map).postln;
+			}
+		);
+		index = map[1..].asInteger;
+		^BusDef.newFromIndex(rate, index, numChannels)
+	}
+
 	asCachedBus { arg numChannels=1;
 		^this.asBus(numChannels, CachedBus);
 	}
