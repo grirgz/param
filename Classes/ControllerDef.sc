@@ -58,7 +58,6 @@ ControllerDef {
 		symlist.collect { arg sym;
 			dict.putAll(TagSpecDef("ControllerDef_capabilities_%".format(sym).asSymbol).associationList)
 		};
-		TagSpecDef(\bla).asDict
 		^dict;
 	}
 

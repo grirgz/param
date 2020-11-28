@@ -1,8 +1,8 @@
 
 Param {
-	var <wrapper;
+	var <>wrapper; // should not it be read only ?
+	var <>baseWrapper; // should not it be read only ?
 	var init_args;
-	var >label;  // why not in BaseParam ?
 	classvar <>defaultSpec;
 	classvar <>simpleControllers;
 	classvar <>userSimpleControllers;
@@ -252,6 +252,10 @@ Param {
 
 		if(class_dispatcher[target.class.asSymbol].notNil) {
 			class_dispatcher[target.class.asSymbol].value;
+			//if(this.combinator.notNil and: { baseWrapper.isNil }) {
+				//baseWrapper = wrapper;
+				//wrapper = this.combinator.baseParam.wrapper;
+			//}
 		} {
 			// ParamValue goes here
 			// FIXME: this is error prone when target is not recognized
@@ -282,7 +286,8 @@ Param {
 	}
 
 	label { arg labelmode;
-		^(label ?? { wrapper.label(labelmode) })
+		//^(label ?? { wrapper.label(labelmode) })
+		^wrapper.label(labelmode);
 	}
 
 	fullLabel {
@@ -310,7 +315,7 @@ Param {
 	}
 
 	inBusMode_ { arg ...args;
-		^wrapper.inBusMode_(*args)
+		wrapper.inBusMode_(*args)
 	}
 
 	numChannels {
@@ -344,6 +349,42 @@ Param {
 	combinator_ { arg val;
 		wrapper.combinator = val;
 	}
+
+	combinatorEnabled_ { arg val;
+   		wrapper.combinatorEnabled = val;
+	}
+
+	combinatorEnabled {
+   		^wrapper.combinatorEnabled
+	}
+
+	asUncombinatedParam {
+		//var wr = this.baseWrapper ?? { this.wrapper };
+		^this.class.new(this.target, this.property).combinatorEnabled_(false);
+	}
+
+	clone {
+		^this.class.new(this.target, this.property);
+	}
+
+	//inCombinatorMode_ { arg val;
+		//if(val == true) {
+			//if(this.combinator.notNil and: { baseWrapper.isNil }) {
+				//baseWrapper = wrapper;
+				//wrapper = this.combinator.baseParam.wrapper;
+			//}
+		//} {
+			//if(baseWrapper.notNil) {
+				//wrapper = baseWrapper;
+				//wrapper
+			//}
+			//if(this.combinator.notNil and: { baseWrapper.isNil }) {
+				//baseWrapper = wrapper;
+				//wrapper = this.combinator.baseParam.wrapper;
+			//}
+
+		//}
+	//}
 
 	///////// list behavior
 
@@ -386,12 +427,12 @@ Param {
 		wrapper.normSet(val);
 	}
 
-	getBus {
-		^wrapper.getBus
+	getRaw {
+		^wrapper.getRaw
 	}
 
-	setBus { arg val;
-		wrapper.setBus(val)
+	setRaw { arg val;
+		wrapper.setRaw(val)
 	}
 
 	/////////////////// MIDI mapping
@@ -451,6 +492,12 @@ Param {
 
 			initAction.(slider, param);
 		};
+	}
+
+	refreshUpdater { arg view, action, updateMode;
+		// FIXME: updateMode can't be retrieved by putListener
+		this.class.freeUpdater(view);
+		this.makeUpdater(view, action, updateMode);
 	}
 
 	makeUpdater { arg view, action, updateMode;
@@ -704,11 +751,11 @@ Param {
 		}
 	}
 
-	mapPopUpMenu { arg view;
+	mapPopUpMenu { arg view, keys;
 		if(this.type == \scalar) {
-			this.mapIndexPopUpMenu(view)
+			this.mapIndexPopUpMenu(view, keys)
 		} {
-			this.mapValuePopUpMenu(view)
+			this.mapValuePopUpMenu(view, keys)
 		};
 	}
 
@@ -717,22 +764,28 @@ Param {
 		// FIXME: mapIndexPopUpMenu does not use updater
 		var pm = view;
 		//[keys, this.spec, this.spec.labelList].debug("mapIndexPopUpMenu: whatXXX");
+		if(keys.notNil and: { keys.isKindOf(TagSpec).not }) {
+			keys = TagSpec(keys);
+		};
+
 		view.refreshChangeAction = { arg me;
-			if(keys.isNil) {
-				var spec;
+			var spec;
+			if(keys.notNil) {
+				spec = keys;
+			} {
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
 					spec = this.spec.tagSpec;
 				} {
 					spec = this.spec;
 				};
 
-				if(spec.isKindOf(TagSpec)) {
-					//[keys, this.spec, this.spec.labelList].debug("whatXXX");
-					keys = spec.labelList;
-				};
+				//if(spec.isKindOf(TagSpec)) {
+					////[keys, this.spec, this.spec.labelList].debug("whatXXX");
+					//keys = spec.labelList;
+				//};
 			};
 			if(keys.notNil) {
-				pm.items = keys.asArray; // because PopUpMenu doesn't accept List
+				pm.items = spec.labelList; // because PopUpMenu doesn't accept List
 			};
 			me.value = this.get;
 		};
@@ -767,7 +820,7 @@ Param {
 			} {
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
 					if(this.spec.isKindOf(ParamMappedControlBusSpec)) {
-						val = this.getBus;
+						val = this.getRaw;
 					} {
 						val = this.get;
 					};
@@ -801,7 +854,7 @@ Param {
 				};
 			};
 			if(isMapped) {
-				this.setBus(spec.mapIndex(view.value));
+				this.setRaw(spec.mapIndex(view.value));
 			} {
 				this.set(spec.mapIndex(view.value));
 			};
@@ -821,22 +874,31 @@ Param {
 		//view.value.debug("mapValuePopUpMenu:8");
 	}
 
-	mapBusPopUpMenu { arg view;
-		// this method is used when the target parameter contains a mapped bus, use getBus instead of get to avoid bus mode to return the bus value instead of the bus
+	mapBusPopUpMenu { arg view, keys;
+		// this method is used when the target parameter contains a mapped bus, use getRaw instead of get to avoid bus mode to return the bus value instead of the bus
 		// FIXME: mapIndexPopUpMenu does not use updater
 		// TODO: define a listener when the list change
 		var pm = view;
 		//debug("mapValuePopUpMenu:1");
+		if(keys.notNil and: { keys.isKindOf(TagSpec).not }) {
+			keys = TagSpec(keys);
+		};
+
 		view.refreshChangeAction = {
 			var spec;
 			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
-			if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
-				spec = this.spec.tagSpec;
+			if(keys.notNil) {
+				spec = keys;
 			} {
-				spec = this.spec;
+
+				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
+					spec = this.spec.tagSpec;
+				} {
+					spec = this.spec;
+				};
 			};
 			view.items = spec.labelList.asArray;
-			view.value = spec.unmapIndex(this.getBus);
+			view.value = spec.unmapIndex(this.getRaw);
 			//view.value.debug("mapValuePopUpMenu:1.5");
 		};
 		view.refreshChange;
@@ -850,7 +912,7 @@ Param {
 			} {
 				spec = this.spec;
 			};
-			this.setBus(spec.mapIndex(view.value));
+			this.setRaw(spec.mapIndex(view.value));
 			//this.get.debug("mapValuePopUpMenu:5 (action)");
 		};
 		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
@@ -1186,9 +1248,11 @@ Param {
 BaseParam {
 	var <target, <property, <>spec, <key;
 	var >shortLabel; // deprecated
-	var <>combinator;
+	var >combinator;
+	var <>combinatorEnabled = true;
 	var <>labelmode;
 	var >default;
+	var >label;  // why not in BaseParam ?
 
 	/////// labels
 
@@ -1198,6 +1262,15 @@ BaseParam {
 
 	typeLabel {
 		^""
+	}
+
+	combinator {
+		^combinator;
+		//^if(combinator.isNil and: { combinatorEnabled == true }) {
+			//target.getHalo(( \ParamCombinator_++property ).asSymbol)
+		//} {
+			//combinator;
+		//}
 	}
 
 	propertyLabel {
@@ -1407,11 +1480,11 @@ ParamAccessor {
 		^(
 			key: \neutral,
 			setval: { arg self, val;
-				self.obj.setRaw(val);
+				self.obj.setVal(val);
 			},
 
 			getval: { arg self;
-				self.obj.getRaw;
+				self.obj.getVal;
 			},
 
 			toSpec: { arg self, sp;
@@ -1518,6 +1591,36 @@ ParamAccessor {
 	}
 
 	// WIP
+
+	*busmode { 
+		^(
+			key: \busmode,
+			setval: { arg self, val;
+				self.obj.setVal(val);
+			},
+
+			getval: { arg self;
+				self.obj.getVal;
+			},
+
+			toSpec: { arg self, sp;
+				sp
+			},
+
+			property: { arg self, prop;
+				prop
+			},
+
+			propertyLabel: { arg self;
+				self.obj.property.asString;
+			},
+
+			path: { arg self, prop;
+				prop
+			},
+		)
+
+	}
 
 	*nestedArray { arg idx;
 		^(
@@ -1879,8 +1982,8 @@ BaseAccessorParam : BaseParam {
 
 	}
 
-	getRaw {
-		// this is not called by accessor, accessor always use parent.getRaw
+	getVal {
+		// this is not called by accessor, accessor always use parent.getVal
 		var val;
 		val = target[property] ?? { 
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
@@ -1894,15 +1997,15 @@ BaseAccessorParam : BaseParam {
 		^val;
 	}
 
-	setRaw { arg val;
-		// this is not called by accessor, accessor always use parent.setRaw
+	setVal { arg val;
+		// this is not called by accessor, accessor always use parent.setVal
 		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOn(val); 
 			Log(\Param).debug("Val Nested! %", val);
 		};
 		target[property] = val;
 		if(Param.trace == true) {
-			"%: setRaw: %".format(this, val).postln;
+			"%: setVal: %".format(this, val).postln;
 		};
 		target.changed(\set, property, val);
 	}
@@ -1923,11 +2026,11 @@ BaseAccessorParam : BaseParam {
 		this.set(spec.map(val))
 	}
 
-	getBus {
+	getRaw {
 		^target.get(property)
 	}
 
-	setBus { arg val;
+	setRaw { arg val;
 		^target.set(property, val)
 	}
 
@@ -1952,9 +2055,9 @@ BaseAccessorParam : BaseParam {
 			var target = param.target;
 			var spec = param.spec;
 
-			//if(Param.trace == true) {
-				//"%: % received update message: %".format(this, view, args).postln;
-			//};
+			if(Param.trace == true) {
+				"%: % received update message: %".format(this, view, args).postln;
+			};
 
 			// action
 			if(args[2].notNil and: {
@@ -1966,6 +2069,20 @@ BaseAccessorParam : BaseParam {
 				action.(view, param);
 			};
 		});
+		//controller.put(\target, { arg ...args;
+			//param.refreshUpdater(view, action)
+		//});
+		//controller.put(\combinator, { arg ...args;
+			//if(param.baseWrapper.isNil) {
+				//var target = param.target;
+				//param.wrapper = param.combinator.baseParam.wrapper;
+				//param.baseWrapper = param.wrapper;
+				//target.changed(\target);
+			//} {
+				////param.wrapper = param.combinator.baseParam.wrapper;
+
+			//}
+		//});
 	}
 }
 
@@ -2126,7 +2243,7 @@ PdefParam : BaseAccessorParam {
 		target.unset(property);
 	}
 
-	getRaw {
+	getVal {
 		// FIXME: the bus mode is managed inside Pdef.getVal. Is it possible and desirable to use accessor for that ?
 		var val;
 		val = target.getVal(property) ?? { 
@@ -2142,7 +2259,7 @@ PdefParam : BaseAccessorParam {
 		^val;
 	}
 
-	setRaw { arg val;
+	setVal { arg val;
 		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOn(val); 
 			//Log(\Param).debug("Val Nested! %", val);
@@ -2150,7 +2267,7 @@ PdefParam : BaseAccessorParam {
 		target.setVal(property, val);
 		//Log(\Param).debug("set:final Val %", val);
 		if(Param.trace == true) {
-			"%: setRaw: %".format(this, val).postln;
+			"%: setVal: %".format(this, val).postln;
 		};
 		//target.changed(\set, property, val); // Pdef already send a changed message
 	}
@@ -2228,7 +2345,7 @@ NdefParam : BaseAccessorParam {
 		}
 	}
 
-	getRaw {
+	getVal {
 		var val;
 		val = target.getVal(property) ?? { 
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
@@ -2242,9 +2359,9 @@ NdefParam : BaseAccessorParam {
 		^val;
 	}
 
-	setRaw { arg val;
+	setVal { arg val;
 		if(Param.trace == true) {
-			"%: setRaw: %".format(this, val.asCompileString).postln;
+			"%: setVal: %".format(this, val.asCompileString).postln;
 		};
 		target.setVal(property, val);
 		//Log(\Param).debug("set:final Val %, prop %", val, property);
@@ -2895,7 +3012,7 @@ StepEventParam : BaseParam {
 
 	}
 
-	getRaw {
+	getVal {
 		var val;
 		val = target[property] ?? { 
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
@@ -2909,7 +3026,7 @@ StepEventParam : BaseParam {
 		^val;
 	}
 
-	setRaw { arg val;
+	setVal { arg val;
 		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOn(val); 
 			Log(\Param).debug("Val Nested! %", val);
@@ -2917,7 +3034,7 @@ StepEventParam : BaseParam {
 		target[property] = val;
 		//Log(\Param).debug("set:final Val %", val);
 		if(Param.trace == true) {
-			"%: setRaw: %".format(this, val).postln;
+			"%: setVal: %".format(this, val).postln;
 		};
 		target.changed(\set, property, val);
 	}
@@ -2999,7 +3116,7 @@ StepEventParam : BaseParam {
 		//}
 	//}
 
-	//getRaw {
+	//getVal {
 		//var val;
 		//val = target.getVal(property) ?? { 
 			////this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
@@ -3014,13 +3131,13 @@ StepEventParam : BaseParam {
 		//^val;
 	//}
 
-	//setRaw { arg val;
+	//setVal { arg val;
 		//if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
 			//val = Pdef.nestOn(val); 
 			//Log(\Param).debug("Val Nested! %", val);
 		//};
 		//if(Param.trace == true) {
-			//"%: setRaw: %".format(this, val).postln;
+			//"%: setVal: %".format(this, val).postln;
 		//};
 		//target.setVal(property, val);
 		////Log(\Param).debug("set:final Val %", val);
@@ -3249,7 +3366,7 @@ PdefParam_old : BaseParam {
 		^val;
 	}
 
-	getRaw {
+	getVal {
 		^target.get(property)
 	}
 
@@ -3261,7 +3378,7 @@ PdefParam_old : BaseParam {
 		target.unset(property);
 	}
 
-	setRaw { arg val;
+	setVal { arg val;
 		target.set(property, val);
 	}
 

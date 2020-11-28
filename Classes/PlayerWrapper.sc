@@ -53,8 +53,7 @@ PlayerWrapper  {
 	}
 
 	mapPlayer { arg  val;
-		this.initWrapper(val);
-		this.changed(\player);
+		this.target = val;
 	}
 
 	target {
@@ -67,6 +66,7 @@ PlayerWrapper  {
 
 	target_ { arg target;
 		this.initWrapper(target);
+		this.changed(\player);
 	}
 
 	///////// API
@@ -103,6 +103,15 @@ PlayerWrapper  {
 	isPlaying {
 		^wrapper.isPlaying
 	}
+
+	isPlaying_ { arg val;
+		if(val == true) {
+			wrapper.play
+		} {
+			wrapper.stop
+		}
+	}
+
 
 	stop {
 		wrapper.stop;
@@ -215,21 +224,30 @@ PlayerWrapper_Base {
 	}
 
 	stop {
+		target.changed(\PlayerWrapper, \userStopped);
 		this.doWithQuant {
 			target.stop;
-		}
+			target.changed(\PlayerWrapper, \stopped);
+		};
 	}
 
 	play {
 		target.play;
+		target.changed(\PlayerWrapper, \userPlayed);
+		this.doWithQuant {
+			target.changed(\PlayerWrapper, \playing);
+		};
 	}
 
 	stopNow {
-		target.stop
+		target.stop;
+		//target.changed(\PlayerWrapper, \userStopped);
+		target.changed(\PlayerWrapper, \stopped);
 	}
 
 	playNow {
-		target.play
+		target.play;
+		target.changed(\PlayerWrapper, \playing);
 	}
 
 	togglePlay {
@@ -419,7 +437,15 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 	play {
 		// hack: Ndef now have same latency than Pdef
 		//{ // defer implemented in dereference_event
-		target.play;
+		if(target.rate == \control) {
+			target.wakeUp; 
+		} {
+			target.play;
+		};
+		target.changed(\PlayerWrapper, \userPlayed);
+		this.doWithQuant {
+			target.changed(\PlayerWrapper, \playing);
+		};
 		//}.defer(Server.default.latency)
 	}
 
@@ -427,12 +453,18 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		// hack: Ndef now have same latency than Pdef
 		//{ // defer implemented in dereference_event
 		this.doWithQuant {
-			if(target.getHalo(\stopIsMute) != false) {
-				target.stop(target.fadeTime); // FIXME: how to configure ?
-			} {
+			if(target.rate == \control) {
 				target.free;
-			}
+			} {
+				if(target.getHalo(\stopIsMute) != false) {
+					target.stop(target.fadeTime); // FIXME: how to configure ?
+				} {
+					target.free;
+				}
+			};
+			target.changed(\PlayerWrapper, \stopped);
 		};
+		target.changed(\PlayerWrapper, \userStopped);
 		//}.defer(Server.default.latency)
 	}
 
@@ -448,6 +480,7 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		bundle.schedSend(target.homeServer, target.clock ? TempoClock.default, 0);
 		target.changed(\play);
 		target.send;
+		target.changed(\PlayerWrapper, \playing);
 	}
 
 	stopNow {
@@ -459,11 +492,16 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 				//target.free;
 				target.end;
 			}.fork;
-		}
+		};
+		target.changed(\PlayerWrapper, \stopped);
 	}
 
 	isPlaying {
-		^target.monitor.isPlaying;
+		if(target.rate == \control) {
+			^target.isPlaying
+		} {
+			^target.monitor.isPlaying;
+		}
 	}
 
 	presetCompileString {
@@ -548,6 +586,10 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 
 	play {
 		target.play;
+		target.changed(\PlayerWrapper, \userPlayed);
+		this.doWithQuant {
+			target.changed(\PlayerWrapper, \playing);
+		}
 	}
 
 	label {
@@ -570,6 +612,10 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 		// if protoclass already have a quant, the wrapper sould not add it again
 		// the protoclass is responsible to add a quant
 		target.stop;
+		target.changed(\PlayerWrapper, \userStopped);
+		this.doWithQuant {
+			target.changed(\PlayerWrapper, \stopped);
+		}
 	}
 
 	// generic way to classify players : ("%_%".format(player.targetClass, player.key))

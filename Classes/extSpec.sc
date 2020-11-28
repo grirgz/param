@@ -434,6 +434,7 @@ XWavetableSpec : ParamWavetableSpec {}
 
 ParamBusSpec : ParamNonFloatSpec {
 	// arg: channel count
+	var <>numChannels;
 	var >tagSpec;
 	tagSpec { arg self;
 		^tagSpec ?? { TagSpecDef(\BusDef) }
@@ -460,7 +461,16 @@ ParamControlBusSpec : ParamBusSpec {
 }
 XControlBusSpec : ParamControlBusSpec {}
 
-ParamMappedControlBusSpec : ParamBusSpec {
+ParamMappedBusSpec : ParamBusSpec {
+	// arg: channel count
+	var >tagSpec;
+	tagSpec { arg self;
+		^tagSpec ?? { TagSpecDef(\BusDef_asMap) }
+	}
+}
+
+
+ParamMappedControlBusSpec : ParamMappedBusSpec {
 	// arg: channel count
 	var >tagSpec;
 	tagSpec { arg self;
@@ -468,11 +478,11 @@ ParamMappedControlBusSpec : ParamBusSpec {
 	}
 }
 
-ParamMappedBusSpec : ParamBusSpec {
+ParamMappedAudioBusSpec : ParamMappedBusSpec {
 	// arg: channel count
 	var >tagSpec;
 	tagSpec { arg self;
-		^tagSpec ?? { TagSpecDef(\BusDef_asMap) }
+		^tagSpec ?? { TagSpecDef(\BusDef_control_asMap) }
 	}
 }
 

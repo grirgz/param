@@ -107,6 +107,15 @@ ProtoClass : Event {
 		}
 	}
 
+
+	asStream { arg ... args;
+		if(this[\asStream].notNil) {
+			^this[\asStream].(this, * args)
+		} {
+			super.asStream;
+		}
+	}
+
 	embedInStream { arg ... args;
 		^this[\embedInStream].(this, * args)
 	}
@@ -154,6 +163,19 @@ ProtoClass : Event {
 	set { arg ... args;
 		^this[\set].(this, * args)
 	}
+
+	asControlInput { arg ... args;
+		^this[\asControlInput].(this, * args)
+	}
+
+	asControlInput_ { arg ... args;
+		if(this[\asControlInput_].notNil) {
+			this[\asControlInput_].(this, * args)
+		} {
+			this[\asControlInput] = args[0]
+		}
+	}
+
 }
 
 
@@ -171,7 +193,8 @@ ProtoDef : ProtoClass {
 		if(this.all[key].isNil) {
 			if(val.notNil) {
 				// if value is a template class
-				if(templateClasses.includes(val.class.name) and: { instanceClasses.includes(this.class.name) } ) {
+				//Log(\Param).debug("ProtoDef % %", this.class.name.asCompileString, val.class.name.asCompileString);
+				if(templateClasses.includes(val.class.name) and: { instanceClasses.includes(this.name) } ) {
 					Log(\Param).debug("use parent!!! %", val);
 					inst = super.new(()).protoDef_prAdd(key);
 					inst[\parent] = val;
@@ -186,7 +209,7 @@ ProtoDef : ProtoClass {
 		} {
 			var ret = this.all[key];
 			if(val.notNil) {
-				if(templateClasses.includes(val.class.name) and: { instanceClasses.includes(this.class.name) } ) {
+				if(templateClasses.includes(val.class.name) and: { instanceClasses.includes(this.name) } ) {
 					Log(\Param).debug("replace parent!!! %", val);
 					ret[\parent] = val;
 				} {

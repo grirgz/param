@@ -1,0 +1,114 @@
+TITLE:: ProtoDef
+summary:: Write prototypes as class like objects
+categories:: Prototyping 
+related:: Classes/ProtoTemplateDef, Classes/ProtoClass, Classes/TrackDef, Classes/FileSystemProject
+
+DESCRIPTION::
+You can write object prototypes using Event, but there are several methods that are defined by the Event class which make it impossible to redefine them. link::Classes/ProtoClass:: allow you to redefine theses methods. ProtoDef is a ProtoClass with an identifer stored in a global dictionary for easy access.
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a ProtoDef
+
+ARGUMENT:: key
+The Symbol identifer of the ProtoDef
+
+ARGUMENT:: val
+an Event, another ProtoDef or a ProtoTemplateDef.
+In case of ProtoTemplateDef, code::val:: is used as a parent for ProtoDef, else, everything is copied
+
+returns:: a ProtoDef
+
+
+INSTANCEMETHODS::
+
+METHOD:: putAll
+like link::Classes/Event#.putAll::, copy everything into the current ProtoDef
+
+ARGUMENT::  ... args
+
+METHOD:: key
+The Symbol identifer of the ProtoDef (you should not set it)
+
+returns:: a Symbol
+
+METHOD:: clear
+Remove the ProtoDef
+
+EXAMPLES::
+
+code::
+(
+ProtoDef(\myproto, (
+	play: { arg ...args;
+		args.postln;
+	}
+));
+);
+
+ProtoDef(\myproto).play("hello");
+
+// Compare to normal event prototyping
+
+~myproto = (
+	play: { arg ...args;
+		args.postln;
+	}
+);
+// Event have already a specific system for playing, you can't redefine play like that
+~myproto.play("hello"); 
+
+::
+
+Inheritence
+
+code::
+(
+ProtoDef(\simpleproto, (
+	data: 4,
+	printData: { arg self, message;
+		"data: %".format(self.data).postln;
+	},
+));
+);
+
+ProtoDef(\simpleproto).printData; // show 4
+ProtoDef(\proto2, ProtoDef(\simpleproto)); // copy to another ProtoDef
+ProtoDef(\proto2).printData; // also show 4
+ProtoDef(\simpleproto)[\printData] = { "no!".postln }; // now change a function
+ProtoDef(\proto2).printData; // still original function in the copy
+
+//////////////// using a template
+
+(
+ProtoTemplateDef(\simpletemplate, (
+	data: 4,
+	printData: { arg self, message;
+		"data: %".format(self.data).postln;
+	},
+));
+);
+
+ProtoDef(\child, ProtoTemplateDef(\simpletemplate));
+ProtoDef(\child).data = 10;  // change data
+ProtoDef(\child).printData;
+
+// now you want to change a method 
+(
+ProtoTemplateDef(\simpletemplate, (
+	data: 4,
+	printData: { arg self, message;
+		"please find data here: %".format(self.data).postln;
+	},
+));
+);
+
+// every instance have the new method
+ProtoDef(\child).printData; 
+ProtoDef(\child).parent; // see the template
+// notice how data is still 10 and not 4 because it was redefined in the child
+
+
+::

@@ -85,18 +85,33 @@
 				^(val[0].class == Symbol)
 			}
 		} {
-			^(val.class == Symbol)
+			^(val.class == Symbol or: { val.isKindOf(ParamCombinator) or: { this.getHalo(( \ParamCombinator_++key ).asSymbol) !? (_.inBusMode) == true } })
 		}
 	}
 
+	//hasCombinator {
+		//this.getHalo(( \ParamCombinator_++key ).asSymbol).notNil
+	//}
+
+	//combinator {
+
+	//}
+
 	getVal { arg key;
 		var curval;
+		var combi;
+		var bus;
 		if(this.envir.isNil) { this.envir = this.class.event };
 		curval = this.get(key);
 		curval = this.class.nestOff(curval);
 		if(this.inBusMode(key)) {
-			var bus = curval.asCachedBus;
-			^bus.getCached;
+			combi = this.getHalo(( \ParamCombinator_++key ).asSymbol);
+			if( combi.notNil ) {
+				^combi.get;
+			} {
+				bus = curval.asCachedBus;
+				^bus.getCached;
+			}
 		} {
 			if(curval.class == Function) {
 				curval = this.envir.use({ curval.value });
@@ -106,6 +121,9 @@
 	}
 
 	setVal { arg key, val;
+		var bus;
+		var curval;
+		var combi;
 		if(val.isKindOf(Env)) {
 			this.set(key, this.class.nestOn(val))
 		} {
@@ -115,15 +133,18 @@
 				this.set(key, val)
 			} {
 				if(this.inBusMode(key)) {
-					var bus;
-					var curval;
-					curval = this.get(key);
-					curval = this.class.nestOff(curval);
-					bus = curval.asCachedBus;
-					if(curval.isSequenceableCollection) {
-						bus.setn(val);
+					combi = this.getHalo(( \ParamCombinator_++key ).asSymbol);
+					if( combi.notNil ) {
+						combi.set(val);
 					} {
-						bus.set(val);
+						curval = this.get(key);
+						curval = this.class.nestOff(curval);
+						bus = curval.asCachedBus;
+						if(curval.isSequenceableCollection) {
+							bus.setn(val);
+						} {
+							bus.set(val);
+						};
 					};
 					this.changed(\set, [key, val]);
 				} {
@@ -276,7 +297,7 @@
 				^(val[0].class == Symbol)
 			}
 		} {
-			^(val.class == Symbol)
+			^(val.class == Symbol or: { val.isKindOf(ParamCombinator) })
 		}
 	}
 

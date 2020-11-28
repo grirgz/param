@@ -1,0 +1,116 @@
+TITLE:: ControllerDef
+summary:: Group all your controller code in a convenient way
+categories:: Control, MIDI, OSC
+related:: Classes/Param, Classes/WindowDef
+
+DESCRIPTION::
+The main reason to use ControllerDef is to be able to store all controller code in a same place and tag them to automatically detect which controller are available to control a given set of parameters or players
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create or redefine a ControllerDef
+
+ARGUMENT:: key
+A Symbol identifier for the ControllerDef
+
+ARGUMENT:: val
+A function that connect some controller buttons to supercollider objects
+
+ARGUMENT:: tags
+A list of tag (Symbol).
+
+returns:: a ControllerDef
+
+METHOD:: getByTag
+Return all ControllerDef matching at least one the given tags
+
+ARGUMENT:: symlist
+A list of tag (Symbol).
+
+returns:: an IdentityDictionary in the form code::ControllerDef_key -> ControllerDef_object::
+
+
+INSTANCEMETHODS::
+
+METHOD:: startControl
+Execute the ControllerDef function.
+
+ARGUMENT::  ... args
+All argument are passed to the ControllerDef function. The first argument of the function is the ControllerDef itself.
+
+METHOD:: key
+Get the identifer key of the ControllerDef (you should not set it).
+
+returns:: a Symbol
+
+METHOD:: source
+Get or set the ControllerDef function
+
+returns:: a Function
+
+METHOD:: clear
+Remove the ControllerDef
+
+METHOD:: tags
+Get or set the tags of the ControllerDef
+
+ARGUMENT:: symlist
+A list of tag (Symbol).
+
+returns:: A list of tag (Symbol).
+
+
+EXAMPLES::
+
+code::
+(
+SynthDef(\saw, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+	var sig;
+	sig = LFSaw.ar(freq);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpfr: ControlSpec(0.1,4,\lin, 0, 1)
+))).add;
+)
+
+(
+Pdef(\help, 
+	Pbind(
+		\instrument, \saw,
+		\degree, Pwalk((0..20), Pseq((1..10)-5,inf) % Pseq((2..5),inf)),
+		\dur, 1/4,
+		\amp, 0.1,
+	)
+).play;
+);
+
+(
+ControllerDef(\knobline, { arg def, params;
+	// map 4 knobs with cc number given in the list
+	// note that you can also use OSC protocol here, or anything you want
+	[16,17,21,22].collect({ arg ccnum, idx;
+		if(params[idx].notNil) {
+			MIDIdef.cc(\knob+++idx, { arg val, channel, deviceId;
+				[ val, channel, deviceId ].debug;
+				params[idx].normSet(val/127); 
+			}, ccnum);
+		}
+	})
+})
+);
+
+// Now start controlling some params
+(
+ControllerDef(\knobline).startControl([ 
+	Param(Pdef(\help), \lpfr),
+	Param(Pdef(\help), \rq),
+])
+);
+
+Param(Pdef(\help), \lpfr).setBusMode; // set bus mode for finer control
+::

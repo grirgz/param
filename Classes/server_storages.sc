@@ -560,6 +560,10 @@ BusDef : Bus {
 		^bus;
 	}
 
+	//asControlInput {
+		//if(mapMode)
+	//}
+
 	*free { arg name;
 		all.at(name).free;
 		all.put(name, nil);

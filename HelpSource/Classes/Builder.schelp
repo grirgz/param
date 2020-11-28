@@ -1,0 +1,240 @@
+TITLE:: Builder
+summary:: Rebuild an object each time a parameter change
+related:: Classes/Param
+
+DESCRIPTION::
+
+
+CLASSMETHODS::
+
+METHOD:: new
+(describe method here)
+
+ARGUMENT:: key
+(describe argument here)
+
+ARGUMENT:: fun
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: functionArgsToEnvir
+(describe method here)
+
+ARGUMENT:: fun
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: make
+(describe method here)
+
+ARGUMENT:: fun
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+
+
+INSTANCEMETHODS::
+
+METHOD:: build
+Execute the Builder function
+
+METHOD:: get
+Get the value of a parameter
+
+ARGUMENT:: key
+The key of the parameter
+
+returns:: a Symbol
+
+
+METHOD:: key
+The identifier of the Builder
+
+returns:: a Symbol
+
+
+METHOD:: set
+Set the value of one ore more parameter
+
+ARGUMENT::  ... args
+a list of pairs key and value
+
+
+METHOD:: source
+Get or set the Builder function
+
+ARGUMENT:: fun
+A function doing some build work
+
+
+METHOD:: envir
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+METHOD:: unset
+Unset a parameter. Same as setting it to nil
+
+ARGUMENT::  ... args
+Symbols as parameter names
+
+
+
+
+EXAMPLES::
+
+This example show how to change the oscillator type with the GUI
+
+code::
+(
+Builder(\oscbuilder, { arg builder, oscType=\sin, numVoices=4;
+	SynthDef(\synth1, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+		var sig;
+		freq = freq * ((0..numVoices)/numVoices - 0.5 * \fspread.kr(0.1) + 1);
+		sig = switch(oscType,
+			\sin, { SinOsc.ar(freq)  },
+			\saw, { LFSaw.ar(freq) },
+			\pulse, { LFPulse.ar(freq, 0, \pulseWidth.kr(0.5)) }, // additionnal parameter
+		);
+		sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+		sig = Pan2.ar(sig, pan, amp).mean;
+		Out.ar(out, sig);
+	}, metadata:(specs:(
+		pulseWidth: \unipolar,
+		fspread: ControlSpec(0.001,1,\exp),
+	))).add;
+
+
+	Pdef(\synth1,
+		Pbind(
+			\instrument, \synth1,
+		),
+	);
+})
+.addSpec(\oscType, TagSpec([\sin, \saw,\pulse]))
+.addSpec(\numVoices, ControlSpec(1,64,\lin,1,1))
+.build;
+
+Spec.add(\adsr, ParamEnvSpec.adsr);
+Spec.add(\out, ParamBusSpec());
+)
+
+
+(
+WindowDef(\oscbuilder, { 
+	var oscType = Param(Builder(\oscbuilder), \oscType);
+	var oscView = View.new;
+	oscType.onChange({ arg param, view;
+		oscView.removeAll;
+		oscView.layout = Pdef(\synth1).asParamGroup.asView
+	}, oscView);
+	oscView.layout = Pdef(\synth1).asParamGroup.asView;
+	oscType.changed(\set);
+	VLayout (
+		PlayerWrapper(Pdef(\synth1)),
+		Builder(\oscbuilder).asParamGroup.asView,
+		oscView,
+		nil,
+	)
+}).front;
+)
+
+Builder(\oscbuilder).set(\oscType, \saw); // also work from code
+
+Pbindef(\synth1, \freq, Pseq([100,200],inf)); // you can still change the sound by code
+Pbindef(\synth1, \freq, nil);
+
+
+
+///////////////////////////
+// As you have noticed, the previous example only build one SynthDef. You can't run two patterns with different oscType
+// The solution is:
+// - use the name of the builder to name the SynthDef (or add a name argument)
+// - copy the builder
+
+(
+Builder(\oscbuilder, { arg builder, oscType=\sin, numVoices=4;
+	SynthDef(builder.key, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+		var sig;
+		freq = freq * ((0..numVoices)/numVoices - 0.5 * \fspread.kr(0.1) + 1);
+		sig = switch(oscType,
+			\sin, { SinOsc.ar(freq)  },
+			\saw, { LFSaw.ar(freq) },
+			\pulse, { LFPulse.ar(freq, 0, \pulseWidth.kr(0.5)) }, // additionnal parameter
+		);
+		sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+		sig = Pan2.ar(sig, pan, amp).mean;
+		Out.ar(out, sig);
+	}, metadata:(specs:(
+		pulseWidth: \unipolar,
+		fspread: ControlSpec(0.001,1,\exp),
+	))).add;
+
+
+	Pdef(builder.key,
+		Pbind(
+			\instrument, builder.key,
+		),
+	);
+})
+.addSpec(\name, ParamNonFloatSpec())
+.addSpec(\oscType, TagSpec([\sin, \saw,\pulse]))
+.addSpec(\numVoices, ControlSpec(1,64,\lin,1,1))
+.build;
+
+Spec.add(\adsr, ParamEnvSpec.adsr);
+Spec.add(\out, ParamBusSpec());
+
+// create four osc builders copy from the template builder
+Builder(\osc1, Builder(\oscbuilder)).build;  
+Builder(\osc2, Builder(\oscbuilder)).build; 
+Builder(\osc3, Builder(\oscbuilder)).build; 
+Builder(\osc4, Builder(\oscbuilder)).build; 
+)
+
+
+(
+// Now GUI take name as an argument
+WindowDef(\oscbuilder, { arg def, name=\osc1;
+	var oscView = View.new;
+	var builder = Builder(name);
+	var oscType = Param(builder, \oscType);
+	oscType.onChange({ arg param, view;
+		oscView.removeAll;
+		oscView.layout = Pdef(name).asParamGroup.asView
+	}, oscView);
+	oscView.layout = Pdef(name).asParamGroup.asView;
+	oscType.changed(\set);
+	VLayout (
+		PlayerWrapper(Pdef(name)),
+		builder.asParamGroup.asView,
+		oscView,
+		nil,
+	)
+}).front;
+)
+
+(
+// display the four osc modules
+WindowDef(\oscRack, { 
+	HLayout (
+		VLayout (
+			WindowDef(\oscbuilder).asView(\osc1),
+			WindowDef(\oscbuilder).asView(\osc2),
+		),
+		VLayout (
+			WindowDef(\oscbuilder).asView(\osc3),
+			WindowDef(\oscbuilder).asView(\osc4),
+		)
+	)
+}).front;
+)
+
+
+::
+
+

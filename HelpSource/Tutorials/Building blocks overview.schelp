@@ -10,7 +10,7 @@ LIST::
 ## PlayerWrapper: wrap all kind of players (Pdef, Ndef, ...) to have a standard interface
 ## BusDef/BufDef: manipulate busses and buffers 
 ## ControllerDef: group all your controller code in a convenient way
-## ProtoDef: 
+## ProtoDef: write prototypes as class like objects
 ## SaveHelper: help you add a saving system to your prototype
 ::
 
@@ -282,7 +282,7 @@ code::
 MKtl(\mycontroller).elAt(\knob, 0).mapParam( Param(Pdef(\melo), \lpfr) )
 ::
 
-Now maybe you are tired of defining manually which knob connect to which Param. You can simply define a function, but you can also use ControllerDef for the same effect.
+Now maybe you are tired of defining manually which knob connect to which Param. You can simply define a function, but you can also use ControllerDef for the same effect, but neater. A benefit is you can tag a ControllerDef and when writing your GUI, you can retrieve the list of compatible controllers.
 
 code::
 (

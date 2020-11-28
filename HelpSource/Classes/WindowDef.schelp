@@ -1,0 +1,177 @@
+TITLE:: WindowDef
+summary:: group all your GUI code in a convenient way
+categories:: GUI
+related:: Classes/Param
+
+DESCRIPTION::
+The first reason for using WindowDef is preventing opening the same windows multiple times.
+It can happen when you don't see the window was already open, or when you develop your GUI and run the same code several times with a few changes. Or when a button open a window.
+
+WindowDef also remember size and position of the window. 
+
+
+CLASSMETHODS::
+
+METHOD:: new
+(describe method here)
+
+ARGUMENT:: key
+A Symbol identifier for the instance. You should not set it yourself.
+
+ARGUMENT:: val
+A function that return a View or a Layout.
+WindowDef will automatically put it in a Window if you call code::front::
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: all
+An internal PresetDictionary containing all instances of WindowDef. You should not modify it directly.
+
+returns:: PresetDictionary
+
+
+INSTANCEMETHODS::
+
+
+
+METHOD:: clear
+Delete the WindowDef instance from the dictionary
+
+
+
+subsection::Execute the GUI function
+
+
+
+METHOD:: front
+Execute the function and put the result in a Window, then display it.
+
+ARGUMENT::  ... args
+All arguments provided to code::front:: will be passed to the function.
+
+METHOD:: frontTop
+Same as code::front:: but also set the window in always-on-top mode.
+
+ARGUMENT::  ... args
+All arguments provided will be passed to the function.
+
+METHOD:: asView
+Execute the function and return the result.
+
+ARGUMENT::  ... args
+All arguments provided will be passed to the function.
+
+returns:: a View or a Layout
+
+METHOD:: embedView
+Same as code::asView:: except the first argument is the parent WindowDef. This allow the child to access the window througt code::def.window::. The child WindowDef receive instead the parent WindowDef as first argument so can access to window.
+
+ARGUMENT:: def
+The parent WindowDef instance the child will be embeded
+
+ARGUMENT::  ... args
+All remaining arguments provided will be passed to the function.
+
+returns:: a View or a Layout
+
+
+subsection::Members
+
+METHOD:: source
+Get or set the function
+
+returns:: a Function
+
+METHOD:: key
+The identifier of the instance.
+
+returns:: a Symbol
+
+
+METHOD:: window
+Access to the window. Can be nil if code::asView:: was used.
+
+returns:: a Window or nil
+
+METHOD:: windowName
+Set or get the name of the window. Does nothing if there is no window available because code::asView:: was used
+
+returns:: a String or nil
+
+
+subsection::Window
+
+
+METHOD:: windowDo
+If the WindowDef is executed with code::asView::, the function have no access to the window. 
+Since you don't know if the WindowDef will create itself its window or be used a View
+
+ARGUMENT:: fun
+The function will only be executed if there is a window
+
+
+METHOD:: followChange
+Listen to messages sent by code::model:: and run the function given in argument. Stop listening when window is closed.
+
+ARGUMENT:: model
+The object to listen to code::changed:: messages
+
+ARGUMENT:: key
+Only trigger when message contains the given key
+
+ARGUMENT:: func
+Function to be executed each time a message is received
+
+
+METHOD:: closeWindow
+Close the window, or do nothing if there is no window available.
+
+
+
+
+subsection::Options
+
+
+
+
+
+METHOD:: alwaysRecreate
+If set to true, it will always recreate the window when you run code::front::.
+If false and the window is already open, it will simply bring the window to foreground.
+
+returns:: a Boolean
+
+
+METHOD:: border
+If false, the window will be borderless.
+
+Note::
+You cannot set border option inside the WindowDef function because the window was already created so it will have effect only on second run.
+::
+
+returns:: a Boolean
+
+subsection:Others
+
+METHOD:: waitIfNeeded
+If clock is late, wait until it catchs on. Else do nothing. When the GUI is very big, displaying it can disturb sound processes, this try to mitigate this problem.
+
+
+
+
+EXAMPLES::
+
+code::
+(
+// define a window
+WindowDef(\mywindow, {
+	Button.new.string_("hello");
+});
+)
+
+// Now you can open your window with .front, it will always close the previous window if already open:
+
+WindowDef(\mywindow).front;
+::
+

@@ -26,9 +26,10 @@ Builder {
 	}
 
 	*make { arg fun;
+		// can be used to make a nameless builder
 		var ins = super.new;
 		ins.source = fun;
-		ins.envir[\builder] = ins;
+		//ins.envir[\builder] = ins;
 		^ins;
 	}
 
@@ -37,28 +38,39 @@ Builder {
 			fun = {}
 		};
 		if(fun.isKindOf(Builder)) {
+			Halo.put(this, Halo.at(fun).copy); // copy Halo specs
 			fun = fun.source;
 		};
 		source = fun;
-		this.class.functionArgsToEnvir(fun).keysValuesDo { arg k, v;
+		this.class.functionArgsToEnvir(fun, this).keysValuesDo { arg k, v;
 			if( this.envir[k].isNil ) {
 				this.envir[k] = v;
 			};
 		};
 	}
+
+	asParamGroup {
+		^ParamGroup(this.source.def.argNames.drop(1).collect { arg k;
+			Param(this, k);
+		});
+	}
 	 
 	envir {
 		if(envir.isNil) { 
 			envir = IdentityDictionary.new;
-			envir[\builder] = this;
+			//envir[\builder] = this;
 		};
 		^envir
 	}
 
-	*functionArgsToEnvir { arg fun;
+	*functionArgsToEnvir { arg fun, inst;
 		var env = ();
 		fun.def.argNames.do { arg name, x;
-			env[name] = fun.def.prototypeFrame[x]
+			if(x == 0) {
+				env[name] = inst;
+			} {
+				env[name] = fun.def.prototypeFrame[x]
+			};
 		};
 		^env;
 	}
@@ -83,11 +95,19 @@ Builder {
 
 	unset { arg ... args;
 		args.do { arg key; this.envir.removeAt(key) };
-		this.changed(\unset, args);
+		this.changed(\unset, args); // FIXME: nobody listen on \unset
 	}
 
 	get { arg key;
 		^this.envir[key];
 	}
 	
+	printOn { arg stream;
+		this.storeOn(stream)
+	}
+
+	storeOn { arg stream;
+		stream << "%(%)".format(this.class.asString, this.key.asCompileString);
+	}
+
 }

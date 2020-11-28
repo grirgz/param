@@ -1,0 +1,115 @@
+TITLE:: PlayerWrapper
+summary:: Wrap players in a standard interface
+categories:: GUI, Control
+related:: Classes/Param
+
+DESCRIPTION::
+With link::Classes/Param:: you have an abstract way to represent any parameter in the system. What is missing a an abstract way to represent every player in the system. A player is an object that can be played and stopped. Examples of players are Pdef and Ndef. With link::Classes/Event:: or link::Classes/ProtoDef::, you can create your own objects that behave like a player.
+
+The most common usage of ParamWrapper is to call code::asView:: on it to transform it into a play/stop button.
+
+As Param, PlayerWrapper does not hold any value, everything is stored on the target object.
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new ParamWrapper
+
+ARGUMENT:: target
+The target object to be wrapped (Pdef, Ndef, ...)
+
+returns:: a PlayerWrapper
+
+
+INSTANCEMETHODS::
+
+subsection:: Play/stop
+
+METHOD:: play
+Play using quant
+
+METHOD:: stop
+Stop using quant
+
+METHOD:: playNow
+Play immediatly (without using code::quant::)
+
+
+METHOD:: stopNow
+Stop immediatly (without using code::quant::)
+
+METHOD:: isPlaying
+Return true is the player is playing or start the player is true is assigned
+
+returns:: a Boolean
+
+subsection::Others
+
+METHOD:: target
+Get or set the target object
+
+ARGUMENT:: target
+The target object to be wrapped (Pdef, Ndef, ...)
+
+METHOD:: label
+PlayerWrapper try to find a label describing the player. For Pdef and Ndef, the code::key:: is used.
+(describe method here)
+
+returns:: a String or Symbol
+
+METHOD:: edit
+Open a window to edit the target player. If the target have an code::edit:: method, it is used, else it try to find a suitable editor for the target.
+
+METHOD:: asView
+Create a button which track the playing state of the player and allow to play/stop it.
+
+returns:: a View
+
+METHOD:: isEmpty
+Return true is the target object is empty, for example a Pdef containing only an empty Pbind() will answer true
+
+returns:: a Boolean
+
+
+
+
+METHOD:: asPlayerEvent
+Return an event of type \player that can play the target when inserted in an event pattern. This is used by link::Classes/ClipTimeline:: to sequence any player.
+
+returns:: a PlayerEvent
+
+METHOD:: mapPlayer
+Same as code::target_::: used to change the target player.
+
+ARGUMENT:: val
+a player
+
+
+
+
+
+EXAMPLES::
+
+code::
+// create a player
+(
+Pdef(\help, 
+	Pbind(
+		\instrument, \default,
+		\degree, Pseq([0,2,5,1],inf) + Prand([0,7],inf),
+		\dur, 1/4,
+		\amp, 0.1,
+	)
+).play;
+);
+
+PlayerWrapper(Pdef(\help)).play; // same as Pdef(\help).play
+
+// control it with GUI
+(
+WindowDef(\mywindow, {
+	PlayerWrapper(Pdef(\help)).asView
+}).front;
+);
+::
+

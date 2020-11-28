@@ -6,17 +6,27 @@
 ParamViewToolBox {
 
 	classvar <>color_dark;
-	classvar <>color_ligth;
+	classvar <>color_light;
+	classvar <>color_playing;
+	classvar <>color_userPlayed;
+	classvar <>color_userStopped;
+	classvar <>color_stopped;
 
 	*initClass {
 		//color_ligth = Color.newHex("63AFD0");
 		//color_dark = Color.newHex("0772A1");
-		color_ligth = Color.new255(101, 166, 62);
+		color_light = Color.new255(101, 166, 62);
 		color_dark = Color.new255(130, 173, 105);
+		color_playing = color_light;
+		color_userPlayed = Color.newHex("348C4F");
+		color_userStopped = Color.newHex("348C4F");
+		color_stopped = Color.white;
 
 		//color_ligth = Color.newHex("5CCCCC");
 		//color_dark = Color.newHex("009999");
 	}
+
+	*color_ligth{ ^color_light } // backward compat for wrong spelling :/
 
 	*horizontal_slider { arg param, label_mode;
 		var view = View.new;
@@ -239,7 +249,7 @@ ListParamLayout {
 			})
 			.states_([
 				["", Color.black, Color.white],
-				["", Color.black, ParamViewToolBox.color_ligth],
+				["", Color.black, ParamViewToolBox.color_light],
 			]);
 		})
 	}
@@ -409,6 +419,23 @@ ParamGroupLayout {
 			};
 			lay;
 		};
+		var failback_entry = { arg param;
+			var lay;
+			lay = if(param.isNil) {
+				nil;
+			} {
+				HLayout(
+					if(label_mode == \full) {
+						param.asStaticTextLabel(\full);
+					} {
+						StaticText.new.string_(param.property)
+					}.fixedWidth_(80),
+					param.asStaticText.minWidth_(150),
+					//param.asTextField.minWidth_(70),
+				)
+			};
+			lay;
+		};
 		
 		^case(
 			{ item.isKindOf(Param) }, {
@@ -428,7 +455,7 @@ ParamGroupLayout {
 						{ item.spec.isKindOf(ParamBusSpec) }, {
 							popup_busmap_entry.(item)
 						}, {
-							nil
+							failback_entry.(item)
 						}
 					);
 				}
@@ -517,16 +544,7 @@ ParamGroupLayout {
 
 		biglayout = VLayout(*
 			biglist.collect({ arg param;
-				var statictext = if(label_mode == \full) {
-					param.asStaticTextLabel;
-				} {
-					StaticText.new.string_(param.property)
-				};
-				VLayout(
-					statictext,
-					param.asView,
-					param.asTextField,
-				)
+				param.asView(label_mode);
 			})
 		);
 
