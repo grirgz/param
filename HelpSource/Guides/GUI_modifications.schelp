@@ -1,0 +1,47 @@
+title:: GUI modifications
+summary:: List of GUI modifications by Param quark
+categories:: GUI
+
+
+METHOD:: mapParam
+implemented by:
+LIST::
+## link::Classes/Knob::
+## link::Classes/Slider::
+## link::Classes/EnvelopeView::
+## link::Classes/FixedEnvelopeView::
+## link::Classes/Button::
+## link::Classes/BasicButton::
+## link::Classes/EZSlider::
+::
+
+ARGUMENT:: key
+A Symbol identifier for the instance. You should not set it yourself.
+
+ARGUMENT:: val
+A function that return a View or a Layout.
+WindowDef will automatically put it in a Window if you call code::front::
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+section:: Additional classes
+
+LIST::
+## link::Classes/FixedEnvelopeView::
+## link::Classes/BasicButton::
+::
+
+section:: GUI toolbox
+
+LIST::
+## link::Classes/ParamGroupLayout::
+## link::Classes/ParamViewToolbox::
+::
+
+section:: GUI for various object in Param quark
+
+
+LIST::
+## link::Classes/PlayerWrapperView::
+::

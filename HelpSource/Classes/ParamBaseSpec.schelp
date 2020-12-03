@@ -1,0 +1,53 @@
+TITLE:: ParamBaseSpec
+summary:: Base for all Param specs
+categories:: Spec
+related:: Classes/ParamEnvSpec, Classes/ParamArraySpec, Classes/ParamBufferSpec, Classes/ParamBusSpec
+
+DESCRIPTION::
+link::Classes/ControlSpec:: is a very useful object to specify all kind of information for a synth parameter. Unfortunately, there is no standard Spec for arrays and env parameters. link::Classes/ParamEnvSpec:: and link::Classes/ParamArraySpec:: are there to fill this gap.
+
+The idea is that ParamArraySpec is just an array of ControlSpec. Same for ParamEnvSpec.
+
+While we we are at it, there is also other kind of parameters a Synth accept, they are really a simple number but they have special meaning:
+LIST::
+## Bus: The most common example is the code::out:: parameter. Use link::Classes/ParamBusSpec::
+## Buffer: Often named code::bufnum::. Use link::Classes/ParamBufferSpec::
+## Wavetable: used by UGens like link::Classes/Osc::. Use link::Classes/ParamWavetableSpec::
+## DoneAction: Use link::Classes/ParamDoneActionSpec::
+## Gate: Use link::Classes/ParamGateSpec::
+## Trig: for trigger inputs. Use link::Classes/ParamTrigSpec::
+## Audio: common example is parameter code::in:: in which you can map an audio bus in fx SynthDefs. Use link::Classes/ParamAudioSpec::
+::
+
+One benefit of specifying theses specs is you can know which one to hide (gate) and what GUI to create automatically for modifying it (link::Classes/PopUpMenu:: for busses and buffers).
+
+It is sometime useful to deal with other kind of objects when using Param on other objects than synths. There is no plan to create a spec for every kind of objects available in Supercollider, instead you have theses generic specs:
+
+LIST::
+## link::Classes/ParamNonFloatSpec::: for everything that is not a float
+## link::Classes/TagSpec::: specify a list of values instead of a range. Very useful for link::Classes/PopUpMenu::s
+::
+
+
+
+Note::
+code::ParamBaseSpec:: is only used as a parent class and should not be instancied directly.
+::
+
+CLASSMETHODS::
+
+
+INSTANCEMETHODS::
+
+METHOD:: setFrom
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::
+

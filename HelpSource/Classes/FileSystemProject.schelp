@@ -1,0 +1,181 @@
+TITLE:: FileSystemProject
+summary:: A central object representing a project file on disk
+categories:: Param
+related:: Classes/TrackDef, Classes/ProtoDef, Classes/TrackTemplateDef, Classes/ProtoTemplateDef
+
+DESCRIPTION::
+At some point, it is useful to gather all resources belonging to one project in a central object. This is also the best place to add code to save on disk everything that need to be saved, and load it after.
+FileSystemProject is a kind of link::Classes/ProtoClass::, meaning you can define your own methods for managing your project. 
+
+The identifier (code::.key::) of FileSystemProject is always a path to a folder existing on disk.
+
+If you happen to design a fine project managing system, you can store it in code::TrackTemplateDef(\my_project_template):: then you can create new projects by writing:
+
+code::
+FileSystemProject("path/to/project", TrackTemplateDef(\my_project_template));
+
+// use it now
+FileSystemProject("path/to/project").createMyCoolSetup;
+::
+
+
+
+section::MainProject
+
+MainProject is in reality code::ProtoTemplateDef(\MainProject)::, a project template distributed with the Param quark.
+
+
+
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new project object or return an already existing one. Creating a project does not mean creating it on disk, neither loading it from disk, it only create a kind of ProtoClass that have a project template as parent if specified in code::val:: argument. It is the responsability of the project template to offer methods to load and save projects. The standard method names are code::loadProject:: and code::saveProject::
+
+ARGUMENT:: key
+The identifier of the project which is also the absolute path of the project. If you provide a relative path instead, it will be resolved to an absolute path using link::#resolve:: then the project matching the absolute path will be returned. If a String is provided, it will be converted automatically to a Symbol
+
+ARGUMENT:: val
+An optional instance of link::Classes/Event::, link::Classes/FileSystemProject::, link::Classes/ProtoDef:: or link::Classes/ProtoClass:: to be copied in the current object. If it is link::Classes/ProtoTemplateDef:: or link::Classes/TrackTemplateDef::, the value is used as a link::Classes/Event#.parent:: so modifications to the parent are instantly applied to every children.
+
+returns:: a FileSystemProject
+
+
+METHOD:: load
+Load a file from disk. There is a special mechanism which stop reading the file when encoutering a line that start with 
+
+code::
+// END
+::
+
+This allow to have special code to be executed in live after this line while still having auto-executing code before this line.
+
+ARGUMENT:: path
+The path of the file to load. Can be absolute, relative to one of the path list link::#*paths:: or when starting with "./", relative to the current SCIDE file.
+
+ARGUMENT:: silent
+If true, does not print error message when file is not found
+
+returns:: the last object interpreted in the file
+
+
+
+METHOD:: loadOnce
+Same as link::.load:: but does nothing if the file is already loaded
+
+ARGUMENT:: path
+
+ARGUMENT:: silent
+
+
+METHOD:: addPath
+Add path to the list of paths
+
+ARGUMENT:: path
+Must be an absolute path
+
+returns:: (describe returnvalue here)
+
+
+METHOD:: paths
+A list of paths where to look for files which path is neither starting with "/" nor "./"
+
+returns:: a List of String
+
+
+METHOD:: current
+Should point to the current project.
+
+ARGUMENT:: val
+A FileSystemProject
+
+returns:: a FileSystemProject
+
+
+METHOD:: defaultProject
+The default project with a few methods.
+
+returns:: a ProtoClass
+
+
+METHOD:: resolve
+Take a path and find the absolute path by looking either in link::paths::, relative to link::cwd:: or relative to current SCIDE file.
+
+ARGUMENT:: val
+A String path
+
+returns:: A PathName (will maybe change)
+
+
+METHOD:: cwd
+Get or set the Current Working Directory. link::resolve:: use it to resolve files
+
+ARGUMENT:: path
+A String absolute path
+
+returns:: a String absolute path
+
+METHOD:: temporaryRecordFolder
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: recordFolder
+Get or set the path of the folder where recorded files are kept by default
+
+returns:: a String absolute path
+
+
+METHOD:: all
+A dictionary with all the instances of FileSystemProject. Please do not modify.
+
+returns:: an IdentityDictionary
+
+
+
+METHOD:: relativeToAbsolutePath
+Convert a path from relative to absolute
+
+ARGUMENT:: val
+A String path
+
+returns:: a String path
+
+
+METHOD:: unresolve
+Take an absolute path and find a folder in link::paths:: which can be used to shortens the path and make it relative.
+
+ARGUMENT:: val
+A String absolute path
+
+returns:: a String path relative to one of the path in link::paths::
+
+
+METHOD:: loadedFiles
+The list of loadingFiles. You should not modify it
+
+returns:: a List of String
+
+
+METHOD:: clearLoadingFiles
+If at one point you find yourself unable to load your files because it complains the file is already loading, use this method to clear the history of all loading files.
+
+
+
+METHOD:: loadingFiles
+This list is used internally to prevent infinite loop when two files load each other. Please do not modify
+
+returns:: a List of String
+
+
+
+INSTANCEMETHODS::
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::
+

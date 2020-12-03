@@ -27,11 +27,9 @@ CachedBus : Bus {
 
 	getCached {
 		if(cache[this.rate][this.index].isNil) {
-			this.get({ arg x; cache[this.rate][this.index] = x });
-			^0
-		} {
-			^cache[this.rate][this.index]
-		}
+			cache[this.rate][this.index] = this.getSynchronous;
+		}; 
+		^cache[this.rate][this.index]
 	}
 
 }

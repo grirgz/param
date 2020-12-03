@@ -185,9 +185,58 @@ WindowDef(\ParamSpecEditor, { arg def, param;
 );
 
 (
+TagSpecDef(\ParamCombinatorInput_asMap, { 
+	["-" -> 0] ++ TagSpecDef(\ParamCombinatorInput).list.collect({ arg x; x.key -> x.value.asMap }).sort({ arg a, b; a.key < b.key })
+	++ TagSpecDef(\BusDef_asMap).list
+});
+
+WindowDef(\ParamCombinatorInputPlayerButton, { arg def, combi, idx, tagspecplayer, tagspecmap;
+	var tagspec_map = tagspecmap ? TagSpecDef(\ParamCombinatorInput_asMap);
+	var tagspec_player = tagspecplayer ? TagSpecDef(\ParamCombinatorInput);
+	var pwrapper = PlayerWrapper();
+	var input = combi.inputParam.at(idx);
+	var menu = input.asBusPopUpMenu(tagspec_map);
+	var button = pwrapper.asView;
+	//button.rightClickEditorEnabled_(true);
+	button.debug("button");
+	// button click events doesnt work for mysterious reasons
+	button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+		[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+		pwrapper.edit;
+	});
+	menu.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+		[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+		if(buttonNumber == 1) {
+			pwrapper.edit;
+		}
+	});
+	menu.followChange(combi.inputParam.target, \set, {
+		"combi input change!".debug;
+		//Log(\Param).debug("input.get %", input.getBus);
+		if(input.getBus != 0) {
+			pwrapper.mapPlayer(
+				tagspec_map.unmapKey(input.getBus) !? { arg key;
+					Log(\Param).debug("combi editor: key: %, ts%", key, tagspec_player.asDict[ key ]);
+					tagspec_player.asDict[ key ]
+				} ?? {
+					nil
+				}
+			);
+			button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+				pwrapper.edit;
+			});
+		} {
+			pwrapper.mapPlayer(nil)
+		}
+	});
+	[menu, pwrapper];
+});
+
 WindowDef(\ParamCombinatorEditor, { arg def, combi;
 	var targetParam = combi.targetParam;
 	VLayout (
+		PlayerWrapper(combi.proxy).asView,
 		targetParam.asView,
 		combi.baseParam.asView,
 		combi.rangeParam.asView,
@@ -197,25 +246,37 @@ WindowDef(\ParamCombinatorEditor, { arg def, combi;
 			VLayout(
 				*combi.inputParam.collect( { arg input, idx;
 					var pwrapper = PlayerWrapper();
-					var tagspec = TagSpec(
-						["-"->0] ++ [\lfo1,\lfo2,\lfo3].collect({ arg x; x -> Ndef(x).asMap })
-					);
-					var menu = input.asValuePopUpMenu(tagspec);
+					var tagspec_map = TagSpecDef(\ParamCombinatorInput_asMap);
+					var tagspec_player = TagSpecDef(\ParamCombinatorInput);
+					//TagSpec(
+						//["-"->0] ++ [\lfo1,\lfo2,\lfo3].collect({ arg x; x -> Ndef(x).asMap })
+					//);
+					var menu = input.asBusPopUpMenu(tagspec_map);
 					menu.followChange(combi.inputParam.target, \set, {
-						//"change!".debug;
-						if(input.get != 0) {
+						"combi input change!".debug;
+						Log(\Param).debug("input.get %", input.getBus);
+						if(input.getBus != 0) {
 							pwrapper.mapPlayer(
-								Ndef(tagspec.list[ tagspec.unmapIndex(input.get) ].key)
+								tagspec_map.unmapKey(input.getBus) !? { arg key;
+									Log(\Param).debug("combi editor: key: %, ts%", key, tagspec_player.asDict[ key ]);
+									tagspec_player.asDict[ key ]
+								} ?? {
+									nil
+								}
 							)
 						} {
 							pwrapper.mapPlayer(nil)
 						}
 					});
 					HLayout (
-						menu,
-						pwrapper.asView,
+						//menu,
+						//pwrapper.asView,
+						HLayout(*WindowDef(\ParamCombinatorInputPlayerButton).asView(combi, idx).collect(_.asView)),
 						Button.new.string_("Edit").action_({
-							WindowDef(\NdefEditor).front(Ndef(tagspec.list[ tagspec.unmapIndex(input.get) ].key))
+							if(pwrapper.target.notNil) {
+								pwrapper.edit;
+							}
+							//WindowDef(\NdefEditor).front(Ndef(tagspec.list[ tagspec.unmapIndex(input.get) ].key))
 						})
 					)
 				})

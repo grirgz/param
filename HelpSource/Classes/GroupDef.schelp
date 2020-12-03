@@ -1,0 +1,126 @@
+TITLE:: GroupDef
+summary:: Create named groups
+categories:: Group
+related:: Classes/BufDef, Classes/BusDef, Classes/WavetableDef, Classes/Group
+
+DESCRIPTION::
+Create and return a group with a given name, or return it if the group already exists.
+
+code::
+GroupDef(\simple_group); // a simple group
+GroupDef(\fx_group, nil, \addAfter); // a group after default group
+GroupDef(\inner_group, GroupDef(\fx_group)); // a group inside the fx_group
+::
+
+CLASSMETHODS::
+
+METHOD:: new
+(describe method here)
+
+ARGUMENT:: name
+(describe argument here)
+
+ARGUMENT:: target
+(describe argument here)
+
+ARGUMENT:: addaction
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: newGroup
+(describe method here)
+
+ARGUMENT:: target
+(describe argument here)
+
+ARGUMENT:: addaction
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: groupdict
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: initClass
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+INSTANCEMETHODS::
+
+
+EXAMPLES::
+
+
+In this example we create a chain of 3 groups and put a synth in it. Since the synth replace the bus content, the order of nodes is very important. The synth are using the audio input as a frequency modulation
+
+code::
+(
+SynthDef(\fmop_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200, range=1, doneAction=2;
+	var sig, sig1, sig2, sig3;
+var env;
+	var in = In.ar(\inbus.kr(0), 2); 
+	sig = SinOsc.ar(freq * ( in * range + 1 ) * [[1.01,1, 0.99 ]] ).flat;
+	sig = Splay.ar(sig, spread, amp, pan);
+	env = EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,1,0.01)),gate,doneAction:doneAction);
+	sig = sig * env;
+	// replace the bus content instead of adding to it
+	XOut.ar(out, env, sig); 
+}).add;
+)
+
+s.plotTree; // see nodes
+
+(
+Pdef(\help1, 
+	Pbind(
+		\instrument, \fmop_help,
+		\degree, Pseq([0,2,4],inf),
+		\group, GroupDef(\group1),
+\legato, 0.3,
+		\dur, 1/1,
+		\amp, 0.1,
+	),
+).play;
+);
+
+(
+Pdef(\help2, 
+	Pbind(
+		\instrument, \fmop_help,
+		\degree, Pseq([2],inf),
+		\range, 1,
+		\group, GroupDef(\group2, GroupDef(\group1), \addAfter),
+		\dur, 1,
+		\amp, 0.1,
+	),
+).play;
+);
+
+(
+Pdef(\help3, 
+	Pbind(
+		\instrument, \fmop_help2,
+		\degree, Pseq([4],inf),
+		\range, 1,
+		\group, GroupDef(\group3, GroupDef(\group2), \addAfter),
+		\legato, 0.8,
+		\dur, 1,
+		\amp, 0.1,
+	),
+).play;
+);
+
+
+Pbindef(\help2, \range, 10); // change FM range
+Pbindef(\help3, \range, 10);
+Pbindef(\help3, \range, 0); // notice how zeroing range silences previous synth in the chain (but only when note is playing)
+
+GroupDef(\group1).moveAfter(GroupDef(\group3)); // reorder groups
+
+Pdef(\help3).stop;
+::

@@ -3,36 +3,38 @@ summary:: Rebuild an object each time a parameter change
 related:: Classes/Param
 
 DESCRIPTION::
+The idea behind builder is to have a function that execute each time one of its argument changes. You can then control the arguments with Param and assign it a GUI or controller knob.
+It also have a name so you can redefine and retrieve it easily.
+
+code::
+Builder(\mybuilder, { arg self, arg1; arg1.postln;  });
+Builder(\mybuilder).set(\arg1, "hello2"); // print "hello", but only if arg1 change
+Builder(\mybuilder).build; // re-execute with previous arguments
+::
+
+The common use case is to make a GUI allowing to select the osc shape or the number of channels of a SynthDef, since this cannot be SynthDef arguments.
 
 
 CLASSMETHODS::
 
 METHOD:: new
-(describe method here)
+Create or retrieve a builder
 
 ARGUMENT:: key
-(describe argument here)
+A symbol identifer for the builder
 
 ARGUMENT:: fun
-(describe argument here)
+The builder function which will be executed each time an argument change. The first argument of the function is always the builder itself.
 
-returns:: (describe returnvalue here)
-
-METHOD:: functionArgsToEnvir
-(describe method here)
-
-ARGUMENT:: fun
-(describe argument here)
-
-returns:: (describe returnvalue here)
+returns:: a Builder
 
 METHOD:: make
-(describe method here)
+Create a nameless builder
 
 ARGUMENT:: fun
-(describe argument here)
+The builder function which will be executed each time an argument change. The first argument of the function is always the builder itself.
 
-returns:: (describe returnvalue here)
+returns:: a Builder
 
 
 
@@ -71,9 +73,9 @@ A function doing some build work
 
 
 METHOD:: envir
-(describe method here)
+Builder create a dictionary for each builder named envir which contains the argument values. Builder function can store data inside it to be retrieved by user code elsewhere.
 
-returns:: (describe returnvalue here)
+returns:: an IdentityDictionary
 
 
 METHOD:: unset

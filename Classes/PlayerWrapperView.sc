@@ -18,12 +18,26 @@ PlayerWrapperView {
 		this.model = xmodel;
 	}
 
+	view { 
+		if(view.isNil) {
+			this.makeLayout;
+		};
+		^view;
+	}
+
+	layout {
+		^this.view;
+	}
+
+	asView {
+		^this.view;
+	}
+
 	// FIXME: this is dirty, a layout is not a view
 	// but require to remember if class is a layout or a view
 	// maybe better would be for view to return a view and layout return a layout
-	view { ^this.layout }
 
-	layout { arg parent;
+	makeLayout { arg parent;
 		var lay = HLayout(
 			button = Button.new.action_({ arg view;
 				// value first increment then action is called
@@ -47,9 +61,15 @@ PlayerWrapperView {
 				);
 			})
 		);
+		lay = button; // backward compat
+		lay.addUniqueMethod(\maxWidth_, { arg v, x; 
+			Log(\Param).debug("maxWidth_ %",[v,x].asCompileString);
+			button.maxWidth_(x); 
+			v;
+		});
 		lay.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
 		lay.addUniqueMethod(\parentView, { this }); 
-		lay.addUniqueMethod(\enableRightClickEditor_, { arg self, val=true;
+		lay.addUniqueMethod(\rightClickEditorEnabled_, { arg self, val=true;
 			//Log(\Param).debug("enableRightClickEditor_ %", val);
 			if(val == true) {
 				button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
@@ -60,12 +80,16 @@ PlayerWrapperView {
 				})
 			} {
 				button.mouseDownAction_({})
-			}
+			};
+			self;
 		});
 		this.makeUpdater;
 		this.update;
-		^lay;
+		//view = lay;
+		view = button;
+		^view;
 	}
+
 
 	makeUpdater {
 		skipjack = SkipJack({
@@ -89,12 +113,16 @@ PlayerWrapperView {
 			if(changed == \PlayerWrapper) {
 				defer {
 					var butval = button.value;
-					button.states = this.getStates;
+					button.states = this.getStates(model.label);
 					button.value = switch(status,
 						\stopped, { 0 },
 						\playing, { 2 },
-						\userPlayed, { 1 },
-						\userStopped, { 3 },
+						\userPlayed, { 
+							if(butval == 2) { 2 } { 1 }
+						},
+						\userStopped, { 
+							if(butval == 0) { 0 } { 3 }
+						},
 						{ 0 },
 					);
 				}
@@ -136,14 +164,14 @@ PlayerWrapperView {
 	}
 
 	update { arg changed, changer ... args;
+		var xlabel;
+		var playing;
 
-		[changed, changer, args].debug("changed, changer");
+		//[changed, changer, args].debug("changed, changer");
 
         if(changer !== this) {  
-			var xlabel;
 			//model.isPlaying.debug("isPlaying?");
 			if(model.isKindOf(PlayerWrapper)) {
-				var playing;
 				//label.asCompileString.debug("PlayerWrapperView: getlabel");
 				if([0,2].includes(button.value)) {
 					xlabel = label ? model.label;
@@ -156,9 +184,9 @@ PlayerWrapperView {
 					};
 				}
 			} {
-				xlabel = label;
-				button.states = this.getStates(xlabel);
-				button.value = 0;
+				//xlabel = label;
+				//button.states = this.getStates(xlabel);
+				//button.value = 0;
 			}
 		}
 	}
@@ -188,10 +216,10 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 	}
 
 	initPlayerWrapperSelectorView {
-		color_selected = Color.yellow;
-		color_deselected = ParamViewToolBox.color_light;
 		color_empty = Color.gray;
-		color_active = ParamViewToolBox.color_dark;
+		color_deselected = ParamViewToolBox.color_userPlayed;
+		color_active = ParamViewToolBox.color_playing;
+		color_selected = Color.yellow;
 	}
 
 	// FIXME: this is dirty, a layout is not a view
@@ -435,10 +463,6 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 		^view;
 	}
 
-	asView {
-		^this.view;
-	}
-
 	selected_ { arg val;
 		selected = val;
 		[selected, val].debug( "PlayerWrapperSelectorView.selected" );
@@ -476,8 +500,8 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 	}
 
 	getStates { arg str="";
-		// FIXME: uncomment debug lines to see that the SkipJack continue to run
 		//[ str ++ " ▶" ].debug("getStates");
+		str = ""; // small button
 		if(states.notNil) {
 			^states.(str);
 		} {

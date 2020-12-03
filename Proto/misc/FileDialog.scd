@@ -124,7 +124,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	fileview = ListView.new;
 	changepath = { arg view, path; // called with double click
 		var newnode;
-		path.debug("changepath: ");
+		[path, nodeClass.keys].debug("changepath: ");
 		newnode = nodeClass.new(path);
 		if(newnode.isFolder) {
 			node = newnode;

@@ -7,6 +7,7 @@ ParamViewToolBox {
 
 	classvar <>color_dark;
 	classvar <>color_light;
+	classvar <>color_pale;
 	classvar <>color_playing;
 	classvar <>color_userPlayed;
 	classvar <>color_userStopped;
@@ -15,11 +16,13 @@ ParamViewToolBox {
 	*initClass {
 		//color_ligth = Color.newHex("63AFD0");
 		//color_dark = Color.newHex("0772A1");
-		color_light = Color.new255(101, 166, 62);
-		color_dark = Color.new255(130, 173, 105);
+		color_dark = Color.newHex("14232E");
+		color_light = Color.newHex("4E8086");
+		color_pale = Color.newHex("4E8086").add(Color.grey,0.4);
+		//color_pale = Color.newHex("B9FFFC");
 		color_playing = color_light;
-		color_userPlayed = Color.newHex("348C4F");
-		color_userStopped = Color.newHex("348C4F");
+		color_userPlayed = color_pale;
+		color_userStopped = color_pale;
 		color_stopped = Color.white;
 
 		//color_ligth = Color.newHex("5CCCCC");
@@ -329,6 +332,7 @@ ParamGroupLayout {
 		// if param env or array, show vertically a label, an env/array, a textField
 
 		// do not call .asView here because it call recursively formEntry !
+		var minHeight = 70;
    
 		var scalar_entry = { arg param;
 			var lay;
@@ -362,7 +366,7 @@ ParamGroupLayout {
 					} {
 						StaticText.new.string_(param.property)
 					},
-					param.asEnvelopeView.minHeight_(110),
+					param.asEnvelopeView.minHeight_(minHeight),
 					param.asTextField,
 				)
 			};
@@ -379,7 +383,7 @@ ParamGroupLayout {
 					} {
 						StaticText.new.string_(param.property)
 					},
-					param.asMultiSlider.minHeight_(110),
+					param.asMultiSlider.minHeight_(minHeight),
 					param.asTextField,
 				)
 			};
@@ -510,7 +514,12 @@ ParamGroupLayout {
 				ParamViewToolBox.attachContextMenu(param, statictext);
 				[
 					statictext,
-					param.asPopUpMenu,
+
+					if(param.spec.isKindOf(TagSpec) ) {
+						param.asValuePopUpMenu;
+					} {
+						param.asBusPopUpMenu;
+					},
 					//param.asTextField,
 				]
 			}) ++

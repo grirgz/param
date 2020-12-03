@@ -1,7 +1,7 @@
 TITLE:: NoteTimeline
 summary:: A timeline editor for notes
 categories:: GUI
-related:: Param
+related:: Classes/Param
 
 DESCRIPTION::
 NoteTimeline is a timeline for editing events representing notes. Currently only the \midinote is supported in the GUI but the implementation is just a list of events, so it can virtually contains anything.

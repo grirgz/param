@@ -198,7 +198,7 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 		self.drawTask = TaskProxy.new;
 		self.tempoClock = TempoClock.default;
 		self.tempoClock.debug("clock");
-		self.timeline = timeline;
+		self.timeline = { timeline };
 
 		self;
 	},
@@ -250,7 +250,7 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 				clip = SampleTimeline(name.asSymbol);
 				ev = clip.asPatternEvent;
 				self.recordedEvent = ev;
-				self.recordedClip = clip;
+				self.recordedClip = { clip };
 				ev[\absTime] = tl.selection_cursor.startPosition ? 0;
 				ev[\sustain] = 1/2;
 				ev[\midinote] = (tl.selection_cursor.startPoint !? _.y ? 0).trunc(tl.quant_ref.value.y);
@@ -266,7 +266,7 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 				self.drawTask.play;
 			} {
 				// recordedClip is already the model
-				self.recordedClip = self.timeline;
+				self.recordedClip = { self.timeline };
 			};
 			self.recordedClip.fileName = self.filename;
 			self.recorder.prepareForRecord(path:self.filename, numChannels:numChannels);
@@ -330,7 +330,7 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 	quant: { arg self; self.timeline.quant },
 	init: { arg self, timeline, trackGetter;
 		"ini".debug;
-		self.timeline = timeline;
+		self.timeline = { timeline };
 		self.track = trackGetter;
 		self.recorder = Recorder(Server.default);
 		self.drawTask = TaskProxy.new;
@@ -386,7 +386,7 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 				clip = SampleTimeline(name.asSymbol);
 				ev = clip.asPatternEvent;
 				self.recordedEvent = ev;
-				self.recordedClip = clip;
+				self.recordedClip = { clip };
 				ev[\absTime] = self.trackAbsTime;
 				ev[\sustain] = 1/2;
 				ev[\midinote] = self.trackIndex;
@@ -402,7 +402,7 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 				self.drawTask.play;
 			} {
 				// recordedClip is already the model
-				self.recordedClip = self.timeline;
+				self.recordedClip = { self.timeline };
 			};
 			self.recordedClip.fileName = self.filename;
 			self.recorder.prepareForRecord(path:self.filename, numChannels:numChannels);

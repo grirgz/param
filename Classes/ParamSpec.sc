@@ -122,7 +122,7 @@ StepListSpec : ParamArraySpec {
 
 ParamEnvSpec : ParamBaseSpec {
 	var <levels, <times, <curves;
-	var <default;
+	var <>default;
 	var <size;
 	var <isMonoSpec;
 	var <isDynamic=false;
@@ -203,6 +203,7 @@ ParamEnvSpec : ParamBaseSpec {
 		releaseTime = releaseTime ? attackTime;
 		peakLevel = peakLevel ? sustainLevel;
 		inst = this.new([ zerospec, peakLevel, sustainLevel, zerospec], [attackTime, decayTime, releaseTime]);
+		inst.default = Env.adsr(0.1,0.1,0.8,0.1);
 		^inst
 	}
 
@@ -497,16 +498,37 @@ ParamOutBusSpec : ParamBusSpec {
 XOutBusSpec : ParamOutBusSpec {}
 
 ParamBoolSpec : ParamNonFloatSpec {
-	*new { 
-		^super.new.default_(false);
+	var <>reverse = false;
+	*new { arg reverse=false;
+		^super.new.reverse_(reverse).default_(false);
+	}
+
+	range {
+		^1
+	}
+
+	step {
+		^1
 	}
 
 	map { arg val;
-		^(val > 0)
+		if(reverse) {
+			^(val <= 0)
+		} {
+			^(val > 0)
+		}
 	}
 
 	unmap { arg val;
-		^val.asInteger
+		if(reverse) {
+			if(val.isSequenceableCollection) {
+				^val.collect({ arg x; x.not.asInteger })
+			} {
+				^val.not.asInteger;
+			}
+		} {
+			^val.asInteger
+		}
 	}
 
 }
@@ -536,22 +558,24 @@ TagSpec : ParamNonFloatSpec {
 		} {
 			"MenuSpec: dynamic list should be an association: %".format(dlist).error
 		};
+		this.changed(\list);
 		//dirty = true;
 	}
 
 	addUniqueDynamicList { arg newdlist;
 		if(dynamicLists.every({ arg dlist; dlist.key != newdlist.key })) { 
 			this.addDynamicList(newdlist)
-		}
+		};
 	}
 
 	replaceDynamicList { arg newdlist;
 		var idx = dynamicLists.detectIndex({ arg dlist; dlist.key == newdlist.key });
 		if(idx.notNil) {
-			this.dynamicLists[idx] = newdlist
+			this.dynamicLists[idx] = newdlist;
+			this.changed(\list);
 		} {
 			this.addDynamicList(newdlist)
-		}
+		};
 	}
 
 	add { arg key, val;
@@ -559,7 +583,8 @@ TagSpec : ParamNonFloatSpec {
 			list.add(key)
 		} {
 			list.add(key -> ( val ? key ))
-		}
+		};
+		this.changed(\list);
 	}
 
 	valueList {
@@ -671,6 +696,10 @@ TagSpec : ParamNonFloatSpec {
 
 	mapKey { arg val;
 		^this.associationList.asDict[val];
+	}
+
+	asDict { arg val;
+		^this.associationList.asDict;
 	}
 
 	unmapKey { arg val;

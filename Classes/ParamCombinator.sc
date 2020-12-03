@@ -13,6 +13,7 @@ ParamCombinator : Pattern {
 	var <>proxy;
 	var <halokey;
 	var <>busMode, <>rate = \kr;
+	var <>size;
 
 	*new { arg param, size=3;
 		// FIXME: if use new without *kr, there is no rate
@@ -71,10 +72,11 @@ ParamCombinator : Pattern {
 		^nil;
 	}
 
-	init { arg param, size=3;
+	init { arg param, xsize=3;
 		halokey = ( \ParamCombinator_++param.property ).asSymbol;
 		key = ( \ParamCombinator_++1000000.rand ).asSymbol;
 		busMode = false;
+		size = xsize;
 
 		rangeSize = size;
 		ranges = List.newFrom( 0!size );
@@ -118,6 +120,8 @@ ParamCombinator : Pattern {
 
 		];
 
+		TagSpecDef(\ParamCombinator).add(this);
+
 	}
 
 	freeAllSimpleControllers {
@@ -132,7 +136,7 @@ ParamCombinator : Pattern {
 		busMode = bool;
 		if(bool == true) {
 			name = name ? key;
-			bus = BusDef(name, \control);
+			//bus = BusDef(name, \control);
 			proxy = Ndef(name);
 			this.freeAllSimpleControllers;
 			//[targetParam, targetParam.getRaw, targetParam.get].debug("MAIS QUOI");
@@ -230,41 +234,42 @@ ParamCombinator : Pattern {
 
 	}
 
-	edit { arg self;
-		var window = Window.new;
-		var layout;
-		var modknob;
-		modknob = ModKnob.new
-			.onChange(ranges, \set, { arg view;
-				ranges.do { arg val, x;
-					modknob.set_range(x, val);
-				};
-				modknob.refresh;
-			})
-			.onChange(base, \set, { arg view;
-				modknob.value = baseParam.normGet;
-			})
-			.onChange(targetParam.target, \set, { arg view;
-				modknob.midi_value = targetParam.normGet;
-				modknob.refresh;
-			})
-			.action_({
-				baseParam.normSet(modknob.value)
-			})
-			;
-		modknob.view.minSize = 100@100;
-		layout = HLayout(
-			modknob.view,
-			ParamGroupLayout.two_panes(ParamGroup([
-				baseParam,
-				rangeParam,
-				inputParam,
-				targetParam,
-			].flatten)),
-		);
-		window.layout = layout;
-		window.alwaysOnTop = true;
-		window.front;
+	edit { 
+		WindowDef(\ParamCombinatorEditor).front(this);
+		//var window = Window.new;
+		//var layout;
+		//var modknob;
+		//modknob = ModKnob.new
+			//.onChange(ranges, \set, { arg view;
+				//ranges.do { arg val, x;
+					//modknob.set_range(x, val);
+				//};
+				//modknob.refresh;
+			//})
+			//.onChange(base, \set, { arg view;
+				//modknob.value = baseParam.normGet;
+			//})
+			//.onChange(targetParam.target, \set, { arg view;
+				//modknob.midi_value = targetParam.normGet;
+				//modknob.refresh;
+			//})
+			//.action_({
+				//baseParam.normSet(modknob.value)
+			//})
+			//;
+		//modknob.view.minSize = 100@100;
+		//layout = HLayout(
+			//modknob.view,
+			//ParamGroupLayout.two_panes(ParamGroup([
+				//baseParam,
+				//rangeParam,
+				//inputParam,
+				//targetParam,
+			//].flatten)),
+		//);
+		//window.layout = layout;
+		//window.alwaysOnTop = true;
+		//window.front;
 	}
 
 	asControlInput {

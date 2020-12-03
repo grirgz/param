@@ -120,8 +120,16 @@ ProtoClass : Event {
 		^this[\embedInStream].(this, * args)
 	}
 
+	removeAll { arg ... args;
+		^this[\removeAll].(this, * args)
+	}
+
 	clear { arg ... args;
 		^this[\clear].(this, * args)
+	}
+
+	update { arg ... args;
+		^this[\update].(this, * args)
 	}
 
 	isEmpty { arg ... args;
@@ -238,7 +246,8 @@ ProtoDef : ProtoClass {
 		this[\key] = k;
 	}
 
-	clear {
+	clear { arg ...args;
+		this[\clear].value(this, *args);
 		if(this.key.notNil) {
 			this.class.all[this.key] = nil
 		};

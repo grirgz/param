@@ -1,0 +1,42 @@
+title:: Easy tutorial for Param quark
+summary:: Learn the most basic and useful tricks
+categories:: GUI
+
+section::Automatic GUI Generation
+
+
+code::
+(
+SynthDef(\saw, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}).add;
+);
+
+(
+Pdef(\saw, 
+	Pbind(
+		\instrument, \saw,
+		\degree, Pseq([Prand([Pwhite(0,1.0,Pwhite(0,7,1)), Pwhite(0,12,Pwhite(0,70,1).asStream)]),Pseq((0..10),1)],inf),
+		\dur, Pseq([Prand([Pwhite(0,1.0,Pwhite(0,70,1)), Pwhite(0,12,Pwhite(0,70,1))])],inf)/12,
+		\amp, 0.1,
+	)
+).play;
+);
+
+Pdef(\saw).edit; // use default pdef editor
+
+WindowDef(\NdefEditor).front(Ndef(\saw)); // since Ndef already have an editor, you can use the default one with WindowDef
+::
+
+
+
+section::NoteTimeline
+
+code::
+NoteTimeline(\note1).edit; // using it create it automatically
+::

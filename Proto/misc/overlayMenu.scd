@@ -8,8 +8,10 @@ WindowDef(\OverlayMenu, { arg def, view, x, y, fun;
 	[def, def.key, def.window].debug("def");
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
-		"heeee".debug;
+		Log(\Param).debug("OverlayMenu: rect %, x %, y %", ab, x, y);"heeee".debug;
+		// FIXME: no wrap for out of screen
 		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
+		//win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
 		//win.alwaysOnTop = true; // would be nice but this make error don't know why
 		win.endFrontAction = { win.close };
 	};
@@ -29,6 +31,8 @@ WindowDef(\ParamGenericOverlayMenu, { arg def, view, x, y, param;
 
 
 // END
+
+/////////////////////////////////////////////////////////////////
 
 // test menu
 (
@@ -62,7 +66,7 @@ WindowDef(\OverlayMenu).front(nil,nil,nil,{ arg def;
 
 // define custom menu
 (
-WindowDef(\MyOverlayMenu, { arg def, view, x, y, fun;
+WindowDef(\MyOverlayMenu, { arg def, view, x, y;
 	WindowDef(\OverlayMenu).embedView(def, view, x, y, {
 		BasicButton.new.string_("kjkj")
 	})

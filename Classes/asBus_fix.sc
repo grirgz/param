@@ -92,3 +92,21 @@
 
 }
 
+
++ Bus {
+
+	// ClassLib bug fix:
+	// getSynchronous return a scalar even with a multiChannel bus, contrary to get
+	getSynchronous {
+		if(numChannels == 1) {
+			if(index.isNil) { Error("Cannot call % on a % that has been freed".format(thisMethod.name, this.class.name)).throw };
+			if (this.isSettable.not) {
+				Error("Bus-getSynchronous only works for control-rate busses").throw
+			} {
+				^server.getControlBusValue(index)
+			}
+		} {
+			^this.getnSynchronous(numChannels)
+		}
+	}
+}

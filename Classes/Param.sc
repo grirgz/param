@@ -334,6 +334,10 @@ Param {
 		^wrapper.property;
 	}
 
+	propertyRoot {
+		^wrapper.propertyRoot;
+	}
+
 	spec {
 		^wrapper.spec;
 	}
@@ -435,6 +439,15 @@ Param {
 		wrapper.setRaw(val)
 	}
 
+	getBus {
+		^wrapper.getBus
+	}
+
+	setBus { arg val;
+		wrapper.setBus(val)
+	}
+
+
 	/////////////////// MIDI mapping
 
 	// FIXME: ambigous name, maybe rename to midiMap. Also map mean something different for the wrapper class
@@ -449,7 +462,7 @@ Param {
 
 	/////////////////// GUI mapping
 
-	makeSimpleController { arg slider, action, updateAction, initAction, customAction;
+	makeSimpleController { arg slider, action, updateAction, initAction, customAction, cursorAction;
 		var param = this;
 		slider.toolTip = this.fullLabel; // FIXME: not really a good place, but so it can quicly apply to every view
 
@@ -489,9 +502,25 @@ Param {
 			}.defer;
 
 			this.makeUpdater(slider, updateAction);
+			if(cursorAction.notNil) {
+				this.makeCursorUpdater(slider, cursorAction)
+			};
 
-			initAction.(slider, param);
+			{
+				// long defer is needed else very strange bug occurs 
+				// ^^ The preceding error dump is for ERROR: Message 'new' not understood
+				// RECEIVER: an ExponentialWarp
+				initAction.(slider, param);
+			}.defer(1/100); 
+			nil;
 		};
+	}
+
+	makeCursorUpdater { arg view, action;
+		var con = view.getHalo(\simpleController);
+		con.put(\cursor, { arg obj, message, idx, idx2;
+			action.(view, idx, idx2)
+		});
 	}
 
 	refreshUpdater { arg view, action, updateMode;
@@ -507,6 +536,7 @@ Param {
 
 		if(updateMode == \dependants) {
 			// dependants mode
+			// FIXME: should i free it ? should i reuse it ?
 			var controller;
 			controller = SimpleController(param.controllerTarget);
 			{
@@ -596,7 +626,11 @@ Param {
 				\array, {
 					//param.debug("mapStaticText param");
 					//param.get.debug("param get");
-					^val.collect({ arg x; x.asFloat.asStringPrec(precision) });
+					if(val.first.isKindOf(Boolean)) {
+						^val.collect({ arg x; x.asCompileString });
+					} {
+						^val.collect({ arg x; x.asFloat.asStringPrec(precision) });
+					}
 				},
 				\env, {
 					^val.asStringPrec(precision);
@@ -614,7 +648,16 @@ Param {
 
 	////// widgets
 
-	mapMultiSlider { arg slider, action;
+	mapMultiSlider { arg slider, action, trackCursor=false;
+		var cursorAction;
+		if(trackCursor) {
+			cursorAction = { arg self, index;
+				defer {
+					self.index = index;
+				}
+			};
+			slider.showIndex = true;
+		};
 		this.makeSimpleController(slider, 
 			action: { arg self;
 				// to be used in Pseq
@@ -629,8 +672,21 @@ Param {
 					}.defer;
 				}
 			},
-			customAction:action
+			customAction:action,
+			cursorAction: cursorAction
 		);
+		slider.addUniqueMethod(\attachOverlayMenu, {
+			slider.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				if(buttonNumber == 1) {
+					ParamProto.init;
+					WindowDef(\OverlayMenu).front(slider, x, y, { arg def;
+						Param(Message(slider), \size, ControlSpec(1,32,\lin,1,4)).asNumberBox.maxWidth_(100)
+					} );
+					false
+				};
+			});
+		})
 	}
 
 	mapEnvelopeView { arg slider, action;
@@ -650,8 +706,19 @@ Param {
 
 	mapSlider { arg slider, action;
 		this.makeSimpleController(slider, 
-			updateAction: { arg self;
-				var val = this.normGet;
+			updateAction: { arg self, param;
+				var val;
+				//"start executing".debug;
+				try {
+					val = param.normGet;
+				} { arg error;
+					"In: %.mapSlider:updateAction".format(param).error;
+					error.reportError;
+					if(error.errorString.contains("Message 'round'")) {
+						"ERROR: Param spec (%) expected a number but received %".format(this.spec, try{ this.getRaw.asCompileString }{ arg error; error.errorString }).postln;
+					};
+					//error.throw;
+				};
 				if(val.isKindOf(Number)) {
 					{
 						self.value = val;
@@ -686,13 +753,25 @@ Param {
 				//"done".debug;
 			}, 
 			updateAction: { arg view, param;
+				var val = "";
+				Log(\Param).debug("mapTextField start");
+				try {
+					//[param, param.stringGet(precision)].debug("Param.mapTextField:get");
+					val = param.stringGet(precision);
+					//val = param.get.asCompileString;
+				} { arg error;
+					Log(\Param).debug("param.get %", param.get);
+					val = param.get.asCompileString;
+				};
+				Log(\Param).debug("mapTextField: val: %", val);
 				// refresh action
 				{
-					//[param, param.stringGet(precision)].debug("Param.mapTextField:get");
-					//[param, view.hasFocus].debug("Param.mapTextField: hasfocus");
+					[val.asCompileString, view.hasFocus].debug("Param.mapTextField: hasfocus");
 					if(view.hasFocus.not) {
-						view.value = param.stringGet(precision);
+						// TODO: handle other types than float
+							view.value = val;
 					};
+					Log(\Param).debug("mapTextField: updateAction: end");
 					//"done".debug;
 				}.defer;
 			},
@@ -759,10 +838,93 @@ Param {
 		};
 	}
 
+	mapPopUpMenuHelper { arg view, keys, set, get, unmap, map, refreshChangeAction, action, onChange;
+		// TODO: for refactoring menu method
+		var pm = view;
+		//debug("mapValuePopUpMenu:1");
+
+		if(keys.notNil and: { keys.isKindOf(TagSpec).not }) {
+			keys = TagSpec(keys);
+		};
+
+		view.refreshChangeAction = refreshChangeAction ? {
+			var spec;
+			var val;
+			//var isMapped = false;
+			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
+			if(keys.notNil) {
+				spec = keys;
+				val = get.();
+			} {
+				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
+					if(this.spec.isKindOf(ParamMappedBusSpec)) {
+						val = this.getBus;
+					} {
+						val = get.();
+					};
+					spec = this.spec.tagSpec;
+				} {
+					val = get.();
+					spec = this.spec;
+				};
+			};
+			view.items = spec.labelList.asArray;
+			view.value = spec.perform(unmap, val);
+			//view.value.debug("mapValuePopUpMenu:1.5");
+		};
+		view.refreshChange;
+		//[this.spec, this.get].debug("mapValuePopUpMenu:2");
+		//view.value.debug("mapValuePopUpMenu:3");
+		view.action = action ? {
+			var spec;
+			var isMapped = false;
+			//view.value.debug("mapValuePopUpMenu:4 (action)");
+			if(keys.notNil) {
+				spec = keys;
+			} {
+				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
+					if(this.spec.isKindOf(ParamMappedControlBusSpec)) {
+						isMapped = true
+					};
+					spec = this.spec.tagSpec;
+				} {
+					spec = this.spec;
+				};
+			};
+			if(isMapped) {
+				this.setBus(spec.perform(map, view.value));
+			} {
+				this.set(spec.perform(map, view.value));
+			};
+			//this.get.debug("mapValuePopUpMenu:5 (action)");
+		};
+		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
+		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
+			// TODO: do not change the whole row when just one value is updated!
+			//[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
+			if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
+				arg1.includes(this.propertyRoot)
+			} }) {
+				aview.refreshChange;
+			};
+			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
+		});
+		keys = keys ?? {this.spec};
+		if( keys.isKindOf(TagSpecDef)) {
+			view.onChange(keys, \list, onChange ? { arg aview, model, message, arg1;
+				//var idx = view.value;
+				view.items = keys.labelList.asArray;
+				aview.refreshChange;
+			});
+		};
+		//view.value.debug("mapValuePopUpMenu:8");
+	}
+
 	mapIndexPopUpMenu { arg view, keys;
 		// this method i used when the target parameter contains an integer used as an index into the TagSpec's list
 		// FIXME: mapIndexPopUpMenu does not use updater
 		var pm = view;
+		var mykeys;
 		//[keys, this.spec, this.spec.labelList].debug("mapIndexPopUpMenu: whatXXX");
 		if(keys.notNil and: { keys.isKindOf(TagSpec).not }) {
 			keys = TagSpec(keys);
@@ -784,8 +946,15 @@ Param {
 					//keys = spec.labelList;
 				//};
 			};
-			if(keys.notNil) {
-				pm.items = spec.labelList; // because PopUpMenu doesn't accept List
+			if(spec.notNil) {
+				try {
+					if(spec.labelList.notNil) {
+						pm.items = spec.labelList.asArray; // because PopUpMenu doesn't accept List
+					}
+				} { arg error;
+					"In %.mapIndexPopUpMenu:refreshChangeAction".format(this).error;
+					error.reportError;
+				}
 			};
 			me.value = this.get;
 		};
@@ -793,15 +962,29 @@ Param {
 		pm.action = {
 			this.set(pm.value);
 		};
-		pm.onChange(this.controllerTarget, \set, { arg me;
-			me.refreshChange;
+		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
+			// TODO: do not change the whole row when just one value is updated!
+			//[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
+			if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
+				arg1.includes(this.propertyRoot)
+			} }) {
+				aview.refreshChange;
+			};
+			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
 		});
+		mykeys = keys ?? {this.spec};
+		if( mykeys.isKindOf(TagSpecDef)) {
+			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
+				aview.refreshChange;
+			});
+		}
 	}
 
 	mapValuePopUpMenu { arg view, keys;
 		// this method is used when the target parameter contains a value, TagSpec find the key symbol associated to it in its list
 		// FIXME: mapIndexPopUpMenu does not use updater
 		// TODO: define a listener when the list change
+		var mykeys;
 		var pm = view;
 		//debug("mapValuePopUpMenu:1");
 
@@ -820,7 +1003,7 @@ Param {
 			} {
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
 					if(this.spec.isKindOf(ParamMappedControlBusSpec)) {
-						val = this.getRaw;
+						val = this.getBus;
 					} {
 						val = this.get;
 					};
@@ -830,8 +1013,15 @@ Param {
 					spec = this.spec;
 				};
 			};
-			view.items = spec.labelList.asArray;
-			view.value = spec.unmapIndex(val);
+			try {
+				if(spec.labelList.notNil) {
+					view.items = spec.labelList.asArray;
+				};
+				view.value = spec.unmapIndex(val);
+			} { arg error;
+				"In %.mapValuePopUpMenu:refreshChangeAction".format(this).error;
+				error.reportError;
+			};
 			//view.value.debug("mapValuePopUpMenu:1.5");
 		};
 		view.refreshChange;
@@ -854,7 +1044,7 @@ Param {
 				};
 			};
 			if(isMapped) {
-				this.setRaw(spec.mapIndex(view.value));
+				this.setBus(spec.mapIndex(view.value));
 			} {
 				this.set(spec.mapIndex(view.value));
 			};
@@ -864,13 +1054,19 @@ Param {
 		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
 			// TODO: do not change the whole row when just one value is updated!
 			//[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
-			if(arg1 == this.property or: { arg1.isKindOf(SequenceableCollection) and: {
-				arg1.includes(this.property)
+			if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
+				arg1.includes(this.propertyRoot)
 			} }) {
 				aview.refreshChange;
 			};
 			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
 		});
+		mykeys = keys ?? {this.spec};
+		if( mykeys.isKindOf(TagSpecDef)) {
+			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
+				aview.refreshChange;
+			});
+		};
 		//view.value.debug("mapValuePopUpMenu:8");
 	}
 
@@ -879,53 +1075,86 @@ Param {
 		// FIXME: mapIndexPopUpMenu does not use updater
 		// TODO: define a listener when the list change
 		var pm = view;
+		var mykeys;
 		//debug("mapValuePopUpMenu:1");
+		Log(\Param).debug("mapBusPopUpMenu %", keys);
 		if(keys.notNil and: { keys.isKindOf(TagSpec).not }) {
 			keys = TagSpec(keys);
 		};
+		Log(\Param).debug("mapBusPopUpMenu 0.1 %", keys);
 
 		view.refreshChangeAction = {
-			var spec;
+			var xspec;
 			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
+			Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:1 spec %, keys %", this.spec, keys);
 			if(keys.notNil) {
-				spec = keys;
+				xspec = keys;
+				Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:2 spec %, keys %", xspec, keys);
 			} {
 
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
-					spec = this.spec.tagSpec;
+					xspec = this.spec.tagSpec;
+					Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:3 spec %, keys %", xspec, keys);
 				} {
-					spec = this.spec;
+					xspec = this.spec;
+					Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:4 spec %, keys %", xspec, keys);
 				};
 			};
-			view.items = spec.labelList.asArray;
-			view.value = spec.unmapIndex(this.getRaw);
+			try {
+				if(xspec.labelList.notNil) {
+					view.items = xspec.labelList.asArray;
+				};
+				view.value = xspec.unmapIndex(this.getBus);
+			} { arg error;
+				"In %.mapBusPopUpMenu:refreshChangeAction".format(this).error;
+				error.reportError;
+				//error.throw;
+			};
+			Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:5 spec %, keys %", xspec, keys);
+			Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:6 spec %, keys %", xspec, keys);
 			//view.value.debug("mapValuePopUpMenu:1.5");
 		};
 		view.refreshChange;
 		//[this.spec, this.get].debug("mapValuePopUpMenu:2");
 		//view.value.debug("mapValuePopUpMenu:3");
 		view.action = {
-			var spec;
-			//view.value.debug("mapValuePopUpMenu:4 (action)");
-			if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
-				spec = this.spec.tagSpec;
+			var xspec;
+			Log(\Param).debug("mapBusPopUpMenu:action:1: view.value %", view.value);
+			Log(\Param).debug("mapBusPopUpMenu:action:2 spec %, keys %", this.spec, keys);
+			if(keys.notNil) {
+				xspec = keys;
+				Log(\Param).debug("mapBusPopUpMenu:action:3 spec %, keys %", xspec, keys);
 			} {
-				spec = this.spec;
+				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
+					xspec = this.spec.tagSpec;
+					Log(\Param).debug("mapBusPopUpMenu:action:4 spec %, keys %", xspec, keys);
+				} {
+					xspec = this.spec;
+					Log(\Param).debug("mapBusPopUpMenu:action:5 spec %, keys %", xspec, keys);
+				};
 			};
-			this.setRaw(spec.mapIndex(view.value));
-			//this.get.debug("mapValuePopUpMenu:5 (action)");
+			Log(\Param).debug("mapBusPopUpMenu:action:6 spec %, keys %", xspec, keys);
+			this.setBus(xspec.mapIndex(view.value));
+			Log(\Param).debug("mapBusPopUpMenu:action: end");
 		};
 		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
 		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
 			// TODO: do not change the whole row when just one value is updated!
-			//[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
-			if(arg1 == this.property or: { arg1.isKindOf(SequenceableCollection) and: {
-				arg1.includes(this.property)
+			Log(\Param).debug("mapBusPopUpMenu:onChange: prop:% view:% model:% msg:% arg:%", this.propertyRoot, aview, model, message, arg1);
+			if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
+				arg1.includes(this.propertyRoot)
 			} }) {
+				Log(\Param).debug("mapBusPopUpMenu:onChange: going to refresh");
 				aview.refreshChange;
 			};
-			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
+			Log(\Param).debug("mapBusPopUpMenu:onchange: end", view.value);
 		});
+		mykeys = keys ?? {this.spec};
+		if( mykeys.isKindOf(TagSpecDef)) {
+			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
+				aview.refreshChange;
+			});
+		}
 		//view.value.debug("mapValuePopUpMenu:8");
 	}
 
@@ -995,15 +1224,15 @@ Param {
 	//	^EZKnob.new.mapParam(this);
 	//}
 
-	asMultiSlider {
+	asMultiSlider { arg trackCursor=true;
 		^MultiSliderView.new
 			.elasticMode_(1)
 			.indexThumbSize_(100)
-			.isFilled_(true)
-			.fillColor_(Color.gray)
+			.isFilled_(false)
+			.fillColor_(ParamViewToolBox.color_ligth)
 			.strokeColor_(Color.black)
 			.size_(this.numChannels)
-			.mapParam(this);
+			.mapParam(this, trackCursor:trackCursor);
 	}
 
 	asStaticText {
@@ -1028,20 +1257,29 @@ Param {
 
 	asEnvelopeView {
 		var view;
-		view = FixedEnvelopeView.new(nil, Rect(0, 0, 230, 80))
+		try {
+
+			view = FixedEnvelopeView.new(nil, Rect(0, 0, 230, 80))
 			.drawLines_(true)
 			.selectionColor_(Color.red)
 			.drawRects_(true)
 			.step_(0)
 			.thumbSize_(10)
-			.elasticSelection_(true)
+			.elasticSelection_(false)
 			.keepHorizontalOrder_(true)
 			.rightClickZoomEnabled_(true)
-			.mapParam(this)
 			.grid_(Point(this.spec.times[0].unmap(1/8),1/8))
 			.totalDur_(this.spec.times[0].unmap(2))
-			.gridOn_(true);
+			.gridOn_(true)
+			.mapParam(this); 	// should be after spec access which can fail
 
+		} { arg error;
+			"In: %.asEnvelopeView".format(this).error;
+			error.reportError;
+			if(this.spec.isKindOf(ParamEnvSpec).not) {
+				"%.asEnvelopeView: spec is probably not compatible with EnvelopeView: %".format(this, this.spec).error;
+			};
+		};
 		^view;
 	}
 
@@ -1064,6 +1302,7 @@ Param {
 	}
 
 	asBusPopUpMenu { arg keys;
+		Log(\Param).debug("asBusPopUpMenu %", keys);
 		^PopUpMenu.new.mapBusParam(this, keys) // is Param.mapBusPopUpMenu
 	}
 
@@ -1277,6 +1516,10 @@ BaseParam {
 		^property.asString
 	}
 
+	propertyRoot {
+		^property
+	}
+
 	targetLabel {
 		^target.asString
 	}
@@ -1345,13 +1588,17 @@ BaseParam {
 	normSetList { arg list;
 		// this method replace individuals values in the array
 		// to be used with Pseq because Pseq load the array only once
-		if(this.get.notNil) {
-			this.do { arg subparam, x;
-				subparam.normSet(list[x])
-			}
-		} {
-			this.normSet(list);
-		}
+		//if(this.get.notNil) {
+			//this.do { arg subparam, x;
+				//subparam.normSet(list[x])
+			//}
+		//} {
+			//this.normSet(list);
+		//}
+
+		// FIXME: should determine when to do sub and when not
+		// when controlling a PstepSeq list with MultiSliderView, using sub, changes are not picked
+		this.normSet(list);
 	}
 
 	type {
@@ -1473,6 +1720,22 @@ BaseParam {
 			)
 		}
 	}
+
+	getBus {
+		^this.get
+	}
+
+	setBus { arg val;
+		this.set(val)
+	}
+
+	getRaw {
+		^target.get(property)
+	}
+
+	setRaw { arg val;
+		^target.set(property, val)
+	}
 }
 
 ParamAccessor {
@@ -1485,6 +1748,16 @@ ParamAccessor {
 
 			getval: { arg self;
 				self.obj.getVal;
+			},
+
+			setbus: { arg self, val;
+				// set the bus (or map) and not its value
+				self.obj.setRaw(val);
+			},
+
+
+			getbus: { arg self;
+				self.obj.getRaw;
 			},
 
 			toSpec: { arg self, sp;
@@ -1512,11 +1785,33 @@ ParamAccessor {
 		^(
 			key: \array,
 			setval: { arg self, val;
+				// set the value or the value of the bus
 				var oldval;
 				oldval = self.obj.parent.get;
 
 				oldval[idx] = val; 
 				self.obj.parent.set(oldval);
+			},
+
+			setbus: { arg self, val;
+				// set the bus and not its value
+				var oldval;
+				oldval = self.obj.parent.getNest;
+				oldval = oldval ?? { self.obj.parent.default };
+				oldval[idx] = val; 
+				self.obj.parent.setNest(oldval);
+			},
+
+
+			getbus: { arg self;
+				var val;
+				Log(\Param).debug("euhh1");
+				val = self.obj.parent.getNest;
+				Log(\Param).debug("euhh10 %", val);
+				val !? {
+				Log(\Param).debug("euhh11 %", val);
+					val[idx];
+				}
 			},
 
 			getval: { arg self;
@@ -1915,7 +2210,7 @@ BaseAccessorParam : BaseParam {
 			// Param arg
 			xspec ?? {
 				// halo
-				Log(\Param).debug("1");
+				Log(\Param).debug("to Spec: 1");
 				xtarget.getSpec(xproperty) ?? {
 					var mysp;
 				Log(\Param).debug("2");
@@ -2026,12 +2321,32 @@ BaseAccessorParam : BaseParam {
 		this.set(spec.map(val))
 	}
 
+	setBus { arg val;
+		// set the bus (or map) instead of the value of the bus
+		accessor.setbus(val);
+	}
+
+	getBus {
+		^accessor.getbus
+	}
+
+
 	getRaw {
 		^target.get(property)
 	}
 
 	setRaw { arg val;
 		^target.set(property, val)
+	}
+
+	getNest {
+		// not sure if should return default or nil
+		//^this.getRaw ?? { this.default };
+		^this.getRaw;
+	}
+
+	setNest { arg val;
+		this.setRaw(val);
 	}
 
 	//putListener { arg param, view, controller, action;
@@ -2159,7 +2474,7 @@ PdefParam : BaseAccessorParam {
 			// Param arg
 			xspec ?? {
 				// halo
-				Log(\Param).debug("1");
+				Log(\Param).debug("PdefParam: toSpec: 1");
 				xtarget.getSpec(xproperty) ?? {
 					var mysp;
 				Log(\Param).debug("2");
@@ -2242,6 +2557,20 @@ PdefParam : BaseAccessorParam {
 	unset { 
 		target.unset(property);
 	}
+
+	getNest {
+		// not sure if should return default or nil
+		// nil can signal the popup that there is nothing assigned
+		//^this.getRaw !? { arg v; 
+			//EventPatternProxy.nestOff(v)
+		//} ?? { this.default };
+		^EventPatternProxy.nestOff(this.getRaw)
+	}
+
+	setNest { arg val;
+		this.setRaw(EventPatternProxy.nestOn(val));
+	}
+
 
 	getVal {
 		// FIXME: the bus mode is managed inside Pdef.getVal. Is it possible and desirable to use accessor for that ?
@@ -2678,6 +3007,14 @@ ListParamSlot : BaseParam {
 	set { arg val;
 		target[property] = val;
 		target.changed(\set, property);
+	}
+
+	getRaw { 
+		^this.get
+	}
+
+	setRaw { arg val;
+		this.set(val)
 	}
 
 	normGet {

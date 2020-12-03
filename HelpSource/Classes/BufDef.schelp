@@ -1,0 +1,209 @@
+TITLE:: BufDef
+summary:: Create named Buffers
+categories:: Buffer Server
+related:: Classes/BusDef, Classes/WavetableDef, Classes/GroupDef, Classes/Buffer
+
+DESCRIPTION::
+BufDef is very useful for using audio sample files:
+
+code::
+BufDef("/path/to/file.wav")
+::
+
+This will load the file in a buffer and return it. You can write this code everywhere a Buffer is needed, it will only load it once in memory.
+
+You can also give name to your audio files:
+
+code::
+BufDef(\mybuf, "/path/to/file.wav");
+BufDef(\mybuf).play; // retrieve it and play it
+::
+
+Finally there is a path system allowing you to dispense you from having to type the full path
+
+
+code::
+BufDef.addPath("/path/to/sample_folder/");
+BufDef("recorded/rec1.wav"); // read file at /path/to/sample_folder/recorded/rec1.wav
+BufDef("./file.wav"); // load file relative to current SCIDE file
+::
+
+Note::
+BufDef is for the moment only a class that return Buffer objects. All instances methods are thus the methods of link::Classes/Buffer::
+::
+
+Note::
+The same limitation than Buffer apply: The first time a Buffer is loaded, an uninitialized buffer is returned, the initialization happen a few fraction of seconds later when file have finished loading. This mean the first use of a buffer in for example a pattern may fail if file is too long to load.
+::
+
+CLASSMETHODS::
+
+METHOD:: new
+Return the buffer matching the name, and allocate a new one.
+
+This method can be used in 3 different ways:
+LIST::
+## Load a file. In this case the name will be the path itself.
+code::
+BufDef("path/to/file.wav");
+::
+## Load a file and give it a custom name
+code::
+BufDef(\myfile, "path/to/file.wav");
+::
+## Create an empty buffer and give it a custom name:
+when the path is a number, it is used as the number of frames to allocate for the Buffer
+
+code::
+BufDef(\mybuf, 2 * s.sampleRate, 4); // allocate a four-channel buffer of 2 seconds 
+::
+
+::
+
+ARGUMENT:: name
+A symbol as a name of the buffer, or the path to the buffer file itself.
+
+ARGUMENT:: path
+A path which will be loaded in a Buffer. If the path starts with "./" it is lookup up relative to current SCIDE file. If the path doesnt not start by "/" (absolute) nor "./" it is lookup up in the code::BufDef.paths:: list.
+
+If it is a number, it is used instead as the number of frames for allocating an empty buffer.
+
+ARGUMENT:: channels
+Number of channel of the buffer. When ommited, all the channels of the file are loaded.
+
+returns:: a Buffer
+
+
+METHOD:: stereo
+Force the file to be stereo by duplicating a mono file channel or discarding additional channels
+
+ARGUMENT:: name
+The Symbol identifer of the BufDef
+
+ARGUMENT:: path
+The path of the file to load
+
+returns:: a Buffer
+
+METHOD:: freeAll
+Free all BufDef and their server buffer
+
+
+METHOD:: mono
+Force the file to be mono by discarding additional channels
+
+ARGUMENT:: name
+The Symbol identifer of the BufDef
+
+ARGUMENT:: path
+The path of the file to load
+
+returns:: a Buffer
+
+
+METHOD:: loadDialog
+Open a file dialog and load the selected file in a BufDef.
+Also print the BufDef in post window for copy/paste. It can't return the BufDef since it's asynchronous, but you can provide a callback function.
+
+ARGUMENT:: name
+The symbol identifier for the BufDef. Optional
+
+ARGUMENT:: callback
+An optional function called when the BufDef is loaded. The first argument of the callback is the BufDef
+
+
+METHOD:: clear
+Same as code::BufDef.free::
+METHOD:: free
+Free the BufDef and it's associated server buffer. Using the instance method will only free the buffer.
+
+ARGUMENT:: name
+The symbol identifier for the BufDef
+
+(describe argument here)
+
+ARGUMENT:: channels
+Optional: The number of channels of the buffer
+
+
+METHOD:: getBufferForPath
+return the buffer loaded for a given path, or load it if doesn't exists yet.
+
+ARGUMENT:: path
+The path of the buffer must be absolute.
+
+ARGUMENT:: channels
+Number of channel of the buffer
+
+ARGUMENT:: action
+An optional function to call when the buffer is loaded. The first argument is the buffer.
+
+returns:: a Buffer
+
+
+METHOD:: addPath
+Add a path to the list of path used by BufDef to search for the specified file.
+
+ARGUMENT:: path
+A String containing an absolute path
+
+
+METHOD:: paths
+Return the current list of paths where files are searched when path is not absolute or relative to SCIDE current file.
+Please use code::BufDef.addPath:: to add a new path to the list.
+
+returns:: a List
+
+
+METHOD:: reload
+Reload a file from disk. Useful when the file on disk have changed since BufDef normally never load two times the same file.
+
+ARGUMENT:: name
+The symbol identifier of the BufDef
+
+ARGUMENT:: channels
+Optional number of channel of the buffer
+
+returns:: a Buffer
+
+
+METHOD:: all
+A dictionary of all BufDef
+
+returns:: An IdentityDictionary
+
+
+INSTANCEMETHODS::
+
+BufDef is for the moment only a class that return Buffer objects. All instances methods are thus the methods of link::Classes/Buffer::.
+The exception is method code::key:: which is added by BufDef at Buffer creation to retrieve the BufDef for a given Buffer
+METHOD:: key
+
+The symbol identifier of the buffer
+
+EXAMPLES::
+
+code::
+(
+SynthDef(\bufplayer_help, { arg out=0, amp=0.1, gate=1, bufnum, speed=1, pos=0, doneAction=2, loop=0, trigger=1;
+	// pos in seconds
+	var sig;
+	sig = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * speed, trigger, startPos: (pos*BufSampleRate.kr(bufnum)), doneAction:doneAction, loop: loop);
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.001,0,1,0.01)),gate,doneAction:doneAction);
+	Out.ar(out, sig * \gain.kr(1));
+}).add;
+
+BufDef.addPath(Platform.systemAppSupportDir); // add the SC system folder to BufDef path list
+
+Pdef(\help, 
+	Pbind(
+		\instrument, \bufplayer_help,
+		\bufnum, BufDef.stereo("sounds/a11wlk01.wav"), // force stereo buffer since PlayBuf in bufplayer_help is stereo
+		\legato, 1,
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+)
+::
+

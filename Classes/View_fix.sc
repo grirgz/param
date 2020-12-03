@@ -26,7 +26,7 @@ FixedEnvelopeView : EnvelopeView {
 	valueXY_ { arg val;
 		val = val.deepCopy;
 		envDur = val[0].last;
-		if(envDur > totalDur) {
+		if(envDur.notNil and:{ envDur > totalDur }) {
 			totalDur = envDur;
 		};
 		val[0] = val[0] / totalDur;
@@ -56,6 +56,8 @@ FixedEnvelopeView : EnvelopeView {
 				if(buttonNumber == 1) {
 					view.addHalo(\mouseDownPosition, Point(x, y));
 					view.addHalo(\mouseDownTotalDur, view.totalDur);
+					view.addHalo(\elasticSelection, this.elasticSelection); 
+					this.elasticSelection = true;
 				};
 			}).mouseMoveAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				var delta;
@@ -68,6 +70,7 @@ FixedEnvelopeView : EnvelopeView {
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 				if(buttonNumber == 1) {
 					view.addHalo(\mouseDownPosition, nil);
+					this.elasticSelection = view.getHalo(\elasticSelection); 
 				};
 			});
 		} {

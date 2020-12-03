@@ -1,0 +1,171 @@
+TITLE:: ParamArraySpec
+summary:: Spec for Arrayed parameters in SynthDefs and in general
+categories:: Undocumented classes
+related:: Classes/SomeRelatedClass, Reference/SomeRelatedStuff, etc.
+
+DESCRIPTION::
+
+You can create it in different ways
+code::
+ParamArraySpec(); // default spec
+ParamArraySpec( ControlSpec(0,1,\lin) ); // an array of undefined size containing values in range from 0 to 1 
+ParamArraySpec(\freq); // \freq is automatically converted using \freq.asSpec
+ParamArraySpec(\freq ! 4); // The spec here tell the SynthDef accept an array of 4 items with \freq range
+ParamArraySpec([\freq, \unipolar]); // An array of 2 items with different specs for each item
+::
+
+If the array size is not defined in spec, Param will try to find the size of the SynthDef array parameter.
+
+Note::
+In supercollider, code::\freq ! 4:: is shortcut for code::[\freq, \freq, \freq, \freq]::
+::
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new ParamArraySpec instance
+
+ARGUMENT:: array
+A spec or an Array of spec (can also be a List)
+
+ARGUMENT:: default
+The default value which can be used when a parameter is nil
+
+returns:: a ParamArraySpec
+
+
+INSTANCEMETHODS::
+
+METHOD:: map
+Map an array of value according to individual spec specified at creation.
+
+ARGUMENT:: val
+An array of values to map, usually in normalized range ( from 0 to 1 )
+
+returns:: An array of values in range specified by individual specs of ParamArraySpec
+
+
+METHOD:: unmap
+Unmap an array of value according to individual spec specified at creation.
+
+ARGUMENT:: val
+An array of values to map, in range specified by individual specs of ParamArraySpec
+
+returns:: An array of values, usually in normalized range ( from 0 to 1 )
+
+
+METHOD:: size
+The size of the array specified by ParamArraySpec. Can be nil if unknown in advance
+
+returns:: A number or nil
+
+
+METHOD:: default
+The default value of the spec, should also be an array or a list.
+returns:: an Array
+
+METHOD:: at
+Access the individual specs inside the array.
+(describe method here)
+
+ARGUMENT:: idx
+Index of the spec
+
+returns:: a spec
+
+
+
+METHOD:: isMonoSpec
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: numChannels
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: array
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isDynamic
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: storeArgs
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(
+SynthDef(\sawtab_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * \freqtab.kr(1!8));
+	sig = RLPF.ar(sig, \cutofftab.kr(1000.1!8), \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}).add;
+);
+
+(
+Pdef(\help, 
+	Pbind(
+		\instrument, \sawtab_help,
+		\degree, Pseq((0..10)*3,inf) % Pseq(( 1..14 ),inf),
+		\dur, 1/4,
+		\amp, 0.1,
+	)
+).play;
+);
+
+
+(
+WindowDef(\help, { arg def;
+	VLayout (
+		Param(Pdef(\help), \freqtab, ParamArraySpec(\unipolar)).asView,
+		Param(Pdef(\help), \cutofftab, ParamArraySpec(\freq)).asView,
+	)
+}).front;
+)
+::
+
+The best place to store specs are in the SynthDef itself so Param can find them automatically.
+
+code::
+(
+SynthDef(\sawtab_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * \freqtab.kr(1!8));
+	sig = RLPF.ar(sig, \cutofftab.kr(1000.1!8), \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	freqtab: ParamArraySpec(\unipolar),
+	cutofftab: ParamArraySpec(\freq),
+))).add;
+);
+
+(
+Pdef(\help, 
+	Pbind(
+		\instrument, \sawtab_help,
+		\degree, Pseq((0..10)*3,inf) % Pseq(( 1..14 ),inf),
+		\dur, 1/4,
+		\amp, 0.1,
+	)
+).play;
+);
+
+Pdef(\help).edit; // now default Pdef editor can create MultiSliderView for you
+
+::

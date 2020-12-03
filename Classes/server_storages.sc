@@ -21,7 +21,7 @@ BufDef {
 
 	*addPath { arg path;
 		//var rpath = FileSystemProject.resolve(path);
-		var rpath = path.standardizePath;
+		var rpath = PathName(path).normalizedPath;
 		if(rpath.notNil) {
 			if(paths.includesEqual(rpath).not) {
 				paths.add(rpath);
@@ -39,6 +39,7 @@ BufDef {
 				if(name.asString.contains("/")) {
 					// special constructor with file path as name
 					name = this.abspath_to_relpath(name);
+					Log(\Param).debug("BufName: special cons: %", name);
 					^BufDef(name.asSymbol, name.asString, channels)
 				} {
 					^nil
@@ -155,14 +156,35 @@ BufDef {
 		});
 	}
 
-	*loadDialog { arg name;
-		Dialog.openPanel({ arg file;
-			if(name.notNil) {
-				BufDef(name, file)
-			} {
-				BufDef(file)
-			}
-		});
+	*loadDialog { arg name, callback;
+		if(WindowDef(\filedialog_sample).notNil) {
+			WindowDef(\filedialog_sample).front(nil,
+				{ arg path, file;
+					file = path +/+ file;
+					if(name.notNil) {
+						callback.(
+							BufDef(name, file).asCompileString.postln;
+						)
+					} {
+						callback.(
+							BufDef(file).asCompileString.postln;
+						)
+					}
+				};
+			)
+		} {
+			Dialog.openPanel({ arg file;
+				if(name.notNil) {
+					callback.(
+						BufDef(name, file).asCompileString.postln;
+					)
+				} {
+					callback.(
+						BufDef(file).asCompileString.postln;
+					)
+				}
+			});
+		};
 		^nil;
 	}
 
@@ -228,7 +250,11 @@ BufDef {
 	}
 
 	*abspath_to_relpath { arg path;
-		path = path.asString.standardizePath;
+		path = PathName(path.asString).normalizedPath;
+		FileSystemProject.relativeToAbsolutePath(path) !? { arg abspath;
+			^abspath;
+	   	};
+		
 		this.paths.do { arg folder;
 			folder = this.addTrailingSlash(folder);
 			if(path.beginsWith(folder)) {
@@ -325,6 +351,7 @@ WavetableDef : BufDef {
 	*new { arg name, path, channels;
 		var multipath, keypath;
 		keypath = path;
+		Log(\Param).debug("BufDef.new: % % %", name, path, channels);
 		if(path.isKindOf(Array)) {
 			multipath = path;
 			keypath = multipath.join(":");
@@ -336,6 +363,7 @@ WavetableDef : BufDef {
 				if(name.asString.contains("/")) {
 					// special constructor with file path as name
 					name = this.abspath_to_relpath(name);
+					Log(\Param).debug("BufName: special cons: %", name);
 					^BufDef(name.asSymbol, name.asString, channels)
 				} {
 					^nil
@@ -480,12 +508,10 @@ WavetableDef : BufDef {
 BusDef : Bus {
 	
 	classvar <>all;
-	classvar <>root;
 	var <>key;
 
 	*initClass {
 		all = IdentityDictionary.new;
-		root = "~/Musique/sc/samplekit".standardizePath;
 	}
 
 	*control { arg server, numChannels=1;
@@ -539,6 +565,7 @@ BusDef : Bus {
 		//if(~veco_project_path.notNil) {
 		//	client = ~veco_project_path;
 		//}
+		name = name.asSymbol; // force all symbol else this will bite you
 
 		if(all.at(name).notNil or: {rate.isNil}) {
 			bus = all.at(name)

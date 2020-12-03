@@ -442,7 +442,8 @@
 //if(~clipTimeline_all.isNil) {
 //	~clipTimeline_all = IdentityDictionary.new;
 //};
-ClipTimeline.proto = ProtoClass((
+//ClipTimeline.proto = ProtoClass((
+~clipTimeline = ProtoClass((
 	parent: ~eventTimeline,
 	all: { PresetDictionary.new(\clipTimeline) },
 	eventType: \clipTimeline,
@@ -477,9 +478,9 @@ ClipTimeline.proto = ProtoClass((
 			muted: false,
 		)});
 		self.tracks_bypassed = Set.new;
-		self.recorder = ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder).new(self);
+		self.recorder = { ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder).new(self) };
 
-		self.clipList = ProtoClassDef(\ClipTimelineClipList).new(self);
+		self.clipList = { ProtoClassDef(\ClipTimelineClipList).new(self) };
 		//"=============clipTimeline: end init".debug;
 
 		self;
@@ -698,7 +699,7 @@ ClipTimeline.proto = ProtoClass((
 	},
 
 ));
-~clipTimeline = ClipTimeline.proto;
+//~clipTimeline = ClipTimeline.proto;
 
 ~trackTimeline = ProtoClass((
 	parent: ~clipTimeline,
@@ -830,8 +831,8 @@ ClipTimeline.proto = ProtoClass((
 			param = Param(param, \midinote);
 		};
 		self[\param] = param;
-		self.wrapper = ~seqPlayerGroup.new(self.param.target);
-		self.recorder = ~playerGroupRecorder.new(self.wrapper);
+		self.wrapper = { ~seqPlayerGroup.new(self.param.target) };
+		self.recorder = { ~playerGroupRecorder.new(self.wrapper) };
 		self.recorder.eventLoop = self.eventLoop;
 
 		//self.eventFactory = ~class_event_factory.new(self.param.target);
@@ -1041,7 +1042,7 @@ ClipTimeline.proto = ProtoClass((
 		if(self.recorder.notNil) {
 			self.recorder.stopRecording;
 		};
-		self.recorder = ~paramRecorder.new(self.param);
+		self.recorder = { ~paramRecorder.new(self.param) };
 		self.recorder.eventLoop = self.eventLoop;
 
 		if(self.customBus.isNil) {
@@ -1322,12 +1323,12 @@ ClipTimeline.proto = ProtoClass((
 	kit_: { arg self, kit;
 		if(kit.isSequenceableCollection) {
 			self[\kit] = kit;
-			self.wrapper = ~parPlayerGroup.new(self.kit);
+			self.wrapper = { ~parPlayerGroup.new(self.kit) };
 		} {
 			self.wrapper = kit;
 			self[\kit] = { arg self; self.wrapper.targets };
 		};
-		self.recorder = ~playerGroupRecorder.new(self.wrapper);
+		self.recorder = { ~playerGroupRecorder.new(self.wrapper) };
 		self.recorder.eventLoop = self.eventLoop;
 	},
 

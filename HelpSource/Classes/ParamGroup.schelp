@@ -1,0 +1,188 @@
+TITLE:: ParamGroup
+summary:: Convenient methods for a list of Param objects
+categories:: Param
+related:: Classes/Param
+
+DESCRIPTION::
+A param group is just a list of Param objects, but it have convenient method, for example creating a view or generating a compile string for initializing all the Params in the group.
+
+code::
+ParamGroup([ Param(Pdef(\help), \freq), Param(Pdef(\help), \cutoff) ]).edit;
+::
+
+Some objects can generate a ParamGroup from the argument list of the SynthDef:
+
+code::
+Pdef(\help).asParamGroup.edit; // extract \instrument key of Pbind
+SynthDesc(\saw).asParamGroup( Pdef(\help) ).edit; // get the list from the \saw SynthDef description, it require the target as first argument
+Ndef(\help).asParamGroup.edit; // get argument list from Ndef
+::
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new ParamGroup
+
+ARGUMENT:: anArray
+Initialize the group with an array of Param.
+
+returns:: a ParamGroup
+
+
+METHOD:: editFunction
+Get or set the function executed when code::edit:: is called. By default, it use code::ParamGroupLayout.new:: to generate a view. 
+
+returns:: a Function
+
+
+INSTANCEMETHODS::
+
+METHOD:: edit
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+METHOD:: valueList
+return a list containing the value of each Param
+
+returns:: a List
+
+
+METHOD:: asView
+create and return the default view for the list of Param
+
+returns:: a Layout
+
+
+
+METHOD:: erase
+(describe method here)
+
+ARGUMENT:: key
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+
+METHOD:: presetCompileString
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: getPresetCompileString
+(describe method here)
+
+ARGUMENT:: key
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+
+
+METHOD:: getPbindCompileString
+Return a Pbind with key/values pair from the Param list. Ignore Param's targets.
+
+returns:: a String
+
+METHOD:: getSetCompileString
+Return for each Param a compile string for setting the target object. Only works if target have a code::set:: method.
+
+ARGUMENT:: targetCompileString
+Optionaly provide an alternative target
+
+returns:: a String
+
+METHOD:: getParamCompileString
+Return for each Param a compile string for setting Param.
+
+ARGUMENT:: targetCompileString
+Optionaly provide an alternative target
+
+returns:: a String
+
+METHOD:: editorView
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: save
+(describe method here)
+
+ARGUMENT:: key
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: load
+(describe method here)
+
+ARGUMENT:: key
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: presets
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: getPreset
+(describe method here)
+
+ARGUMENT:: key
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: morphers
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: asParam
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+Create a generic editor by generating the ParamGroup from the Pdef.
+
+code::
+(
+SynthDef(\saw_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}).add;
+
+(
+Pdef(\help, 
+	Pbind(
+		\instrument, \saw_help,
+		\degree, Pseq([0],inf),
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+);
+
+WindowDef(\myeditor, { arg windef, pdef;
+	VLayout (
+		PlayerWrapper(pdef),
+		pdef.asParamGroup.asView,
+	)
+}).front;
+
+WindowDef(\myeditor).front(Pdef); // now use it
+::
+

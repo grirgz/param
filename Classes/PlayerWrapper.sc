@@ -141,6 +141,10 @@ PlayerWrapper  {
 		^wrapper.isEmpty
 	}
 
+	== { arg playerwrapper;
+		^this.target == playerwrapper.target
+	}
+
 	///////////// gui
 
 	edit {
@@ -593,7 +597,7 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 	}
 
 	label {
-		^target.label ?? "-"
+		^target.label ?? { target.key ?? { "-" } };
 	}
 
 	isPlaying {

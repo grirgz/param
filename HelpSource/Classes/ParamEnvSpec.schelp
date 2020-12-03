@@ -1,0 +1,207 @@
+TITLE:: ParamEnvSpec
+summary:: Specify that a SynthDef parameter is an Env
+categories:: Spec
+related:: 
+
+DESCRIPTION::
+This spec is very useful because Env parameters are treated as Arrays on Server and when you get it back, you must know the array represent an Env. By adding the spec to every SynthDef parameter that expect an Env, you can build GUI that automatically display a link::Classes/FixedEnvelopeView:: for it.
+
+
+CLASSMETHODS::
+
+METHOD:: triangle
+(describe method here)
+
+ARGUMENT:: dur
+(describe argument here)
+
+ARGUMENT:: level
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: new
+(describe method here)
+
+ARGUMENT:: levels
+(describe argument here)
+
+ARGUMENT:: times
+(describe argument here)
+
+ARGUMENT:: curves
+(describe argument here)
+
+ARGUMENT:: default
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: sine
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: classInit
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: cutoff
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: adsr
+(describe method here)
+
+ARGUMENT:: attackTime
+(describe argument here)
+
+ARGUMENT:: decayTime
+(describe argument here)
+
+ARGUMENT:: sustainLevel
+(describe argument here)
+
+ARGUMENT:: releaseTime
+(describe argument here)
+
+ARGUMENT:: peakLevel
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: dadsr
+(describe method here)
+
+ARGUMENT:: delayTime
+(describe argument here)
+
+ARGUMENT:: attackTime
+(describe argument here)
+
+ARGUMENT:: decayTime
+(describe argument here)
+
+ARGUMENT:: sustainLevel
+(describe argument here)
+
+ARGUMENT:: releaseTime
+(describe argument here)
+
+ARGUMENT:: peakLevel
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: perc
+(describe method here)
+
+ARGUMENT:: attackTime
+(describe argument here)
+
+ARGUMENT:: releaseTime
+(describe argument here)
+
+ARGUMENT:: level
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: asr
+(describe method here)
+
+ARGUMENT:: attackTime
+(describe argument here)
+
+ARGUMENT:: sustainLevel
+(describe argument here)
+
+ARGUMENT:: releaseTime
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: linen
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+INSTANCEMETHODS::
+
+METHOD:: isDynamic
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: type
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: size
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: levels
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: unmap
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+ARGUMENT:: ignoreCurves
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: default
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: times
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: isMonoSpec
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: storeArgs
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: map
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+ARGUMENT:: ignoreCurves
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: curves
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::
+

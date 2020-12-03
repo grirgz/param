@@ -79,7 +79,7 @@ StepEventDef(\target_object)[\instrument] = \target_synthdef;
 
 ~list = List[12,43,45,12];
 
-Builder(\target_object, { arg scalar_param=10; "bla" });
+Builder(\target_object, { arg def, scalar_param=10; "bla" });
 
 ~variable = 10;
 

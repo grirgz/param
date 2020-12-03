@@ -220,13 +220,47 @@
 			^nil
 		}
 	}
+
+	convertToPbindef {
+		Pbindef.convertToPbindef(this);
+		^Pbindef(this.key);
+	}
+}
+
++Pbindef {
+	*convertToPbindef { arg proxy;
+		var src = proxy.source;
+		var pairs = [];
+		if(src.class === PbindProxy) {
+			// OK
+		} {
+			if(src.isKindOf(Pbind))
+			{
+				src.patternpairs.pairsDo { |key, pat|
+					if(pairs.includes(key).not) {
+						pairs = pairs.add(key);
+						pairs = pairs.add(pat);
+					}
+				}
+			};
+
+			src = PbindProxy.new(*pairs).quant_(proxy.quant);
+			proxy.source = src
+		};
+
+	}
 }
 
 +Ndef {
-	asParamGroup { 
+	asParamGroup { arg exclude;
 		// TODO: add method argument (find a better name) for adding volume
+		exclude = exclude ?? {[]};
 		^ParamGroup(
-			this.controlNames.collect{ arg con;
+			this.controlNames.reject({ arg con; 
+				con.name == '?' or: {
+					exclude.includes(con.name)
+				}
+			}).collect{ arg con;
 				Param(this, con.name)
 			}
 		)
@@ -378,11 +412,11 @@
 		Param.unmapView(this);
 	}
 
-	mapParam { arg param;
+	mapParam { arg param, trackCursor=true;
 		if(param.isNil) {
 			this.unmapParam
 		} {
-			param.mapMultiSlider(this);
+			param.mapMultiSlider(this, trackCursor:trackCursor);
 		}
 	}
 }
@@ -496,7 +530,9 @@
 	}
 
 	mapBusParam { arg param, keys;
-		param.mapBusPopUpMenu(this, keys)
+		//Log(\Param).debug("mapBusParam %", keys);
+		param.mapBusPopUpMenu(this, keys);
+		^this
 	}
 
 	mapIndexParam { arg param, keys;

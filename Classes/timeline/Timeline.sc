@@ -21,16 +21,16 @@ ParamTimeline {
 }
 
 ClipTimeline {
-	classvar <>proto;
+	//classvar <>proto;
 
-	*all { // needed by clipEditor if no env var defined
-		^proto.all
-	}
+	//*all { // needed by clipEditor if no env var defined
+		//^proto.all
+	//}
 
 	*new { arg ... args;
 		ParamProto.init;
-		^proto.new(*args);
-		//^topEnvironment[\clipTimeline].new(*args)
+		//^proto.new(*args);
+		^topEnvironment[\clipTimeline].new(*args)
 	}
 }
 

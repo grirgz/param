@@ -104,7 +104,7 @@ ParamGroup : List {
 		)
 	}
 
-	getParamCompilseString { arg targetCompileString;
+	getParamCompileString { arg targetCompileString;
 		^"%\n".format(
 			this.collect({ arg p; 
 				//if(p.target.class == Message) {

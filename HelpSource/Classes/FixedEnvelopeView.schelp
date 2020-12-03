@@ -1,0 +1,154 @@
+TITLE:: FixedEnvelopeView
+summary:: An Envelope view that doesn't expand automatically
+categories:: Undocumented classes
+related:: Classes/SomeRelatedClass, Reference/SomeRelatedStuff, etc.
+
+DESCRIPTION::
+The default EnvelopeView is very useful when you want to control proportion of each segment and have a separate knob for scaling the whole envelope. But sometime, you want to give an Env to your envelope view, edit it graphically and get the modified Env back with preserved absolute values. This is only possible with FixedEnvelopeView.
+
+Note::
+code::elasticSelection:: mode seems broken for the moment.
+::
+
+CLASSMETHODS::
+
+
+INSTANCEMETHODS::
+
+METHOD:: value
+Get or set the Env to edit
+
+returns:: an Env
+
+
+METHOD:: setEnv
+Set the Env to edit
+
+ARGUMENT:: env
+an Env
+
+
+METHOD:: getEnv
+Get back the edited Env
+
+ARGUMENT:: val
+use this value instead of using code::valueXY:: to convert to an Env
+
+returns:: an link::Classes/Env::
+
+
+METHOD:: valueXY
+Call parent class link::Classes/EnvelopeView.value::
+
+ARGUMENT:: val
+An array in the form [[x1,x2],[y1,y2]] where each value is between 0 and 1
+
+
+METHOD:: curves
+Get or set the curves of the Env
+
+ARGUMENT:: curves
+A curve or an Array of curves
+
+returns:: A curve or an Array of curves
+
+METHOD:: timeScale
+Get or set the time scale of the Env
+
+
+METHOD:: releaseNode
+Get or set the release node of the Env
+
+
+METHOD:: loopNode
+Get or set the loop node of the Env
+
+
+METHOD:: rightClickZoomEnabled
+When enabled, you can zoom and unzoom by dragging the view with right click.
+
+ARGUMENT:: val
+true or false to enable/disable
+
+
+METHOD:: zoomFit
+Zoom until the Env take all the space
+
+
+
+METHOD:: grid
+Get or set the grid definition. 
+Don't forget to do code::envview.gridOn = true:: to see the grid.
+
+ARGUMENT:: val
+A link::Classes/Point:: where x is the horizontal distance between two grid lines and y the vertical distance between two grid lines
+
+returns:: a Point
+
+
+
+METHOD:: totalDur
+The displayed duration of the envelope view, but not the Env itself. It is free space to grow your Env. The Env should always be smaller or equal to totalDur, you can't zoom to see only a part of Env.
+
+When mapping a Param, totalDur is equal to the maximum segment size given by spec times the number of segments.
+
+ARGUMENT:: newdur
+The new duration
+
+returns:: a Number
+
+METHOD:: mapParam
+Map a param pointing to an envelope parameter
+
+ARGUMENT:: param
+a link::Classes/Param::
+
+METHOD:: unmapParam
+unmap the previously mapped Param.
+
+
+
+
+
+
+EXAMPLES::
+
+code::
+(
+WindowDef(\help, { 
+	var textview = TextField.new;
+	var envview = FixedEnvelopeView.new;
+	envview.action = {
+		textview.value = envview.value.asCompileString
+	};
+	//envview.rightClickZoomEnabled = true; // FIXME: this is broken outside of Param.asEnvelopeView
+	envview.totalDur = 4;
+	envview.value = Env([0,1,0.8,0],[1/4,1/4,1/4]); 
+	envview.grid = Point(1/8,1/8);
+	envview.gridOn = true;
+
+	VLayout (
+		envview,
+		textview
+	)
+}).front;
+)
+
+// Automatic creation from Param:
+
+(
+WindowDef(\help, { 
+	// if the SynthDef is not found in Pdef and \adsr is not in Spec.specs
+	// you should tell Param this is an Env spec else it will fail
+	var param = Param(Pdef(\help), \adsr, ParamEnvSpec.adsr); 
+	//var param = Param(Pdef(\help), \adsr); 
+
+	VLayout (
+		param.asEnvelopeView,
+		//param.asTextField,
+	)
+}).front;
+)
+::
+
+	Param(Pdef(\help), \adsr).edit; 
