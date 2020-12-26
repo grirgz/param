@@ -84,6 +84,7 @@ Pdef(\pdefparamrectest).set(\xfreq, ParamTimeline('pdefparamrectest').outBus.asM
 Pdef(\pdefparamrectest).get(\xfreq).postln;
 ~param.get.postln;
 
+// FIXME: all ~functions are now in ParamTimeline
 ///// step1: eventlist
 ~eventlist = ParamTimeline(\pdefparamrectest).eventList;
 ~eventlist.print;

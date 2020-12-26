@@ -4,10 +4,15 @@ categories:: Undocumented classes
 related:: Classes/SomeRelatedClass, Reference/SomeRelatedStuff, etc.
 
 DESCRIPTION::
+ParamArraySpec is useful to specify that a SynthDef parameter expect an array, and it's size.
+
+code::
+ParamArraySpec(\freq).map([0, 0.3, 0.7, 1]); // --> [ 20.0, 158.86564694486, 2517.8508235883, 20000.0  ] 
+::
 
 You can create it in different ways
 code::
-ParamArraySpec(); // default spec
+ParamArraySpec(); // default spec is \unipolar
 ParamArraySpec( ControlSpec(0,1,\lin) ); // an array of undefined size containing values in range from 0 to 1 
 ParamArraySpec(\freq); // \freq is automatically converted using \freq.asSpec
 ParamArraySpec(\freq ! 4); // The spec here tell the SynthDef accept an array of 4 items with \freq range

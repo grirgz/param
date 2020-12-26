@@ -13,7 +13,7 @@ TrackTemplateDef : TrackDef {
 	}
 }
 
-TrackMixerDef {
+TrackMixerDef : ProtoDef {
 	// FIXME: redirect to defined protoclass or be a placeholder ?
 	//		or defined protoclass could be the default ? but constructor signature will be different than TrackDef
 

@@ -45,3 +45,40 @@ section:: GUI for various object in Param quark
 LIST::
 ## link::Classes/PlayerWrapperView::
 ::
+
+
+section:: Default editors
+
+
+LIST::
+## Pdef editor: 
+code::
+WindowDef(\PdefEditor).front( Pdef(\help) );
+::
+
+## Ndef editor: 
+code::
+WindowDef(\NdefEditor).front( Ndef(\help) );
+::
+
+## Param editor:
+code::
+WindowDef(\ParamEditor).front( Param(Pdef(\help), \freq) );
+::
+
+## ParamGroup editor
+code::
+WindowDef(\ParamGroup).front( ParamGroup([Param(Pdef(\help), \freq)]) );
+::
+
+## Spec editor
+code::
+WindowDef(\ParamSpecEditor).front( ParamCombinator(Param(Pdef(\help), \freq) );
+::
+
+## ParamCombinator editor
+code::
+WindowDef(\ParamCombinatorEditor).front( ParamCombinator(Param(Pdef(\help), \freq) );
+::
+
+::

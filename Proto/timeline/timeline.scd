@@ -2,7 +2,7 @@
 ///////////////////////////////////////////////////////////////////// timeline objects
 
 
-~eventTimeline = ProtoClass((
+ProtoClassDef(\EventTimeline, (
 	proxyQuantIsDefault: true, // the only way to preserve default proxy quant
 
 	prAdd: { arg self, name;
@@ -333,7 +333,7 @@
 	},
 
 	refCompileString: { arg self, name;
-		"~eventTimeline(..)"	
+		"ProtoClassDef(\\EventTimeline)"
 	},
 
 	presetCompileString: { arg self;
@@ -438,13 +438,14 @@
 		self.eventLoop.pushList;
 	},
 ));
+~eventTimeline = ProtoClassDef(\EventTimeline);
 
 //if(~clipTimeline_all.isNil) {
 //	~clipTimeline_all = IdentityDictionary.new;
 //};
 //ClipTimeline.proto = ProtoClass((
-~clipTimeline = ProtoClass((
-	parent: ~eventTimeline,
+ProtoClassDef(\ClipTimeline, (
+	parent: ProtoClassDef(\EventTimeline),
 	all: { PresetDictionary.new(\clipTimeline) },
 	eventType: \clipTimeline,
 
@@ -697,12 +698,12 @@
 		str = str ++ "\n%\n".format(self.samplesPresetCompileString);
 		str;
 	},
-
 ));
+~clipTimeline = ProtoClassDef(\ClipTimeline);
 //~clipTimeline = ClipTimeline.proto;
 
-~trackTimeline = ProtoClass((
-	parent: ~clipTimeline,
+ProtoClassDef(\TrackTimeline, (
+	parent: ProtoClassDef(\ClipTimeline),
 	all: { PresetDictionary.new(\trackTimeline) },
 	new: { arg self, name, tracks;
 
@@ -783,13 +784,14 @@
 		"TrackTimeline(%)".format(name)
 	},
 ));
+~trackTimeline = ProtoClassDef(\TrackTimeline);
 
 
 //if(~noteTimeline_all.isNil) {
 //	~noteTimeline_all = IdentityDictionary.new;
 //};
-~noteTimeline = ProtoClass((
-	parent: ~eventTimeline,
+ProtoClassDef(\NoteTimeline, (
+	parent: ProtoClassDef(\EventTimeline),
 	all: { PresetDictionary.new(\noteTimeline) },
 
 	eventType: \noteTimeline,
@@ -982,12 +984,12 @@
 		};
 		"NoteTimeline(%)".format(name)
 	},
-
 ));
+~noteTimeline = ProtoClassDef(\NoteTimeline);
 
 // why not name it ParamTimeline ????
-~envTimeline = ProtoClass((
-	parent: ~eventTimeline,
+ProtoClassDef(\ParamTimeline, (
+	parent: ProtoClassDef(\EventTimeline),
 	all: { PresetDictionary.new(\envTimeline) },
 	eventType: \envTimeline,
 
@@ -1133,8 +1135,8 @@
 				//default = self.param.default;
 			};
 
-			~remove_envlist_duplicate.(self.eventList);
-			~compute_eventenv_sustain.(self.eventList);
+			self.remove_envlist_duplicate.(self.eventList);
+			self.compute_eventenv_sustain.(self.eventList);
 
 			postpat = Pbind(
 				\out, self.outBus,
@@ -1179,7 +1181,7 @@
 			pat = postpat <> pat <> prepat;
 
 			//~pattern_to_envpattern.(pat).embedInStream(inval ? ()); 
-			~pattern_to_envpattern.(pat).embedInStream;
+			self.pattern_to_envpattern.(pat).embedInStream;
 		}
 	},
 
@@ -1285,10 +1287,180 @@
 		};
 		"ParamTimeline(%)".format(name)
 	},
-));
 
-~kitTimeline = ProtoClass((
-	parent: ~eventTimeline,
+	// useful methods for EventList containing curve data
+
+	remove_envlist_duplicate: { arg self, eventlist;
+		// in-place remove
+		var prev;
+		var to_remove = List.new;
+		eventlist.do { arg ev;
+			if(prev.notNil) {
+				if (prev[\level].notNil and: { prev[\level] == ev[\level] and: { prev[\dur] == 0 } }) {
+					to_remove.add(prev)
+				}
+			};
+			prev = ev;
+		};
+		to_remove.do { arg ev;
+			eventlist.remove(ev)
+		};
+		eventlist
+	},
+
+	compute_eventenv_sustain: { arg self, eventlist;
+		// in-place
+		var previous;
+		var el = eventlist.copy;
+		eventlist.do { arg ev;
+			if([\start, \end].includes(ev.type)) {
+				// noop
+			} {
+				if(previous.notNil) {
+					if(previous[\dur] != 0) {
+						// why ?? legato should always be one, no ?
+						// but legato is not used, env_segment use time to know the length
+						//previous[\legato] = ( ev[\absTime] - previous[\absTime] ) / previous[\dur];  
+						//previous[]
+						// sustain is in beats
+					};
+					previous[\sustain] = ( ev[\absTime] - previous[\absTime] ); // abstime is in beats, sustain is in beats
+					//previous[\legato] = 1; // 
+					previous[\next_level] = ev[\level];  
+					previous[\next_absTime] = ev[\absTime]; // this is a bit useless, time can be computed from dur / tempo 
+				};
+				previous = ev;
+
+			}
+		};
+
+	},
+
+	eventlist_to_envpattern: { arg self, eventlist, start;
+		//var el = eventlist.copy;
+		////var startev = eventlist.
+		//var endlist = List.new;
+		//var previous;
+		//var start_level;
+		//var bus_event;
+		//~compute_eventenv_sustain.(eventlist);
+		//block { arg break;
+		//	eventlist.do { arg ev;
+		//		if(ev[\type] == \start) {
+		//			if(ev.dur == 0 or: { ev.delta == 0 }) {
+		//				el.removeAt(0);
+		//			};
+		//			break.value;
+		//		} {
+		//			previous = el.removeAt(0);
+		//		}
+		//	};
+		//};
+		//if(previous.notNil) {
+		//	var level = val.use { val.level };
+		//	var busev = val.copy;
+		//	var next_level, next_absTime;
+		//	next_level = val[\next_level];
+		//	next_absTime = val[\next_absTime];
+		//	level = 
+		//		( next_level - busev.level ) * busev.event_dropdur 
+		//		/ (next_absTime - busev.absTime) 
+		//		+ busev.level
+		//	;
+		//	bus_event = (
+		//		type: \bus,
+		//		array: [level]
+		//	)
+
+		//};
+	},
+
+	pattern_to_envpattern: { arg self, pattern;
+		Prout({ arg inval;
+			var str = pattern.asStream;
+			var val;
+			var first = true;
+			var previous_val;
+			var nextval; // ugly hack (FIXME: for what ?)
+
+			block { arg break;
+				while({
+					if(nextval.notNil) {
+						val = nextval;
+					} {
+						val = str.next(Event.default);
+					};
+					val.notNil;
+				}, {
+					var is_rest = { arg val;
+						val.type == \rest or: { val.type == \start or: { val.type == \end } };
+					};
+					//val.debug("pattern_to_envpattern");
+					if(first == true) {
+						if(is_rest.(val)) {
+							//val.type.debug("pattern_to_envpattern: start/end");
+							previous_val = val;
+							previous_val.yield;
+						} {
+							var level = val.use { val.level };
+							var busev = val.copy;
+							var next_level, next_absTime;
+							//level.debug("pattern_to_envpattern: first");
+							if(busev[\event_dropdur].notNil) {
+								next_level = val[\next_level];
+								next_absTime = val[\next_absTime];
+								//[ next_level, next_absTime, busev ].debug("nlevel, nabstime, busev");
+								level = 
+								( next_level - busev.level ) * busev.event_dropdur 
+								/ (next_absTime - busev.absTime) 
+								+ busev.level
+								;
+							};
+							//level.debug("pattern_to_envpattern: first: altered level");
+							busev.putAll(
+								(
+									type: \bus,
+									array: [level],
+									delta: 0,
+								)
+							);
+							busev.yield;
+							previous_val = val;
+							first = false;
+						}
+					} {
+						if(previous_val.use { previous_val.time } <= 0) {
+							previous_val[\array] = [previous_val[\next_level]];
+							previous_val[\type] = \bus;
+						} {
+							previous_val[\level] = previous_val[\next_level];
+							//previous_val.debug("pattern_to_envpattern: yield previous");
+							previous_val;
+						};
+						previous_val.yield;
+						previous_val = val;
+					};
+				});
+			};
+			//previous_val[\type] = \rest; // this seems to be the cause to the last segment is rest
+			if(previous_val.use { previous_val.time } <= 0) {
+				previous_val[\array] = [previous_val[\next_level]];
+				previous_val[\type] = \bus;
+			} {
+				previous_val[\level] = previous_val[\next_level];
+				//previous_val.debug("pattern_to_envpattern: yield previous");
+				previous_val;
+			};
+			previous_val.yield;
+		})
+
+	},
+
+));
+~envTimeline = ProtoClassDef(\ParamTimeline);
+
+ProtoClassDef(\KitTimeline, (
+	parent: ProtoClassDef(\EventTimeline),
 	all: { PresetDictionary.new(\kitTimeline) },
 
 	eventType: \kitTimeline,
@@ -1503,8 +1675,8 @@
 		};
 		"KitTimeline(%)".format(name)
 	},
-
 ));
+~kitTimeline = ProtoClassDef(\KitTimeline);
 
 //////////////////////////////////////////// loading archived data
 ~noteTimeline.all.loadIfNotInitialized;

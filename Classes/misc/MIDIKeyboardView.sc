@@ -314,6 +314,29 @@ MIDIKeyboardView : SCViewHolder {
 		if((note>startnote) && (note<(startnote + (octaves*12))), {^true}, {^false});
 	}
 	
+	mapPattern { arg pattern;
+		var player;
+		ParamProto.init;
+		player = ProtoTemplateDef(\SeqPlayerGroup).new(pattern);
+		this.mapPlayer(player);
+	}
+
+	mapPlayer { arg player; // player should have .elAt interface
+		this.keyDownAction = { arg midinote, old;
+			if(old.notNil) {
+				player.elAt(old).stop;
+			};
+			player.elAt(midinote).play;
+		};
+		this.keyTrackAction = { arg midinote, old;
+			player.elAt(old).stop;
+			player.elAt(midinote).play;
+		};
+		this.keyUpAction = { arg midinote;
+			player.elAt(midinote).stop;
+		};
+		
+	}
 
 
 }

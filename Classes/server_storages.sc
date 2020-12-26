@@ -2,6 +2,8 @@
 ////////////////// nice storages for resources
 
 BufDef {
+	// FIXME: need to decide if file path is stored as absolute or relative
+	//		need to make clear where it is symbol and where it is string
 	classvar <>root;
 	classvar <>paths;
 
@@ -33,12 +35,13 @@ BufDef {
 
 
 	*new { arg name, path, channels;
+		name = name.asSymbol;
 		if(path.isNil) {
 			// getter
 			if(this.all.at(name).isNil) {
 				if(name.asString.contains("/")) {
 					// special constructor with file path as name
-					name = this.abspath_to_relpath(name);
+					name = this.abspath_to_relpath(name.asString);
 					Log(\Param).debug("BufName: special cons: %", name);
 					^BufDef(name.asSymbol, name.asString, channels)
 				} {
@@ -49,7 +52,7 @@ BufDef {
 				if(path.isKindOf(Buffer)) {
 					^path;
 				} {
-					path = this.relpath_to_abspath(path);
+					path = this.relpath_to_abspath(path.asString);
 					^this.getBufferForPath(path, channels);
 					//^BufferPool.get_stereo_sample(client, path);
 				}
@@ -70,22 +73,31 @@ BufDef {
 				}
 
 			} {
-				//// file buffer
-				if(this.all.at(name).isNil) {
-					// doesn't exists, define it
-					this.all.put(name, path);
-					path = this.relpath_to_abspath(path);
-					^this.getBufferForPath(path, channels).key_(name);
-					//^BufferPool.get_stereo_sample(client, path).key_(name);
+				if(path.isKindOf(Buffer)) {
+					var buf = path;
+					buf.key = name;
+					this.all.put(name, buf);
 				} {
-					// already defined
-					var path = this.all.at(name);
-					if(path.isKindOf(Buffer)) {
-						^path;
+					//// file buffer
+					if(this.all.at(name).isNil) {
+						var inst, relpath;
+						relpath = path.asString;
+						// doesn't exists, define it
+						path = this.relpath_to_abspath(relpath);
+						inst = this.getBufferForPath(path, channels).key_(name);
+						this.all.put(name, relpath);
+						^inst;
+						//^BufferPool.get_stereo_sample(client, path).key_(name);
 					} {
-						path = this.relpath_to_abspath(path);
-						^this.getBufferForPath(path, channels);
-						//^BufferPool.get_stereo_sample(client, path);
+						// already defined
+						var path = this.all.at(name);
+						if(path.isKindOf(Buffer)) {
+							^path;
+						} {
+							path = this.relpath_to_abspath(path);
+							^this.getBufferForPath(path, channels);
+							//^BufferPool.get_stereo_sample(client, path);
+						}
 					}
 				}
 			}
@@ -289,13 +301,19 @@ BufDef {
 			this.all[name] = nil;
 		} {
 			if(buf.isKindOf(String) or: { buf.isKindOf(Symbol) }) {
-				var path = this.relpath_to_abspath(buf);
-				this.bufferChannelCache[path.asSymbol].do({ arg buf;
-					if(buf.isKindOf(Buffer)) {
-						buf.free;
-					};
-			   	});
-				this.bufferChannelCache[path.asSymbol] = nil;
+				try {
+					var path = this.relpath_to_abspath(buf.asString);
+					this.bufferChannelCache[path.asSymbol].do({ arg buf;
+						if(buf.isKindOf(Buffer)) {
+							buf.free;
+						};
+					});
+					this.bufferChannelCache[path.asSymbol] = nil;
+				} { arg error;
+					"In: %.free:".format(this).err;
+					error.reportError;
+					//error.throw;
+				};
 				this.all[name] = nil;
 			} {
 				"BufDef: %: can't free: doesn't exists".format(name).warn;
@@ -354,7 +372,8 @@ WavetableDef : BufDef {
 		Log(\Param).debug("BufDef.new: % % %", name, path, channels);
 		if(path.isKindOf(Array)) {
 			multipath = path;
-			keypath = multipath.join(":");
+			// this is support for loading different files in same buffer, not well tested
+			keypath = multipath.join(":"); 
 			path = path.first;
 		};
 		if(path.isNil) {
@@ -403,10 +422,12 @@ WavetableDef : BufDef {
 			} {
 				//// file buffer
 				if(this.all.at(name).isNil) {
+					var inst;
 					// doesn't exists, define it
-					this.all.put(name, keypath);
-					path = this.relpath_to_abspath(path);
-					^this.getBufferForPath(path, channels, nil, multipath).key_(name);
+					path = this.relpath_to_abspath(keypath.asString);
+					inst = this.getBufferForPath(path, channels, nil, multipath).key_(name);
+					this.all.put(name, keypath.asString);
+					^inst;
 					//^BufferPool.get_stereo_sample(client, path).key_(name);
 				} {
 					// already defined

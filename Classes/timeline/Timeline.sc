@@ -1,24 +1,4 @@
 
-KitTimeline {
-	*new { arg ... args;
-		ParamProto.init;
-		^topEnvironment[\kitTimeline].new(*args); // FIXME: should maybe use ProtoDef(\kitTimeline)
-	}
-}
-
-NoteTimeline {
-	*new { arg ... args;
-		ParamProto.init;
-		^topEnvironment[\noteTimeline].new(*args)
-	}
-}
-
-ParamTimeline {
-	*new { arg ... args;
-		ParamProto.init;
-		^topEnvironment[\envTimeline].new(*args)
-	}
-}
 
 ClipTimeline {
 	//classvar <>proto;
@@ -30,7 +10,28 @@ ClipTimeline {
 	*new { arg ... args;
 		ParamProto.init;
 		//^proto.new(*args);
-		^topEnvironment[\clipTimeline].new(*args)
+		^ProtoClassDef(\ClipTimeline).new(*args)
+	}
+}
+
+NoteTimeline {
+	*new { arg ... args;
+		ParamProto.init;
+		^ProtoClassDef(\NoteTimeline).new(*args)
+	}
+}
+
+KitTimeline {
+	*new { arg ... args;
+		ParamProto.init;
+		^ProtoClassDef(\KitTimeline).new(*args);
+	}
+}
+
+ParamTimeline {
+	*new { arg ... args;
+		ParamProto.init;
+		^ProtoClassDef(\ParamTimeline).new(*args)
 	}
 }
 
@@ -51,7 +52,7 @@ SampleTimeline {
 TrackTimeline {
 	*new { arg ... args;
 		ParamProto.init;
-		^topEnvironment[\trackTimeline].new(*args)
+		^ProtoClassDef(\TrackTimeline).new(*args)
 	}
 }
 

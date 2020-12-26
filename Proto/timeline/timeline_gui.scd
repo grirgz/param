@@ -4,7 +4,7 @@
 
 /////// base timeline panel view
 
-~timelinePanelView = (
+ProtoTemplateDef(\TimelinePanelView, (
 	new: { arg self, eventloop;
 		//"timelinePanelView".debug("init");
 		self = self.deepCopy;
@@ -188,8 +188,50 @@
 	},
 
 	zoom_fit: { arg self;
-		//[self.areasize, self.timeline.areasize].debug("1");
-		~zoom_fit.(self.timeline);
+		// TODO: use timeline.spec to get initial maxy and miny
+		var timeline = self.timeline;
+		var maxy=0, miny=127;
+		var range;
+
+		if(timeline.model.size < 3) { // if empty
+			// NOOP
+		} {
+
+			timeline.model.do { arg ev, x;
+				var midi = ev.use { ev.midinote };
+				//[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
+				if(midi.notNil) {
+					//[x, midi].debug("zoom_fit, notnil");
+					if(midi > maxy) {
+						maxy = midi;
+					};
+					if(midi < miny) {
+						miny = midi;
+					};
+				}
+			};
+
+			if(( maxy + 1 ) > timeline.areasize.y) {
+				timeline.areasize.y = maxy + 1;
+			};
+
+			//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
+			//[timeline.areasize].debug("areasize");
+			range = (maxy-miny+1)/timeline.areasize.y;
+			timeline.viewport.top = (miny/timeline.areasize.y);
+			timeline.viewport.height = range.clip(0.1,1);
+			//[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
+
+			//timeline.viewport.top = 42/128;
+			//timeline.viewport.height = ((54-42)/128);
+
+			//timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
+
+			timeline.changed(\viewport);
+			timeline.refresh;
+		};
+
+
 		//[self.areasize, self.timeline.areasize].debug("2");
 		self.areasize = self.timeline.areasize;
 		//[self.areasize, self.timeline.areasize].debug("4");
@@ -907,11 +949,12 @@
 			tl.timeline.areasize = cur;
 		};
 	},
-);
+));
+~timelinePanelView = ProtoTemplateDef(\TimelinePanelView);
 
 /////// derivatives
 
-~clipTimelinePanelView = (
+ProtoTemplateDef(\ClipTimelinePanelView, (
 	parent: ~timelinePanelView,
 
 	new: { arg self, timeline;
@@ -1143,9 +1186,10 @@
 		})
 		;
 	};
-);
+));
+~clipTimelinePanelView = ProtoTemplateDef(\ClipTimelinePanelView);
 
-~trackTimelinePanelView = (
+ProtoTemplateDef(\trackTimelinePanelView, (
 	parent: ~clipTimelinePanelView,
 
 	new: { arg self, timeline;
@@ -1249,11 +1293,10 @@
 		;
 		//"trackTimelinePanelView.update_track_header: part 4".debug;
 	},
+));
+~trackTimelinePanelView = ProtoTemplateDef(\trackTimelinePanelView);
 
-
-);
-
-~envTimelinePanelView = (
+ProtoTemplateDef(\EnvTimelinePanelView, (
 	parent: ~timelinePanelView,
 
 	new: { arg self, timeline;
@@ -1356,10 +1399,11 @@
 
 		self.layout;
 	},
-);
+));
+~envTimelinePanelView = ProtoTemplateDef(\EnvTimelinePanelView);
 
 
-~noteTimelinePanelView = (
+ProtoTemplateDef(\NoteTimelinePanelView, (
 	parent: ~timelinePanelView,
 
 	new: { arg self, timeline;
@@ -1461,9 +1505,10 @@
 		//}
 		self.layout;
 	},
-);
+));
+~noteTimelinePanelView = ProtoTemplateDef(\NoteTimelinePanelView);
 
-~kitTimelinePanelView = (
+ProtoTemplateDef(\KitTimelinePanelView, (
 	parent: ~timelinePanelView,
 
 	new: { arg self, timeline;
@@ -1601,13 +1646,13 @@
 		};
 		self.layout;
 	},
-
-);
+));
+~kitTimelinePanelView = ProtoTemplateDef(\KitTimelinePanelView);
 
 
 ////////////////// clip editor (really: clip chooser/selector)
 
-~clipEditor = (
+ProtoTemplateDef(\ClipEditor, (
 	new: { arg self, model, parent;
 		self = self.deepCopy;
 	
@@ -2134,10 +2179,10 @@
 		self.makeUpdater;
 		self.model.changed(\refresh);
 	},
+));
+~clipEditor = ProtoTemplateDef(\ClipEditor);
 
-);
-
-~trackEditor = ProtoClass((
+~trackEditor = ProtoTemplateDef(\TrackEditor, (
 	new: { arg self, model, parent, trackgroup;
 		self = self.deepCopy;
 	
@@ -2271,6 +2316,7 @@
 		self.makeLayout;
 	},
 ));
+~trackEditor = ProtoTemplateDef(\TrackEditor);
 
 /////////////////////// cliplist side panel
 
@@ -2523,8 +2569,6 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook; // TODO: should cr
 			})
 		)
 	)
-
-	
 });
 
 
@@ -2560,7 +2604,6 @@ WindowDef(\ClipTimelineNewClip, { arg def, model, fac; // deprecated
 ///////////////////////////////
 
 
-(
 WindowDef(\ClipTimeline_SampleManager, { arg def, timeline;
 	var list, refresh;
 	var timelines;
@@ -2640,7 +2683,6 @@ WindowDef(\ClipTimeline_SampleManager, { arg def, timeline;
 		list
 	)
 });
-);
 
 //////////////////////
 

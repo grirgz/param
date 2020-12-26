@@ -2,7 +2,7 @@
 
 // produce and play an event from a pattern for each .play call 
 // designed to be a child of some parent collection class where targets are stored
-~streamPlayer = ProtoClass((
+ProtoTemplateDef(\StreamPlayer, (
 	new: { arg self, parent, x;
 		self = self.deepCopy;
 	
@@ -104,11 +104,11 @@
 		self.cur_ev.release;
 		self.cur_ev = nil;
 	},
-
 ));
+~streamPlayer = ProtoTemplateDef(\StreamPlayer); // backward compat
 
 // follow a pattern but note is given by the caller
-~notePlayer = ProtoClass((
+ProtoTemplateDef(\NotePlayer, (
 	new: { arg self, parent, x, stream, pre_event, post_event;
 		self = self.deepCopy;
 	
@@ -195,12 +195,14 @@
 	},
 
 ));
+~notePlayer = ProtoTemplateDef(\NotePlayer);
+
 
 ////////// collectives
 
 // act as a drum kit, play the player in the group according to midinote
 // this use streamPlayer as children
-~parPlayerGroup = ProtoClass((
+ProtoTemplateDef(\ParPlayerGroup, (
 	new: { arg self, list;
 		self = self.deepCopy;
 	
@@ -313,12 +315,13 @@
 	},
 
 ));
+~parPlayerGroup = ProtoTemplateDef(\ParPlayerGroup);
 
 
 
 // seq because a single pattern is read instead of one pattern per note index in parPlayerGroup
 // this use notePlayer as children
-~seqPlayerGroup = ProtoClass((
+ProtoTemplateDef(\SeqPlayerGroup, (
 	new: { arg self, pat;
 		self = self.deepCopy;
 	
@@ -375,11 +378,13 @@
 	},
 
 ));
+~seqPlayerGroup = ProtoTemplateDef(\SeqPlayerGroup);
 
 
 
 // specialisation of parPlayerGroup for PatKitDef: compile string and Def design
-~patKitDef = ProtoClass((
+// can't use ProtoTemplateDef because 'all' variable is already used
+ProtoClassDef(\PatKitDef, (
 	protoClass: \PatKitDef,
 	parent: ~parPlayerGroup,
 	all: { PresetDictionary.new(\patKitDef) },
@@ -445,4 +450,5 @@
 		}
 	},
 ));
+~patKitDef = ProtoClassDef(\PatKitDef);
 

@@ -1,0 +1,685 @@
+title:: Param Cookbook
+summary:: Tricks with GUI and controllers
+categories:: GUI
+
+section::Automatic GUI Generation
+
+
+code::
+(
+SynthDef(\saw, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}).add;
+);
+
+(
+Pdef(\saw, 
+	Pbind(
+		\instrument, \saw,
+		\degree, Pseq([Prand([Pwhite(0,1.0,Pwhite(0,7,1)), Pwhite(0,12,Pwhite(0,70,1).asStream)]),Pseq((0..10),1)],inf),
+		\dur, Pseq([Prand([Pwhite(0,1.0,Pwhite(0,70,1)), Pwhite(0,12,Pwhite(0,70,1))])],inf)/12,
+		\amp, 0.1,
+	)
+).play;
+);
+
+Pdef(\saw).edit; // use default pdef editor
+
+WindowDef(\NdefEditor).front(Ndef(\saw)); // since Ndef already have an editor, you can use the default one with WindowDef
+::
+
+
+
+
+section:: GUI tricks
+
+subsection:: Get list of parameters of a SynthDef
+
+Param quark adds a shortcut to get the SynthDef description given the name;
+
+code::
+(
+SynthDef(\saw_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}).add;
+)
+
+SynthDesc(\saw_help); // just write Desc instead of Def
+SynthDescLib.global.at(\saw_help); // the standard method
+
+(
+SynthDesc(\saw_help).controls.collect({ arg control;
+	control.name.debug("name");
+	control.defaultValue.debug("value");
+});
+)
+
+// collect parameters as Param objects, then edit them
+// you need to provide a target for the Params since you can't control the SynthDef itself
+SynthDesc(\saw_help).asParamGroup(Pdef(\help)).edit; 
+::
+
+
+
+
+subsection:: Showing a meter for a bus in a GUI
+
+Use link::Classes/SimpleServerMeterView::;
+
+code::
+SimpleServerMeterView(nil, 0,2);
+::
+
+
+
+
+subsection:: Showing a meter under a slider
+
+Nothing specific to Param here, but I find it very nice to have the meter under the slider.
+The trick is to use StackLayout in mode \stackAll and put a clear background to the slider so we can see the meter.
+
+
+code::
+Pdef(\help, Pbind()).play; // simple sound
+
+// simple example when slider control main volume and meter listen to bus 0 (SC audio out)
+(
+WindowDef(\help, { arg def;
+	StackLayout(
+		Param(Server.default.volume, \volume).asSlider.orientation_(\vertical).background_(Color.clear),
+		SimpleServerMeterView(nil, 0,2, 0),
+	).mode_(\stackAll)
+}).front
+)
+::
+
+
+
+subsection:: Showing a frequency spectrum scope for a bus
+
+Use link::Classes/FreqScopeView::
+
+code::
+(
+Pdef(\help, Pbind(\out, BusDef(\mybus, \audio))).play; // play in a bus, you'll hear nothing
+
+WindowDef(\scope_help, { arg def;
+	var scope = FreqScopeView(nil, Rect(0,0,100,100))
+					.freqMode_(1)
+					.active_(true);
+	scope.inBus = BusDef(\mybus, \audio);  // read it
+	scope.onClose = {
+		// scope have its own synth to kill when closing the GUI
+		scope.kill;
+	};
+}).front;
+)
+::
+
+
+subsection:: Integrate a plot inside a GUI
+
+Unfortunately, Plotter is not compatible with Layout and should have a parent view and a fixed size. 
+
+code::
+WindowDef(\plotter, {
+	var freqview = View.new.fixedSize_(300@300);
+	var ampview = View.new.fixedSize_(300@300);
+	var ampTable = Signal.hammingWindow(1024).cubed;
+	var freqTable = Signal.newClear(1024).waveFill({ arg i; 0.5 ** i * 20000 }, 0, 10);
+
+	Plotter.new(parent:freqview).value_(freqTable);
+	Plotter.new(parent:ampview).value_(ampTable);
+	VLayout(
+		freqview,
+		ampview,
+	)
+}).front;
+::
+
+
+subsection:: Make a GUI for envelopes and arrays parameters
+
+The easiest way to write SynthDefs that take link::Classes/Array:: and link::Classes/Env:: as parameters is to use the link::Class/NamedControl:: class.
+If the spec is correctly retrieved by Param, it will automatically choose the correct GUI (link::Classes/MultiSliderView:: or link::Classes/FixedEnvelopeView::);
+
+code::
+(
+SynthDef(\env_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig;
+	var lpenv;
+	sig = LFSaw.ar(freq * \freqtab.kr(1!8));
+	lpenv = EnvGen.kr(\lpenv.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:0);
+	sig = RLPF.ar(sig, ( \lpfr.kr(1.1) * lpenv + 1 ) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpenv: ParamEnvSpec.adsr, // there is no difference between array and env on the server, you should make it explicit
+	adsr: ParamEnvSpec.adsr,
+))).add;
+);
+
+Pdef(\help, Pbind(\instrument, \env_help));
+
+(
+WindowDef(\help, {
+	VLayout (
+		PlayerWrapper(Pdef(\help)).asView,
+
+		// automatic creation from SynthDef spec
+		Param(Pdef(\help), \freqtab).asView,
+		Param(Pdef(\help), \lpenv).asView,
+
+		// manually create the same multi slider and env view
+		Param(Pdef(\help), \freqtab).asMultiSlider,
+		Param(Pdef(\help), \lpenv).asEnvelopeView,
+	)
+}).front;
+)
+::
+
+
+
+
+
+subsection:: Control individual segments of an envelope parameter
+
+It's often easier to have a separate attack parameter than manipulate the Env directly.
+Param let you target a specific segment of an envelope or array to easily assign a GUI or controller knob
+
+code::
+Param(Pdef(\saw_help), \adsr -> \attack); // this point to the attack time value of the adsr Env
+::
+
+
+
+subsection:: Control Tempo
+
+
+Param accept a clock as the target, it is easy to create a Param pointing to tempo:
+
+code::
+Param(TempoClock.default, \tempo, ControlSpec(1/2,2,\lin)).edit
+::
+
+
+
+subsection:: Control main volume
+
+Param accept a volume as the target, so you can use where you want
+
+code::
+Param(Server.default.volume, \volume).edit; // default spec : \db.asSpec
+::
+
+
+subsection:: Control any object member instead of synth parameters
+
+Param accept a wide range of targets, but sometime you want to control a
+regular variable of an arbitrary object. 
+
+For example if you want to point to the
+quant of a Pdef, you can't write code::Param(Pdef(\help), \quant):: because it will do
+code::Pdef(\help).get(\quant):: behind the scene. To tell param that you want to access
+to code::Pdef(\bla).quant:: instead, you have to put the target inside a Message object.
+
+Note::
+Message class is not meant to be used this way normally, it is only used as a
+flag for Param.
+::
+
+code::
+Param(Message(Pdef), \quant).edit; 
+::
+
+subsection:: Control global quant
+
+Pdef have a default quant when none is set yet (link::Classes/Pdef#.defaultQuant::).
+Use the generic object method pointer syntax (Message) to control the defaultQuant
+
+code::
+Param(Message(Pdef), \defaultQuant).edit; 
+::
+
+
+
+subsection:: Make a piano view
+
+There is a class available in Param quark named link::Classes/MIDIKeyboardView:: which display a keyboard view.
+
+code::
+(
+
+Pbindef(\help, Pbind()); // default sound
+
+WindowDef(\pianokeyboard, { 
+	var kb = MIDIKeyboardView.new;
+	kb.mapPattern(Pdef(\help)); // special method to map a pattern to the GUI keyboard
+	kb.asView;
+}).front;
+)
+
+Pbindef(\help, \detune, Prand([0,14,50],inf)); // you can change the pattern while attached to keyboard since it's a Pdef or Pbindef
+::
+
+Here is what does mapPattern behind the scene. You can see you need to define keyDownAction, keyTrackAction and keyUpAction to make this Piano view work with anything you want.
+Here the object SeqPlayerGroup is used to create a special player out of a pattern
+
+code::
+(
+WindowDef(\pianokeyboard, { arg def, target;
+	var kb = MIDIKeyboardView.new;
+	if(target.notNil) {
+		// SeqPlayerGroup is an object that take a pattern as input and provide an array of players
+		// each player represent a note, and when playing it, you play instead an event of the provided pattern
+		// the midinote of the player replace the \midinote of the event
+		// to access to individual players in array, you use .elAt method
+		var player = ProtoTemplateDef(\SeqPlayerGroup).new(target);
+		
+		kb.keyDownAction = { arg midinote, old;
+			if(old.notNil) {
+				player.elAt(old).stop;
+			};
+			player.elAt(midinote).play;
+		};
+		kb.keyTrackAction = { arg midinote, old;
+			player.elAt(old).stop;
+			player.elAt(midinote).play;
+		};
+		kb.keyUpAction = { arg midinote;
+			player.elAt(midinote).stop;
+		};
+	};
+	def.windowDo { arg win; // special method of WindowDef to manipulate the Window if available
+		win.setInnerExtent(800,120); // set a default size to look nice at first try
+	};
+	kb.asView;
+}).front(Pdef(\help)); // GUI is made generic by taking the pattern as argument
+)
+::
+
+subsection:: Route audio and control with PopUpMenu
+
+For a complete tutorial on BusDef and BufDef, see TODO
+
+BusDef can be used to create and retrieve a bus. 
+
+code::
+(
+SynthDef(\modulator, { arg out=0, gate=1, freq=1, modScale=1, modBias=0.5;
+	var sig;
+	sig = SinOsc.kr(freq).unipolar * modScale + modBias;
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	Out.kr(out, sig);
+}).add;
+
+Pdef(\demo, 
+	Ppar([
+		Pdef(\mod1, // need a Pdef around Pbind to control it
+			Pmono( \modulator,
+				\out, BusDef(\mod1, \control),
+				\dur, 1,
+			),
+		),
+		Pdef(\mod2, 
+			Pmono( \modulator,
+				\out, BusDef(\mod2, \control), 
+				\dur, 1,
+			),
+		),
+		Pdef(\melo, 
+			Pbind(
+				\instrument, \saw,
+				\degree, Pseq((1..20).mirror,inf) % Pseq((3..15),inf),
+				\dur, 1/4,
+				\amp, 0.1,
+			)
+		)
+	]),
+).play;
+);
+::
+
+To do modulation on any parameters of the synth and not only on the ones that
+use In.kr to read a bus, SuperCollider allow you to map a bus to any synth
+parameter using the link::Classes/Bus#.asMap:: method.
+
+Busses are handled transparently by Param: if there is a bus mapped in a Pdef
+or Ndef parameter, Param will reads and write on this bus. In this case, we do
+not want to write on the bus, we want to select which bus to map. To do this,
+we should use code::.asBusPopUpMenu:: instead of code::.asPopUpMenu::
+
+To provide a list of values to choose from, code::.asBusPopUpMenu:: (and
+code::.mapBusPopUpMenu::) expects a list of associations where the key is
+the label displayed in the GUI and the value is the value put in the synth
+parameter when its label is selected.
+
+There is a special kind of spec named link::Classes/TagSpecDef:: with a
+few lists already defined. Among them there is code::\BusDef:: which is the list of bus created
+with link::Classes/BusDef:: and code::\BusDef_asMap:: which is the same list but
+contains the bus map instead of the bus itself.
+
+code::
+(
+WindowDef(\mywindow, {
+	VLayout (
+		PlayerWrapper(Pdef(\demo)).asView,
+		
+		// provide custom list
+		Param(Pdef(\melo), \lpfr).asBusPopUpMenu([
+			"no modulation" -> nil,
+			"modulator 1" -> BusDef(\mod1).asMap,
+			"modulator 2" -> BusDef(\mod2).asMap,
+	   	]),
+
+		// use existing list with TagSpecDef
+		Param(Pdef(\melo), \lpfr).asBusPopUpMenu(TagSpecDef(\BusDef_asMap)), 
+
+		// modulators params
+		StaticText.new.string_("Mod 1").align_(\center),
+		Param(Pdef(\mod1), \freq, \lofreq).asView,
+		Param(Pdef(\mod1), \modScale, ControlSpec(0,4,\lin)).asView,
+		StaticText.new.string_("Mod 2").align_(\center),
+		Param(Pdef(\mod2), \freq, \lofreq).asView,
+		Param(Pdef(\mod2), \modScale,  ControlSpec(0,4,\lin)).asView,
+		nil
+	)
+}).front;
+)
+::
+
+
+subsection:: modulate parameters with others synth
+
+subsection:: Display value of the last tweaked parameter on GUI in one place
+
+Each time a Param is tweaked in a GUI, it is put in link::Classes/Param#.lastTweaked:: and a changed message is sent.
+You can use link::Classes/View#.followChange:: method to listen to this message and update the GUI.
+This is useful for example when you don't want the value of each knob to clutter your GUI, so you display it in only one place.
+
+code::
+(
+SynthDef(\saw_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}).add;
+
+Pdef(\help, 
+	Pbind(
+		\instrument, \saw_help,
+		\degree, Pseq([0],inf),
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+
+WindowDef(\help, {
+	var pg = Pdef(\help).asParamGroup;
+	var curval = StaticText.new;
+	var editcurval = TextField.new;
+
+	curval.string = "---"; // default value
+
+	// follow the Param.lastTweaked changes
+	curval.followChange(Param, \lastTweaked, { arg view; 
+		"there is a change! %: %".format(Param.lastTweaked.asLabel, Param.lastTweaked.stringGet).postln;
+
+		// map the last changed Param to the StaticText and TextField
+		curval.mapParamLabel(Param.lastTweaked);
+		editcurval.mapParam(Param.lastTweaked);
+	});
+
+	VLayout (
+		HLayout(
+			curval,
+			editcurval,
+		),
+		HLayout(
+			*pg.collect({ arg param; // the star allow you to provide a list as a first argument of HLayout
+				VLayout(
+					param.asStaticTextLabel.align_(\center),
+					param.asKnob.fixedSize_(40),
+				)
+			}) ++ [nil], // nil is used to add filling space
+		),
+		nil
+	)
+}).front;
+)
+::
+
+
+
+subsection:: Have presets
+
+subsection:: Morph between presets
+
+subsection:: Defining macro parameter to control several parameters
+
+subsection:: Creating an overlay menu
+
+Context menus have been added relatively recently to Supercollider, but even
+with them, you might want to use a borderless window instead. The benefit is
+you can put any GUI component on it and make it as large as you want. I call
+this kind of contextual borderless windows: Overlay menus.
+
+subsection:: Choose the instrument in a PopUpMenu
+
+subsection:: Foldable/Expandable panel
+
+Every view have a link::Classes/View#.visible:: method that allow hidding it. You just have to add a button somewhere to control it's visible state and your collapse/expand view is made.
+
+code::
+(
+WindowDef(\foldblock_help, { arg def;
+		var layout;
+		var blockview = View.new;
+		blockview.layout = VLayout(
+			Slider.new.orientation_(\horizontal),
+			Slider.new.orientation_(\horizontal),
+			Slider.new.orientation_(\horizontal),
+			Slider.new.orientation_(\horizontal),
+		);
+		layout = VLayout(
+			HLayout(
+				Button.new.states_([
+					["-"],
+					["+"],
+				]).action_({ arg me;
+					if(me.value == 0) {
+						blockview.visible = true;
+					} {
+						blockview.visible = false;
+					}
+				}).fixedWidth_(30),
+				[StaticText.new.string_("Osc Block 1").background_(Color.grey), stretch:0],
+			).spacing_(0),
+			blockview,
+			Button.new,
+			nil
+		);
+		layout;
+
+	
+}).front;
+);
+
+
+subsection:: Changing a part of the GUI when some parameter change
+
+The key is to use View as a placeholder. When some change is detected, remove all children of this view and recreate them.
+
+subsection:: Write a GUI that can modify SynthDefs
+
+
+
+section:: Sequencers
+
+subsection:: Display a sequencer GUI for a Pbind
+
+subsection:: Have a bank of sequences for a sequencer
+
+subsection:: Have a bank of sequences for several sequencers
+
+
+
+
+
+section:: Timelines
+
+subsection:: Visualize a Pbind score
+
+subsection:: Record your piano controller
+
+subsection:: Record your drumpad controller
+
+subsection:: Record your launchpad controller
+
+subsection:: Record a parameter 
+
+
+
+
+
+section:: Controllers (MIDI, OSC, ...)
+
+I talk only about MIDI controllers, but OSC controllers can connect to Param the same way using link::Classes/OSCdef:: (well anything really).
+
+
+
+
+subsection:: Control a parameter 
+
+Like the GUI components, all the controllers data is sent in normalized form (from 0 to 1). In MIDI this is from 0 to 127 but you just have to divide by 127 to normalize it.
+Param objects have two convenient methods: normSet and normGet which allow you to work with normalized values and let the Spec do the conversion for you.
+
+The standard way to interact with controllers is using MIDIdef:
+
+code::
+(
+SynthDef(\saw_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpfr: ControlSpec(0.5,4,\lin, 0, 1)
+))).add;
+
+Pdef(\help, 
+	Pbind(
+		\instrument, \saw_help,
+		\degree, Pseq([0],inf),
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+
+MIDIdef.cc(\knob1, { arg val, channel, deviceId;
+	[ val, channel, deviceId ].debug;
+	Param(Pdef(\help), \lpfr).normSet(val/127); // normSet automatically map from 0..1 according to the spec of the param
+}, 16); // change your midi cc number for your first knob
+)
+::
+
+Modality-toolkit quark can also be used with Param:
+
+code::
+k = MKtl('icon', "icon-icontrols"); // use modality-toolkit to access the icon-icontrols MIDI controller
+k[\kn][0].mapParam( Param(Pdef(\help), \lpfr) ); // map the knob 0 to a Param
+::
+
+
+
+
+
+subsection:: Control a parameter with a bus
+
+When controlling a parameter in a pattern, the value is kept constant for the duration of each note. To have smooth control, you have to map a bus.
+Param handle this transparently. The only thing to do is to call code::param.setBusMode(true)::
+
+code::
+(
+SynthDef(\saw_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpfr: ControlSpec(0.5,4,\lin, 0, 1)
+))).add;
+
+Pdef(\help, 
+	Pbind(
+		\instrument, \saw_help,
+		\degree, Pseq([0],inf),
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+
+Param(Pdef(\help), \lpfr).setBusMode(true); // now the Pdef \lpfr parameter contains a bus map and change is smooth
+Param(Pdef(\help), \lpfr).get.postln; // this post the value of the bus
+
+MIDIdef.cc(\knob1, { arg val, channel, deviceId;
+	[ val, channel, deviceId ].debug;
+	Param(Pdef(\help), \lpfr).normSet(val/127); // normSet automatically map from 0..1 according to the spec of the param
+}, 16); // change your midi cc number for your first knob
+)
+::
+
+
+subsection:: Control a player with a MIDI button
+
+
+subsection:: Control a player with a MIDI knob
+
+
+subsection:: Learn MIDI ccnum to control any Param
+
+subsection:: Control a PopUpMenu with a controller
+
+subsection:: Select controller by a PopUpMenu
+
+
+
+
+
+section:: Internal
+
+
+
+
+
+section:: Advanced
+
+subsection:: write a Fx Manager
+
+subsection:: write a mixer SynthDef with a GUI
+
+subsection:: write a player grid view
+
+subsection:: write a modulator matrix
+
+subsection:: write a modulator table
+
+subsection:: writing timeline views basics

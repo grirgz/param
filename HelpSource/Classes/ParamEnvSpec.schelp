@@ -6,19 +6,22 @@ related::
 DESCRIPTION::
 This spec is very useful because Env parameters are treated as Arrays on Server and when you get it back, you must know the array represent an Env. By adding the spec to every SynthDef parameter that expect an Env, you can build GUI that automatically display a link::Classes/FixedEnvelopeView:: for it.
 
+code::
+ParamEnvSpec(\freq).map(Env([0,1,0],[0.1,0.3])); // --> Env([ 20.0, 20000.0, 20.0  ], [ 0.1, 0.3  ])
+::
+
+There are various way to create a ParamEnvSpec, to provide more or less details on the parameter. The size can be guessed by Param by looking at the SynthDef description
+
+code::
+ParamEnvSpec(); // undefined size and range but we know it's an Env parameter
+ParamEnvSpec(\freq); // undefined size but the range is from \freq.asSpec
+ParamEnvSpec(\freq!4); // this is a 4 levels values (thus 3 times values) Env with \freq.asSpec range
+ParamEnvSpec(\freq,\unipolar); // undefined size, levels use \freq.asSpec range and time use \unipolor range
+ParamEnvSpec(\freq!4,\unipolar); // same, with 4 levels values and 3 times values
+::
+
 
 CLASSMETHODS::
-
-METHOD:: triangle
-(describe method here)
-
-ARGUMENT:: dur
-(describe argument here)
-
-ARGUMENT:: level
-(describe argument here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: new
 (describe method here)
@@ -37,6 +40,19 @@ ARGUMENT:: default
 
 returns:: (describe returnvalue here)
 
+
+METHOD:: triangle
+(describe method here)
+
+ARGUMENT:: dur
+(describe argument here)
+
+ARGUMENT:: level
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+
 METHOD:: sine
 (describe method here)
 
@@ -47,10 +63,12 @@ METHOD:: classInit
 
 returns:: (describe returnvalue here)
 
+
 METHOD:: cutoff
 (describe method here)
 
 returns:: (describe returnvalue here)
+
 
 METHOD:: adsr
 (describe method here)
@@ -71,6 +89,7 @@ ARGUMENT:: peakLevel
 (describe argument here)
 
 returns:: (describe returnvalue here)
+
 
 METHOD:: dadsr
 (describe method here)

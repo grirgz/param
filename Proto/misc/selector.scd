@@ -1,5 +1,5 @@
 
-~view_selector = (
+ProtoTemplateDef(\ViewSelector, (
 	// this view selector is based 
 	// this selector version added possibility to regenere the views if they have been removed
 	selected_color: ParamViewToolBox.color_dark,
@@ -103,11 +103,13 @@
 		self.selected_index == x
 	},
 
-);
+));
 
+~view_selector = ProtoTemplateDef(\ViewSelector); // new backwarp compat
 ~selector = ~view_selector; // backward compat, i needed a less common name
 
 ~selectorGroup_set = { arg view, group;
+	// deprecated, use addChildAndAction
 	var idx;
 	idx = group.addChild(view);
 	view.selectAction = {
@@ -115,7 +117,7 @@
 	};
 	view;
 };
-~selectorGroup = ProtoClass((
+ProtoTemplateDef(\SelectorGroup, (
 	new: { arg self;
 		self = self.deepCopy;
 	
@@ -140,4 +142,13 @@
 		idx = self.viewList.size - 1;
 		idx;
 	},
+
+	addChildAndAction: { arg self, view;
+		var idx = self.addChild(view);
+		view.selectAction = {
+			self.selectChild(idx)
+		};
+		view;
+	}
 ));
+~selectorGroup = ProtoTemplateDef(\SelectorGroup);

@@ -9,7 +9,11 @@ ParamProto {
 
 	*initClass {
 		//base_path = Platform.userExtensionDir +/+ "param/Proto/";
-		base_path = PathName(this.filenameSymbol.asString).pathOnly +/+ "../Proto/";
+		base_path = PathName(PathName(this.filenameSymbol.asString).pathOnly +/+ "../Proto/").normalizedPath;
+	}
+
+	*path {
+		^base_path
 	}
 
 	*init { arg force=false;

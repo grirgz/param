@@ -241,6 +241,7 @@ Pembed : Pattern {
 	classvar <>startOffsetKey = \event_dropdur;
 	classvar <>sustainKey = \sustain;
 	*new { arg ...args;
-		^topEnvironment[\pembed].new(*args);
+		^ProtoTemplateDef(\TimelineEmbeder).new(*args);
+		//^topEnvironment[\pembed].new(*args);
 	}
 }

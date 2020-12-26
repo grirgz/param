@@ -1,11 +1,12 @@
 
 SimpleServerMeterView : SCViewHolder {
+	// TODO: add player interface (isPlaying)
 
 	classvar serverMeterViews, updateFreq = 10, dBLow = -80, meterWidth = 15, gapWidth = 4, <height = 230;
 	classvar serverCleanupFuncs;
 
 	var inresp, outresp, synthFunc, responderFunc, server, numIns, numOuts, inmeters, outmeters, startResponderFunc;
-	var bus;
+	var <bus;
 
 	*new { |aserver, numIns=0, numOuts=2, bus|
 		^super.new.initSimpleServerMeterView(aserver, numIns, numOuts, bus)
@@ -13,6 +14,13 @@ SimpleServerMeterView : SCViewHolder {
 
 	*getWidth { arg numIns, numOuts, server;
 		^20+((numIns + numOuts + 2) * (meterWidth + gapWidth))
+	}
+
+	bus_ { arg val;
+		bus = val;
+		this.stop;
+		this.setSynthFunc(inmeters, outmeters);
+		this.start;
 	}
 
 	initSimpleServerMeterView { arg aserver, anumIns, anumOuts, abus;

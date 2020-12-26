@@ -1100,18 +1100,20 @@ Param {
 					Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:4 spec %, keys %", xspec, keys);
 				};
 			};
-			try {
-				if(xspec.labelList.notNil) {
-					view.items = xspec.labelList.asArray;
+			{
+				try {
+					if(xspec.labelList.notNil) {
+						view.items = xspec.labelList.asArray;
+					};
+					view.value = xspec.unmapIndex(this.getBus);
+				} { arg error;
+					"In %.mapBusPopUpMenu:refreshChangeAction".format(this).error;
+					error.reportError;
+					//error.throw;
 				};
-				view.value = xspec.unmapIndex(this.getBus);
-			} { arg error;
-				"In %.mapBusPopUpMenu:refreshChangeAction".format(this).error;
-				error.reportError;
-				//error.throw;
-			};
 			Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:5 spec %, keys %", xspec, keys);
 			Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:6 spec %, keys %", xspec, keys);
+			}.defer;
 			//view.value.debug("mapValuePopUpMenu:1.5");
 		};
 		view.refreshChange;
@@ -1147,7 +1149,9 @@ Param {
 				Log(\Param).debug("mapBusPopUpMenu:onChange: going to refresh");
 				aview.refreshChange;
 			};
-			Log(\Param).debug("mapBusPopUpMenu:onchange: end", view.value);
+			{
+				Log(\Param).debug("mapBusPopUpMenu:onchange: end", view.value);
+			}.defer;
 		});
 		mykeys = keys ?? {this.spec};
 		if( mykeys.isKindOf(TagSpecDef)) {
@@ -1170,8 +1174,8 @@ Param {
 			param.normSet(view.value.linlin(0,size-1,0,1));
 		}, { arg view, param;
 			var size;
-			size = view.states.size;
 			{
+				size = view.states.size;
 				view.value = param.normGet.linlin(0,1,0,size-1);
 			}.defer
 		}, nil, action)
@@ -1257,9 +1261,8 @@ Param {
 
 	asEnvelopeView {
 		var view;
-		try {
 
-			view = FixedEnvelopeView.new(nil, Rect(0, 0, 230, 80))
+		view = FixedEnvelopeView.new(nil, Rect(0, 0, 230, 80))
 			.drawLines_(true)
 			.selectionColor_(Color.red)
 			.drawRects_(true)
@@ -1267,11 +1270,16 @@ Param {
 			.thumbSize_(10)
 			.elasticSelection_(false)
 			.keepHorizontalOrder_(true)
-			.rightClickZoomEnabled_(true)
-			.grid_(Point(this.spec.times[0].unmap(1/8),1/8))
-			.totalDur_(this.spec.times[0].unmap(2))
-			.gridOn_(true)
-			.mapParam(this); 	// should be after spec access which can fail
+			.rightClickZoomEnabled_(true);
+
+		try {
+			var step = this.spec.times[0].unmap(1/8);
+			var point = Point(step,1/8);
+			var dur = this.spec.times[0].unmap(2);
+			view.grid_(point);
+			view.totalDur_(dur);
+			view.gridOn_(true);
+			view.mapParam(this); 	// should be after spec access which can fail
 
 		} { arg error;
 			"In: %.asEnvelopeView".format(this).error;

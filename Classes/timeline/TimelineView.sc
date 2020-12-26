@@ -2239,7 +2239,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		//var preview_background = Color.new255(101, 166, 62);
 		//var label_background = Color.new255(130, 173, 105);
 		var preview_background = ParamViewToolBox.color_ligth;
-		var label_background = ParamViewToolBox.color_dark;
+		var label_background = ParamViewToolBox.color_pale;
 		var virtualBounds_rect;
 
 		pos = this.origin;

@@ -1,0 +1,45 @@
+title:: Param modifications
+summary:: List of modifications by Param quark
+
+section:: Misc
+
+subsection:: Env compile string
+
+Env instance now print its compile string when posted on the console, instead of printing code::an Env::
+
+code::
+Env.adsr; // --> Env([ 0.0, 1.0, 0.5, 0.0  ], [ 0.01, 0.3, 1.0  ], -4.0, 2)
+::
+
+
+subsection:: Pdef editor
+
+code::
+Pdef(\help, Pbind()); // define a Pdef
+Pdef(\help).edit;
+
+// internally, this call this code
+WindowDef(\PdefEditor).front( Pdef(\help) );
+::
+
+You can replace the WindowDef by your own version if you want.
+
+code::
+WindowDef(\PdefEditor, { arg windef, pdef;
+	VLayout(
+		HLayout (
+			PlayerWrapper(pdef).asView,
+			Param(Message(pdef), \quant).asTextField.maxWidth_(80),	// add a field to change the Pdef quant
+		),
+		pdef.asParamGroup.asView,
+	)
+});
+
+
+Pdef(\help).edit; // try it
+
+
+// load back the original PdefEditor in Param quark Proto folder
+FileSystemProject.load( ParamProto.path +/+ "editors.scd")
+::
+

@@ -9,6 +9,15 @@ ProtoDef(\GlobalLibrary, (
 		self.libIdToWrapper(libid).getTarget;
 	},
 
+	parent:(
+		clipFactories: { arg self;
+			self.init_default_clip_factories;
+		},
+		clipFactories_keys: { arg self;
+			self.init_default_clip_factories;
+		},
+	),
+
 	targetToLibId: { arg self, target;
 		var libId;
 		var fac;
@@ -432,6 +441,7 @@ ProtoDef(\GlobalLibrary, (
 
 		superself.clipFactories_keys = superself.clipFactories.keys.asArray.sort;
 		
+		superself.clipFactories
 	},
 
 	init_other_factories: { arg superself;
@@ -857,11 +867,11 @@ TagSpecDef(\BusDef, {
 });
 
 TagSpecDef(\BusDef_asMap, {
-	[\0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k).asMap }) 
+	[\nil->nil] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k).asMap }) 
 });
 
 TagSpecDef(\BusDef_control_asMap, {
-	[\0->0] ++ BusDef.all.keys.as(Array).sort.select { arg k;
+	[\nil->nil] ++ BusDef.all.keys.as(Array).sort.select { arg k;
 		BusDef(k).rate == \control
 	}.collect({ arg k; 
 		k -> BusDef(k).asMap 
