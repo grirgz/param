@@ -2,7 +2,7 @@
 ProtoTemplateDef(\ViewSelector, (
 	// this view selector is based 
 	// this selector version added possibility to regenere the views if they have been removed
-	selected_color: ParamViewToolBox.color_dark,
+	selected_color: ParamViewToolBox.color_ligth,
 	deselected_color: Color.white,
 	new: { arg self, selector_count=8, action, viewInit;
 		self = self.deepCopy;

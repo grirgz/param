@@ -1,0 +1,270 @@
+TITLE:: ClipTimeline
+summary:: A timeline for playing others timelines
+categories:: GUI
+related:: Classes/Param, Classes/NoteTimeline
+
+DESCRIPTION::
+ClipTimeline allow you to sequence any player: Pdef, Ndef or other timelines.
+
+There is two special events, the start event and the end event, they delimit the clip loop which will be played when using the CODE::play:: method or when embeded in another pattern.
+
+However, there is two other markers which are displayed as blue lines, this is the preview loop. It provide the ability to temporaly listen to a specific part of your clip without changing the intended start and end of the clip. 
+
+There is no true undo system for the moment, so you must take care of not messing up. In the waiting time, there is a kind of history stack available. You can change it using the number box at right of the metronome (use mouse wheel). For example, if you delete a note, go to index 1 and the note will be back. Then hit Ctrl-K to copy the current eventList to the top of the eventList stack, and go back to index 0. The reason is only the index 0 is saved on disk so you will lose everything you do in other indexes. There is no history stacked when moving notes however.
+
+Note it is possible to recursively embed the timeline into itself. There is some protection to disallow timeline of zero length but do it at your own (infinite loop) risk.
+
+SECTION:: Add clips
+
+There is a side panel at the right of the timeline (you can hide it using the
+">" button). The selected player in the list is the one added when you hold
+Ctrl then click somewhere on the timeline. At first the list is empty, use the "Add" button to
+open the global library dialog, you can choose in this list a Pdef, Ndef or
+other timelines. Not every object is supported currently, the focus is on Pdef
+and other timelines. Ndef can be also used but there is sometime some timing
+issues.
+
+When you select a clip, the name is displayed in the bottom bar, you can change it to other players from the popup menus. You can also edit it. It open an event editor dialog to allow you to change gain (work only with SampleTimeline for the moment), start time or duration, you can also open the editor for the target of the clip. 
+
+There is a difference between a SampleTimeline and the event in the ClipTimeline that point to it. You can change the duration or start time of the event without changing the duration or start time of the SampleTimeline. This allow you to embed the same player several time in the same ClipTimeline, with different parameters.
+
+
+SECTION:: Recording
+
+You can record any audio bus directly to ClipTimeline. This will create a buffer and its link::Classes/SampleTimeline:: and embed it in the current ClipTimeline.
+
+At the left of each track, there is popup menu allowing you to choose from which bus you want to record. You also need to activate recording by clicking on the "R" button of the track.
+
+The recorded sample will begin at the last clicked point on the ClipTimeline, the red triangle on the ruler view tell you where it is.
+
+Then hit the "Record" button to start recording. Recording will use default TempoClock quant to quantize the start/stop time of recording.
+
+The button "PlayRec" enable or disable playing the timeline when recording start. This allow to record the output of timeline on the same timeline. This can result in some strange glitch bug if you happen to play the sample which is currently recording: you should mute its track.
+
+SECTION:: Graphical interfaces:
+
+Top bar: 
+
+table::
+    ## Play Button || Play the preview loop or the clip loop if there is no preview loop defined. Infinite repeat by default (use quant)
+    ## Stop button || Stop playing and erase the preview loop markers (with quant)
+    ## Save as / Save || Open a dialog to select a file in which save the timeline. If a file was already selected, the button is called "Save" and directly save to the previous file.
+    ## Add track || Add a new track. There is no way to remove track with GUI currently, you have to use code::mytimeline.trackCount = 4;:: to set it to 4 track for example. Each clip have the track number in its properties, so removing a track does not lose any clip, only the record/mute/bus state of the track.
+    ## Grid quant menu || quantize selection, new notes, moving notes
+    ## History stack number box || represent the index of the displayed event list in the history stack
+    ## Rec button || Start/stop recording. It only record tracks marked for record. Follow the default clock quant.
+    ## PlayRec button || This is a toggle button. Play the timeline when recording start
+    ## Samples button || When recording buffers in the timeline, you can choose which one to keep on disk or which one to delete permanently
+::
+
+Z button at the right of time ruler is used to zoom vertically to the notes of the event list.
+
+< and > buttons at the bottom right are used to grow or shrink the viewport of the timeline. Use it when you have no more room for writing your melody. Note that even if notes are not visible in the viewport, they are still present and played.
+
+
+SECTION:: Keyboard shortcuts:
+
+On the time ruler:
+table::
+    ## Define start of the preview loop || Left click
+    ## Define end of the preview loop || Right click
+    ## Add a marker || Ctrl + left click
+    ## Edit marker name || Double click on marker. Hit Enter to save the new name
+    ## Delete a marker || Delete
+::
+
+
+On the main panel:
+table::
+    ## Add a note || Ctrl + Left click, hold mouse button to adjust the sustain of the note. This will add the selected player in the side panel
+    ## Resize a note || Shift + Left click, hold mouse button to adjust the sustain of the note
+    ## Select a note || Click on the note to select it
+    ## Select several note || Click somewhere with no note and drag to form a selection rectangle
+    ## Play immediatly the selected part of the timeline (set preview loop) || Space
+    ## Delete selected note(s) || use Delete key
+    ## Define the end of the clip || Ctrl + Right click
+    ## Copy selected notes || Ctrl + c
+    ## Paste selected notes || Ctrl + v (click first where you want to paste)
+    ## Double the clip by repeating notes || Ctrl + d
+    ## Copy the current event list and add it to the top of the history stack || Ctrl + k
+    ## Add a new empty event list to the top of the history stack || Ctrl + n
+    ## Quantize selected notes || q
+    ## Move up or down selected notes by track number || Up or Down arrow keys
+    ## Move left or right selected notes by grid quant || Left or Right arrow keys
+    ## Move left or right selected notes by grid quant * 8 || Ctrl + Left or Ctrl + Right arrow keys
+	## Split the selected clip in two || Select an area and hit Ctrl + s. The split will happen in left and right border of selection
+	## Copy part of a clip || Select an area and hit Ctrl + c. If only a part of a clip is selected, only this part will be pasted with Ctrl + v
+	## Paste a copied area || click somewhere on a track to set where the bottom of the area you copied will be pasted. Buf: If you click on the top track, all your clips will be pasted too high to be seen in the timeline, you have to adjust the number of track to see them again.
+
+::
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new instance of NoteTimeline, or redefine the baseObject
+
+ARGUMENT:: name
+the key under which the object which be stored
+
+ARGUMENT:: baseObject
+A Pdef providing the default values for the events created in the timeline. Usually, the Pdef contains only the \instrument key for specifying a custom SynthDef
+
+returns:: a NoteTimeline
+
+
+INSTANCEMETHODS::
+
+METHOD:: play
+Play the timeline
+
+METHOD:: stop
+Stop the timeline
+
+METHOD:: isPlaying_
+Play/stop the timeline pattern
+ARGUMENT:: val
+true to start, false to stop
+
+METHOD:: isPlaying
+Play the timeline
+
+METHOD:: edit
+Show the graphical editor
+
+METHOD:: eventList
+Return the current event list of the timeline
+returns:: a TimelineEventList
+
+METHOD:: startRecording
+Start the recording
+
+METHOD:: stopRecording
+Stop the recording
+
+METHOD:: isRecording_
+Start/Stop the recording
+ARGUMENT:: val
+true to start, false to stop
+
+METHOD:: isRecording
+Return weither the timeline is recording
+returns:: a Bool
+
+METHOD:: asPattern
+Return the timeline pattern for embeding in other patterns
+ARGUMENT:: startOffset
+Start startOffset beats after the start event
+FIXME: broken
+ARGUMENT:: dur
+Cut the length of the pattern to dur
+ARGUMENT:: repeatCount
+repeat the pattern repeatCount times
+returns:: a Prout
+
+METHOD:: asPatternAbs
+Same as asPattern but use absolute time instead
+ARGUMENT:: startBeat
+Start the loop at startBeat
+ARGUMENT:: endBeat
+End the loop at endBeat
+ARGUMENT:: repeatCount
+repeat the pattern repeatCount times
+returns:: a Prout
+
+METHOD:: asPatternSlices
+Slices are delimited by markers (\start, \end, and custom markers). Return every slices of the clip loop
+returns:: an array of Prout
+
+METHOD:: asPatternSlice
+Slices are delimited by markers.
+Return a specific slice from marker startMarker and endMarker.
+A marker can be \start, \end, or a String containing the label of the custom marker
+ARGUMENT:: startMarker
+ARGUMENT:: endMarker
+ARGUMENT:: repeatCount
+repeat the pattern repeatCount times
+returns:: a Prout
+
+METHOD:: presetCompileString
+Return a preset string so you can save the state of the timeline on disk. To load the timeline again, just interpret the string, it's human readable code.
+returns:: a TimelineEventList
+
+METHOD:: outBus_
+METHOD:: outBus
+Get or set the out bus of the pattern (key \out)
+
+METHOD:: label_
+METHOD:: label
+Get or set the label of the timeline (default to key)
+
+METHOD:: key
+The key to identify the timeline (first argument at creation)
+
+METHOD:: quant_
+METHOD:: quant
+Get or set the quant of the pattern player (EventPatternProxy). Do not confuse it with the grid quant
+
+EXAMPLES::
+
+code::
+// a simple SynthDef for demo purpose
+(
+SynthDef(\saw, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+	var sig;
+	sig = LFSaw.ar(freq);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}).add;
+);
+
+// some Pdef to play in the timeline
+(
+Pdef(\pat1, 
+	Pbind(
+		\instrument, \saw,
+		\degree, Pwhite(0,11,inf) + Pseq((0..10),inf),
+		\dur, 1/2,
+		\amp, 0.1,
+	)
+);
+
+Pdef(\pat2, 
+	Pbind(
+		\instrument, \default,
+		\degree, Pwhite(0,11,inf) + Pseq((0..10),inf),
+		\dur, 1/8,
+		\amp, 0.1,
+	)
+);
+);
+
+ClipTimeline(\line1).edit; // this create and open editor of clip timeline \line1
+
+// click on Add button on right side panel and double click on pat1 and pat2 in the list to add them to the list.
+// then close the add dialog and select pat1 in the list
+// Hold Ctrl and click somewhere on the timeline to add the pat1 clip, hold the click to adjust the length of the clip.
+// Repeat for pat2. Hit play
+
+///// basic control
+
+ClipTimeline(\line1).play;
+ClipTimeline(\line1).stop;
+
+///// embeding in patterns
+
+ClipTimeline(\line1).repeatCount = 1; // repeat count is inf by default
+
+(
+// FIXME: repeat count and asPatternAbs time slicing are broken
+Pdef(\embed, 
+	Pseq([
+		ClipTimeline(\line1).asPattern,
+		ClipTimeline(\line1).asPatternAbs(startBeat:1, endBeat:2),
+	],1),
+).play;
+);
+::
+

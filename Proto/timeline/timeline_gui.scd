@@ -281,7 +281,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 			//res.background_(Color.blue);
 			res;
 		};
-		self.track_selector = ~view_selector.new(track_count, {}, { arg view, x; 
+		self.track_selector = ProtoTemplateDef(\ViewSelector).new(track_count, {}, { arg view, x; 
 			//x = track_count - x;
 			if(self.timeline_model.is_track_bypassed(x)) {
 				view.label_("[track %]".format(x));
@@ -1019,7 +1019,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			XSimpleButton.new.label_("Add track").action_({
 				self.add_track;
 			}),
-			mute_button,
+			//mute_button, // useless with "M" button
 			self.make_quant_popup,
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			Param(Message(self.timeline_model.recorder), \isRecording, XBoolSpec()).asButton("Rec"),
@@ -1242,7 +1242,7 @@ ProtoTemplateDef(\trackTimelinePanelView, (
 			res;
 		};
 		//"trackTimelinePanelView.update_track_header: part 1".debug;
-		self.track_selector = ~view_selector.new(track_count, {}, { arg view, x; 
+		self.track_selector = ProtoTemplateDef(\ViewSelector).new(track_count, {}, { arg view, x; 
 			//x = track_count - x;
 			if(self.timeline_model.is_track_bypassed(x)) {
 				view.label_("[%]".format(self.timeline_model.tracks[x].label));
