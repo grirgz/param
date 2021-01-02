@@ -5,7 +5,7 @@ WindowDef(\OverlayMenu, { arg def, view, x, y, fun;
 	x = x ? 600;
 	y = y ? 600;
 	Log(\Param).debug("xy: %, %", x, y);
-	[def, def.key, def.window].debug("def");
+	//[def, def.key, def.window].debug("def");
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
 		Log(\Param).debug("OverlayMenu: rect %, x %, y %", ab, x, y);"heeee".debug;
@@ -47,7 +47,7 @@ WindowDef(\OverlayMenu).front(nil,nil,nil,{ arg def;
 	WindowDef(\overlaydemo, { arg def;
 
 		BasicButton.new.string_("open menu").mouseDownAction_({ arg but, x, y, modifiers, buttonNumber, clickCount;
-			[but, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//[but, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 
 			if(buttonNumber == 1) { // if right-click
 
@@ -78,7 +78,7 @@ WindowDef(\MyOverlayMenu, { arg def, view, x, y;
 	WindowDef(\overlaydemo, { arg def;
 
 		BasicButton.new.string_("open menu").mouseDownAction_({ arg but, x, y, modifiers, buttonNumber, clickCount;
-			[but, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//[but, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 
 			if(buttonNumber == 1) { // if right-click
 

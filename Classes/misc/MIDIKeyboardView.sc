@@ -88,10 +88,10 @@ MIDIKeyboardView : SCViewHolder {
 		//mouseTracker = this;
 		this.view = mouseTracker;
 		userView = mouseTracker;
-		mouseTracker.debug("bou1ds!!!!!");
-		mouseTracker.bounds.debug("bou1ds!!!!!");
+		//mouseTracker.debug("bou1ds!!!!!");
+		//mouseTracker.bounds.debug("bou1ds!!!!!");
  		bounds = mouseTracker.bounds;
-		bounds.debug("bouds!!!!!");
+		//bounds.debug("bouds!!!!!");
 
 		pen	= Pen;
 
@@ -106,9 +106,9 @@ MIDIKeyboardView : SCViewHolder {
 			.canFocus_(false)
 			//.relativeOrigin_(false)
 			.mouseDownAction_({|me, x, y, mod|
-				[x, y].debug("xy");
+				//[x, y].debug("xy");
 				chosenkey = this.findNote(x, y);
-				chosenkey.debug("chosenkey");
+				//chosenkey.debug("chosenkey");
 				trackKey = chosenkey;
 				chosenkey.color = Color.grey;
 				downAction.value(chosenkey.note);

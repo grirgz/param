@@ -185,9 +185,9 @@ BufferPool {
 
 	*release_client { arg client;
 		annotations.leafDo({ arg x, y;
-			[x,y].debug("BufferPool.release_client: buf, client");
+			//[x,y].debug("BufferPool.release_client: buf, client");
 			if( x[1] == client ) { 
-				x[0].debug("to free");
+				//x[0].debug("to free");
 				this.release(x[0], x[1]);
 			}
 		})

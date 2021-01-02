@@ -766,7 +766,7 @@ Param {
 				Log(\Param).debug("mapTextField: val: %", val);
 				// refresh action
 				{
-					[val.asCompileString, view.hasFocus].debug("Param.mapTextField: hasfocus");
+					//[val.asCompileString, view.hasFocus].debug("Param.mapTextField: hasfocus");
 					if(view.hasFocus.not) {
 						// TODO: handle other types than float
 							view.value = val;

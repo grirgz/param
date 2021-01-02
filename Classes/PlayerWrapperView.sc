@@ -109,7 +109,7 @@ PlayerWrapperView {
 		}; 
 		target.removeDependant(follower);
 		follower = { arg obj, changed, status;
-			[obj, changed, status].debug("follower: args");
+			//[obj, changed, status].debug("follower: args");
 			if(changed == \PlayerWrapper) {
 				defer {
 					var butval = button.value;

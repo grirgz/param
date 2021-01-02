@@ -203,14 +203,14 @@ WindowDef {
 	waitIfNeeded { arg self;
 		if(thisThread.clock === AppClock) {
 			if(Process.elapsedTime > ( startRenderingTime + 0.01 )) {
-				"WindowsDef rendering: WAITING !!!!!!".debug([ startRenderingTime, Process.elapsedTime ]);
+				//"WindowsDef rendering: WAITING !!!!!!".debug([ startRenderingTime, Process.elapsedTime ]);
 				0.001.wait;
 				startRenderingTime = Process.elapsedTime; 
 			} {
-				"WindowsDef rendering: no wait needed".debug([ startRenderingTime, Process.elapsedTime, Process.elapsedTime - startRenderingTime ]);
+				//"WindowsDef rendering: no wait needed".debug([ startRenderingTime, Process.elapsedTime, Process.elapsedTime - startRenderingTime ]);
 			}
 		} {
-			"WindowsDef rendering: no wait because not on AppClock".debug([ startRenderingTime, Process.elapsedTime, thisThread.clock ]);
+			//"WindowsDef rendering: no wait because not on AppClock".debug([ startRenderingTime, Process.elapsedTime, thisThread.clock ]);
 		}
 	}
 

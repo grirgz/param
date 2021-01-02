@@ -14,7 +14,7 @@ SampleChooserView : SCViewHolder {
 	mapParam { arg param;
 		param.makeSimpleController(this.view, 
 			action: { arg view, param;
-				"this is action!!!!!!!".debug;
+				//"this is action!!!!!!!".debug;
 				param.set(this.buffer);
 			}, 
 			updateAction: { arg view, param;
@@ -50,9 +50,9 @@ SampleChooserView : SCViewHolder {
 				Button.new.action_( {
 					Dialog.openPanel({ arg path;
 						path.postln;
-						path.debug( "filedialog: set buf" );
+						//path.debug( "filedialog: set buf" );
 						this.buffer = SampleProxy(path);
-						"bientot action".debug;
+						//"bientot action".debug;
 						this.view.action.(this);
 					},{
 						"cancelled".postln; 
@@ -66,7 +66,7 @@ SampleChooserView : SCViewHolder {
 	}
 
 	buffer_ { arg buf;
-		buf.debug("set buffer");
+		//buf.debug("set buffer");
 		if(buf.notNil and: { buf.respondsTo(\bufnum) and: {buffer != buf} }) {
 			if(buf.path.notNil) {
 				var soundfile;

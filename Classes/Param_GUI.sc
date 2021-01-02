@@ -76,7 +76,7 @@ ParamViewToolBox {
 		);
 		view.layout.margins_(0);
 		view.addUniqueMethod(\mapParam, { arg view, param;
-			param.debug("ParamViewToolBox.knob.mapParam");
+			//param.debug("ParamViewToolBox.knob.mapParam");
 			control.mapParam(param);
 			val.mapParam(param);
 			view;
@@ -102,7 +102,7 @@ ParamViewToolBox {
 			val
 		);
 		view.addUniqueMethod(\mapParam, { arg view, param;
-			param.debug("ParamViewToolBox.knob.mapParam");
+			//param.debug("ParamViewToolBox.knob.mapParam");
 			label.mapParamLabel(param).align_(\center);
 			control.mapParam(param);
 			val.mapParam(param).align_(\right);
@@ -234,7 +234,7 @@ ListParamLayout {
 			.enabled_(false)
 			.fixedWidth_(width)
 			.onChange(param.target, \cursor, { arg view ...args;
-				[args[2], x].debug("bbb");
+				//[args[2], x].debug("bbb");
 				if(args[2] == x or: { args[2].isNil }) {
 					// FIXME: AppClock doesnt have the same tempo of the pattern :/
 					// FIXME: how to specify another server ?
@@ -248,7 +248,7 @@ ListParamLayout {
 						nil
 					}.play(AppClock);
 				};
-				args.debug("cursor!!");
+				//args.debug("cursor!!");
 			})
 			.states_([
 				["", Color.black, Color.white],
@@ -578,7 +578,7 @@ ParamGroupLayout {
 			lay = GridLayout.rows(
 				* size.collect({ arg idx;
 					var param = params[idx];
-					param.debug("what param");
+					//param.debug("what param");
 					if(param.isNil) {
 						nil ! 3;
 						//{ Button.new } ! 3
@@ -661,7 +661,10 @@ ParamGroupLayout {
 		);
 
 		layout = layout_type.new(
-			HLayout(*scalarlist.clump(8).collect({ arg gr; gr.debug("gr"); vertical_slider_group.(gr) })),
+			HLayout(*scalarlist.clump(8).collect({ arg gr; 
+				//gr.debug("gr"); 
+				vertical_slider_group.(gr)
+		   	})),
 			biglayout
 		);
 		layout;

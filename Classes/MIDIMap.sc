@@ -34,13 +34,13 @@ MIDIMap {
 			^this.free(key);
 		};
 
-		param.class.debug("param class");
+		//param.class.debug("param class");
 		if(param.isKindOf(PlayerWrapper)) {
 			var pw = param;
-			param.debug("param1 PlayerWrapper");
+			//param.debug("param1 PlayerWrapper");
 			param = { pw.togglePlay };
-			param.debug("param PlayerWrapper");
-			pw.debug("param P2layerWrapper");
+			//param.debug("param PlayerWrapper");
+			//pw.debug("param P2layerWrapper");
 		};
 
 		if(param.class != Function) {
@@ -58,9 +58,9 @@ MIDIMap {
 				//	nil;
 				//}).play(AppClock);
 			};
-			[key, path, nilpath, param].debug("key, path, nilpath, param");
+			//[key, path, nilpath, param].debug("key, path, nilpath, param");
 			val = val/127;
-			[val, num, chan, src].debug("val, num, chan, src");
+			//[val, num, chan, src].debug("val, num, chan, src");
 			if(param.class == Function) {
 				param.value(val, num, chan, src);
 			} {

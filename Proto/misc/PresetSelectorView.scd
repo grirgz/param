@@ -96,12 +96,12 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 				if(menu.value == 0) {
 					make_save_preset_window.(pg, { arg name;
 						refresh_menu.();
-						popup_menu.value = popup_menu.items.detectIndex({ arg x; x.debug("x") == name.debug("name")}).debug("detected index");
+						popup_menu.value = popup_menu.items.detectIndex({ arg x; x == name});
 						menu_previous_index = menu.value;
 					}, {
 
 					});
-					popup_menu.value = menu_previous_index.debug("old index");
+					popup_menu.value = menu_previous_index;
 				};
 			} {
 				pg.load(preset_list[menu.value-2]);

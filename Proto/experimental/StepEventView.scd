@@ -33,7 +33,7 @@
 	},
 
 	refresh_mod_list_view: { arg self;
-		self.stepevent.debug("refresh_mod_list_view: stepevent");
+		//self.stepevent.debug("refresh_mod_list_view: stepevent");
 		if(self.mod_list_view.notNil) {
 			var keys;
 			self.mod_list_view.removeAll;
@@ -49,7 +49,7 @@
 					* keys.collect({ arg key;
 						var editor;
 						var steplist;
-						key.debug("what??");
+						//key.debug("what??");
 						steplist = self.stepevent[key];
 						editor = if(steplist.isKindOf(StepList)) {
 							var param;
@@ -180,7 +180,7 @@
 		self.stepevent[param.property] = ~envTimeline.newInstance(
 			Param(BusDef(param.property, \control), param.property, param.spec)
 		);
-		"eeeeeeeeeeeeee".debug;
+		//"eeeeeeeeeeeeee".debug;
 		self.refresh_mod_list_view;
 	},
 
@@ -195,7 +195,7 @@
 	},
 
 	refresh_mod_list_view: { arg self;
-		self.stepevent.debug("refresh_mod_list_view: stepevent");
+		//self.stepevent.debug("refresh_mod_list_view: stepevent");
 		if(self.mod_list_view.notNil) {
 			var keys;
 			self.mod_list_view.removeAll;
@@ -211,7 +211,7 @@
 					* keys.collect({ arg key;
 						var editor;
 						var steplist;
-						key.debug("what??");
+						//key.debug("what??");
 						steplist = self.stepevent[key];
 						editor = if(steplist.isKindOf(StepList)) {
 							var param;

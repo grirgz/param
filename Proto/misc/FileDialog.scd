@@ -124,20 +124,20 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	fileview = ListView.new;
 	changepath = { arg view, path; // called with double click
 		var newnode;
-		[path, nodeClass.keys].debug("changepath: ");
+		//[path, nodeClass.keys].debug("changepath: ");
 		newnode = nodeClass.new(path);
 		if(newnode.isFolder) {
 			node = newnode;
 			proto.disable_play = true;
 			nodelist = node.children;
 			view.items = nodelist.collect(_.label);
-			view.items.debug("changepath items");
+			//view.items.debug("changepath items");
 			{
 				// hack because selectionAction is triggered even without valueAction_
 				// and with a delay
 				proto.disable_play = false;
 			}.defer(1/4);
-			debug("end disable play");
+			//debug("end disable play");
 
 			proto.cwd = node.fullPath;
 			update_pathview.()
@@ -148,7 +148,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 
 	select_file = { arg view, path;
 		var filenode;
-		path.debug("select_file: path:");
+		//path.debug("select_file: path:");
 		if(path.notNil) {
 			var selected;
 			filenode = nodeClass.new(path);
@@ -175,7 +175,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		}
 	};
 	fileview.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-		[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+		//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 		
 		//[view.value, view.items].debug("double click select: ");
 		if(clickCount == 2 and: {view.items.size > 0}) {
@@ -185,7 +185,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	fileview.selectionAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 		var path;
 		var newnode;
-		[view, x, y, modifiers, buttonNumber, clickCount].debug("selectionAction");
+		//[view, x, y, modifiers, buttonNumber, clickCount].debug("selectionAction");
 		if(view.value.notNil) {
 			path = nodelist[view.value].fullPath;
 			newnode = nodeClass.new(path);
@@ -202,7 +202,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		pathview.removeAll;
 		pathview.layout = HLayout.new.spacing_(0);
 		node.splitPath.do({ arg p, idx;
-			p.name.debug("update_pathview p");
+			//p.name.debug("update_pathview p");
 			pathview.layout.add(
 				BasicButton.new.string_(p.label).action_({
 					changepath.(fileview, node.splitPath[idx].fullPath)
@@ -214,7 +214,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	};
 
 	quicklist.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-		[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+		//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 		
 		//[view.value, view.items].debug("double click select: ");
 		if(clickCount == 2 and: {view.items.size > 0}) {
@@ -288,7 +288,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	//};
 
 	proto.init = { arg self;
-		"wtf".debug;
+		//"wtf".debug;
 		proto.load_quicklist;
 		proto.quicklist = proto.quicklist ? [
 			path, 
@@ -308,9 +308,9 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		self.player.quant = 0;
 		proto.playerwrapper = PlayerWrapper(proto.player);
 		proto.auto_mode = proto.auto_mode ?? 0;
-		proto.auto_mode.debug("auto_modexx");
+		//proto.auto_mode.debug("auto_modexx");
 		changepath.(fileview, path);
-		"wut".debug;
+		//"wut".debug;
 		select_file.(fileview, proto.current_file);
 	};
 	/////////////////////////////////////////////
@@ -403,11 +403,11 @@ ProtoTemplateDef(\filemanager_node_sample, ProtoTemplateDef(\filemanager_node)).
 	},
 
 	isChoosable: { arg self;
-		self.playable_extensions.debug("playa").includesEqual(self.extension).debug("isChoosable");
+		self.playable_extensions.includesEqual(self.extension);
 	},
 
 	children: { arg self;
-		"12".debug;
+		//"12".debug;
 		self.pathName.entries.collect({ arg p; 
 			var entry = self.new(p);
 			if(entry.isChoosable or: {entry.isFolder}) {

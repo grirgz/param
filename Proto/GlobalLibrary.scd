@@ -1044,11 +1044,11 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
 	var lay;
 	var itemIds = List.new;
 	searchBox = TextField.new.action_({
-		"action!".debug;
+		//"action!".debug;
 			def.changed(\search);
 			def.changed(\category);
 	}).keyUpAction_({ arg me, key, modifiers, unicode, keycode;
-		[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+		//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
 		def.changed(\results);
 	});
 
@@ -1065,13 +1065,13 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
 		)
 		.selection_([])
 		.action_({ arg view;
-			view.selection.debug("cat action");
+			//view.selection.debug("cat action");
 			def.changed(\results);
 		})
 		.selectionMode_(\multi)
 		.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-			view.selection.debug("cat mouse up");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//view.selection.debug("cat mouse up");
 			def.changed(\results);
 			
 		})
@@ -1091,13 +1091,13 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
 		)
 		.selection_([])
 		.action_({ arg view;
-			view.selection.debug("cat action");
+			//view.selection.debug("cat action");
 			def.changed(\results);
 		})
 		.selectionMode_(\multi)
 		.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-			view.selection.debug("cat mouse up");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//view.selection.debug("cat mouse up");
 			def.changed(\results);
 			
 		})
@@ -1129,7 +1129,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
 			view.clear;
 			//filteredTypes = [\Sample];
 
-			[model, view, msg, selectedTypes, selectedCategories, filteredTypes].debug("category change");
+			//[model, view, msg, selectedTypes, selectedCategories, filteredTypes].debug("category change");
 			itemIds = filteredTypes.collect({ arg typeitem;
 				//Log(\Param).debug("typeitem %", typeitem);
 				TagSpecDef(typeitem.value).list.collect ({ arg item;
@@ -1164,7 +1164,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
 			selectedCallback.(itemIds[view.currentItem.index].libId, view.currentItem.strings)
 		})
 		.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			if(clickCount == 2) {
 				selectedCallback.(itemIds[view.currentItem.index].libId, view.currentItem.strings, \double)
 			};

@@ -61,10 +61,10 @@ ProtoTemplateDef(\StreamPlayer, (
 			if(self.ev.isNil) {
 				self.ev = Event.default;
 			};
-			self.ev.debug("play: before next: ev");
+			//self.ev.debug("play: before next: ev");
 			self.ev = self.stream.next(self.ev);
 			if(self.ev.notNil) {
-				self.ev.debug("play: ev");
+				//self.ev.debug("play: ev");
 				self.raw_ev = self.ev.copy; // for recording, find better property name
 				self.raw_ev[\kitIndex] = self.index;
 				self.play_ev = self.ev.copy;
@@ -82,7 +82,7 @@ ProtoTemplateDef(\StreamPlayer, (
 	asPlayerEvent: { arg self; 
 		// PlayerEvent == does not embed in stream
 		// but asPlayerEvent is taken by PlayerWrapper
-		self.raw_ev.debug("asPlayerEvent: raw_ev");
+		//self.raw_ev.debug("asPlayerEvent: raw_ev");
 		self.raw_ev;
 	},
 
@@ -133,9 +133,9 @@ ProtoTemplateDef(\NotePlayer, (
 			self.ev = Event.default;
 		};
 		self.ev = self.ev.copy.putAll(self.pre_event);
-		self.ev.debug("play: before next: ev");
+		//self.ev.debug("play: before next: ev");
 		self.ev = self.stream.next(self.ev);
-		self.ev.debug("play: ev");
+		//self.ev.debug("play: ev");
 
 		// processing
 		self.ev.putAll(self.post_event);

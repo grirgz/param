@@ -49,7 +49,7 @@ ContextMenuWindow {
 
 					//{ win.close }.defer(1);
 				}).selectionAction_({ arg me;
-					me.selection.debug("context menu selected item");
+					//me.selection.debug("context menu selected item");
 					if(me.selection.size > 0) {
 						try {
 							action.(this, me.selection[0]);

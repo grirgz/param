@@ -150,7 +150,7 @@
 		var refresh_mute_button = { arg x;
 			mute_button
 				.action_({
-					x.debug("selector Action!");
+					//x.debug("selector Action!");
 					self.toggle_bypass_track(x);
 					self.track_selector.refresh_view(x);
 					refresh_mute_button.(x);

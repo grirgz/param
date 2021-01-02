@@ -12,7 +12,7 @@ PlayerEvent : Event {
 			var args = ~arguments ? [];
 			var receiver = ~receiver.value(currentEnvironment); // should decide if envir style or proto style!
 			var quant;
-			[method, args, receiver, ~disableQuant].debug("player EventType: method, args, receiver");
+			//[method, args, receiver, ~disableQuant].debug("player EventType: method, args, receiver");
 			TempoClock.default.sched(0, {
 				// apparently, latency is not needed, but there is a little latency quand meme 
 				//TempoClock.default.sched(Server.default.latency, {

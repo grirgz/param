@@ -179,7 +179,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 			xtotalDur = totalDur.value ? eventlist.totalDur;
 			xstartTime = eventlist.startTime;
 
-			[xrelStartTime, xtotalDur, xstartTime,xrelStartTime+xstartTime ].debug("sampleTimeline.asPattern: plazy: relstart, totdur");
+			//[xrelStartTime, xtotalDur, xstartTime,xrelStartTime+xstartTime ].debug("sampleTimeline.asPattern: plazy: relstart, totdur");
 			if(xtotalDur <= 0) {
 				"ERROR: totalDur is negative or zero".postln;
 				xtotalDur = 2
@@ -533,14 +533,14 @@ ProtoTemplateDef(\SampleTimelineView, (
 		var startpos, endpos;
 		var buf = self.timeline_model.buffer;
 		var model = self.timeline_model;
-		[ cursor.startPosition, cursor.endPosition ].debug("copy start end");
+		//[ cursor.startPosition, cursor.endPosition ].debug("copy start end");
 
 		buf.loadToFloatArray(action:{ arg arr;
 			startpos = cursor.startPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 			startpos = startpos.round.asInteger;
 			endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 			endpos = endpos.round.asInteger;
-			"ém1".debug;
+			//"ém1".debug;
 			~sampleTimeline_clipboard = arr[startpos..endpos];
 		})
 
@@ -559,7 +559,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 				endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 				endpos = endpos.round.asInteger;
 				arr[startpos..endpos] = 0;
-				"ém1".debug;
+				//"ém1".debug;
 				buf.loadCollection(arr, action:{
 					//model.bufferTempPath = nil;
 					//model.changed(\buffer);
@@ -586,7 +586,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 				slice = arr[startpos..endpos];
 				slice = slice.reverse;
 				arr.overWrite(slice, startpos);
-				"ém1".debug;
+				//"ém1".debug;
 				buf.loadCollection(arr, action:{
 					//model.bufferTempPath = nil;
 					//model.changed(\buffer);
@@ -610,7 +610,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 				endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 				endpos = endpos.round.asInteger;
 				arr.overWrite(~sampleTimeline_clipboard, startpos);
-				"ém1".debug;
+				//"ém1".debug;
 				buf.loadCollection(arr, action:{
 					//model.bufferTempPath = nil;
 					//model.changed(\buffer);
@@ -643,18 +643,18 @@ ProtoTemplateDef(\SampleTimelineView, (
 			endpos = endpos.round.asInteger;
 			exportedFrameCount = endpos - startpos;
 
-			exportedFrameCount.debug("exportedFrameCount");
+			//exportedFrameCount.debug("exportedFrameCount");
 			newbuf = Buffer.alloc(Server.default, exportedFrameCount+1, model.buffer.numChannels);
-			model.buffer.debug("now getting slice");
+			//model.buffer.debug("now getting slice");
 			model.buffer.loadToFloatArray(startpos, exportedFrameCount, { arg col;
-				col.size.debug("got colsize");
-				newbuf.debug("now loading in newbuf");
+				//col.size.debug("got colsize");
+				//newbuf.debug("now loading in newbuf");
 				newbuf.loadCollection(col, action: { arg xbuf;
-					newbuf.debug("newbuf loaded slice");
-					xbuf.debug("xbuf loaded slice");
+					//newbuf.debug("newbuf loaded slice");
+					//xbuf.debug("xbuf loaded slice");
 					{
-						newbuf.debug("newbuf loaded slice2");
-						xbuf.debug("xbuf loaded slice2");
+						//newbuf.debug("newbuf loaded slice2");
+						//xbuf.debug("xbuf loaded slice2");
 						~newbuf = newbuf;
 						WindowDef("%_%".format("BufferEditor", 100000000.rand).asSymbol, WindowDef(\BufferEditor)).front(newbuf);
 					}.defer
@@ -671,7 +671,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 WindowDef(\SampleTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 	var inview, layout;
 	var model = viewmodel.timeline_model;
-	[x, y].debug("xy");
+	//[x, y].debug("xy");
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
 		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);

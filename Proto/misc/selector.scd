@@ -7,7 +7,7 @@ ProtoTemplateDef(\ViewSelector, (
 	new: { arg self, selector_count=8, action, viewInit;
 		self = self.deepCopy;
 	
-		"aA.".debug;
+		//"aA.".debug;
 		self.selector_count = selector_count;
 		self.selected_index = 0;
 		self.action = {action};
@@ -15,9 +15,9 @@ ProtoTemplateDef(\ViewSelector, (
 		
 		self.select_item(0);
 	
-		"xr.".debug;
-		self.views.debug("wtf");
-		self.debug("self!!!");
+		//"xr.".debug;
+		//self.views.debug("wtf");
+		//self.debug("self!!!");
 		self.changed(\selected_index);
 		self;
 	},
@@ -28,7 +28,7 @@ ProtoTemplateDef(\ViewSelector, (
 
 	views: { arg self;
 		if(self.pr_views.isNil or: { self.pr_views.size > 0 and: {self.pr_views.first.isClosed }}) {
-			[self.selector_count, self.selected_index].debug("refreshing selector.pr_views");
+			//[self.selector_count, self.selected_index].debug("refreshing selector.pr_views");
 			self.pr_views = self.makeViews;
 			self.pr_views.do(self.viewInit);
 			self.select_item(self.selected_index, self.pr_views);
@@ -49,14 +49,14 @@ ProtoTemplateDef(\ViewSelector, (
 				.action_({
 					self.select_item(x);
 					self.action.(x); // FIXME: should perhaps pass self as first argument (or view ?)
-					self.selector_count.debug("end selector action");
+					//self.selector_count.debug("end selector action");
 				})
-				.background_(self.deselected_color).debug("WWWTTTFF");
-		}).debug("selector.views: created views");
+				.background_(self.deselected_color);
+		});
 	},
 
 	resize: { arg self, size;
-		size.debug("selector.resize");
+		//size.debug("selector.resize");
 		self.selector_count = size;
 		self.selected_index = self.selected_index.clip(0, size-1);
 		self.changed(\selected_index);
@@ -66,7 +66,7 @@ ProtoTemplateDef(\ViewSelector, (
 
 	select_item: { arg self, x, views;
 		views = views ?? {self.views};
-		[self.selected_index, x, views].debug("selector.select_item: old selected_index, new one, views");
+		//[self.selected_index, x, views].debug("selector.select_item: old selected_index, new one, views");
 		x = x.clip(0, views.size-1);
 		if(views.size > 0) {
 			self.old_selected_index = self.selected_index;
@@ -76,9 +76,9 @@ ProtoTemplateDef(\ViewSelector, (
 				if(self[\deselect_action].notNil) {
 					self.deselect_action(views[self.old_selected_index], self.old_selected_index);
 				} {
-					[ views[self.selected_index], views[self.selected_index].background ].debug("kkk");
+					//[ views[self.selected_index], views[self.selected_index].background ].debug("kkk");
 					views[self.old_selected_index].background_(self.deselected_color);
-					[ views[self.selected_index], views[self.selected_index].background ].debug("kkk2");
+					//[ views[self.selected_index], views[self.selected_index].background ].debug("kkk2");
 				}
 			};
 			if(views[x].notNil) {

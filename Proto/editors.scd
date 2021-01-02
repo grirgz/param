@@ -198,20 +198,20 @@ WindowDef(\ParamCombinatorInputPlayerButton, { arg def, combi, idx, tagspecplaye
 	var menu = input.asBusPopUpMenu(tagspec_map);
 	var button = pwrapper.asView;
 	//button.rightClickEditorEnabled_(true);
-	button.debug("button");
+	//button.debug("button");
 	// button click events doesnt work for mysterious reasons
 	button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-		[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+		//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
 		pwrapper.edit;
 	});
 	menu.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-		[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+		//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
 		if(buttonNumber == 1) {
 			pwrapper.edit;
 		}
 	});
 	menu.followChange(combi.inputParam.target, \set, {
-		"combi input change!".debug;
+		//"combi input change!".debug;
 		//Log(\Param).debug("input.get %", input.getBus);
 		if(input.getBus != 0) {
 			pwrapper.mapPlayer(
@@ -223,7 +223,7 @@ WindowDef(\ParamCombinatorInputPlayerButton, { arg def, combi, idx, tagspecplaye
 				}
 			);
 			button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-				[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
 				pwrapper.edit;
 			});
 		} {
@@ -253,7 +253,7 @@ WindowDef(\ParamCombinatorEditor, { arg def, combi;
 					//);
 					var menu = input.asBusPopUpMenu(tagspec_map);
 					menu.followChange(combi.inputParam.target, \set, {
-						"combi input change!".debug;
+						//"combi input change!".debug;
 						Log(\Param).debug("input.get %", input.getBus);
 						if(input.getBus != 0) {
 							pwrapper.mapPlayer(

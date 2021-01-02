@@ -496,7 +496,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 	getTimelineKeyDownAction: { arg self;
 		//Window.keyDownActionTest
 		({ arg me, key, modifiers, unicode, keycode;
-			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
+			//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
 			self.getTimelineKeyDownActionForNodeMove.(me, key, modifiers, unicode, keycode);
 			if(modifiers.isCtrl) {
 				//if(key == $n) { // ^n // don't work anymore
@@ -2108,7 +2108,7 @@ ProtoTemplateDef(\ClipEditor, (
 		self.startOffsetField = TextField.new
 					.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
 						// FIXME: this doesn't work because parent_model is the EventList and not the timeline. refactor: Timeline GUI should provide the keyDownAction function directly
-						[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+						//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
 						
 						if(modifiers.isCtrl and: {keycode == $ .ascii}) { // ^s
 							"play/stop now!".debug;

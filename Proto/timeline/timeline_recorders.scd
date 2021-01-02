@@ -98,7 +98,7 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 		//});
 
 		self.eventLoop.list.do ({ arg ev;
-			ev.debug("recorder: process ev");
+			//ev.debug("recorder: process ev");
 			if(ev.type == \start or: { ev.type == \end }) {
 			} {
 				[\kitIndex, \midinote, \dur, \sustain].do { arg key;
@@ -107,7 +107,7 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 			};
 		});
 
-		lists.debug("recorder: getPresetCompileString: lists");
+		//lists.debug("recorder: getPresetCompileString: lists");
 
 		ret = lists.keys.as(Array).collect({ arg key;
 			if(lists[key] != \none) {
@@ -195,11 +195,11 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 	tempoClock: { arg self; self.timeline.tempoClock ? TempoClock.default },
 	quant: { arg self; self.timeline.quant },
 	init: { arg self, timeline;
-		"ini".debug;
+		//"ini".debug;
 		self.recorder = Recorder(Server.default);
 		self.drawTask = TaskProxy.new;
 		self.tempoClock = TempoClock.default;
-		self.tempoClock.debug("clock");
+		//self.tempoClock.debug("clock");
 		self.timeline = { timeline };
 
 		self;
@@ -331,13 +331,13 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 	tempoClock: { arg self; self.timeline.tempoClock ? TempoClock.default },
 	quant: { arg self; self.timeline.quant },
 	init: { arg self, timeline, trackGetter;
-		"ini".debug;
+		//"ini".debug;
 		self.timeline = { timeline };
 		self.track = trackGetter;
 		self.recorder = Recorder(Server.default);
 		self.drawTask = TaskProxy.new;
 		self.tempoClock = TempoClock.default;
-		self.tempoClock.debug("clock");
+		//self.tempoClock.debug("clock");
 
 		self;
 	},
@@ -462,7 +462,7 @@ ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder, (
 	},
 	quant: { arg self; self.timeline.quant },
 	init: { arg self, timeline;
-		"ini".debug;
+		//"ini".debug;
 		self.timeline = timeline;
 		self.updateTrackRecorders;
 

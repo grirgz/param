@@ -4,18 +4,18 @@
 		var str;
 		str = pat.asStream;
 
-		"what".debug;
-		pat.debug;
+		//"what".debug;
+		//pat.debug;
 		inf.do{ 
 			var inval = str.next(proutinval);
-			inval.debug("inval");
+			//inval.debug("inval");
 			inval.drop(-1).do { arg in;
 				var in1 = in.copy;
-				"hhh".debug;
+				//"hhh".debug;
 				in1[\delta] = 0;
 				in1.yield;
 			};
-			inval.last.debug("what").yield(Event.default);
+			inval.last.yield(Event.default);
 		}
 	}).trace
 };
