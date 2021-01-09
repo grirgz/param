@@ -4,10 +4,7 @@ categories:: Control, GUI, MIDI
 
 The goal of this quark is to ease the controlling of sounds objects parameters (Ndef, Pdef, etc) using GUI and MIDI. To this purpose, there is a class named Param which act as a reference to the parameter of the sound object you want to control.
 
-
-
-
-
+This tutorial show you step by step how Param objects works.
 
 
 
@@ -162,11 +159,11 @@ MIDIMap(\k1, Param(Ndef(\ndef_scalar), \pan));
 MIDIMap can also take a function in argument to run arbitrary code. If \b1 is some button on your controller, you can use it to remap your knobs. Here pushing first button map \freq and \pan on the two knobs, pushing second button map \amp and \detune on the two knobs.
 
 code::
-MIDIMap(\c1, {
+MIDIMap(\b1, {
 	MIDIMap(\k1, Param(Ndef(\ndef_scalar), \freq));
 	MIDIMap(\k2, Param(Ndef(\ndef_scalar), \pan));
 });
-MIDIMap(\c2, {
+MIDIMap(\b2, {
 	MIDIMap(\k1, Param(Ndef(\ndef_scalar), \amp));
 	MIDIMap(\k2, Param(Ndef(\ndef_scalar), \detune));
 });
@@ -562,7 +559,7 @@ On your MIDI controller, you just have knobs or sliders, so there must be a way 
 
 code::
 ~mp = Param(Ndef(\ndef_array), \freqtab -> 1, \freq); // control the second slot of the array
-~mp.set(500);
+~mp.set(300); 
 ~mp.edit
 
 MIDIMap(\k1, ~mp); // map the knob \k1 to the second slot of the array;

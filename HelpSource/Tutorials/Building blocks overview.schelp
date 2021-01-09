@@ -5,12 +5,12 @@ categories:: Control, GUI, MIDI
 In this guide, you will discover the basic building block available in this quark:
 
 LIST::
-## Param: a pointer to a synth parameter, can be transformed into a GUI or bound to a controller knob
-## WindowDef: group all your GUI code in a convenient way
-## PlayerWrapper: wrap all kind of players (Pdef, Ndef, ...) to have a standard interface
-## BusDef/BufDef: manipulate busses and buffers 
-## ControllerDef: group all your controller code in a convenient way
-## ProtoDef: write prototypes as class like objects
+## link::Classes/Param::: a pointer to a synth parameter, can be transformed into a GUI or bound to a controller knob
+## link::Classes/WindowDef::: group all your GUI code in a convenient way
+## link::Classes/PlayerWrapper::: wrap all kind of players (Pdef, Ndef, ...) to have a standard interface
+## link::Classes/BusDef/BufDef::: manipulate busses and buffers 
+## link::Classes/ControllerDef::: group all your controller code in a convenient way
+## link::Classes/ProtoDef::: write prototypes as class like objects
 ## SaveHelper: help you add a saving system to your prototype
 ::
 
