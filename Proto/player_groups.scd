@@ -122,7 +122,7 @@ ProtoTemplateDef(\NotePlayer, (
 		self;
 	},
 
-	play: { arg self;
+	play: { arg self, local_pre_event, local_post_event;
 
 		// event generating
 		if(self.cur_ev.notNil) { // required for not overwriting player if already playing (too fast pushing)
@@ -133,12 +133,14 @@ ProtoTemplateDef(\NotePlayer, (
 			self.ev = Event.default;
 		};
 		self.ev = self.ev.copy.putAll(self.pre_event);
+		self.ev = self.ev.copy.putAll(local_pre_event ?? {()});
 		//self.ev.debug("play: before next: ev");
 		self.ev = self.stream.next(self.ev);
 		//self.ev.debug("play: ev");
 
 		// processing
 		self.ev.putAll(self.post_event);
+		self.ev.putAll(local_post_event ?? { () });
 
 		// recording
 		self.raw_ev = self.ev.copy; // for recording, find better property name
@@ -158,14 +160,13 @@ ProtoTemplateDef(\NotePlayer, (
 				sendGate = ~sendGate ? ~hasGate;
 
 				if(sendGate) {
-					~server.sendBundle(~latency,
-						*["/n_set", ~id, "gate", releaseTime].flop);
-					} {
-						~server.sendBundle(~latency, ["/n_free"] ++ ~id);
-					};
-					~isPlaying = false;
+					~server.sendBundle(~latency, *["/n_set", ~id, "gate", releaseTime].flop);
+				} {
+					~server.sendBundle(~latency, ["/n_free"] ++ ~id);
 				};
+				~isPlaying = false;
 			};
+		};
 		self.cur_ev = self.play_ev.play;
 		self.changed(\play);
 		Log(\Param).debug("play: raw_ev:%, idx:%, h:%", self.raw_ev, self.index, self.hash);
