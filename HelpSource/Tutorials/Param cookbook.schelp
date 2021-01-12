@@ -518,6 +518,7 @@ WindowDef(\foldblock_help, { arg def;
 	
 }).front;
 );
+::
 
 
 subsection:: Changing a part of the GUI when some parameter change
@@ -661,8 +662,11 @@ subsection:: Control a PopUpMenu with a controller
 subsection:: Select controller by a PopUpMenu
 
 
+subsection:: Generate a GUI for a MIDI synth
 
+code::
 
+::
 
 section:: Internal
 

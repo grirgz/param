@@ -267,7 +267,7 @@ ProtoTemplateDef(\ParPlayerGroup, (
 
 	newChild: { arg parent_self, x;
 	//	PlayerWrapper(
-			~streamPlayer.new(parent_self, x)
+			ProtoTemplateDef(\StreamPlayer).new(parent_self, x)
 	//	)
 	},
 
@@ -344,8 +344,13 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 	},
 
 	stream: { arg self;
+		var targ;
 		if(self[\prStream].isNil) {
-			self[\prStream] = self.target.asPattern.asStream;
+			if(self.target.isKindOf(Pattern)) {
+				self[\prStream] = self.target.asStream;
+			} {
+				self[\prStream] = self.target.asPattern.asStream;
+			}
 		};
 		self[\prStream]
 	},
@@ -353,7 +358,7 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 	newChild: { arg parent_self, x;
 		var post_event = ();
 	//	PlayerWrapper(
-			~notePlayer.new(parent_self, x, parent_self.stream, (midinote:x), post_event);
+			ProtoTemplateDef(\NotePlayer).new(parent_self, x, parent_self.stream, (midinote:x), post_event);
 	//	)
 	},
 
@@ -371,6 +376,10 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 			self.children[x] = child;
 		};
 		child;
+	},
+
+	childAt: { arg self, x;
+		self.elAt(x)
 	},
 
 	stop: { arg self;
