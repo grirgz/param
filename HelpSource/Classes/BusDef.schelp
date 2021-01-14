@@ -8,6 +8,7 @@ BusDef solve two problems:
 LIST::
 ## Prevent allocating two busses in the same variable
 ## Prevent using a bus when it's not allocated yet
+::
 
 code::
 // instead of

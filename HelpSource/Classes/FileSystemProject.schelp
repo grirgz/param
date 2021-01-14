@@ -31,7 +31,7 @@ MainProject is in reality code::ProtoTemplateDef(\MainProject)::, a project temp
 CLASSMETHODS::
 
 METHOD:: new
-Create a new project object or return an already existing one. Creating a project does not mean creating it on disk, neither loading it from disk, it only create a kind of ProtoClass that have a project template as parent if specified in code::val:: argument. It is the responsability of the project template to offer methods to load and save projects. The standard method names are code::loadProject:: and code::saveProject::
+Create a new project object or return an already existing one. Creating a project does not mean creating it on disk, neither loading it from disk, it only create a kind of ProtoClass that have a project template as parent if specified in code::val:: argument. It is the responsability of the project template to offer methods to load and save projects. The standard method names are code::#*loadProject:: and code::#*saveProject::
 
 ARGUMENT:: key
 The identifier of the project which is also the absolute path of the project. If you provide a relative path instead, it will be resolved to an absolute path using link::#resolve:: then the project matching the absolute path will be returned. If a String is provided, it will be converted automatically to a Symbol
@@ -62,7 +62,7 @@ returns:: the last object interpreted in the file
 
 
 METHOD:: loadOnce
-Same as link::.load:: but does nothing if the file is already loaded
+Same as link::#*load:: but does nothing if the file is already loaded
 
 ARGUMENT:: path
 
@@ -100,7 +100,7 @@ returns:: a ProtoClass
 
 
 METHOD:: resolve
-Take a path and find the absolute path by looking either in link::paths::, relative to link::cwd:: or relative to current SCIDE file.
+Take a path and find the absolute path by looking either in link::#*paths::, relative to link::#*cwd:: or relative to current SCIDE file.
 
 ARGUMENT:: val
 A String path
@@ -109,7 +109,7 @@ returns:: A PathName (will maybe change)
 
 
 METHOD:: cwd
-Get or set the Current Working Directory. link::resolve:: use it to resolve files
+Get or set the Current Working Directory. link::#*resolve:: use it to resolve files
 
 ARGUMENT:: path
 A String absolute path
@@ -144,12 +144,12 @@ returns:: a String path
 
 
 METHOD:: unresolve
-Take an absolute path and find a folder in link::paths:: which can be used to shortens the path and make it relative.
+Take an absolute path and find a folder in link::#*paths:: which can be used to shortens the path and make it relative.
 
 ARGUMENT:: val
 A String absolute path
 
-returns:: a String path relative to one of the path in link::paths::
+returns:: a String path relative to one of the path in link::#*paths::
 
 
 METHOD:: loadedFiles

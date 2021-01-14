@@ -36,4 +36,4 @@ Pdef(\demo,
 BusDef(\mycontrolbus).set(1); // once defined, no need to specify the rate
 BusDef(\mycontrolbus).set(2);
 
-code::
+::

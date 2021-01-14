@@ -150,7 +150,7 @@ WindowDef(\plotter, {
 
 subsection:: Make a GUI for envelopes and arrays parameters
 
-The easiest way to write SynthDefs that take link::Classes/Array:: and link::Classes/Env:: as parameters is to use the link::Class/NamedControl:: class.
+The easiest way to write SynthDefs that take link::Classes/Array:: and link::Classes/Env:: as parameters is to use the link::Classes/NamedControl:: class.
 If the spec is correctly retrieved by Param, it will automatically choose the correct GUI (link::Classes/MultiSliderView:: or link::Classes/FixedEnvelopeView::);
 
 code::
@@ -665,7 +665,7 @@ subsection:: Select controller by a PopUpMenu
 subsection:: Generate a GUI for a MIDI synth
 
 code::
-
+//
 ::
 
 section:: Internal
@@ -687,3 +687,4 @@ subsection:: write a modulator matrix
 subsection:: write a modulator table
 
 subsection:: writing timeline views basics
+

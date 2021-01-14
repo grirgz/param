@@ -107,13 +107,10 @@ Play the timeline
 METHOD:: stop
 Stop the timeline
 
-METHOD:: isPlaying_
-Play/stop the timeline pattern
+METHOD:: isPlaying
+Get or set the playing state of timeline
 ARGUMENT:: val
 true to start, false to stop
-
-METHOD:: isPlaying
-Play the timeline
 
 METHOD:: edit
 Show the graphical editor
@@ -128,13 +125,10 @@ Start the recording
 METHOD:: stopRecording
 Stop the recording
 
-METHOD:: isRecording_
-Start/Stop the recording
+METHOD:: isRecording
+Get or set the timeline recording state
 ARGUMENT:: val
 true to start, false to stop
-
-METHOD:: isRecording
-Return weither the timeline is recording
 returns:: a Bool
 
 METHOD:: asPattern
@@ -176,18 +170,15 @@ METHOD:: presetCompileString
 Return a preset string so you can save the state of the timeline on disk. To load the timeline again, just interpret the string, it's human readable code.
 returns:: a TimelineEventList
 
-METHOD:: outBus_
 METHOD:: outBus
 Get or set the out bus of the pattern (key \out)
 
-METHOD:: label_
 METHOD:: label
 Get or set the label of the timeline (default to key)
 
 METHOD:: key
 The key to identify the timeline (first argument at creation)
 
-METHOD:: quant_
 METHOD:: quant
 Get or set the quant of the pattern player (EventPatternProxy). Do not confuse it with the grid quant
 

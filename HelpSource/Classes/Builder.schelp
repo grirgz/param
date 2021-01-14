@@ -1,4 +1,5 @@
 TITLE:: Builder
+categories:: Libraries>Param
 summary:: Rebuild an object each time a parameter change
 related:: Classes/Param
 

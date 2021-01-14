@@ -1,7 +1,7 @@
 TITLE:: FixedEnvelopeView
 summary:: An Envelope view that doesn't expand automatically
 categories:: Undocumented classes
-related:: Classes/SomeRelatedClass, Reference/SomeRelatedStuff, etc.
+related:: Classes/EnvelopeView
 
 DESCRIPTION::
 The default EnvelopeView is very useful when you want to control proportion of each segment and have a separate knob for scaling the whole envelope. But sometime, you want to give an Env to your envelope view, edit it graphically and get the modified Env back with preserved absolute values. This is only possible with FixedEnvelopeView.
@@ -38,7 +38,7 @@ returns:: an link::Classes/Env::
 
 
 METHOD:: valueXY
-Call parent class link::Classes/EnvelopeView.value::
+Call parent class link::Classes/EnvelopeView#-value:: and scale it to totalDur
 
 ARGUMENT:: val
 An array in the form [[x1,x2],[y1,y2]] where each value is between 0 and 1
@@ -151,4 +151,3 @@ WindowDef(\help, {
 )
 ::
 
-	Param(Pdef(\help), \adsr).edit; 

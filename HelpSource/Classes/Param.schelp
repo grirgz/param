@@ -239,6 +239,8 @@ METHOD:: mapTextField
 Map the param to a TextField.
 ARGUMENT:: view
 The TextField object you want to map param to.
+ARGUMENT:: precision
+you can round the value displayed, for example STRONG::6:: mean display only 6 digits.
 ARGUMENT:: action
 A function. When pushing Enter, the param target is updated, but this also call this function.
 
@@ -246,6 +248,8 @@ METHOD:: mapStaticTextLabel
 Map the param property name to a StaticText.
 ARGUMENT:: view
 a StaticText
+ARGUMENT:: labelmode
+if labelmode is equal to code::\full:: then the label of the target is included in the label in addition to the property label
 
 METHOD:: mapSlider
 ARGUMENT:: slider
