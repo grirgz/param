@@ -1,7 +1,6 @@
 TITLE:: ParamEnvSpec
 summary:: Specify that a SynthDef parameter is an Env
 categories:: Spec
-related:: 
 
 DESCRIPTION::
 This spec is very useful because Env parameters are treated as Arrays on Server and when you get it back, you must know the array represent an Env. By adding the spec to every SynthDef parameter that expect an Env, you can build GUI that automatically display a link::Classes/FixedEnvelopeView:: for it.

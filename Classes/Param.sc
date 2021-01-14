@@ -128,6 +128,9 @@ Param {
 		//"hello3 gangenr".debug;
 
 		class_dispatcher = (
+			Node: {
+				wrapper = NodeParam(*args);
+			},
 			Ndef: {
 				switch(property.class,
 					Association, {
@@ -224,6 +227,9 @@ Param {
 			}
 		);
 		// FIXME: should not have to add the whole class hierarchy
+		class_dispatcher['Synth'] = class_dispatcher['Node'];
+		class_dispatcher['Group'] = class_dispatcher['Node'];
+
 		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
 		class_dispatcher['Pbindef'] = class_dispatcher['Pdef'];
 
@@ -2757,6 +2763,119 @@ NdefVolParam : NdefParam {
 	//		action.(view, param);
 	//	});
 	//}
+}
+
+////////////////// Node
+
+NodeParam : BaseAccessorParam {
+	var <multiParam = false;
+
+	*new { arg obj, meth, sp;
+		^this.prNew(obj, meth, sp);
+	}
+
+	//*newWithAccessor { arg obj, meth, sp, acc;
+		//^super.new.init(obj, meth, sp, acc)
+	//}
+	
+	typeLabel {
+		^"S"
+	}
+
+	unset { 
+		target.unset(property);
+	}
+
+	targetLabel {
+		^target.nodeID.asString;
+	}
+
+	toSpec { arg sp;
+		// FIXME: use property or propertyRoot ?
+		//sp.debug("sp2");
+		sp = 
+			// param arg
+			sp ?? {
+				var instr = target.tryPerform(\defName);
+				var mysp;
+				if(instr.notNil) {
+					mysp = Param.getSynthDefSpec(property, instr);
+				};
+				mysp ?? {
+					// halo
+					target.getSpec(property) ?? {
+						// arg name in Spec
+						property.asSpec ?? {
+							// default value
+							var defval = target.get(property);
+							if(defval.notNil) {
+								Param.valueToSpec(defval, Param.defaultSpec)
+							} {
+								// default spec
+								Param.defaultSpec
+							}
+						};
+					};
+				}
+			};
+		^sp.asSpec;
+	}
+
+	setBusMode { arg enable=true, free=true;
+		// TODO
+		//target.setBusMode(property, enable, free);
+	}
+
+	inBusMode {
+		// TODO
+		//^target.inBusMode(property)
+		^false
+	}
+
+	cachedValue {
+		^this.target.getHalo(\cachedValue, property);
+	}
+
+	cachedValue_ { arg val;
+		this.target.addHalo(\cachedValue, property, val);
+	}
+
+	inBusMode_ { arg val;
+		// TODO
+		//if(val == true) {
+			//this.setBusMode(true)
+		//} {
+			//this.setBusMode(false)
+		//}
+	}
+
+	getVal {
+		var val;
+		if(target.isKindOf(Synth)) {
+			target.get(property, { arg value;
+				this.cachedValue = value;
+				//target.changed(\set, property); // Synth do not use changed messages
+			});
+		};
+		val = this.cachedValue;
+		if(spec.isKindOf(ParamEnvSpec)) {
+			val = val.asEnv;
+		};
+		//this.dumpBackTrace;
+		//Log(\Param).debug("get:final Val %", val);
+		^val;
+	}
+
+	setVal { arg val;
+		if(Param.trace == true) {
+			"%: setVal: %".format(this, val.asCompileString).postln;
+		};
+		this.cachedValue = val;
+		target.set(property, val);
+		target.changed(\set, property); // Synth do not use changed messages
+		//Log(\Param).debug("set:final Val %, prop %", val, property);
+		//target.changed(\set, property, val); // Ndef already send a set message
+	}
 }
 
 ////////////////// Volume

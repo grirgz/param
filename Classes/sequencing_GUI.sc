@@ -157,10 +157,11 @@ StepListColorView : StepListView {
 		var lpl;
 		var color;
 		var color_ring = colorRing ?? { [
-			Color.newHex("D5F8F8"),
-			Color.newHex("D5F8F8"),
-			Color.newHex("A0E6E6"),
-			Color.newHex("A0E6E6"),
+			Color(0.83529411764706, 0.97254901960784, 0.97254901960784), Color(0.83529411764706, 0.97254901960784, 0.97254901960784), Color(0.62745098039216, 0.90196078431373, 0.90196078431373), Color(0.62745098039216, 0.90196078431373, 0.90196078431373)  
+			//Color.newHex("D5F8F8"),
+			//Color.newHex("D5F8F8"),
+			//Color.newHex("A0E6E6"),
+			//Color.newHex("A0E6E6"),
 		]};
 		astyle = astyle ? style;
 		if(astyle.isKindOf(Function)) {

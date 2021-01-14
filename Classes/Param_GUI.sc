@@ -16,9 +16,10 @@ ParamViewToolBox {
 	*initClass {
 		//color_ligth = Color.newHex("63AFD0");
 		//color_dark = Color.newHex("0772A1");
-		color_dark = Color.newHex("14232E");
-		color_light = Color.newHex("4E8086");
-		color_pale = Color.newHex("4E8086").add(Color.grey,0.4);
+		color_dark = Color(0.07843137254902, 0.13725490196078, 0.18039215686275); // Color.newHex("14232E");
+		color_light = Color(0.30588235294118, 0.50196078431373, 0.52549019607843); // Color.newHex("4E8086");
+		color_pale = Color(0.30588235294118, 0.50196078431373, 0.52549019607843).add(Color.grey,0.4); // Color.newHex("4E8086").add(Color.grey,0.4);
+
 		//color_pale = Color.newHex("B9FFFC");
 		color_playing = color_light;
 		color_userPlayed = color_pale;

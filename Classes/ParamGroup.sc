@@ -39,6 +39,16 @@ ParamGroup : List {
 		^presets[key]
 	}
 
+	rejectByKey { arg keylist;
+		if(keylist.isSequenceableCollection.not) {
+			keylist = [keylist]
+		};
+		^ParamGroup(this.reject({ arg x; keylist.includes(x.propertyRoot) }))
+	}
+
+	selectCustomParams {
+		^this.rejectByKey([ \out, \gate, \amp, \out, \freq, \trig ])
+	}
 
 	valueList {
 		^this.collect { arg param;
