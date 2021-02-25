@@ -39,7 +39,7 @@ The same limitation than Buffer apply: The first time a Buffer is loaded, an uni
 CLASSMETHODS::
 
 METHOD:: new
-Return the buffer matching the name, and allocate a new one.
+Return the buffer matching the name, and allocate it before if it doesn't exist yet and a path is provided.
 
 This method can be used in 3 different ways:
 LIST::
@@ -64,7 +64,7 @@ ARGUMENT:: name
 A symbol as a name of the buffer, or the path to the buffer file itself.
 
 ARGUMENT:: path
-A path which will be loaded in a Buffer. If the path starts with "./" it is lookup up relative to current SCIDE file. If the path doesnt not start by "/" (absolute) nor "./" it is lookup up in the code::BufDef.paths:: list.
+A path which will be loaded in a Buffer. If the path starts with "./" it is looked up relative to current SCIDE file. If the path doesnt not start by "/" (absolute) nor "./" it is looked up in the code::BufDef.paths:: list.
 
 If it is a number, it is used instead as the number of frames for allocating an empty buffer.
 
@@ -128,6 +128,7 @@ Optional: The number of channels of the buffer
 
 METHOD:: getBufferForPath
 return the buffer loaded for a given path, or load it if doesn't exists yet.
+This method is lower level than ::#*new::: it doesn't assign a name to the buffer.
 
 ARGUMENT:: path
 The path of the buffer must be absolute.
@@ -168,7 +169,7 @@ returns:: a Buffer
 
 
 METHOD:: all
-A dictionary of all BufDef
+A dictionary of all BufDef. Please do not modify it.
 
 returns:: An IdentityDictionary
 

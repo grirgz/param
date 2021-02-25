@@ -15,6 +15,15 @@ BufDef {
 		^PresetDictionary.new(\BufDef_bufferChannelCache);
 	}
 
+	// FIXME: maybe child classes of BufDef should have independent path
+	//*paths {
+		//^PresetDictionary.new(\BufDef_classvar)[\paths];
+	//}
+
+	//*paths_ { arg val
+		//^PresetDictionary.new(\BufDef_classvar)[\paths] = val;
+	//}
+
 	*initClass {
 		//root = "~/Musique/sc/samplekit".standardizePath;
 		//paths = List[root,"~/Musique/sc/reckit".standardizePath];

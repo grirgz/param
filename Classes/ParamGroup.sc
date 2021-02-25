@@ -46,8 +46,16 @@ ParamGroup : List {
 		^ParamGroup(this.reject({ arg x; keylist.includes(x.propertyRoot) }))
 	}
 
+	rejectSystemParams {
+		^this.rejectByKey([ \gate, \doneAction, \trig ])
+	}
+
+	rejectPbindParams {
+		^this.rejectByKey([ \legato, \dur, \stretch, \instrument ])
+	}
+
 	selectCustomParams {
-		^this.rejectByKey([ \out, \gate, \amp, \out, \freq, \trig ])
+		^this.rejectByKey([ \out, \gate, \doneAction, \amp, \out, \freq, \trig ])
 	}
 
 	valueList {

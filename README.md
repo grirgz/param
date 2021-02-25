@@ -79,3 +79,14 @@ Disable annoying debug messages:
 ```
 Log(\Param).level = \info;
 ```
+
+## Troubleshooting
+
+
+```
+    ERROR: Class extension for nonexistent class ‘MKtlElement’
+
+    ERROR: Class extension for nonexistent class ‘MKtlElementGroup’
+```
+
+Param quark add a few methods to Modality-toolkit quark, but they are optional, you can ignore theses errors

@@ -1,0 +1,161 @@
+TITLE:: WavetableDef
+summary:: Manage wavetable buffers
+categories:: Buffer Server
+related:: Classes/BufDef, Classes/Wavetable, Classes/Signal
+
+DESCRIPTION::
+Loading a sample in a link::Classes/Wavetable:: is not straightforward. This class do it for you. It also stores the wavetable under a symbol identifier so you can retrieve it anywhere.
+
+code::
+WavetableDef(\sin, "/path/to/Sine.wav"); // initialize it
+WavetableDef(\sin, "/path/to/Sine.wav"); // this return the same wavetable without duplicate
+WavetableDef(\sin); // path is remembered
+::
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Return the wavetable matching the name, and allocate it before if it doesn't exist yet and a path is provided.
+
+ARGUMENT:: name
+A Symbol identifier for the wavetable
+
+ARGUMENT:: path
+A path which will be loaded in a Buffer. If the path starts with "./" it is looked up relative to current SCIDE file. If the path doesnt not start by "/" (absolute) nor "./" it is looked up in the code::BufDef.paths:: list.
+
+If the path is an array of string, all paths will be loaded as consecutive buffers.
+
+ARGUMENT:: channels
+Number of channel of the buffer. When ommited, all the channels of the file are loaded.
+
+returns:: a Buffer (wavetable format)
+
+
+METHOD:: getBufferForPath
+return the buffer loaded for a given path, or load it if doesn't exists yet.
+This method is lower level than link::Classes/WavetableDef#*new:: : it doesn't assign a name to the buffer.
+
+ARGUMENT:: path
+The path of the buffer must be absolute.
+
+ARGUMENT:: channels
+Number of channel of the buffer
+
+ARGUMENT:: action
+An optional function to call when the buffer is loaded. The first argument is the buffer.
+
+returns:: a Buffer
+
+
+METHOD:: addPath
+Add a path to the list of path used by WavetableDef to search for the specified file. This path list is shared between WavetableDef and BufDef
+
+ARGUMENT:: path
+A String containing an absolute path
+
+
+METHOD:: paths
+Return the current list of paths where files are searched when path is not absolute or relative to SCIDE current file.
+Please use code::WavetableDef.addPath:: to add a new path to the list.
+This path list is shared between WavetableDef and link::Classes/BufDef::.
+
+returns:: a List
+
+
+
+
+METHOD:: all
+A dictionary of all WavetableDef. Please do not modify it.
+
+returns:: An IdentityDictionary
+
+
+INSTANCEMETHODS::
+
+Since this class return instances of link::Classes/Buffer::, all the instance methods are the one from Buffer. There is some added methods:
+
+
+METHOD:: key
+return the symbol identifier for this buffer, only defined on buffers created by WavetableDef
+
+returns:: a Symbol
+
+METHOD:: consecutive
+return the list of buffers if it is a multi-buffer wavetable. 
+
+returns:: a List
+
+
+EXAMPLES::
+
+code::
+////// Simple example
+
+WavetableDef(\saw, "/path/to/Cos Saw.wav");
+WavetableDef(\sin, "/path/to/Sine.wav");
+
+(
+// Use Osc UGen to play wavetables
+SynthDef(\waver, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, wavetable;
+	var sig;
+	sig = Osc.ar(wavetable, freq);
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}).add;
+);
+
+(
+Pdef(\help,
+	Ppar([
+		Pbind(
+			\instrument, \waver,
+			\note, Pseq((0..10),inf) % Pseq((4..9),inf).stutter(2),
+			\wavetable, WavetableDef(\saw),
+			\dur, 1/8,
+			\amp, 0.1,
+		),
+	])
+).play;
+);
+
+////// Morph between several wavetables
+
+(
+// allocate consecutive buffers to be used with VOsc UGen
+WavetableDef(\multi, [
+	"/path/to/Cos Saw.wav",
+	"/path/to/Sine.wav",
+])
+)
+
+(
+// Use mouse to change wavetable position
+SynthDef(\waver2d, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, wavetable, consecutive;
+	var sig;
+	sig = VOsc.ar(wavetable + MouseX.kr(0,consecutive-1), freq);
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}).add;
+);
+
+(
+Pdef(\help, 
+	Ppar([
+		Pbind(
+			\instrument, \waver2d,
+			\wavetable, WavetableDef(\multi),
+			\consecutive, WavetableDef(\multi).consecutive.size, // need size to know upper range
+			\note, Pseq([
+				0,2,5,4,
+			],inf) + Pseq([0,7],inf).stutter(6) % Pseq((1..10),inf).stutter(3),
+			\dur, 1/8,
+			\amp, 0.1,
+		),
+	])
+).play;
+);
+::
+
