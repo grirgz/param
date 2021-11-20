@@ -11,6 +11,11 @@
 		}
 	}
 
+	synthDefKey { 
+		// SynthDesc.name always return a string for unknown reasons, even when the key is a symbol
+		^def.name
+	}
+
 	params { 
 		^this.controls.collect { arg control;
 			var ret;

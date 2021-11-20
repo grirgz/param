@@ -760,7 +760,7 @@ Param {
 			}, 
 			updateAction: { arg view, param;
 				var val = "";
-				Log(\Param).debug("mapTextField start");
+				Log(\Param).debug("mapTextField start: " ++ this.fullLabel);
 				try {
 					//[param, param.stringGet(precision)].debug("Param.mapTextField:get");
 					val = param.stringGet(precision);
@@ -773,7 +773,10 @@ Param {
 				// refresh action
 				{
 					//[val.asCompileString, view.hasFocus].debug("Param.mapTextField: hasfocus");
-					if(view.hasFocus.not) {
+					// hasFocus is nil in some unidentified cases
+					// i think the goal is to prevent continuously updating widgets in minimized windows
+					if(view.hasFocus.notNil and: {view.hasFocus.not}) {
+
 						// TODO: handle other types than float
 							view.value = val;
 					};
@@ -1775,7 +1778,7 @@ ParamAccessor {
 			},
 
 			toSpec: { arg self, sp;
-				sp
+				sp.asSpec;
 			},
 
 			property: { arg self, prop;
@@ -1838,7 +1841,7 @@ ParamAccessor {
 				if(sp.isKindOf(ParamArraySpec)) {
 					sp[idx]
 				} {
-					sp
+					sp.asSpec;
 				}
 			},
 
@@ -1881,7 +1884,7 @@ ParamAccessor {
 				if(sp.isKindOf(ParamEnvSpec)) {
 					sp.perform(selector)[idx];
 				} {
-					sp
+					sp.asSpec;
 				}
 			},
 
@@ -1913,7 +1916,7 @@ ParamAccessor {
 			},
 
 			toSpec: { arg self, sp;
-				sp
+				sp.asSpec;
 			},
 
 			property: { arg self, prop;
@@ -1956,7 +1959,7 @@ ParamAccessor {
 				if(sp.isKindOf(ParamArraySpec)) {
 					sp[idx]
 				} {
-					sp
+					sp.asSpec;
 				}
 			},
 
@@ -1991,7 +1994,7 @@ ParamAccessor {
 				if(sp.isKindOf(ParamEnvSpec)) {
 					sp.perform(selector);
 				} {
-					sp
+					sp.asSpec;
 				}
 			},
 
@@ -2030,10 +2033,11 @@ BaseAccessorParam : BaseParam {
 		} {
 			var rootparam = super.new.init(obj, propertyArray[0]);
 			var slotparam, acc;
+			// init rootparam spec from default spec
 			rootparam.spec = rootparam.toSpec(nil); // need rootspec -> rootspec
 			acc = this.propertyToAccessor(propertyArray, rootparam);
 			slotparam = super.new.init(obj, meth, sp, acc);
-			slotparam.spec = sp ?? { acc.toSpec(rootparam.spec) }; // need slotspec -> slotspec
+			slotparam.spec = sp !? { acc.toSpec(sp) } ?? { acc.toSpec(rootparam.spec) }; // need slotspec -> slotspec
 			slotparam.parent = rootparam;
 			^slotparam;
 		}
@@ -2489,7 +2493,10 @@ PdefParam : BaseAccessorParam {
 			xspec ?? {
 				// halo
 				Log(\Param).debug("PdefParam: toSpec: 1");
-				xtarget.getSpec(xproperty) ?? {
+				// halo.getSpec return the spec in Spec.specs if not found in halo but we want to check instrument spec before
+				if(xtarget.getSpec !? { arg sp; sp.keys.includes(xproperty) } ? false) {
+					xtarget.getSpec(xproperty)
+				} {
 					var mysp;
 				Log(\Param).debug("2");
 					// instrument metadata spec

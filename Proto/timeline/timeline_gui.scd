@@ -167,7 +167,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 	makeWindow: { arg self;
 		//var window = Window.new;
-		WindowDef("%_%".format(self.timeline_model.eventType, self.key).asSymbol, { arg me;
+		WindowDef("%_%".format(self.timeline_model.eventType, self.timeline_model.key).asSymbol, { arg me;
 			var layout;
 			me.window.onClose_({
 				self.save_timeline_properties;
@@ -364,6 +364,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	make_track_header: { arg self;
+		// should return the track header view
 		var track_header;
 		track_header = ScrollView.new;
 		track_header.keyDownAction = self.getTimelineKeyDownAction;
@@ -931,9 +932,15 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 	save_timeline_properties: { arg self;
 		var tl = self;
+		// tl is view ProtoDef, tl.timeline is View subclass, tl.timeline_model is the object programmer interact with
 		if(tl.timeline.notNil) {
 			tl.timeline_model.addHalo(\viewport, tl.timeline.viewport);
 			tl.timeline_model.addHalo(\areasize, tl.timeline.areasize);
+			tl.timeline_model.addHalo(\enablePreview, tl.timeline.enablePreview);
+			// quant_ref is now member of timeline model
+			//tl.timeline_model.addHalo(\gridquant, tl.timeline.quant_ref.value); // this line seems wrong
+			//tl.quant_ref.value.debug("quant_ref saving!!!");
+			//tl.quant_ref.value ?? { tl.timeline_model.addHalo(\gridquant, tl.quant_ref.value); }
 		}
 	},
 
@@ -948,6 +955,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 		if(cur.notNil) {
 			tl.timeline.areasize = cur;
 		};
+		tl.timeline_model.getHalo(\enablePreview) !? { arg x;
+			tl.timeline.enablePreview = x;
+		};
+		//tl.timeline_model.getHalo(\gridquant) ?? { arg x; self.timeline.quant_ref.value = x; }; // this line seems wrong
+		//tl.timeline_model.getHalo(\gridquant) ?? { arg x; self.quant_ref.value = x; };
 	},
 ));
 ~timelinePanelView = ProtoTemplateDef(\TimelinePanelView);
@@ -962,6 +974,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 	
 		self.timeline_model = { timeline };
 		self.areasize = self.timeline_model.areasize;
+		self.quant_ref = { arg self; self.timeline_model.quant_ref };
 		
 		self.makeWindow;
 	
@@ -1027,6 +1040,10 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			XSimpleButton.new.label_("Samples").action_({
 				WindowDef("%_SampleManager".format(self.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(self.timeline_model);
 			}),
+			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				WindowDef(\ClipTimelineOverlayMenu).front(self, view, x, y)
+			}).maxWidth_(20),
 		);
 		
 		self.header_layout;
@@ -1296,7 +1313,7 @@ ProtoTemplateDef(\trackTimelinePanelView, (
 ));
 ~trackTimelinePanelView = ProtoTemplateDef(\trackTimelinePanelView);
 
-ProtoTemplateDef(\EnvTimelinePanelView, (
+ProtoTemplateDef(\ParamTimelinePanelView, (
 	parent: ~timelinePanelView,
 
 	new: { arg self, timeline;
@@ -1345,17 +1362,17 @@ ProtoTemplateDef(\EnvTimelinePanelView, (
 
 	make_track_header: { arg self, timeline;
 		//self.track_header = View.new;
-		//self.ruler_y = MidinoteTimelineRulerView.new;
-		//self.track_header = self.ruler_y;
-		//self.ruler_y.mimicTimeline(timeline);
-		//self.ruler_y.view.minWidth_(50);
-		nil
+		self.ruler_y = ParamTimelineRulerView.new(timeline);
+		self.track_header = self.ruler_y;
+		self.ruler_y.mimicTimeline(timeline);
+		self.ruler_y.view.minWidth_(50);
+		self.track_header;
 	},
 
 	make_header: { arg self;
 		HLayout(
 			PlayerWrapperView(self.timeline_model).view,
-			if(self.param.target.isKindOf(Bus)) {
+			if(self.param.target.isKindOf(Bus) or: { self.param.target.isKindOf(Message) }) {
 				nil;
 			} {
 				PlayerWrapperView(PlayerWrapper(self.param.target)).view;
@@ -1400,7 +1417,8 @@ ProtoTemplateDef(\EnvTimelinePanelView, (
 		self.layout;
 	},
 ));
-~envTimelinePanelView = ProtoTemplateDef(\EnvTimelinePanelView);
+~envTimelinePanelView = ProtoTemplateDef(\ParamTimelinePanelView);
+ProtoTemplateDef(\EnvTimelinePanelView, ProtoTemplateDef(\ParamTimelinePanelView));
 
 
 ProtoTemplateDef(\NoteTimelinePanelView, (
@@ -1411,6 +1429,7 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 	
 		self.timeline_model = timeline;
 		self.areasize = self.timeline_model.areasize;
+		self.quant_ref = { arg self; self.timeline_model.quant_ref };
 		self.makeWindow;
 	
 		self;
@@ -1516,6 +1535,7 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 	
 		self.timeline_model = timeline;
 		self.areasize = self.timeline_model.areasize;
+		self.quant_ref = { arg self; self.timeline_model.quant_ref };
 		self.makeWindow;
 	
 		self;
@@ -1573,7 +1593,9 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 				TagSpecDef(\BusDef),
 				//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
 			).asPopUpMenu,
-			BasicButton.new.string_("Edit kit").action_({ self.timeline_model.wrapper.edit }),
+			BasicButton.new.string_("Edit kit").action_({ 
+				WindowDef(\KitTimeline_PatKitDefEditor).front(self.timeline_model)
+		   	}),
 		);
 		
 		self.header_layout;
@@ -1967,7 +1989,7 @@ ProtoTemplateDef(\ClipEditor, (
 
 	makeUpdater: { arg self;
 		self.controller.remove;
-		self.controller = SimpleController(self.model).put(\refresh, {
+		self.controller = SimpleController(self.model).put(\selection, {
 			var ev = self.model;
 			Log(\Param).debug("entering clipEditor updater: %, %", self.type_popup, ev);
 			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
@@ -2687,3 +2709,28 @@ WindowDef(\ClipTimeline_SampleManager, { arg def, timeline;
 //////////////////////
 
 
+WindowDef(\ClipTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
+	var inview, layout;
+	var model = viewmodel.timeline_model;
+	//[x, y].debug("xy");
+	def.windowDo { arg win;
+		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
+		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
+		win.endFrontAction = { win.close };
+	};
+	inview = View.new;
+
+
+	layout = VLayout (
+		Param(Message(viewmodel.timeline), \enablePreview, ParamBoolSpec()).asButton("Display preview"),
+		BasicButton.new.string_("Clipboard refString").action_({ 
+			model.refCompileString.pbcopy;
+		}),
+		nil
+	);
+	//def.windowDo { arg win;
+		//win.setInnerExtent(view.bounds.extent.min(20));
+	//};
+	inview.layout_(layout);
+	
+}).border_(false);

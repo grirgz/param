@@ -239,10 +239,15 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 			self.bufferInfo = ProtoClass(());
 		};
 		if(self.bufferInfo.buffer != buffer) {
+			self.bufferInfo = ProtoClass(());
 			self.bufferInfo.buffer = buffer;
 			self.bufferInfo.fileName = buffer.path;
 			if(self.buffer.notNil) {
+				// do not refresh at setting because when no gui, no need to compute the data
+				// data should be computed when gui ask for it
+				// when data is ready, a signal is sent to gui to refresh it
 				//self.refreshBufferData;
+				self.changed(\data);
 			}
 		}
 	},
@@ -276,6 +281,78 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		}
 	},
 
+	computeWaveformImage: { arg self;
+		var buf = self.buffer;
+		//var size = buf.numFrames/1200@800; // waveform resolution
+		var size = Point(( buf.numFrames/Server.default.sampleRate*300 ).asInteger, buf.numChannels * 100);
+		buf.loadToFloatArray(0,-1,{ arg data;
+			{
+				var img = Image.new(size);
+				img.draw({
+					var yzoom = 1.0;
+					var chanspacefactor = 2.0;
+					var drawChannel = { arg chandata, yoffset;
+						var dsize = chandata.size;
+						var chanysize = size.y/buf.numChannels;
+						chandata.do { arg item, idx;
+							var point = Point(idx/dsize * size.x, (item * yzoom + yoffset + 1) *chanysize  /2);
+							Pen.lineTo(point);
+						};
+						Pen.stroke;
+					};
+					data.clump(buf.numChannels).flop.do { arg chandata, idx;
+						drawChannel.(chandata, idx * chanspacefactor)
+					};
+				});
+				//~img = img; // debug
+				if(self.bufferInfo.waveformImage.notNil) {
+					self.bufferInfo.waveformImage.free;
+				};
+				self.bufferInfo.waveformImage = img;
+				self.bufferInfo.bufferData = data; 
+				self.bufferInfo.numChannels = buf.numChannels;
+				self.areasize = Point(self.areasize.x, self.bufferInfo.numChannels ? 2);
+				self.changed(\areasize);
+				self.changed(\data)
+				//img.plot;
+			}.defer;
+		})
+		
+	},
+
+	computeResampledData: { arg self;
+		self.buffer.loadToFloatArray(0, -1, {|data| 
+			var buffer = self.buffer;
+			var sampleRate = buffer.sampleRate;
+			var numFrames = buffer.numFrames;
+			var bufferData = data;
+			var resamplePerSecond = self.resampleRate;
+			var resampleCount;
+			var numChannels = buffer.numChannels;
+			var resample;
+			if(self.enableFixedResampling) {
+				resamplePerSecond = self.fixedResampleCount/numFrames*sampleRate
+			};
+			resampleCount = (numFrames/sampleRate*resamplePerSecond).asInteger;
+			resample = bufferData.clump(numChannels).flop;
+			0.01.wait;
+			resample = resample.collect({ arg chan;
+				0.05.wait;
+				chan.resamp1(resampleCount);
+			}).flop; 
+			self.bufferInfo.enableFixedResampling = self.enableFixedResampling; 
+			self.bufferInfo.fixedResampleCount = self.fixedResampleCount; 
+			self.bufferInfo.bufferData = bufferData; 
+			self.bufferInfo.resampledData = resample;
+			self.bufferInfo.resampleRate = resamplePerSecond;
+			self.bufferInfo.numChannels = numChannels;
+			self.areasize = Point(self.areasize.x, self.bufferInfo.numChannels ? 2);
+			self.changed(\areasize);
+			self.changed(\data);
+			"refreshBufferData: buffer loaded".debug;
+		});
+	},
+
 	refreshBufferData: { arg self;
 		{
 			block { arg break;
@@ -284,36 +361,8 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 						self.buffer.debug("waiting for buffer");
 						1.wait;
 					} {
-						self.buffer.loadToFloatArray(0, -1, {|data| 
-							var buffer = self.buffer;
-							var sampleRate = buffer.sampleRate;
-							var numFrames = buffer.numFrames;
-							var bufferData = data;
-							var resamplePerSecond = self.resampleRate;
-							var resampleCount;
-							var numChannels = buffer.numChannels;
-							var resample;
-							if(self.enableFixedResampling) {
-								resamplePerSecond = self.fixedResampleCount/numFrames*sampleRate
-							};
-							resampleCount = (numFrames/sampleRate*resamplePerSecond).asInteger;
-							resample = bufferData.clump(numChannels).flop;
-							0.01.wait;
-							resample = resample.collect({ arg chan;
-								0.05.wait;
-							   	chan.resamp1(resampleCount);
-						   	}).flop; 
-							self.bufferInfo.enableFixedResampling = self.enableFixedResampling; 
-							self.bufferInfo.fixedResampleCount = self.fixedResampleCount; 
-							self.bufferInfo.bufferData = bufferData; 
-							self.bufferInfo.resampledData = resample;
-							self.bufferInfo.resampleRate = resamplePerSecond;
-							self.bufferInfo.numChannels = numChannels;
-							self.areasize = Point(self.areasize.x, self.bufferInfo.numChannels ? 2);
-							self.changed(\areasize);
-							self.changed(\data);
-							"refreshBufferData: buffer loaded".debug;
-						});
+						//self.computeResampledData;
+						self.computeWaveformImage;
 						break.value;
 					}
 				};
@@ -338,6 +387,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 	
 		self.timeline_model = { timeline };
 		self.areasize = self.timeline_model.areasize;
+		self.quant_ref = { arg self; self.timeline_model.quant_ref };
 		
 		self.makeWindow;
 	
@@ -690,6 +740,11 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 				//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
 			).asPopUpMenu,
 		),
+		BasicButton.new.string_("Load audio file").action_({ 
+			WindowDef(\filedialog_sample).front(nil, { arg path;
+				viewmodel.timeline_model.buffer = BufDef(path);
+			})
+		}),
 		Param(Message(model), \enableWaveformView, ParamBoolSpec()).asButton("Display waveform"),
 		BasicButton.new.string_("Clipboard refString").action_({ 
 			model.refCompileString.pbcopy;

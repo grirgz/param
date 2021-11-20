@@ -77,7 +77,7 @@ TimelineView : SCViewHolder {
 	var <>forbidHorizontalNodeMove = false;
 	var <>stayingSelection = true;
 	var <>quantizedSelection = true;
-	var <>enablePreview = false;
+	var <>enablePreview = true;
 
 	*new { arg posyKey; 
 		^super.new.initParaSpace(posyKey);
@@ -226,6 +226,27 @@ TimelineView : SCViewHolder {
 
 	clock {
 		^(clock ? TempoClock.default)
+	}
+
+	/////////////////
+
+	mapEventList { arg eventlist;
+		//paraNodes.debug("mapEventList");
+		model = eventlist;
+		this.refreshEventList;
+		//paraNodes.debug("mapEventList2");
+
+		this.makeUpdater;
+		
+		//[areasize, viewport, paraNodes].debug("mapEventList3");
+	}
+		
+	refreshEventList {
+		//model.debug("refreshEventList");
+		this.clearSpace;
+		model.do { arg event;
+			this.addEvent(event)
+		};
 	}
 
 	//////////////////////////
@@ -441,6 +462,7 @@ TimelineView : SCViewHolder {
 			};
 			if(wasSelected or:{ selNodes.size > 0 }) {
 				this.refresh;
+				this.refreshSelection;
 			}
 		});
 		this.updatePreviousNormSelRect;
@@ -796,6 +818,7 @@ TimelineView : SCViewHolder {
 	///////////////////////////////////////////////////////// Drawing
 	
 	drawGridY {
+		// pitch graduations
 		// this draw horizontal lines along the Y axis
 		// should move to TimelineDrawer, but need to check file dependency graph
 
@@ -807,6 +830,7 @@ TimelineView : SCViewHolder {
 		y_lines_count = areasize.y;
 
 		// naive way to reduce number of lines
+		// see vertical_grid_do that use 2**(( y/128 ).log2.asInteger)
 		7.do {
 			if(y_lines_count > 128) {
 				y_lines_count = y_lines_count / 2;
@@ -823,6 +847,7 @@ TimelineView : SCViewHolder {
 	}
 
 	drawGridX {
+		// time graduations
 		// this draw vertical lines along the X axis
 		var grid;
 		//mygrid.debug("===============mygrid");
@@ -1057,6 +1082,12 @@ TimelineView : SCViewHolder {
 		});
 		controller.put(\redraw, {
 			{
+				this.refresh;
+			}.defer
+		});
+		controller.put(\enablePreview, {
+			{
+				this.enablePreview = model.enablePreview;
 				this.refresh;
 			}.defer
 		});
@@ -1393,6 +1424,43 @@ TimelineView : SCViewHolder {
 
 	///////////////// 
 
+	addEvent { arg event;
+		var node;
+		switch(event[\type],
+			\xxx, {
+
+			},
+			//\start, {
+			//	"start".debug;
+			//	^nil;
+			//},
+			////\locator, {
+			////	event.debug("label");
+			////	^nil;
+			////},
+			//\end, {
+			//	"end".debug;
+			//	endEvent = event;
+			//	^nil;
+			//},
+			// else
+			{
+				^this.addEventRaw(event);
+			}
+		)
+	}
+
+	addEventRaw { arg event;
+		var node;
+		node = this.nodeClass.new(this, nodeCount, event);
+		nodeCount = nodeCount + 1;
+		paraNodes.add(node);
+		this.initNode(node);
+		createNodeHook.(node, nodeCount);
+		if(refreshEnabled) { this.refresh };
+		^node;
+	}
+
 	selectedNodes {
 		// better name
 		^selNodes
@@ -1448,17 +1516,6 @@ TimelineView : SCViewHolder {
 		^TimelineViewNode
 	}
 
-	addEventRaw { arg event;
-		var node;
-		node = this.nodeClass.new(this, nodeCount, event);
-		nodeCount = nodeCount + 1;
-		paraNodes.add(node);
-		this.initNode(node);
-		createNodeHook.(node, nodeCount);
-		if(refreshEnabled) { this.refresh };
-		^node;
-	}
-
 	nodes {
 		^paraNodes
 	}
@@ -1467,51 +1524,6 @@ TimelineView : SCViewHolder {
 
 	}
 
-	addEvent { arg event;
-		var node;
-		switch(event[\type],
-			\xxx, {
-
-			},
-			//\start, {
-			//	"start".debug;
-			//	^nil;
-			//},
-			////\locator, {
-			////	event.debug("label");
-			////	^nil;
-			////},
-			//\end, {
-			//	"end".debug;
-			//	endEvent = event;
-			//	^nil;
-			//},
-			// else
-			{
-				^this.addEventRaw(event);
-			}
-		)
-	}
-
-	refreshEventList {
-		//model.debug("refreshEventList");
-		this.clearSpace;
-		model.do { arg event;
-			this.addEvent(event)
-		};
-	}
-
-	mapEventList { arg eventlist;
-		//paraNodes.debug("mapEventList");
-		model = eventlist;
-		this.refreshEventList;
-		//paraNodes.debug("mapEventList2");
-
-		this.makeUpdater;
-		
-		//[areasize, viewport, paraNodes].debug("mapEventList3");
-	}
-		
 	createConnection {arg node1, node2, refresh=true;
 		if((nodeCount < node1) || (nodeCount < node2), {
 			"Can't connect - there aren't that many nodes".postln;
@@ -1571,6 +1583,10 @@ TimelineView : SCViewHolder {
 			userView.refresh;
 			selectionView.refresh;
 		}.defer; });
+	}
+
+	refreshSelection {
+		model.changed(\selection);
 	}
 
 	refreshSelectionView {
@@ -2141,9 +2157,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		^TimelinePreview
 	}
 
-	initPreview {}
-
-	refreshPreview {
+	initPreview {
 		if(this.enablePreview == true) {
 			if(model[\eventlist].notNil) {
 				preview.mapEventList(model.eventlist);
@@ -2154,6 +2168,10 @@ TimelineViewEventListNode : TimelineViewEventNode {
 			};
 		}
 
+	}
+
+	refreshPreview {
+		preview.refresh;
 	}
 
 	init { arg xparent, nodeidx, event;

@@ -1,6 +1,7 @@
 
 //////////////////////////////// Env and Env node
 
+// should be named TimelineParamView, no ?
 TimelineEnvView : TimelineView {
 	var valueKey = \midinote;
 	var <param;
@@ -9,7 +10,7 @@ TimelineEnvView : TimelineView {
 		if(param.notNil) {
 			var ypos;
 			ypos = param.spec.unmap(point.y);
-			^Point(point.x / areasize.x, ypos);
+			^Point(point.x / areasize.x, 1-ypos);
 		} {
 			^(point / areasize)
 		}
@@ -18,7 +19,7 @@ TimelineEnvView : TimelineView {
 	normPointToGridPoint { arg point;
 		if(param.notNil) {
 			var ypos;
-			ypos = param.spec.map(point.y);
+			ypos = param.spec.map(1-point.y);
 			^Point(point.x * areasize.x, ypos);
 		} {
 			^(point * areasize)

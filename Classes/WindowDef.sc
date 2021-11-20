@@ -19,7 +19,8 @@ WindowLayout {
 WindowDef {
 	classvar <>all;
 	var <>key;
-	var <>source;
+	var <source;
+	var <>proto;
 	var >window;
 	var <>windowProperties;
 	var <>alwaysRecreate = true;
@@ -39,9 +40,6 @@ WindowDef {
 	}
 
 	*new { arg key, val;
-		if(val.isKindOf(WindowDef)) {
-			val = val.source;
-		};
 		if(key.isNil or: {all[key].isNil}) {
 			if(val.notNil) {
 				^super.new.init(val).prAdd(key)
@@ -69,8 +67,22 @@ WindowDef {
 		}
 	}
 
+	source_ { arg val;
+		if(val.isKindOf(WindowDef)) {
+			source = val.source;
+			proto = val.proto;
+		} {
+			if(val.class == Event) {
+				proto = ProtoClass(val);
+				source = { arg def ...args; def.proto.asView(def, *args) };
+			} {
+				source = val;
+			};
+		};
+	}
+
 	init { arg val;
-		source = val;
+		this.source = val;
 		windowProperties = IdentityDictionary.new;
 	}
 

@@ -846,7 +846,7 @@ TagSpecDef(\KitTimeline, {
 });
 
 TagSpecDef(\ClipTimeline, {
-	ClipTimeline.proto.all.asAssociations;
+	ProtoClassDef(\ClipTimeline).all.asAssociations;
 });
 
 TagSpecDef(\NoteTimeline, {
@@ -930,11 +930,13 @@ TagSpecDef(\TrackListChannelPart, {
 	}).flatten(2);
 }).list;
 
+// maybe should rename to TrackInstrument_ClipTimeline
 TagSpecDef('TrackInstrument', [
 	\ClipTimelineTrack,
 	\KitTimelineTrack,
 	\NoteTimelineTrack,
 	\SampleTimelineTrack,
+	\ParamTimelineTrack,
 ]);
 
 

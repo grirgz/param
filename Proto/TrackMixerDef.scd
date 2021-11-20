@@ -28,6 +28,7 @@ ProtoClassDef(\TrackMixerDef, (
 			sends: 1100,
 			postfx: 2000,
 			postfader: 3000,
+			recbus: 4000,
 		);
 
 		self.outbus = outbus;
@@ -50,6 +51,16 @@ ProtoClassDef(\TrackMixerDef, (
 		self.proxy.set(\inbus, val);
 	},
 
+	// output to this bus so we can record mixer output, without having to change outbus and add a master
+	recbus: { arg self;
+		BusDef(\trackMixerDef_record_+++self.key, \audio, self.numchannels)
+	},
+
+	recbus_: { arg self, val;
+		self[\recbus] = val;
+		self.proxy.set(\recbus, val);
+	},
+
 	numchannels: 2,
 
 	define_mixer: { arg self;
@@ -64,7 +75,12 @@ ProtoClassDef(\TrackMixerDef, (
 		self.proxy[self.stages.postfader] = \filter -> { arg in;
 			in * \postfader.kr(0).dbamp;
 		};
+		self.proxy[self.stages.recbus] = \filter -> { arg in;
+			Out.ar(\recbus.kr(self.recbus ? BusDef(\null,\audio)), in);
+			in;
+		};
 		self.proxy.addSpec(\inbus, ParamBusSpec());
+		self.proxy.addSpec(\recbus, ParamBusSpec());
 		self.proxy.addSpec(\prefader, \db);
 		self.proxy.addSpec(\postfader, \db);
 		self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter);

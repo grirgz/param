@@ -265,6 +265,7 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 						ev.changed(\refresh);
 					}
 				};
+				self.drawTask.quant = self.timeline.quant;
 				self.drawTask.play;
 			} {
 				// recordedClip is already the model
@@ -401,6 +402,7 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 						ev.changed(\refresh);
 					}
 				};
+				self.drawTask.quant = self.timeline.quant;
 				self.drawTask.play;
 			} {
 				// recordedClip is already the model

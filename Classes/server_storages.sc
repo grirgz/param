@@ -8,6 +8,7 @@ BufDef {
 	classvar <>paths;
 
 	*all {
+		// the value can be a buffer or a symbol path or a string path
 		^PresetDictionary.new(\BufDef);
 	}
 
@@ -86,6 +87,7 @@ BufDef {
 					var buf = path;
 					buf.key = name;
 					this.all.put(name, buf);
+					^this.all.at(name)
 				} {
 					//// file buffer
 					if(this.all.at(name).isNil) {
@@ -357,6 +359,20 @@ BufDef {
 	*clear { arg name, channels;
 		//this.all[name] = nil;
 		^this.free(name, channels);
+	}
+
+	*presetCompileString { arg name;
+		var buf = this.all[name];
+		if(buf.isKindOf(Buffer)) {
+			var path = this.abspath_to_relpath(this.all.at(name).path);
+			^"BufDef(%, %)".format(name.asCompileString, path.asCompileString);
+		} {
+			if(buf.isKindOf(String) or: { buf.isKindOf(Symbol) }) {
+				^"BufDef(%, %)".format(name.asCompileString, this.all.at(name).asCompileString);
+			} {
+				"BufDef: %: can't free: doesn't exists".format(name).warn;
+			}
+		};
 	}
 
 }

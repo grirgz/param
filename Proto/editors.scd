@@ -6,6 +6,8 @@ WindowDef(\EventPatternProxyEditor, { arg me, target;
 		ParamGroupLayout.two_panes(target.asParamGroup),
 	);
 });
+
+
 WindowDef(\PdefEditor, { arg me, key=\default;
 	var target;
 	if(key.isKindOf(Pdef) or: key.isKindOf(Ndef)) {
@@ -23,6 +25,12 @@ WindowDef(\PdefEditor, { arg me, key=\default;
 		ParamGroupLayout.two_panes(target.asParamGroup),
 	);
 });
+
+
+
+
+
+
 WindowDef(\NdefEditor, { arg me, key=\default;
 	var target;
 	var pg;

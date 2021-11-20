@@ -130,11 +130,18 @@ TimelineRulerView : TimelineView {
 		var xlen = unitRect.width; // number of pixel for one beat
 		var offset = unitRect.left;
 		var factor = 1;
-		factor = 2**( xlen/minsize ).log2.asInteger;
+		var lineCount;
+		factor = 2**( ( xlen/minsize ).log2.asInteger );
+		// plus on zoom et plus unitRect donc ylen augmente sa valeur en pixel, ce qui rend factor plus grand
+		//factor = ( xlen/minsize ).asInteger;
 		//xlen.debug("xlen");
 
 		//[ (areasize.x * viewport.origin.x).asInteger, (areasize.x * factor * viewport.width + 1).asInteger ].debug("start, end XXXXXX");
-		(areasize.x * factor * viewport.width + 1).asInteger.do { arg idx;
+		// on prend la largeur visible en beats (area*viewport) qu'on multiplie par le factor
+		// par exemple s'il y a moyen de caser 5 graduations dans un beat, le factor est de 5
+		// donc si 3 beats sont visibles a l'ecran, alors il y aura 3*5=15 graduations
+		lineCount = (factor * areasize.x * viewport.width + 1).asInteger;
+		lineCount.do { arg idx;
 			var oidx, x;
 			//var orx;
 			oidx = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1);
@@ -142,7 +149,41 @@ TimelineRulerView : TimelineView {
 			//orx = (idx) * xlen / factor + offset;
 			//x = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1) * xlen / factor + offset;
 			//[idx, x, xlen, bounds.height, bounds, offset, factor].debug("grid drawer: x");
-			fun.(factor, x, oidx, idx);
+			fun.(factor, x, oidx, idx, lineCount);
+		}
+	}
+
+	*horizontal_grid_do { arg view, fun;
+		// dynamic grid generation
+		var unitRect = view.gridRectToPixelRect(Rect(0,0,1,1));
+
+		var minsize = 20;
+		var bounds = view.bounds;
+		var areasize = view.areasize;
+		var viewport = view.viewport;
+		var ylen = unitRect.height; // number of pixel for one cell height
+		var offset = unitRect.bottom;
+		var factor = 1;
+		var lineCount; 
+		factor = 2**( ( ylen/minsize ).log2.asInteger );
+		// plus on zoom et plus unitRect donc ylen augmente sa valeur en pixel, ce qui rend factor plus grand
+		//factor = ( ylen/minsize ).asInteger; // combien de minsize pixels dans une unit ?
+		//xlen.debug("xlen");
+
+		//[ (areasize.x * viewport.origin.x).asInteger, (areasize.x * factor * viewport.width + 1).asInteger ].debug("start, end XXXXXX");
+		// on prend la hauteur visible en grid unit (area*viewport) qu'on multiplie par le factor
+		// par exemple s'il y a moyen de caser 5 graduations dans un gridunit, le factor est de 5
+		// donc si 3 gridunit sont visibles a l'ecran, alors il y aura 3*5=15 graduations
+		lineCount = (factor * areasize.y * viewport.height + 1).asInteger;
+		lineCount.do { arg idx;
+			var oidx, y;
+			//var orx;
+			oidx = (idx + (areasize.y * viewport.origin.y * factor).asInteger + 1);
+			y = oidx * ylen / factor + offset;
+			//orx = (idx) * xlen / factor + offset;
+			//x = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1) * xlen / factor + offset;
+			//[idx, x, xlen, bounds.height, bounds, offset, factor].debug("grid drawer: x");
+			fun.(factor, y, oidx, idx, lineCount);
 		}
 	}
 
@@ -739,6 +780,21 @@ KitTimelineRulerView : TimelineView {
 	}
 }
 
+ParamTimelineRulerView : TimelineView {
+	// simple y ruler for KitTimeline
+	var <>mygrid; // debug
+	var <>paramTimeline;
+
+	*new { arg paramTimeline; 
+		^super.new.specialInit(paramTimeline);
+	}
+
+	specialInit { arg ptimeline;
+		Log(\Param).debug("ParamTimelineRulerView init");
+		paramTimeline = ptimeline;
+		this.view.drawFunc = { TimelineDrawer.draw_param_values(this, this.paramTimeline.param) };
+	}
+}
 
 
 
@@ -1114,6 +1170,55 @@ TimelineDrawer {
 				}
 			};
 		}
+	}
+
+	*draw_param_values_old { arg me, param;
+		var areasize = me.areasize;
+		//~drawme.(this, areasize);
+		areasize.debug("draw_param_values: areasize");
+		if(param.notNil) {
+			var font = Font.default.copy.size_(9);
+			Pen.use {
+				var pixelPerLine = 20; 
+				var count = (me.bounds.height/pixelPerLine).asInteger;
+
+				Pen.width = 1;
+				Pen.color = Color.black;
+				count.do { arg idx;
+					var val = param.spec.map(( count-idx )/count).asStringPrec(5); // reverse
+					Pen.stringAtPoint(val, Point(1,idx*pixelPerLine), font);
+
+				};
+			}
+		}
+	}
+
+	*draw_param_values { arg me, param;
+		~draw_param_values.(me, param);
+	}
+
+	*draw_param_values_new { arg me, param;
+		var areasize = me.areasize;
+		//~drawme.(this, areasize);
+		areasize.debug("draw_param_values: areasize");
+		if(param.notNil) {
+			var font = Font.default.copy.size_(9);
+			var pixelPerLine = 20;
+			var gridPerLine = me.pixelPointToGridPoint(Point(10,pixelPerLine)).y;
+			var lineCount = me.areasize.y/gridPerLine;
+			Pen.use {
+				Pen.width = 1;
+				Pen.color = Color.black;
+				lineCount.do { arg idx;
+					var pixpos = me.gridPointToPixelPoint(Point(1,idx * gridPerLine));
+					var val = param.spec.map(idx/lineCount).asStringPrec(5); // reverse
+					Pen.stringAtPoint(val, pixpos, font);
+
+				};
+			}
+		}
+
+		
 	}
 }
 

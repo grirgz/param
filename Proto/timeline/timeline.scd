@@ -109,7 +109,7 @@ ProtoClassDef(\EventTimeline, (
 		//self.xasPattern(relStartTime, totalDur);
 	},
 
-	cutPatternFunction: { arg self;
+	cutPatternFunction: { arg self, parentEvent;
 		// this function should be overwritten by subclasses to provide a cutting function to their pattern
 		// all other patterns methods will depend on it
 		{ arg sloop, offset, dur;
@@ -370,7 +370,7 @@ ProtoClassDef(\EventTimeline, (
 			var myfolderpathname;
 			myfolderpathname = FileSystemProject.resolve(myfolderpath);
 			if(myfolderpathname.notNil) {
-				mypath = myfolderpathname.fullPath ++ PathName(mypath).fileName;
+				mypath = myfolderpathname.fullPath +/+ PathName(mypath).fileName;
 				"Trying to write preset to file %".format(mypath.asCompileString).postln;
 				File.use(mypath, "w", { arg file;
 					var relpath = FileSystemProject.unresolve(mypath);
@@ -479,15 +479,15 @@ ProtoClassDef(\ClipTimeline, (
 			muted: false,
 		)});
 		self.tracks_bypassed = Set.new;
-		self.recorder = { ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder).new(self) };
+		self.recorder = ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder).new(self) !? { arg x; {x} };
 
-		self.clipList = { ProtoClassDef(\ClipTimelineClipList).new(self) };
+		self.clipList = ProtoClassDef(\ClipTimelineClipList).new(self) !? { arg x; {x} };
 		//"=============clipTimeline: end init".debug;
 
 		self;
 	},
 
-	bindPlayWithRecord: true,
+	bindPlayWithRecord: false,
 
 	track_count: { arg self;
 		self.tracks.size;
@@ -572,7 +572,7 @@ ProtoClassDef(\ClipTimeline, (
 	},
 
 	is_track_bypassed: { arg self, track_index;
-		// used by steptimeline, maybe deprecated
+		// used by mutingPattern, SampleTimeline and steptimeline
 		//self.tracks[track_index] !? _.muted ? false or: {self.tracks_bypassed.includes(track_index)};
 		if(self.soloTracks.notNil) {
 			self.soloTracks.includes(track_index).not
@@ -833,8 +833,8 @@ ProtoClassDef(\NoteTimeline, (
 			param = Param(param, \midinote);
 		};
 		self[\param] = param;
-		self.wrapper = { ~seqPlayerGroup.new(self.param.target) };
-		self.recorder = { ~playerGroupRecorder.new(self.wrapper) };
+		self.wrapper = ProtoTemplateDef(\SeqPlayerGroup).new(param.target) !? { arg x; {x} };
+		self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.wrapper) !? { arg x; {x} };
 		self.recorder.eventLoop = self.eventLoop;
 
 		//self.eventFactory = ~class_event_factory.new(self.param.target);
@@ -883,7 +883,7 @@ ProtoClassDef(\NoteTimeline, (
 		)
 	},
 
-	cutPatternFunction: { arg self;
+	cutPatternFunction: { arg self, parentEvent, parentTimeline;
 		{ arg sloop, offset, dur;
 			var inpat;
 			var pat;
@@ -905,6 +905,9 @@ ProtoClassDef(\NoteTimeline, (
 				inpat,
 				offset, dur,
 			);
+			if(parentTimeline.notNil) {
+				pat = parentTimeline.mutingPattern(parentEvent) <> pat;
+			};
 
 			pat.embedInStream;
 			//Log(\Param).debug("now in cutPatternFunction after embed");
@@ -987,11 +990,10 @@ ProtoClassDef(\NoteTimeline, (
 ));
 ~noteTimeline = ProtoClassDef(\NoteTimeline);
 
-// why not name it ParamTimeline ????
 ProtoClassDef(\ParamTimeline, (
 	parent: ProtoClassDef(\EventTimeline),
-	all: { PresetDictionary.new(\envTimeline) },
-	eventType: \envTimeline,
+	all: { PresetDictionary.new(\envTimeline) }, // FIXME: rename it to paramTimeline
+	eventType: \envTimeline, // FIXME: rename it to paramTimeline
 
 	new: { arg self, name, param;
 	
@@ -1021,8 +1023,8 @@ ProtoClassDef(\ParamTimeline, (
 		if(self.param.notNil) {
 			Param(self.param.target, \level, self.param.spec);
 		} {
-			// FIXME: this is wrong
-			Param((), \level);
+			// FIXME: this is maybe wrong
+			Param(Message(self), \levelValue);
 		}
 	},
 
@@ -1064,7 +1066,7 @@ ProtoClassDef(\ParamTimeline, (
 		self.basicInit;
 		self.customBus = bus;
 
-		self.param = param ?? { Param((empty:1), \empty, \unipolar) };
+		self.param = param ?? { Param(Message((empty:1)), \empty, \unipolar) };
 
 		//eventFactory system is deprecated
 		//self.eventFactory = ~class_param_event_factory.new(self.param);
@@ -1135,21 +1137,26 @@ ProtoClassDef(\ParamTimeline, (
 				//default = self.param.default;
 			};
 
-			self.remove_envlist_duplicate.(self.eventList);
-			self.compute_eventenv_sustain.(self.eventList);
+			self.remove_envlist_duplicate(self.eventList);
+			self.compute_eventenv_sustain(self.eventList);
 
 			postpat = Pbind(
 				\out, self.outBus,
 				//\level, Pfunc({ arg ev; ev[self.param.property] ? default }),
-				\time, Pfunc({ arg ev; ev.use { 
-					// absTime is in beats (but maybe should be in seconds ?)
-					// need to convert to seconds
-					//(ev.next_absTime ? ev.absTime) - ev.absTime / thisThread.clock.tempo
-					// use dur instead
-					( ev[\sustain] ? 1 ) / thisThread.clock.tempo
-				} }),
+				\time, Pfunc({ arg ev; 
+					Log(\Param).debug("cutPatternFunction ParamTimeline postpat time");
+					ev.use { 
+						// absTime is in beats (but maybe should be in seconds ?)
+						// need to convert to seconds
+						//(ev.next_absTime ? ev.absTime) - ev.absTime / thisThread.clock.tempo
+						// use dur instead
+						//( ev[\sustain] ? 1 ) / thisThread.clock.tempo
+						( ~sustain.value ? 1 ) / thisThread.clock.tempo
+					} 
+				}),
 				\type, Pfunc({  arg ev;
 
+					Log(\Param).debug("postpat type %", ev[\type]);
 					if(ev[\type].isNil or: { ev[\type] == \note }) {
 						if(ev[\next_level].isNil) { // last one should be rest
 							\rest
@@ -1178,10 +1185,10 @@ ProtoClassDef(\ParamTimeline, (
 				Pn(self.eventList.clone, 1), 
 				offset, dur,
 			);
-			pat = postpat <> pat <> prepat;
+			pat = postpat.trace(prefix:"postpat: ") <> pat.trace(prefix:"pat: ") <> prepat.trace(prefix:"prepat: ");
 
 			//~pattern_to_envpattern.(pat).embedInStream(inval ? ()); 
-			self.pattern_to_envpattern.(pat).embedInStream;
+			self.pattern_to_envpattern(pat).embedInStream;
 		}
 	},
 
@@ -1383,6 +1390,8 @@ ProtoClassDef(\ParamTimeline, (
 			var previous_val;
 			var nextval; // ugly hack (FIXME: for what ?)
 
+			val.debug("pattern_to_envpattern start");
+
 			block { arg break;
 				while({
 					if(nextval.notNil) {
@@ -1395,7 +1404,7 @@ ProtoClassDef(\ParamTimeline, (
 					var is_rest = { arg val;
 						val.type == \rest or: { val.type == \start or: { val.type == \end } };
 					};
-					//val.debug("pattern_to_envpattern");
+					val.debug("pattern_to_envpattern val");
 					if(first == true) {
 						if(is_rest.(val)) {
 							//val.type.debug("pattern_to_envpattern: start/end");
@@ -1452,7 +1461,7 @@ ProtoClassDef(\ParamTimeline, (
 				previous_val;
 			};
 			previous_val.yield;
-		})
+		}).trace(prefix:"trace pattern_to_envpattern: ")
 
 	},
 
@@ -1495,13 +1504,20 @@ ProtoClassDef(\KitTimeline, (
 	kit_: { arg self, kit;
 		if(kit.isSequenceableCollection) {
 			self[\kit] = kit;
-			self.wrapper = { ~parPlayerGroup.new(self.kit) };
+			self[\wrapper] = ~parPlayerGroup.new(self.kit) !? { arg x; {x} };
 		} {
-			self.wrapper = kit;
+			self[\wrapper] = kit;
 			self[\kit] = { arg self; self.wrapper.targets };
 		};
-		self.recorder = { ~playerGroupRecorder.new(self.wrapper) };
+		self.recorder = ~playerGroupRecorder.new(self.wrapper) !? { arg x; {x} }; 
 		self.recorder.eventLoop = self.eventLoop;
+		// FIXME: this polymorphism look ugly
+		self.changed(\kit);
+		self.changed(\wrapper);
+	},
+
+	wrapper_: { arg self, kit;
+		self.kit = kit;
 	},
 
 	new_load: { arg self, data;

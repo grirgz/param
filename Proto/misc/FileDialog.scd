@@ -101,15 +101,21 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	var proto = ProtoDef(\filemanager_player);
 	var name_field;
 	var nodelist;
+	var defaultFilename;
 	nodeClass = nodeClass ?? { ProtoTemplateDef(\filemanager_node) };
 
 	name_field = TextField.new;
 
 	if(path.isNil) {
-		path = proto.cwd ? try { PathName(Document.current.path).pathOnly } ? "~"
+		path = proto.cwd ?? { try { PathName(Document.current.path).pathOnly } ? "~" }
 	} {
 		name_field.value = PathName(path).fileName;
-		path = PathName(path).pathOnly;
+		defaultFilename = PathName(path).fileName;
+		if(File.exists(PathName(path).pathOnly)) {
+			path = PathName(path).pathOnly;
+		} {
+			path = proto.cwd ?? { try { PathName(Document.current.path).pathOnly } ? "~" }
+		};
 	};
 
 	if(def.window.notNil) {
@@ -312,6 +318,14 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		changepath.(fileview, path);
 		//"wut".debug;
 		select_file.(fileview, proto.current_file);
+		//defaultFilename.debug("+++++++++++++++++++++++++++++++++++ defaultFilename");
+		if(defaultFilename.notNil) {
+			//name_field.value.debug("+++++++++++++++++++++++++++++++++++ name_field");
+			// FIXME: why i have to defer ?
+			{
+				name_field.value = defaultFilename;
+			}.defer(1)
+		};
 	};
 	/////////////////////////////////////////////
 
@@ -479,3 +493,4 @@ WindowDef(\RenameDialog, { arg me, question, defaultValue="", savefun, cancelfun
 
 WindowDef(\ConfirmDialog).front("this will destroy everything, are you shure????")
 WindowDef(\RenameDialog).front("what name will it be ?")
+WindowDef(\filedialog_sample).front

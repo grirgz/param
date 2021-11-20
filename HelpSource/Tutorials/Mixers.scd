@@ -2,9 +2,28 @@ title:: Using and creating mixers
 summary:: Mixers
 categories:: GUI
 
+There is a simple predefined mixer:
+
+code::
+ProtoDef(\simpleMixer).edit;
+::
+
+Internally it create an array of ten ProtoInst(\TrackMixer, mixer_key) where mixer_key start with \mixer0 and end at \mixer10. 
+
+There is also an additionnal simple mixer for more tracks
+
+code::
+ProtoDef(\fxMixer).edit
+::
+
+
+
+TODO: doc
 
 
 TrackMixerDef(\track1, ProtoTemplateDef(\NdefTrackMixer)).asParamGroup.edit
+TrackMixerDef(\track1, ProtoTemplateDef(\NdefTrackMixer)).edit
+TrackMixerDef(\track1, ProtoTemplateDef(\NdefTrackMixer)).outbus
 
 
 (
