@@ -47,7 +47,7 @@ PlayerWrapperView {
 						model.play;
 					},
 					1+1, {
-						[view.value, model].debug("user played: stop");
+						[view.value, model].debug("cancel scheduled playing");
 						model.stop;
 					},
 					2+1, {
@@ -55,7 +55,7 @@ PlayerWrapperView {
 						model.stop;
 					},
 					0, {
-						[view.value, model].debug("user stopped: play");
+						[view.value, model].debug("cancel scheduled stopping");
 						model.play;
 					}
 				);
@@ -118,9 +118,11 @@ PlayerWrapperView {
 						\stopped, { 0 },
 						\playing, { 2 },
 						\userPlayed, { 
+							// if was already playing, stay at 2, else go in state prepare_to_play
 							if(butval == 2) { 2 } { 1 }
 						},
 						\userStopped, { 
+							// if was already stopped, stay at 0, else go in state prepare_to_stop
 							if(butval == 0) { 0 } { 3 }
 						},
 						{ 0 },
@@ -187,6 +189,186 @@ PlayerWrapperView {
 				//xlabel = label;
 				//button.states = this.getStates(xlabel);
 				//button.value = 0;
+			}
+		}
+	}
+
+}
+
+RecordButton {
+	var <>states;
+	var player;
+	var <>button;
+	var skipjack;
+	var <>pollRate = 1;
+	var <>label;
+	var <model, >view;
+	var follower;
+	*new { arg model, label="";
+		^super.new.init(model, label);
+	}
+
+	init { arg xmodel, xlabel;
+		this.model = xmodel;
+		this.label = xlabel;
+	}
+
+	view { 
+		if(view.isNil) {
+			this.makeLayout;
+		};
+		^view;
+	}
+
+	layout {
+		^this.view;
+	}
+
+	asView {
+		^this.view;
+	}
+
+	// FIXME: this is dirty, a layout is not a view
+	// but require to remember if class is a layout or a view
+	// maybe better would be for view to return a view and layout return a layout
+
+	makeLayout { arg parent;
+		var lay = HLayout(
+			button = Button.new.action_({ arg view;
+				// value first increment then action is called
+				switch(view.value,
+					0+1, {
+						[view.value, model].debug("was stopped: start record");
+						model.isRecording = true;
+					},
+					1+1, {
+						[view.value, model].debug("cancel user played: stop record");
+						model.isRecording = false;
+					},
+					2+1, {
+						[view.value, model].debug("was playing: stop");
+						model.isRecording = false;
+					},
+					0, {
+						[view.value, model].debug("cancel user stopped: play");
+						model.isRecording = true;
+					}
+				);
+			})
+		);
+		lay = button; // backward compat
+		lay.addUniqueMethod(\maxWidth_, { arg v, x; 
+			Log(\Param).debug("maxWidth_ %",[v,x].asCompileString);
+			button.maxWidth_(x); 
+			v;
+		});
+		lay.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
+		lay.addUniqueMethod(\parentView, { this }); 
+		lay.addUniqueMethod(\rightClickEditorEnabled_, { arg self, val=true;
+			//Log(\Param).debug("enableRightClickEditor_ %", val);
+			if(val == true) {
+				button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+					//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+					if(buttonNumber == 1) {
+						this.model.edit;
+					} 
+				})
+			} {
+				button.mouseDownAction_({})
+			};
+			self;
+		});
+		this.makeUpdater;
+		this.update;
+		//view = lay;
+		view = button;
+		^view;
+	}
+
+
+	makeUpdater {
+		skipjack = SkipJack({
+			this.update;
+		}, pollRate + (pollRate/2).rand, { 
+			//button.isClosed.debug("SkipJack: button isClosed?")
+			button.isClosed;
+		});
+		this.makeDependentListener;
+	}
+
+	makeDependentListener {
+		var target = model;
+		// support for ProtoClass
+		if(model.isKindOf(PlayerWrapper)) {
+			target = model.target;
+		}; 
+		target.removeDependant(follower);
+		follower = { arg obj, changed, status;
+			//[obj, changed, status].debug("follower: args");
+				defer {
+					var butval = button.value;
+					button.states = this.getStates(label ?? { model.label });
+					button.value = switch(changed,
+						\stoppedRecording, { 0 },
+						\startedRecording, { 2 },
+						\userStartedRecording, { 
+							if(butval == 2) { 2 } { 1 }
+						},
+						\userStoppedRecording, { 
+							if(butval == 0) { 0 } { 3 }
+						},
+						{ 0 },
+					);
+				}
+		};
+		target.addDependant(follower);
+		button.onClose({target.removeDependant(follower)});
+		
+	}
+
+
+	model_ { arg val;
+		if(val.notNil) {
+			model = val;
+		} {
+			skipjack.stop;
+		};
+		if(button.notNil) { // else fail when model is set before the layout in init
+			this.makeDependentListener;
+		};
+	}
+
+	getStates { arg str="";
+		// FIXME: uncomment debug lines to see that the SkipJack continue to run
+		//[ str ++ " ▶" ].debug("getStates");
+		if(states.notNil) {
+			^states.(str);
+		} {
+			^[
+				[ str ++ " ●", Color.black, ParamViewToolBox.color_stoppedRecording ],
+				[ str ++ " ●", Color.black, ParamViewToolBox.color_userStartedRecording ],
+				[ str ++ " ||", Color.black, ParamViewToolBox.color_startedRecording ],
+				[ str ++ " ||", Color.black, ParamViewToolBox.color_userStoppedRecording ],
+			];
+		}
+	}
+
+	update { arg changed, changer ... args;
+		var xlabel;
+		var playing;
+
+		//[changed, changer, args].debug("changed, changer");
+
+        if(changer !== this) {  
+			if([0,2].includes(button.value)) {
+				xlabel = label ?? {model.label};
+				button.states = this.getStates(xlabel);
+				playing = model.isRecording;
+				if(playing.notNil and: {playing} ) {
+					button.value = 2
+				} {
+					button.value = 0
+				};
 			}
 		}
 	}

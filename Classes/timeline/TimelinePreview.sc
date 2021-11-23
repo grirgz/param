@@ -86,6 +86,9 @@ TimelinePreview_Env : TimelineEnvView {
 	}
 
 	mapModel { arg model;
+		if(model[\timeline].notNil) {
+			this.mapEventList(model.timeline.eventList);
+		};
 		this.mapParam(model.timeline.levelParam);
 	}
 }
@@ -94,11 +97,13 @@ TimelinePreview_Sample : SampleTimelineView {
 	drawFunc {
 		Log(\Param).debug("preview drawFunc sample");
 		this.drawWaveform;
+		this.drawNodes;
 		this.drawEndLine;
 	}
 
 	mapModel { arg model;
 		this.mapData(model.timeline);
+		this.mapEventList(model.timelines.eventList);
 	}
 }
 

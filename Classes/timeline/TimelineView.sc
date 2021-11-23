@@ -116,6 +116,7 @@ TimelineView : SCViewHolder {
 		userView = UserView.new;
 		selectionView = UserView.new;
 		this.view = userView;
+		this.view.addUniqueMethod(\timeline, { this });
  		//bounds = mouseTracker.bounds; // thanks ron!
  		selectionView.bounds = userView.bounds; // thanks ron!
  		
@@ -1010,7 +1011,7 @@ TimelineView : SCViewHolder {
 
 		var defered_nodes = List.new;
 		var first = true;
-		//debug("start drawing nodes");
+		//debug("<<<<<<<<<<<< start drawing nodes");
 		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
 
 		//[this.viewport, this.bounds, this.virtualBounds, this.areasize].debug("drawNodes:bounds");
@@ -1035,7 +1036,7 @@ TimelineView : SCViewHolder {
 			node.draw;
 		};
 
-		//debug("stop drawing nodes");
+		//debug(";;;;;;;;;;;;;;;;;; stop drawing nodes");
 		Pen.stroke;		
 	}
 

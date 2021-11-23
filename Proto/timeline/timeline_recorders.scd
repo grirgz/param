@@ -184,6 +184,7 @@ ProtoTemplateDef(\ParamRecorder, (
 // used in SampleTimeline
 ProtoTemplateDef(\SampleTimelineRecorder, (
 	isRecording: false,
+	latencyScale: 0.14/0.2, // i don't understand why it require 0.14 latency
 	new: { arg self, timeline;
 		self = self.deepCopy;
 	
@@ -245,6 +246,7 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 		if(self.isRecording == false) {
 			self[\isRecording] = true;
 			"prepare Start recording".debug(name);
+			self.changed(\userStartedRecording);
 
 			self.recordName = name;
 			self.filename = self.temporaryRecordFolder +/+ "%.wav".format(name);
@@ -274,10 +276,12 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 			self.recordedClip.fileName = self.filename;
 			self.recorder.prepareForRecord(path:self.filename, numChannels:numChannels);
 			//self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant)-( s.latency*~t ), {
-			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo), {
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo * self.latencyScale), {
 				Log(\Param).debug("Start recording: %: bus:%, chan:%, file:%, beats:%, quant:%, tempo:%", name, self.recBus, numChannels, self.filename, self.tempoClock.beats, self.quant, self.tempoClock.tempo);
 				self.startRecordingTime = self.tempoClock.beats; // NOTE: doesnt account for latency but is used to compute duration so not a problem for the moment
 				self.recorder.record(path:self.filename, bus:self.recBus, numChannels:numChannels);
+				self.changed(\isRecording);
+				self.changed(\startedRecording);
 			});
 		} {
 			"Already recording".debug;
@@ -287,9 +291,12 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 	stopRecording: { arg self;
 		if(self.isRecording == true) {
 			"prepare Stop recording".debug(self.filename);
-			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo), {
+			self.changed(\userStoppedRecording);
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo * self.latencyScale), {
 				"Stop recording".debug(self.filename);
 				self[\isRecording] = false;
+				self.changed(\isRecording);
+				self.changed(\stoppedRecording);
 
 				self.recorder.stopRecording;
 				self.recordedDuration = self.tempoClock.beats - self.startRecordingTime;
@@ -300,7 +307,13 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 					self.recordedEvent.changed(\refresh);
 				};
 				{
-					self.recordedClip.buffer = BufDef(self.filename.asSymbol);
+					var buf = BufDef(self.filename.asSymbol);
+					self.filename.asSymbol.asCompileString.debug("recorded filename");
+					buf.debug("recorded buf");
+					BufDef(self.filename.asSymbol).debug("bufdef");
+					self.recordedClip.buffer = buf;
+					self.recordedClip.debug("recorded clip");
+					self.recordedClip.buffer.debug("recorded clip buffer");
 					self.recordedClip.eventList.setEndPosition(self.recordedDuration);
 				}.defer(2);
 			});
@@ -309,12 +322,6 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 		}
 	},
 
-));
-
-// i think it's deprecated by SampleClipTimelineMultiTrackRecorder
-ProtoTemplateDef(\SampleClipTimelineRecorder, (
-	parent: ProtoTemplateDef(\SampleTimelineRecorder),
-	recordOnClipTimelineEnabled: true,
 ));
 
 // individual track for SampleClipTimelineMultiTrackRecorder
@@ -415,6 +422,7 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 				tl.play;
 			};
 			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo), {
+				self.changed(\isRecording);
 				Log(\Param).debug("Start recording: %: bus:%, chan:%, file:%, beats:%, quant:%, tempo:%", name, self.recBus, numChannels, self.filename, self.tempoClock.beats, self.quant, self.tempoClock.tempo);
 				self.startRecordingTime = self.tempoClock.beats; // NOTE: doesnt account for latency but is used to compute duration so not a problem for the moment
 				self.recorder.record(path:self.filename, bus:self.recBus, numChannels:numChannels);
@@ -430,6 +438,8 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo), {
 				"Stop recording".debug(self.filename);
 				self[\isRecording] = false;
+				self.changed(\isRecording);
+
 
 				self.recorder.stopRecording;
 				self.recordedDuration = self.tempoClock.beats - self.startRecordingTime;
@@ -441,6 +451,8 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 				};
 				{
 					self.recordedClip.buffer = BufDef(self.filename.asSymbol);
+					self.recordedClip.debug("recorded clip");
+					self.recordedClip.buffer.debug("recorded clip buffer");
 					self.recordedClip.eventList.setEndPosition(self.recordedDuration);
 				}.defer(2);
 			});
@@ -509,3 +521,9 @@ ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder, (
 
 ));
 
+
+// i think it's deprecated by SampleClipTimelineMultiTrackRecorder
+ProtoTemplateDef(\SampleClipTimelineRecorder, (
+	parent: ProtoTemplateDef(\SampleTimelineRecorder),
+	recordOnClipTimelineEnabled: true,
+));

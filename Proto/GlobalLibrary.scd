@@ -421,7 +421,7 @@ ProtoDef(\GlobalLibrary, (
 
 		superself.clipFactories_timeline_parent = tl;
 
-		[\noteTimeline, \clipTimeline, \envTimeline, \modStepTimeline, \kitTimeline].do { arg key;
+		[\noteTimeline, \clipTimeline, \modStepTimeline, \kitTimeline].do { arg key;
 			superself.clipFactories[key] = (
 				key: key,
 				libIdKey: (key.asString[0].toUpper ++ key.asString[1..]).asSymbol,
@@ -429,13 +429,22 @@ ProtoDef(\GlobalLibrary, (
 				classObject: "{ topEnvironment[%] }".format(key.asCompileString).interpret,
 			);
 		};
+		[\paramTimeline, \sampleTimeline].do { arg key;
+			var uckey = (key.asString[0].toUpper ++ key.asString[1..]);
+			superself.clipFactories[key] = (
+				key: key,
+				libIdKey: uckey.asSymbol,
+				parent: tl,
+				classObject: "{ % }".format(uckey).interpret,
+			);
+		};
 
-		superself.clipFactories.sampleTimeline = (
-			key: 'sampleTimeline',
-			libIdKey: \SampleTimeline,
-			parent: tl,
-			classObject: { SampleTimeline.proto },
-		);
+		//superself.clipFactories.sampleTimeline = (
+			//key: 'sampleTimeline',
+			//libIdKey: \SampleTimeline,
+			//parent: tl,
+			//classObject: { SampleTimeline.proto },
+		//);
 
 		superself.init_other_factories;
 

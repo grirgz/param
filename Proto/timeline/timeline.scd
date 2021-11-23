@@ -1019,7 +1019,7 @@ ProtoClassDef(\ParamTimeline, (
 	levelParam: { arg self;
 		// this is a fake param,
 		// target is not used, property is the key where data is stored (\level) and his spec
-		// destined to TimelineEnvView
+		// destined to TimelineEnvView because all events in EventList have \level key
 		if(self.param.notNil) {
 			Param(self.param.target, \level, self.param.spec);
 		} {
@@ -1185,7 +1185,8 @@ ProtoClassDef(\ParamTimeline, (
 				Pn(self.eventList.clone, 1), 
 				offset, dur,
 			);
-			pat = postpat.trace(prefix:"postpat: ") <> pat.trace(prefix:"pat: ") <> prepat.trace(prefix:"prepat: ");
+			//pat = postpat.trace(prefix:"postpat: ") <> pat.trace(prefix:"pat: ") <> prepat.trace(prefix:"prepat: ");
+			pat = postpat <> pat <> prepat;
 
 			//~pattern_to_envpattern.(pat).embedInStream(inval ? ()); 
 			self.pattern_to_envpattern(pat).embedInStream;
@@ -1282,6 +1283,17 @@ ProtoClassDef(\ParamTimeline, (
 		var x = ~envTimelinePanelView.new(self);
 		self.editor = { x };
 		x;
+	},
+
+	asPreview: { arg self;
+		TimelinePreview_Env.new
+			.mapEventList(self.eventList)
+			.mapParam(self.levelParam)
+			.view.mouseDownAction_({ 
+				self.edit;
+			})
+			.fixedHeight_(40)
+		;
 	},
 
 	asView: { arg self;
@@ -1461,10 +1473,9 @@ ProtoClassDef(\ParamTimeline, (
 				previous_val;
 			};
 			previous_val.yield;
-		}).trace(prefix:"trace pattern_to_envpattern: ")
+		});
 
 	},
-
 ));
 ~envTimeline = ProtoClassDef(\ParamTimeline);
 
@@ -1576,7 +1587,7 @@ ProtoClassDef(\KitTimeline, (
 
 
 			if(self.kit.notNil and: {self.composeParamPattern == true}) {
-				pat = PdrumStep(self.kit, pat, 1, key: \kitIndex).trace;
+				pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
 				if(self.wrapper.postChain.notNil) {
 					//"post!".debug;
 					pat = self.wrapper.postChain <> pat;
@@ -1916,6 +1927,33 @@ ProtoClassDef(\LoopMaster, (
 		self.currentLoopStartAbsTime = firstEventOffset + self.firstEventAbsTime;
 		self.startCursorEvent.yield;
 		Pfindur(dur, Pembed(pat.value, firstEventOffset, self.timeline)).embedInStream;
+	},
+
+	cutPatternFadeOut: { arg self, pat, firstEventOffset, dur, fadeOut=0;
+		// do not embedInStream to allow composing it
+		if(fadeOut.isNil or: { fadeOut <= 0}) {
+			self.cutPattern(pat, firstEventOffset, dur)
+		} {
+			Log(\Param).debug("fadeout %, %", fadeOut, dur - fadeOut);
+			if(firstEventOffset < 0) {
+				Pseq([
+					Pfindur(dur - fadeOut, 
+						Pseq([
+							Event.silent(firstEventOffset.abs),
+							Pembed(pat.value, 0, self.timeline)
+						],1),
+					),
+					Event.silent(fadeOut),
+				],1)
+			} {
+				Pseq([
+					Pfindur(dur - fadeOut, 
+						Pembed(pat.value, firstEventOffset, self.timeline)
+					),
+					Event.silent(fadeOut),
+				],1)
+			}
+		}
 	},
 
 	cutPattern: { arg self, pat, firstEventOffset, dur;

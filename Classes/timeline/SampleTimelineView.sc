@@ -16,7 +16,14 @@ SampleTimelineView : TimelineView {
 		this.view.onChange(model, \data, { 
 			{
 				Log(\Param).debug("SampleTimelineView: data change detected");
-				if(model.enableWaveformView == true and: {model.bufferInfo.bufferData.notNil}) {
+				if(
+					model.enableWaveformView == true 
+					and: {model.bufferInfo.notNil 
+					and: {
+						model.bufferInfo.bufferData.notNil 
+						or: { model.bufferInfo.waveformImage.notNil }
+					}}
+				) {
 					numChannels = model.bufferInfo.numChannels;
 					this.areasize = Point(areasize.x, numChannels ? 2);
 					

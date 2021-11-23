@@ -10,7 +10,8 @@ TimelineEnvView : TimelineView {
 		if(param.notNil) {
 			var ypos;
 			ypos = param.spec.unmap(point.y);
-			^Point(point.x / areasize.x, 1-ypos);
+			//^Point(point.x / areasize.x, 1-ypos);
+			^Point(point.x / areasize.x, ypos);
 		} {
 			^(point / areasize)
 		}
@@ -19,7 +20,8 @@ TimelineEnvView : TimelineView {
 	normPointToGridPoint { arg point;
 		if(param.notNil) {
 			var ypos;
-			ypos = param.spec.map(1-point.y);
+			//ypos = param.spec.map(1-point.y);
+			ypos = param.spec.map(point.y);
 			^Point(point.x * areasize.x, ypos);
 		} {
 			^(point * areasize)

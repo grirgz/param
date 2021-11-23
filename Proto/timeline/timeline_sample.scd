@@ -34,7 +34,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	eventType: \sampleTimeline,
 	fixedResampleCount: 500,
 	enableFixedResampling: true,
-	enableWaveformView: false,
+	enableWaveformView: true,
 	resampleRate: 10,
 
 	recordFolder: { arg self;
@@ -69,7 +69,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		//self.eventFactory.fullrecord = false;
 
 		self.tracks_bypassed = Set.new;
-		self.recorder = ProtoTemplateDef(\SampleTimelineRecorder).new(self);
+		self.recorder = ProtoTemplateDef(\SampleTimelineRecorder).new(self) !? { arg x; {x} };
 		//"=============clipTimeline: end init".debug;
 
 		if(path.notNil) {
@@ -159,10 +159,11 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 
 	cutPatternFunction: { arg self, parentEvent, parentTimeline;
 		{ arg sloop, offset, dur;
-			sloop.cutPattern(
+			sloop.cutPatternFadeOut(
 				Pn(self.samplePattern(offset+self.eventList.startTime, parentEvent, parentTimeline), 1),
 				0, //offset,
-				dur
+				dur,
+				self.fadeOut
 			).embedInStream
 		}
 	},
@@ -202,6 +203,13 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		x;
 	},
 
+	asPreview: { arg self;
+		TimelinePreview_Sample.new.mapData(self).mapEventList(self.eventList).view.mouseDownAction_({ 
+			self.edit;
+		}).fixedHeight_(40);
+	},
+
+
 	asView: { arg self;
 		ProtoTemplateDef(\SampleTimelineView).newView(self).makeLayout;
 	},
@@ -235,20 +243,31 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	},
 
 	buffer_: { arg self, buffer;
-		if(self.bufferInfo.isNil) {
-			self.bufferInfo = ProtoClass(());
-		};
-		if(self.bufferInfo.buffer != buffer) {
-			self.bufferInfo = ProtoClass(());
-			self.bufferInfo.buffer = buffer;
-			self.bufferInfo.fileName = buffer.path;
-			if(self.buffer.notNil) {
-				// do not refresh at setting because when no gui, no need to compute the data
-				// data should be computed when gui ask for it
-				// when data is ready, a signal is sent to gui to refresh it
-				//self.refreshBufferData;
-				self.changed(\data);
+		if(buffer.notNil) {
+			if(self.bufferInfo.isNil) {
+				self.bufferInfo = ProtoClass(());
+			};
+			if(self.bufferInfo.buffer != buffer) {
+				self.bufferInfo = ProtoClass(());
+				self.bufferInfo.buffer = buffer;
+				self.bufferInfo.fileName = buffer.path;
+				{
+					try {
+						self.eventList.setEndPosition(buffer.duration * self.tempoClock.tempo);
+					} { arg error;
+						Log(\Param).debug("Warning: Can't get duration of buffer %", buffer);
+					};
+				}.defer(1);
+				if(self.buffer.notNil) {
+					// do not refresh at setting because when no gui, no need to compute the data
+					// data should be computed when gui ask for it
+					// when data is ready, a signal is sent to gui to refresh it
+					//self.refreshBufferData;
+					self.changed(\data);
+				}
 			}
+		} {
+			self.bufferInfo = ProtoClass(());
 		}
 	},
 
@@ -272,7 +291,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 
 	askBufferData: { arg self;
 		if(self.buffer.notNil and: { self.enableWaveformView == true }) {
-			if(self.bufferInfo.bufferData.isNil) {
+			if(self.bufferInfo.waveformImage.isNil) {
 				self.refreshBufferData;
 			} {
 				self.changed(\areasize);
@@ -287,33 +306,41 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		var size = Point(( buf.numFrames/Server.default.sampleRate*300 ).asInteger, buf.numChannels * 100);
 		buf.loadToFloatArray(0,-1,{ arg data;
 			{
-				var img = Image.new(size);
-				img.draw({
-					var yzoom = 1.0;
-					var chanspacefactor = 2.0;
-					var drawChannel = { arg chandata, yoffset;
-						var dsize = chandata.size;
-						var chanysize = size.y/buf.numChannels;
-						chandata.do { arg item, idx;
-							var point = Point(idx/dsize * size.x, (item * yzoom + yoffset + 1) *chanysize  /2);
-							Pen.lineTo(point);
+				var img;
+				if(data.size > 0) {
+					img = Image.new(size);
+					img.draw({
+						var yzoom = 1.0;
+						var chanspacefactor = 2.0;
+						var drawChannel = { arg chandata, yoffset;
+							var dsize = chandata.size;
+							var chanysize = size.y/buf.numChannels;
+							Log(\Param).debug("drawChannel: chandata %", chandata[0..10]);
+							chandata.do { arg item, idx;
+								var point = Point(idx/dsize * size.x, (item * yzoom + yoffset + 1) *chanysize  /2);
+								Pen.lineTo(point);
+							};
+							Pen.stroke;
 						};
-						Pen.stroke;
+						data.clump(buf.numChannels).flop.do { arg chandata, idx;
+							drawChannel.(chandata, idx * chanspacefactor)
+						};
+					});
+					//~img = img; // debug
+					if(self.bufferInfo.waveformImage.notNil) {
+						self.bufferInfo.waveformImage.free;
 					};
-					data.clump(buf.numChannels).flop.do { arg chandata, idx;
-						drawChannel.(chandata, idx * chanspacefactor)
-					};
-				});
-				//~img = img; // debug
-				if(self.bufferInfo.waveformImage.notNil) {
-					self.bufferInfo.waveformImage.free;
+					self.bufferInfo.waveformImage = img;
+					self.bufferInfo.bufferData = data; 
+					self.bufferInfo.numChannels = buf.numChannels;
+					self.areasize = Point(self.areasize.x, self.bufferInfo.numChannels ? 2);
+					self.changed(\areasize);
+					self.changed(\data)
+				} {
+					// FIXME: buffer seems to be loaded two times and the second time it is empty
+					// this is why i check size
+					Log(\Param).debug("Error: buffer is empty %", buf);
 				};
-				self.bufferInfo.waveformImage = img;
-				self.bufferInfo.bufferData = data; 
-				self.bufferInfo.numChannels = buf.numChannels;
-				self.areasize = Point(self.areasize.x, self.bufferInfo.numChannels ? 2);
-				self.changed(\areasize);
-				self.changed(\data)
 				//img.plot;
 			}.defer;
 		})
@@ -433,7 +460,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 					self.timeline_model.keepRecordedFile;
 				});
 			},
-			Param(Message(self.timeline_model.recorder), \isRecording, XBoolSpec()).asButton("Rec"),
+			RecordButton(self.timeline_model.recorder, "Rec"),
 			Param(Message(self.timeline_model.recorder), \recBus, TagSpecDef(\BusDef)).asPopUpMenu,
 			BasicButton.new.label_("Edit").action_({
 				WindowDef(\EventPatternProxyEditor_ +++ self.timeline_model.key, { arg me, target, label, group;
@@ -442,6 +469,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 							PlayerWrapper(target).label_(label).asView,
 							Param(Message(self.timeline_model), \playerSynthDef, TagSpecDef(\SampleTimeline_player)).asPopUpMenu,
 						),
+						Param(Message(self.timeline_model), \fadeOut, ControlSpec(0,1,\lin)).asView,
 						ParamGroupLayout.two_panes(group),
 					);
 				}).front(self.timeline_model.postProxy, self.timeline_model.label, self.timeline_model.postProxy.asParamGroup(nil, false, [\gate, \doneAction, \bufnum]));

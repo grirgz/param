@@ -13,6 +13,11 @@ ParamViewToolBox {
 	classvar <>color_userStopped;
 	classvar <>color_stopped;
 
+	classvar <>color_startedRecording;
+	classvar <>color_userStartedRecording;
+	classvar <>color_userStoppedRecording;
+	classvar <>color_stoppedRecording;
+
 	*initClass {
 		//color_ligth = Color.newHex("63AFD0");
 		//color_dark = Color.newHex("0772A1");
@@ -25,6 +30,11 @@ ParamViewToolBox {
 		color_userPlayed = color_pale;
 		color_userStopped = color_pale;
 		color_stopped = Color.white;
+
+		color_startedRecording = Color.red;
+		color_userStartedRecording = Color.red.alpha_(0.2);
+		color_userStoppedRecording = Color.red.alpha_(0.2);
+		color_stoppedRecording = Color.white;
 
 		//color_ligth = Color.newHex("5CCCCC");
 		//color_dark = Color.newHex("009999");

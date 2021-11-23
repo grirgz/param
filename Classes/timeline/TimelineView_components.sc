@@ -120,7 +120,7 @@ TimelineRulerView : TimelineView {
 	}
 
 	*vertical_grid_do { arg view, fun;
-		// dynamic grid generation
+		// dynamic time grid generation
 		var unitRect = view.gridRectToPixelRect(Rect(0,0,1,1));
 
 		var minsize = 20;
@@ -154,36 +154,29 @@ TimelineRulerView : TimelineView {
 	}
 
 	*horizontal_grid_do { arg view, fun;
-		// dynamic grid generation
-		var unitRect = view.gridRectToPixelRect(Rect(0,0,1,1));
-
-		var minsize = 20;
+		// dynamic pitch grid generation
+		var unitRect = view.normRectToPixelRect(Rect(0,0,1,1));
+		var minsize = 30;
 		var bounds = view.bounds;
 		var areasize = view.areasize;
-		var viewport = view.viewport;
-		var ylen = unitRect.height; // number of pixel for one cell height
-		var offset = unitRect.bottom;
+		var ylen = unitRect.height; // number of pixel of the virtual height, the more we zoom, the bigger
 		var factor = 1;
 		var lineCount; 
+		var startidx, endidx;
+		var vlineCount;
+		// we want a graduation each minsize pixels, we take the virtual height and count how many graduations
 		factor = 2**( ( ylen/minsize ).log2.asInteger );
-		// plus on zoom et plus unitRect donc ylen augmente sa valeur en pixel, ce qui rend factor plus grand
-		//factor = ( ylen/minsize ).asInteger; // combien de minsize pixels dans une unit ?
-		//xlen.debug("xlen");
-
-		//[ (areasize.x * viewport.origin.x).asInteger, (areasize.x * factor * viewport.width + 1).asInteger ].debug("start, end XXXXXX");
-		// on prend la hauteur visible en grid unit (area*viewport) qu'on multiplie par le factor
-		// par exemple s'il y a moyen de caser 5 graduations dans un gridunit, le factor est de 5
-		// donc si 3 gridunit sont visibles a l'ecran, alors il y aura 3*5=15 graduations
-		lineCount = (factor * areasize.y * viewport.height + 1).asInteger;
-		lineCount.do { arg idx;
-			var oidx, y;
-			//var orx;
-			oidx = (idx + (areasize.y * viewport.origin.y * factor).asInteger + 1);
-			y = oidx * ylen / factor + offset;
-			//orx = (idx) * xlen / factor + offset;
-			//x = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1) * xlen / factor + offset;
-			//[idx, x, xlen, bounds.height, bounds, offset, factor].debug("grid drawer: x");
-			fun.(factor, y, oidx, idx, lineCount);
+		lineCount = factor.asInteger;
+		//[factor, lineCount].debug("factor");
+		endidx = ( view.pixelPointToNormPoint(Point(0,0)).y*lineCount ).asInteger + 2;
+		startidx = ( view.pixelPointToNormPoint(Point(0,bounds.height)).y*lineCount ).asInteger;
+		vlineCount = endidx - startidx;
+		vlineCount.do { arg idx;
+			var y;
+			var vidx = idx + startidx;
+			y = view.normPointToPixelPoint(Point(0,vidx/lineCount)).y;
+			// we use vidx and lineCount together because the vertue of vidx is it behave like it was the real index, but skip the off-screen ones, so we want the real lineCount too
+			fun.(y, vidx, lineCount, idx, vlineCount);
 		}
 	}
 
@@ -1194,7 +1187,24 @@ TimelineDrawer {
 	}
 
 	*draw_param_values { arg me, param;
-		~draw_param_values.(me, param);
+		//~draw_param_values.(me, param);
+
+		var areasize = me.areasize;
+		//~drawme.(this, areasize);
+		if(param.notNil) {
+			var font = Font.default.copy.size_(9);
+			Pen.use {
+				Pen.width = 1;
+				Pen.color = Color.black;
+				TimelineRulerView.horizontal_grid_do(me, { arg y, idx, lineCount;
+					var normVal = me.pixelPointToNormPoint(Point(1,y)).y;
+					var val;
+					val = param.spec.map(normVal).asStringPrec(5); 
+					//[normVal, val].debug("val");
+					Pen.stringAtPoint(val, Point(10,y), font);
+				});
+			}
+		}
 	}
 
 	*draw_param_values_new { arg me, param;
