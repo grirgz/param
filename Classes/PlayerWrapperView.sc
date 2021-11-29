@@ -10,6 +10,7 @@ PlayerWrapperView {
 	var <>label;
 	var <model, >view;
 	var follower;
+	var <rightClickEditorEnabled = false;
 	*new { arg model;
 		^super.new.init(model);
 	}
@@ -69,8 +70,25 @@ PlayerWrapperView {
 		});
 		lay.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
 		lay.addUniqueMethod(\parentView, { this }); 
+		if(rightClickEditorEnabled == true) {
+			// init state
+			this.rightClickEditorEnabled = true;
+		};
 		lay.addUniqueMethod(\rightClickEditorEnabled_, { arg self, val=true;
-			//Log(\Param).debug("enableRightClickEditor_ %", val);
+			this.rightClickEditorEnabled = val;
+			self;
+		});
+		this.makeUpdater;
+		this.update;
+		//view = lay;
+		view = button;
+		^view;
+	}
+
+	rightClickEditorEnabled_ { arg val;
+		//Log(\Param).debug("rightClickEditorEnabled %", val);
+		rightClickEditorEnabled = val;
+		if(button.notNil) {
 			if(val == true) {
 				button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 					//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
@@ -81,15 +99,8 @@ PlayerWrapperView {
 			} {
 				button.mouseDownAction_({})
 			};
-			self;
-		});
-		this.makeUpdater;
-		this.update;
-		//view = lay;
-		view = button;
-		^view;
+		}
 	}
-
 
 	makeUpdater {
 		skipjack = SkipJack({
@@ -264,20 +275,6 @@ RecordButton {
 		});
 		lay.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
 		lay.addUniqueMethod(\parentView, { this }); 
-		lay.addUniqueMethod(\rightClickEditorEnabled_, { arg self, val=true;
-			//Log(\Param).debug("enableRightClickEditor_ %", val);
-			if(val == true) {
-				button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-					//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-					if(buttonNumber == 1) {
-						this.model.edit;
-					} 
-				})
-			} {
-				button.mouseDownAction_({})
-			};
-			self;
-		});
 		this.makeUpdater;
 		this.update;
 		//view = lay;

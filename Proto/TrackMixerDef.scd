@@ -155,10 +155,73 @@ ProtoClassDef(\TrackMixerDef, (
 		self.proxy.isPlaying;
 	},
 
+	edit: { arg self;
+		WindowDef("TrackMixerDef_%".format(self.key).asSymbol, WindowDef(\TrackMixerDef)).front(self)
+	},
+
+	enableInsertFx: { arg self, idx, val = true;
+		if(val == true) {
+			self.proxy[idx] = self.insertFxList[idx];
+		} {
+			self.proxy[idx].source = nil
+		}
+	},
+
+	isInsertFxEnabled: { arg self, idx;
+		self[\isInsertFxEnabled] = val;
+		if(val == true) {
+			
+		}
+		
+	},
+
 ));
 ~trackMixerDef = ProtoClassDef(\TrackMixerDef);
 
+WindowDef(\TrackMixerDef, { arg me, mixer;
+	var param;
+	var sends = [];
+	var layout;
+	var slider, knobs = List.new, textfield;
+	layout = VLayout(
+		HLayout(
+			VLayout (
+				slider = Slider.new.orientation_(\vertical),
+				textfield = TextField.new,
+			),
+			VLayout(*
+				knobs = 4.collect({ 
+					Knob.new;
+				})
+			)
+		)
+	);
+	layout.addUniqueMethod(\model_, { arg me, mixer;
+		if(mixer.isKindOf(Volume)) {
+			//"volume".debug;
+			param = Param(mixer, \volume);
+			sends = 4.collect({ arg x; nil });
+		} {
+			//"track".debug;
+			param = mixer.asParam(\postfader);
+			sends = 4.collect({ arg x; mixer.asParam(\send+++x) });
+		};
+		//[slider, param].debug("slider, param: what ?");
+		slider.mapParam(param);
+		textfield.mapParam(param);
+		knobs.do({ arg x, idx; x.mapParam(sends[idx]) })
+	});
+	if(mixer.notNil) {
+		layout.model = mixer;
+	};
+	layout.addUniqueMethod(\slider, { slider });
+	layout.addUniqueMethod(\textfield, { textfield });
+	layout.addUniqueMethod(\knobs, { knobs });
+	layout;
+});
+
 (
+	// FIXME: why in double ? seems not used
 ProtoTemplateDef(\NdefTrackMixer, (
 
 	clear: { arg self;
@@ -289,5 +352,6 @@ ProtoTemplateDef(\NdefTrackMixer, (
 		self.proxy.isPlaying;
 	},
 	
-))
+));
+
 );

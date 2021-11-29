@@ -476,9 +476,9 @@ ParamGroupLayout {
 				}
 			},
 			{ item.isKindOf(PlayerWrapper) }, {
-				item.asView.enableRightClickEditor_(true)
+				item.asView.rightClickEditorEnabled_(true)
 			}, {
-				PlayerWrapper(item).asView.enableRightClickEditor_(true)
+				PlayerWrapper(item).asView.rightClickEditorEnabled_(true)
 
 			}
 		)

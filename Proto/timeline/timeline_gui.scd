@@ -556,7 +556,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 				};
 				if(keycode == 65474) { // F5
 					"play!".debug;
-					self.timeline_model.play;
+					PlayerWrapper(self.timeline_model).togglePlay;
 				}
 			}
 		});
@@ -1370,23 +1370,37 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 	},
 
 	make_header: { arg self;
+		self.paramKnob = Knob.new;
+		self.paramBusModeButton = BoolButton.new.string_("Bus mode");
+		self.targetPlayerView = PlayerWrapperView.new;
 		HLayout(
 			PlayerWrapperView(self.timeline_model).view,
-			if(self.param.target.isKindOf(Bus) or: { self.param.target.isKindOf(Message) }) {
-				nil;
-			} {
-				PlayerWrapperView(PlayerWrapper(self.param.target)).view;
-			},
-			self.param.asKnob,
-			Param(Message(self.param), \inBusMode, XBoolSpec()).asButton("Bus mode"),
+			//if(self.param.target.isKindOf(Bus) or: { self.param.target.isKindOf(Message) }) {
+				//nil;
+			//} {
+				//PlayerWrapperView(PlayerWrapper(self.param.target)).view;
+			//},
+			self.targetPlayerView,
+			self.paramKnob,
+			//Param(Message(self.param), \inBusMode, XBoolSpec()).asButton("Bus mode old"),
+			self.paramBusModeButton,
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
-				["Rec", Color.black, Color.white],
-				["Rec", Color.black, Color.red],
-			]),
+			RecordButton(self.timeline_model, "Rec"),
+			BasicButton.new.string_("Select param").action_({
+				WindowDef(\ParamSelectDialog).front(nil, { arg param;
+					self.timeline_model.param = param;
+				})
+			}),
+			BasicButton.new.string_("Edit param").action_({
+				WindowDef(\ParamEditor).front(self.param)
+			}),
+			//Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
+				//["Rec", Color.black, Color.white],
+				//["Rec", Color.black, Color.red],
+			//]),
 		)
 	},
 
@@ -1403,7 +1417,21 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		self.timeline.eventFactory = { arg pos, nodesize;
 			(absTime: pos.x, level: pos.y, legato:1);
 		};
-		self.timeline.mapParam(self.levelParam);
+		//self.timeline.mapParam(self.levelParam);
+		self.timeline.view.onChange(self.timeline_model, \param, { 
+			self.timeline.mapParam(self.levelParam);
+			self.ruler_y.refresh;
+			self.paramKnob.mapParam(self.param);
+			self.paramBusModeButton.mapParam(Param(Message(self.param), \inBusMode, XBoolSpec()));
+			if(self.param.target.isKindOf(Bus) or: { self.param.target.isKindOf(Message) }) {
+				self.targetPlayerView.model = nil;
+				self.targetPlayerView.view.visible = false;
+			} {
+				self.targetPlayerView.view.visible = true;
+				self.targetPlayerView.model = PlayerWrapper(self.param.target);
+				self.targetPlayerView.rightClickEditorEnabled = true;
+			};
+		});
 		self.set_yquant(self.param.spec.step);
 		self.timeline.mouseUpAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
 			self.timeline.refreshEventList;

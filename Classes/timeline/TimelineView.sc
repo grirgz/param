@@ -17,6 +17,8 @@ TimelineView : SCViewHolder {
 	var <>deleteNodeHook;
 	var <>paraNodes, connections; 
 	var <chosennode; 
+	var <>isClickOnSelection; 
+	var <>selectionRefloc; 
 	var <>quant;
 	var <>enableQuant = true;
 	var win;
@@ -31,6 +33,7 @@ TimelineView : SCViewHolder {
 	var nodeCount, shape;
 	var startSelPoint, endSelPoint, refPoint, refWidth;
 	var rawStartSelPoint, rawEndSelPoint;
+	var nilSelectionPoint;
 
 	var refPoint; // grid_clicked_point
 	var chosennode_old_origin; // in grid units
@@ -130,8 +133,10 @@ TimelineView : SCViewHolder {
 		paraNodes = List.new; // list of ParaNode objects
 		connections = List.new; // list of arrays with connections eg. [2,3]
 		nodeCount = 0;
-		this.startSelPoint = 0@0;
-		this.endSelPoint = 0@0;
+		//nilSelectionPoint = Point(-1,-1);
+		nilSelectionPoint = nil;
+		this.startSelPoint = nilSelectionPoint;
+		this.endSelPoint = nilSelectionPoint;
 		refPoint = 0@0; // in grid units
 		refWidth = 0;
 		shape = "rect";
@@ -319,6 +324,11 @@ TimelineView : SCViewHolder {
 		Log(\Param).debug("mouseDownAction_ px %,py %, npos %, gpos %", px, py, npos, gpos);
 
 		chosennode = this.findNodeHandle(gpos.x, gpos.y);
+		isClickOnSelection = this.startSelPoint != nilSelectionPoint and: {
+			this.endSelPoint != nilSelectionPoint and: {
+				Rect.fromPoints(this.startSelPoint, this.endSelPoint).contains(npos)
+			}
+		};
 		//[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
 		//[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
 		mouseDownAction.(me, px, py, mod, buttonNumber, clickCount, chosennode);
@@ -407,20 +417,28 @@ TimelineView : SCViewHolder {
 				this.selectNode(chosennode);
 
 				downAction.value(chosennode);
-			}, { // no node is selected
-				Log(\Param).debug("---------mouseDownAction: deselect all and draw selrecti");
-				this.deselectAllNodes;
-				if(quantizedSelection) {
-					rawStartSelPoint = npos;
-					this.startSelPoint = npos.trunc(nquant);
-					rawEndSelPoint = npos;
-					this.endSelPoint = npos.trunc(nquant);
+			}, { 
+				Log(\Param).debug("mouseDownAction: start % end % sel", this.startSelPoint, this.endSelPoint);
+				if(isClickOnSelection == true) {
+					// clicked on the selection area, ready to move the selection
+					selectionRefloc = this.startSelPoint;
+					refPoint = gpos; // to know where mouse clicked before moving
 				} {
-					this.startSelPoint = npos;
-					this.endSelPoint = npos;
+					// no node is selected
+					Log(\Param).debug("---------mouseDownAction: deselect all and draw selrecti");
+					this.deselectAllNodes;
+					if(quantizedSelection) {
+						rawStartSelPoint = npos;
+						this.startSelPoint = npos.trunc(nquant);
+						rawEndSelPoint = npos;
+						this.endSelPoint = npos.trunc(nquant);
+					} {
+						this.startSelPoint = npos;
+						this.endSelPoint = npos;
+					};
+					Log(\Param).debug("sel:% %", this.startSelPoint, this.endSelPoint);
+					this.refreshSelectionView;
 				};
-				Log(\Param).debug("sel:% %", this.startSelPoint, this.endSelPoint);
-				this.refreshSelectionView;
 			});
 		};
 	}
@@ -444,18 +462,28 @@ TimelineView : SCViewHolder {
 			// find which nodes are selected
 			var rect;
 			var wasSelected = false;
+			var ppos = Point(x,y);
+			var gpos = this.pixelPointToGridPoint(ppos);
 			//Log(\Param).debug("mouseUpAction st %, en %", this.startSelPoint, this.endSelPoint);
 			if(this.startSelPoint.notNil and: {this.endSelPoint.notNil}) {
 
-				rect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
-				wasSelected = selNodes.size > 0;
-				selNodes = IdentitySet.new;
-				this.selectNodes(this.findNodes(rect));
-				if(stayingSelection.not) {
-					this.startSelPoint = 0@0;
-					this.endSelPoint = 0@0;
+				if(isClickOnSelection == true and: { refPoint == gpos }) {
+					// click on selection but no move: cancel selection
+					//Log(\Param).debug("isClickOnSelection %, refPoint %, gpos: %");
+					this.startSelPoint = nilSelectionPoint;
+					this.endSelPoint = nilSelectionPoint;
 					this.refreshSelectionView;
-				};
+				} {
+					rect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint)).insetAll(0,0,0.1,0.1);
+					wasSelected = selNodes.size > 0;
+					selNodes = IdentitySet.new;
+					this.selectNodes(this.findNodes(rect));
+					if(stayingSelection.not) {
+						this.startSelPoint = nilSelectionPoint;
+						this.endSelPoint = nilSelectionPoint;
+						this.refreshSelectionView;
+					};
+				}
 			} {
 				// FIXME: refresh is buggy, need to think again algo
 				wasSelected = selNodes.size > 0;
@@ -589,45 +617,68 @@ TimelineView : SCViewHolder {
 					//model.print;  // debug
 					this.refresh;
 				} { // no node is selected
-					if( this.startSelPoint != Point(0,0) ) {
-						if(quantizedSelection) {
-							var realLeftTop = { arg rect;
-								var x = rect.origin.x;
-								var y = rect.origin.y;
-								if(rect.height < 0) {
-									y = rect.origin.y + rect.height;
-								};
-								if(rect.width < 0) {
-									x = rect.origin.x + rect.width;
-								};
-								Point(x,y)
-							};
-							var realRightBottom = { arg rect;
-								var x = rect.rightBottom.x;
-								var y = rect.rightBottom.y;
-								if(rect.height < 0) {
-									y = rect.rightBottom.y - rect.height;
-								};
-								if(rect.width < 0) {
-									x = rect.rightBottom.x - rect.width;
-								};
-								Point(x,y)
-							};
-							var selrec = Rect.fromPoints(rawStartSelPoint, npos);
-							var leftTop = realLeftTop.(selrec);
-							var rightBottom = realRightBottom.(selrec);
-							var qleftTop = leftTop.trunc(nquant);
-							var qrightBottom = rightBottom.trunc(nquant) + nquant;
-							//Log(\Param).debug("rstart % rend % selrec % leftTop % % rightBottom % % ", rawStartSelPoint, npos, selrec, leftTop, qleftTop, rightBottom, qrightBottom);
-							this.startSelPoint = qleftTop;
-							this.endSelPoint = qrightBottom;
-							rawEndSelPoint = npos;
-						} {
-							this.endSelPoint = npos;
+					if(isClickOnSelection == true ) {
+						var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
+						var norm_diff;
+						// move whole selection, quantize on selection left edges
+						grid_diff = (gpos - refPoint).trunc(this.quant.value);
+						norm_diff = this.gridPointToNormPoint(grid_diff);
+
+						selNodes.do { arg node;
+							node.setLoc(node.refloc + grid_diff)
 						};
-						this.refreshSelectionView;
-					}
-				};
+
+
+						this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
+						this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
+						//Log(\Param).debug("sel %, prevsel %, normdif % gdiff %", this.startSelPoint, this.previousNormSelRect, norm_diff, grid_diff);
+						this.changed(\nodeMoved);
+						this.refresh;
+
+					} {
+
+						if( this.startSelPoint != nilSelectionPoint ) {
+							if(quantizedSelection) {
+								var realLeftTop = { arg rect;
+									// the first point of the selection can be after the second point
+									// in this case we reverse it
+									var x = rect.origin.x;
+									var y = rect.origin.y;
+									if(rect.height < 0) {
+										y = rect.origin.y + rect.height;
+									};
+									if(rect.width < 0) {
+										x = rect.origin.x + rect.width;
+									};
+									Point(x,y)
+								};
+								var realRightBottom = { arg rect;
+									var x = rect.rightBottom.x;
+									var y = rect.rightBottom.y;
+									if(rect.height < 0) {
+										y = rect.rightBottom.y - rect.height;
+									};
+									if(rect.width < 0) {
+										x = rect.rightBottom.x - rect.width;
+									};
+									Point(x,y)
+								};
+								var selrec = Rect.fromPoints(rawStartSelPoint, npos);
+								var leftTop = realLeftTop.(selrec);
+								var rightBottom = realRightBottom.(selrec);
+								var qleftTop = leftTop.trunc(nquant);
+								var qrightBottom = rightBottom.trunc(nquant) + nquant;
+								//Log(\Param).debug("rstart % rend % selrec % leftTop % % rightBottom % % ", rawStartSelPoint, npos, selrec, leftTop, qleftTop, rightBottom, qrightBottom);
+								this.startSelPoint = qleftTop;
+								this.endSelPoint = qrightBottom;
+								rawEndSelPoint = npos;
+							} {
+								this.endSelPoint = npos;
+							};
+							this.refreshSelectionView;
+						}
+					};
+				}
 			}
 		};
 	}

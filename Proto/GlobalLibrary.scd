@@ -1045,7 +1045,7 @@ TagSpecDef('GlobalLibrary.type.TrackListChannelPart', [
 	\TrackListChannelPart,
 ]);
 
-WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
+WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, defaultValue;
 
 
 	var resultView;
@@ -1054,6 +1054,17 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
 	var categoryView;
 	var lay;
 	var itemIds = List.new;
+	var updateItems;
+	var treeViewItemToLibId;
+
+
+	treeViewItemToLibId = { arg item;
+		//itemIds[item.index];
+		itemIds.detect({ arg id; id.strings == item.strings })
+	};
+
+	lib = lib ?? { ProtoDef(\GlobalLibrary) };
+
 	searchBox = TextField.new.action_({
 		//"action!".debug;
 			def.changed(\search);
@@ -1062,6 +1073,63 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
 		//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
 		def.changed(\results);
 	});
+
+	updateItems = {
+		var view = resultView;
+		var model = def;
+
+		var superitem;
+		var selectedTypes = typeView.selection.collect({ arg idx; typeView.items[idx] });
+		var selectedCategories = categoryView.selection.collect({ arg idx; categoryView.items[idx] });
+		var filteredTypes;
+		if(selectedTypes.size == 0) {
+			selectedTypes = MenuSpecDef(\GlobalLibraryType).keyList;
+		};
+		if(selectedCategories.size == 0) {
+			selectedCategories = categoryView.items;
+		};
+		filteredTypes = selectedTypes;
+		if(selectedCategories.size > 0) {
+			Log(\Param).debug("selected categories: %", selectedCategories);
+			filteredTypes = selectedTypes.asSet.sect(
+				selectedCategories.collect({ arg superkey;
+					MenuSpecDef("GlobalLibrary.type.%".format(superkey).asSymbol).keyList;
+				}).flat.asSet
+			).asList;
+		};
+		view.clear;
+		//filteredTypes = [\Sample];
+
+		//[model, view, msg, selectedTypes, selectedCategories, filteredTypes].debug("category change");
+		itemIds = filteredTypes.collect({ arg typeitem;
+			//Log(\Param).debug("typeitem %", typeitem);
+			TagSpecDef(typeitem.value).list.collect ({ arg item;
+				//Log(\Param).debug("item %", item);
+				[typeitem, item];
+			})
+		}).flatten;
+		//Log(\Param).debug("itemIds %", itemIds);
+
+		itemIds = itemIds.collect({ arg id;
+			(
+				strings: lib.libIdToStrings(id),
+				libId: id,
+			);
+		}).select({ arg obj;
+			//Log(\Param).debug("search strings to add %", obj.strings);
+			if(searchBox.string.trim != "") {
+				obj.strings.join(" ").toLower.contains(searchBox.string.toLower)
+			} {
+				true
+			}
+		});
+		
+		itemIds.do { arg obj;
+			//Log(\Param).debug("strings to add %", obj.strings);
+			view.addItem(obj.strings)
+		}
+
+	};
 
 	typeView = ListView.new
 		.items_(
@@ -1117,71 +1185,47 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
 
 	resultView = TreeView.new
 		.columns_(["Name", "Type", "Category", "Tags"])
-		.followChange(def, \results, { arg view, model, msg, arg1;
-			var superitem;
-			var selectedTypes = typeView.selection.collect({ arg idx; typeView.items[idx] });
-			var selectedCategories = categoryView.selection.collect({ arg idx; categoryView.items[idx] });
-			var filteredTypes;
-			if(selectedTypes.size == 0) {
-				selectedTypes = MenuSpecDef(\GlobalLibraryType).keyList;
-			};
-			if(selectedCategories.size == 0) {
-				selectedCategories = categoryView.items;
-			};
-			filteredTypes = selectedTypes;
-			if(selectedCategories.size > 0) {
-				Log(\Param).debug("selected categories: %", selectedCategories);
-				filteredTypes = selectedTypes.asSet.sect(
-					selectedCategories.collect({ arg superkey;
-						MenuSpecDef("GlobalLibrary.type.%".format(superkey).asSymbol).keyList;
-					}).flat.asSet
-				).asList;
-			};
-			view.clear;
-			//filteredTypes = [\Sample];
-
-			//[model, view, msg, selectedTypes, selectedCategories, filteredTypes].debug("category change");
-			itemIds = filteredTypes.collect({ arg typeitem;
-				//Log(\Param).debug("typeitem %", typeitem);
-				TagSpecDef(typeitem.value).list.collect ({ arg item;
-					//Log(\Param).debug("item %", item);
-					[typeitem, item];
-				})
-			}).flatten;
-			//Log(\Param).debug("itemIds %", itemIds);
-
-			itemIds = itemIds.collect({ arg id;
-				(
-					strings: lib.libIdToStrings(id),
-					libId: id,
-				);
-			}).select({ arg obj;
-				//Log(\Param).debug("search strings to add %", obj.strings);
-				if(searchBox.string.trim != "") {
-					obj.strings.join(" ").toLower.contains(searchBox.string.toLower)
-				} {
-					true
-				}
-			});
-			
-			itemIds.do { arg obj;
-				//Log(\Param).debug("strings to add %", obj.strings);
-				view.addItem(obj.strings)
-			}
-		})
 		.itemPressedAction_({ arg view;
+			var itemId = treeViewItemToLibId.(view.currentItem);
 			Log(\Param).debug("itemPressedAction_ itemIds:%, idx:%", itemIds.size, view.currentItem.index);
-			Log(\Param).debug("itemPressedAction_ itemId:%, str:%", itemIds[view.currentItem.index], view.currentItem.strings);
-			selectedCallback.(itemIds[view.currentItem.index].libId, view.currentItem.strings)
+			//Log(\Param).debug("itemPressedAction_ itemId:%, str:%", itemIds[view.currentItem.index], view.currentItem.strings);
+			Log(\Param).debug("itemPressedAction_ real itemId:%, str:%", treeViewItemToLibId.(view.currentItem), view.currentItem.strings);
+			selectedCallback.(itemId.libId, view.currentItem.strings)
 		})
 		.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			if(clickCount == 2) {
-				selectedCallback.(itemIds[view.currentItem.index].libId, view.currentItem.strings, \double)
+				var itemId = treeViewItemToLibId.(view.currentItem);
+				selectedCallback.(itemId.libId, view.currentItem.strings, \double)
 			};
 		})
-		//.canSort_(true) // TODO: imply to rebuild index
+		.canSort_(true) // imply to find item by its strings, ugly but works (treeViewItemToLibId)
 	;
+
+	resultView.followChange(def, \results, { arg view, model, msg, arg1;
+		updateItems.();
+	});
+	resultView.currentItem_(
+		if(defaultValue.notNil) {
+			var libIds;
+			var idx;
+			updateItems.();
+			libIds = itemIds.collect(_.libId);
+			[defaultValue, libIds.indexOf(defaultValue), libIds.indexOfEqual(defaultValue), libIds].debug("default value");
+			idx = libIds.indexOfEqual(defaultValue);
+			if(idx.notNil) {
+				resultView.itemAt(idx).debug("item");
+			} {
+				nil
+			};
+		} {
+			nil
+		}
+	);
+	if(resultView.currentItem.notNil) {
+		selectedCallback.(itemIds[resultView.currentItem.index].libId, resultView.currentItem.strings);
+	};
+
 	lay = VLayout (
 		searchBox,
 		[resultView, stretch:3],
@@ -1197,3 +1241,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist;
 });
 
 )
+
+// END
+
+ProtoDef(\GlobalLibrary).edit

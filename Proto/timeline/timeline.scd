@@ -193,7 +193,7 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	stop: { arg self;
-		self.proxy.stop;
+		PlayerWrapper(self.proxy).stop;
 		PlayerWrapper(self.proxy).doWithQuant({
 			self.eventloop.list.changed(\cursor, \stop);
 		})
@@ -1046,7 +1046,7 @@ ProtoClassDef(\ParamTimeline, (
 		if(self.recorder.notNil) {
 			self.recorder.stopRecording;
 		};
-		self.recorder = { ~paramRecorder.new(self.param) };
+		self.recorder = ProtoTemplateDef(\ParamRecorder).new(self.param) !? { arg x; { x } };
 		self.recorder.eventLoop = self.eventLoop;
 
 		if(self.customBus.isNil) {
@@ -1060,6 +1060,7 @@ ProtoClassDef(\ParamTimeline, (
 		} {
 			self[\outBus] = self.customBus;
 		};
+		self.changed(\param);
 	},
 
 	init: { arg self, param, bus;

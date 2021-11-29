@@ -240,7 +240,7 @@ flag for Param.
 ::
 
 code::
-Param(Message(Pdef), \quant).edit; 
+Param(Message(Pdef(\mypdef)), \quant).edit; 
 ::
 
 subsection:: Control global quant

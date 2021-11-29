@@ -321,7 +321,8 @@ Param {
 	}
 
 	inBusMode_ { arg ...args;
-		wrapper.inBusMode_(*args)
+		wrapper.inBusMode_(*args);
+		this.changed(\inBusMode);
 	}
 
 	numChannels {
@@ -1692,6 +1693,10 @@ BaseParam {
 		^false
 	}
 
+	inBusMode_ {
+		// do nothing, to be subclassed
+	}
+
 	*getInstrumentFromPbind { arg inval;
 		^if(inval.notNil) {
 			case(
@@ -2547,6 +2552,7 @@ PdefParam : BaseAccessorParam {
 
 	setBusMode { arg enable=true, free=true;
 		target.setBusMode(property, enable, free);
+		this.changed(\inBusMode); // FIXME: not sure if useful because on wrapper
 	}
 
 	inBusMode {
@@ -2681,6 +2687,7 @@ NdefParam : BaseAccessorParam {
 
 	setBusMode { arg enable=true, free=true;
 		target.setBusMode(property, enable, free);
+		this.changed(\inBusMode);
 	}
 
 	inBusMode {
@@ -2838,6 +2845,7 @@ NodeParam : BaseAccessorParam {
 		//^target.inBusMode(property)
 		^false
 	}
+
 
 	cachedValue {
 		^this.target.getHalo(\cachedValue, property);
