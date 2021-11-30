@@ -5,7 +5,15 @@ related:: Tutorials/Param tutorial, Classes/ParamGroup, Classes/ParamGroupDef, C
 
 DESCRIPTION::
 Param is an abstraction to a sound object parameter (Ndef, Pdef, ...) which can easily be mapped to a GUI object and MIDI control. 
-The documentation is not finished yet, please read the link::Tutorials/Param tutorial:: to understand how it works. You can also see examples in the Examples subfolder of the Param quark
+
+The documentation is not finished yet, there are a few work in progress tutorials and guides:
+LIST::
+## link::Tutorials/Easy tutorial:: (almost empty for the moment)
+## link::Tutorials/Building blocks overview::. Nice overview of the most used classes
+## link::Tutorials/Param tutorial::. Long tutorial on features of Param class
+## link::Tutorials/Param cookbook::. Lot of code snippets for various tasks
+## You can also see examples in the Examples subfolder of the Param quark
+::
 
 CLASSMETHODS::
 
