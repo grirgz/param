@@ -753,10 +753,11 @@
 		this.storeOn(stream); // storeOn call storeArgs
 	}
 
-	storeArgs { arg stream;
-		^[levels, times, curves, releaseNode, loopNode, offset]
-		//stream << ("Param.new(" ++ init_args.asCompileString ++ ")");
-	}
+	// Moved to SystemOverwrites/ folder
+	//storeArgs { arg stream;
+		//^[levels, times, curves, releaseNode, loopNode, offset]
+		////stream << ("Param.new(" ++ init_args.asCompileString ++ ")");
+	//}
 
 
 
