@@ -1,0 +1,56 @@
+TITLE:: SampleTimeline
+summary:: (put short description here)
+categories:: Undocumented classes
+related:: Classes/SomeRelatedClass, Reference/SomeRelatedStuff, etc.
+
+DESCRIPTION::
+The main benefit of SampleTimeline over regular buffers is you can set the start and end time of the sample. And you can do it visually, hearing part of the buffer to know where you are (click anywhere on the waveform and press Space to listen to it from this point).
+
+Another benefit is you can easily record some audio from SC main audio or any other bus.
+
+
+CLASSMETHODS::
+
+METHOD:: proto
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: new
+(describe method here)
+
+ARGUMENT::  ... args
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: all
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+INSTANCEMETHODS::
+
+
+EXAMPLES::
+
+code::
+SampleTimeline(\mysample, BufDef(Platform.resourceDir +/+ "sounds/a11wlk01.wav")); // create a SampleTimeline with a loaded buffer
+SampleTimeline(\mysample).edit; // edit a SampleTimeline named \mysample
+
+// you can load a buffer from the GUI, or from the code with:
+SampleTimeline(\mysample).buffer = BufDef('/path/to/my/sample2.wac');
+
+
+(
+Pdef(\test, 
+	Pseq([
+		SampleTimeline(\mysample).asPattern(nil,nil,1), // play from start to end cursors and repeat 1 time
+		SampleTimeline(\mysample).asPattern(0,1,2), // play from beat 0 to beat 1 and repeat 2 times
+		SampleTimeline(\mysample).asPatternAbs(0,1,2), // same but 0 is start of buffer instead of start cursor
+	],1),
+).play;
+);
+::
+

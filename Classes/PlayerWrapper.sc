@@ -46,6 +46,8 @@ PlayerWrapper  {
 			}
 			{
 				// assume target respond to wrapper interface
+				// FIXME: errors are hard to find, deprecate this feature
+				Log(\Param).debug("ERROR: PlayerWrapper target class not recognized: %", target.class);
 				target
 			}
 		;
@@ -142,7 +144,7 @@ PlayerWrapper  {
 	}
 
 	== { arg playerwrapper;
-		^this.target == playerwrapper.target
+		^playerwrapper.notNil and: {this.target == playerwrapper.target}
 	}
 
 	///////////// gui

@@ -1,4 +1,5 @@
 
+(
 ProtoClassDef(\TrackMixerDef, (
 	all: {PresetDictionary(\trackMixerDef)},
 	new: { arg self, key, numchannels=2, outbus=0;
@@ -148,35 +149,164 @@ ProtoClassDef(\TrackMixerDef, (
 	},
 
 	stop: { arg self;
-		self.proxy.stop;
+		PlayerWrapper(self.proxy).stop;
 	},
 
 	isPlaying: { arg self;
-		self.proxy.isPlaying;
+		PlayerWrapper(self.proxy).isPlaying;
 	},
 
 	edit: { arg self;
 		WindowDef("TrackMixerDef_%".format(self.key).asSymbol, WindowDef(\TrackMixerDef)).front(self)
 	},
 
-	enableInsertFx: { arg self, idx, val = true;
-		if(val == true) {
-			self.proxy[idx] = self.insertFxList[idx];
-		} {
-			self.proxy[idx].source = nil
-		}
+	insertFxList: { arg self;
+		if(self[\obj_insertFxList].isNil) {
+			self[\obj_insertFxList] = SparseArray.new;
+			//self[\obj_insertFxList] = TagSpecDef(\SynthDef_InsertFx).list.collect { arg item, idx;
+				//\filter -> { arg in; SynthDef.wrap(SynthDesc(item.key).def.func, nil, [in]) };
+			//};
+		};
+		self[\obj_insertFxList];
 	},
 
-	isInsertFxEnabled: { arg self, idx;
-		self[\isInsertFxEnabled] = val;
-		if(val == true) {
-			
-		}
+	insertFxAt: { arg self, idx, offset;
+		if(offset.isNil) {
+			offset = self.stages.postfx;
+		};
+		idx = idx + offset;
+		if(self.insertFxList[idx].isNil) {
+			self.insertFxList[idx] = ProtoTemplateDef(\TrackMixer_InserFx).new(self.proxy, idx)
+		};
+		self.insertFxList[idx]
 		
 	},
 
+	//enableInsertFx: { arg self, idx, val = true, offset;
+		//if(offset.isNil) {
+			//offset = self.stages.postfx;
+		//};
+		//idx = idx + offset;
+		//if(val == true) {
+			//if(self.insertFxList[idx].notNil) {
+				//self.proxy[idx] = self.insertFxList[idx];
+			//} {
+				//Log(\Param).debug("Can't enable, No fx defined for index %", idx);
+			//}
+		//} {
+			//self.proxy[idx] = nil
+		//}
+	//},
+
+	//isInsertFxEnabled: { arg self, idx, offset;
+		//if(offset.isNil) {
+			//offset = self.stages.postfx;
+		//};
+		//idx = idx + offset;
+		//self.proxy[idx].isNil;
+	//},
+
 ));
 ~trackMixerDef = ProtoClassDef(\TrackMixerDef);
+
+ProtoTemplateDef(\TrackMixer_InserFx, (
+	// ndef style fx
+
+	new: { arg self, proxy, index, synthName;
+		self = self.deepCopy;
+	
+		self.index = index;
+		self.proxy = proxy;
+		self.synthName = synthName;
+	
+		self;
+	},
+	
+	offset: 0,
+	absIndex: { arg self;
+		self.offset + self.index;
+	},
+
+	synthName: \default,
+	synthName_: { arg self, val;
+		self[\synthName] = val;
+		self.updateFx;
+	},
+
+	updateFx: { arg self;
+		if(self.proxy[self.index].notNil) {
+			self.proxy[self.index] = self.fxValue
+		}
+	},
+
+	wrapFunctionWithIndexedArguments: { arg self;
+		var newArgs = List.new;
+		var index = self.index;
+		var synthName = self.synthName;
+		Log(\Param).debug("synthName %", synthName);
+		newArgs = SynthDesc(synthName).controlNames.collect({ arg item;
+			if(item != \in and: {item.asString.endsWith(index).not}) {
+				( item ++ index ).asSymbol
+			} {
+				item;
+			};
+		});
+		"{ arg %; SynthDef.wrap(SynthDesc(%).def.func, nil, [%]); }".format(newArgs.join(", "), synthName.asCompileString, newArgs.join(", ")).interpret;
+	},
+
+	controlNames: { arg self;
+		var index = self.index;
+		SynthDesc(self.synthName).controlNames.collect({ arg item;
+			if(item != \in and: {item.asString.endsWith(index).not}) {
+				( item ++ index ).asSymbol
+			} {
+				item;
+			};
+		});
+	},
+
+	fxValue: { arg self;
+		if(self.synthName.notNil) {
+			//\filter -> { arg in; SynthDef.wrap(SynthDesc(self.synthName).def.func, nil, [in]) };
+			//\filter -> SynthDesc(self.synthName).def.func
+			\filter -> self.wrapFunctionWithIndexedArguments;
+		}
+	},
+
+	asParamGroup: { arg self;
+		var stdNames = SynthDesc(self.synthName).controlNames;
+		//ParamGroup(self.controlNames.collect({ arg x, idx; 
+			//Param(self.proxy, x, Param(self.proxy, stdNames[idx].asSymbol).spec);
+		//}))
+		ParamGroup(self.proxy.objects[self.index].controlNames.collect({ arg x, idx; 
+			Param(self.proxy, x);
+		}))
+
+	},
+
+	index: 100,
+
+	play: { arg self;
+		self.proxy[self.index] = self.fxValue
+	},
+
+	stop: { arg self;
+		self.proxy[self.index] = nil
+	},
+	
+	isPlaying: { arg self;
+		self.proxy[self.index].notNil;
+	},
+
+	isPlaying_: { arg self, val;
+		if(val == true) {
+			self.play;
+		} {
+			self.stop;
+		}
+	},
+
+));
 
 WindowDef(\TrackMixerDef, { arg me, mixer;
 	var param;
@@ -219,6 +349,7 @@ WindowDef(\TrackMixerDef, { arg me, mixer;
 	layout.addUniqueMethod(\knobs, { knobs });
 	layout;
 });
+);
 
 (
 	// FIXME: why in double ? seems not used

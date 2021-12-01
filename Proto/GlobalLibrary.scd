@@ -29,6 +29,8 @@ ProtoDef(\GlobalLibrary, (
 				if(self.clipFactories_keys.includes(target.eventType)) {
 					fac = self.clipFactories[target.eventType];
 					libId = [fac.libIdKey, target.key -> target]
+					// TODO: find a way to address anonymous track children
+					//libId = fac.targetToLibId(target)
 				};
 			};
 		};
@@ -1003,8 +1005,8 @@ TagSpecDef('GlobalLibrary.type.TrackInstrumentTarget', [
 ]);
 
 TagSpecDef('GlobalLibrary.type.Clip', [
-	\SynthDef,
-	\BufDef,
+	//\SynthDef, // FIXME: not implemented yet
+	//\BufDef, // FIXME: not implemented yet
 	\Sample,
 	\Pdef,
 	\Ndef,

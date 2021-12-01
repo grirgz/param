@@ -207,6 +207,22 @@ NoteTimeline(\mynotes).edit;
 NoteTimeline(\mynotes).play;
 NoteTimeline(\mynotes).stop;
 
+// sequence in a pattern
+// note theses timelines does not exist so create them first to test this example
+// you have to set repeat time to 1 else the Pseq will never advance to part2
+NoteTimeline(\part1).repeatCount = 1;
+(
+Pdef(\mypat, 
+	Ppar([
+		Pseq([
+			NoteTimeline(\part1).asPattern,
+			NoteTimeline(\part2).asPattern(nil,nil,1), // force repeatCount to 1
+		], inf),
+		NoteTimeline(\bass1).asPattern,
+	])
+).play;
+)
+
 // embed in a pattern
 (
 Pdef(\mypat, Ppar([

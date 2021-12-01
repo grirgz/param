@@ -1035,7 +1035,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			//mute_button, // useless with "M" button
 			self.make_quant_popup,
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			Param(Message(self.timeline_model.recorder), \isRecording, XBoolSpec()).asButton("Rec"),
+			Param(Message(self.timeline_model), \isRecording, XBoolSpec()).asButton("Rec"),
 			Param(Message(self.timeline_model), \bindPlayWithRecord, XBoolSpec()).asButton("PlayRec"),
 			XSimpleButton.new.label_("Samples").action_({
 				WindowDef("%_SampleManager".format(self.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(self.timeline_model);
@@ -1211,7 +1211,7 @@ ProtoTemplateDef(\trackTimelinePanelView, (
 
 	new: { arg self, timeline;
 		//"trackTimelinePanelView: start init".debug;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ~clipTimelinePanelView[\new].(self, timeline);
 		//"trackTimelinePanelView: init part1".debug;
 	
 		self.timeline_model = { timeline };

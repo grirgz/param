@@ -1,0 +1,30 @@
+title:: Param Timelines
+summary:: Overview of param timelines
+categories:: GUI
+
+section::Main
+
+Timelines meet the following needs
+- records controllers performance
+- visualize the result
+- modify the result
+- compose visually
+
+There is a strong separation between functional code and GUI, you can use all the feature without showing any GUI. You can fully use and control timelines from code and insert them in patterns and routines. Timeline code should be modular, to allow to write quickly a great diversity of timelines
+
+The following timelines are available:
+LIST::
+## link::Classes/NoteTimeline::. Sequences midinotes
+## link::Classes/ClipTimeline::. Sequences clips such as Pdef, Ndef, other timelines
+## link::Classes/SampleTimeline::. Contains a Buffer
+## link::Classes/KitTimeline::. Sequences midinotes as drum kit notes
+## link::Classes/ParamTimeline::. Record or draw curves as Param automation or enveloppes
+::
+
+
+section:: Internals
+
+Timelines are built on TimelineEventList class which is just a list of event like the events produced by a pattern.
+There are special events with type \start and \end that represent the start and end cursor displayed on the timeline view.
+
+There are other special events that play a Player instead of a Synth node. A Player is any object that respond to .play and .stop, timelines are Player too. This allow to embed Timelines in Timelines like we do in ClipTimeline

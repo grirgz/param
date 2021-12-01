@@ -719,32 +719,49 @@ ProtoClassDef(\TrackTimeline, (
 
 	init: { arg self, tracks;
 		var eventfac;
+		Log(\Param).debug("TrackTimeline init 1");
 		if(tracks.isKindOf(TrackDef)) {
 			tracks = PlayerWrapperGroup(tracks.children);
 		};
 		self.areasize = 10@4;
 		//self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
+		Log(\Param).debug("TrackTimeline init 2");
 		self.eventloop = self.makeDefaultEventLoop;
-		eventfac = ~class_track_event_factory.new(tracks);
-		self.eventFactory = { eventfac };
-		self.eventFactory.eventLoop = self.eventloop;
-		self.eventFactory.mode = \note;
-		self.eventFactory.playmode = \gate;
-		self.eventFactory.fullrecord = false;
+		//eventfac = ~class_track_event_factory.new(tracks);
+		//self.eventFactory = { eventfac };
+		//self.eventFactory.eventLoop = self.eventloop;
+		//self.eventFactory.mode = \note;
+		//self.eventFactory.playmode = \gate;
+		//self.eventFactory.fullrecord = false;
 		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
 		self.proxy = EventPatternProxy.new;
 		self.cursor = CursorTimeline.new;
 		self.cursor.startPosition = self.eventList.startTime;
 		self.selection_cursor = CursorTimeline.new;
 		self.tracks_bypassed = Set.new;
+		Log(\Param).debug("TrackTimeline init 3");
 
 		self.tracks = { tracks };
+		self.clipList = ProtoClassDef(\ClipTimelineClipList).new(self) !? { arg x; {x} };
+
+		self.updateClipList;
 
 		//"=============trackTimeline: end init".debug;
+		Log(\Param).debug("TrackTimeline init 4");
 
 		self;
 	},
 
+	updateClipList: { arg self;
+		var clips = self.tracks.collect { arg track, idx;
+			track.target.children.collect { arg clip, idx;
+				var id = ProtoDef(\GlobalLibrary).targetToLibId(clip);
+				Log(\Param).debug("id %", id);
+				self.clipList.addClipIdToClipList(id);
+				id;
+			};
+		};
+	},
 
 	asArchiveData: { arg self;
 		(
