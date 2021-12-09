@@ -28,9 +28,11 @@ ProtoDef(\GlobalLibrary, (
 				};
 				if(self.clipFactories_keys.includes(target.eventType)) {
 					fac = self.clipFactories[target.eventType];
-					libId = [fac.libIdKey, target.key -> target]
+					Log(\Param).debug("fac.libIdKey: %", fac.libIdKey);
+					//libId = [fac.libIdKey, target.key -> target]
 					// TODO: find a way to address anonymous track children
-					//libId = fac.targetToLibId(target)
+					//	for the moment, i use track.trackKey but no addressing is done
+					libId = fac.targetToLibId(target)
 				};
 			};
 		};
@@ -157,6 +159,10 @@ ProtoDef(\GlobalLibrary, (
 		parentFactory = (
 			libIdTargetKey: { arg self;
 				self.libId.last.key; // work only when label is a key
+			},
+
+			targetToLibId: { arg self, target;
+				[self.libIdKey, target.key -> target];
 			},
 
 			eventToLibId: { arg self, ev;
@@ -535,13 +541,17 @@ ProtoDef(\GlobalLibrary, (
 			},
 		));
 
-		superself.clipFactories.tracklistpart = ().putAll(superself.clipFactories_parent).putAll((
-			key: 'tracklistpart',
-			libIdKey: 'TrackListPart',
+		superself.clipFactories.instrumenttrack = ().putAll(superself.clipFactories_parent).putAll((
+			key: 'instrumenttrack',
+			libIdKey: 'InstrumentTrack',
 			label: { arg self; self.key.asString },
 			keylist: {
 				// TODO (done in TagSpecDef)
 				[]
+			},
+
+			targetToLibId: { arg self, target;
+				[self.libIdKey, target.trackKey -> target];
 			},
 
 			libIdTargetKey: { arg self;
@@ -636,9 +646,9 @@ ProtoDef(\GlobalLibrary, (
 			},
 		));
 
-		superself.clipFactories.tracklistchannelpart = ().putAll(superself.clipFactories_parent).putAll((
-			key: 'tracklistchannelpart',
-			libIdKey: 'TrackListChannelPart',
+		superself.clipFactories.instrumenttrackpart = ().putAll(superself.clipFactories_parent).putAll((
+			key: 'instrumenttrackpart',
+			libIdKey: 'InstrumentTrackPart',
 			label: { arg self; self.key.asString },
 			keylist: {
 				// TODO (done in TagSpecDef)
@@ -649,6 +659,10 @@ ProtoDef(\GlobalLibrary, (
 				self.libId.last.key; // work only when label is a key
 			},
 
+
+			targetToLibId: { arg self, target;
+				[self.libIdKey, target.trackKey -> target];
+			},
 
 			getEventTarget: { arg self, ev;
 				// depends pattern event, player event
@@ -812,6 +826,112 @@ ProtoDef(\GlobalLibrary, (
 			},
 		));
 
+		// instrument of InstrumentTrack, used to create new timelines
+		superself.clipFactories.trackinstrument = ().putAll(superself.clipFactories_parent).putAll((
+			key: 'trackinstrument',
+			libIdKey: 'TrackInstrument',
+			label: { arg self; self.key.asString },
+			keylist: {
+				// TODO (done in TagSpecDef)
+				[]
+			},
+
+			targetToLibId: { arg self, target;
+				[self.libIdKey, target.trackKey -> target];
+			},
+
+			libIdTargetKey: { arg self;
+				self.libId.last.key; // work only when label is a key
+			},
+
+
+			getEventTarget: { arg self, ev;
+				// depends pattern event, player event
+				if(ev.pattern.isKindOf(Pdef)) {
+					// pattern type
+					ev.pattern;
+				} {
+					// player type
+					var tar = ev.receiver.value;
+					tar.key; // PlayerWrapper has key wrapper
+					if(tar.isKindOf(PlayerWrapper)) {
+						tar = tar.target;
+					};
+					if(tar.isKindOf(Pdef)) {
+						tar;
+					} {
+						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
+						nil;
+					}; 
+				}
+				
+			},
+
+			getTarget: { arg self;
+				// libid: [type, label -> linePlayer]
+				// NOTE: not by key reference, directly use object
+				self.libId.last.value;
+			},
+
+			classObject: {
+				// TODO
+				ProtoClass
+			},
+
+			getEventTargetKey: { arg self, ev;
+				self.getTarget(ev).key;
+			},
+
+			editSelected: { arg self, model;
+				var player;
+				//player = model.receiver.value;
+				//player.asParamGroup.debug("Edit: pattern");
+				//if(player.class == PlayerWrapper) {
+				//	player = player.target;
+				//};
+				//player.debug("clipeditor: player");
+				//player.getHalo(\edit).debug("clipeditor: player, edit");
+				player = self.getTarget(model);
+				if(player.isKindOf(Pdef)) {
+					if(player.getHalo(\edit).notNil) {
+						//player.getHalo(\edit).debug("clipeditor: player, halo edit");
+						player.getHalo(\edit).value;
+					} {
+						//player.getHalo(\edit).debug("clipeditor: normal edit");
+						player.asParamGroup.edit;
+					}
+				} {
+					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+				}
+			},
+
+			redefineClip: { arg self, curname, model;
+				self.redefineClipAsPatternEvent(curname, model);
+			},
+
+			redefineClipAsPatternEvent: { arg self, curname, model;
+				PatternEvent.redefine(model);
+				// need a closed function to use eventList.asCompileString as preset
+				model[\timeline] = "{ % }".format(self.getTarget.refCompileString).interpret; 
+				//model.changed(\refresh);
+				superself.parent_model.changed(\refresh);
+			},
+
+
+			redefineClipAsPlayerEvent: { arg self, curname, model;
+				PlayerEvent.redefine(model);
+				model[\receiver] = PlayerWrapper(self.getTarget);
+				//model.changed(\refresh);
+				superself.parent_model.changed(\refresh);
+			},
+
+			makeScore: { arg self, scorekey;
+				(
+					timeline: KitTimeline(scorekey, self.getTarget)
+				)
+			},
+		));
+
 	},
 ));
 
@@ -853,7 +973,7 @@ TagSpecDef(\SampleTimeline, {
 });
 
 TagSpecDef(\KitTimeline, {
-	~kitTimeline.all.asAssociations;
+	ProtoClassDef(\KitTimeline).all.asAssociations;
 });
 
 TagSpecDef(\ClipTimeline, {
@@ -861,11 +981,11 @@ TagSpecDef(\ClipTimeline, {
 });
 
 TagSpecDef(\NoteTimeline, {
-	~noteTimeline.all.asAssociations;
+	ProtoClassDef(\NoteTimeline).all.asAssociations;
 });
 
 TagSpecDef(\ParamTimeline, {
-	~envTimeline.all.asAssociations;
+	ProtoClassDef(\ParamTimeline).all.asAssociations;
 });
 
 
@@ -907,6 +1027,8 @@ TagSpecDef(\BusDefDefault, {
 	[\default -> nil] ++ TagSpecDef(\BusDef).list
 });
 
+//TagSpecDef(\TrackList, { }); // updated by TrackTemplateDef(\TrackList) when adding a track
+
 TagSpecDef(\TrackListPart, {
 	var tracklists = TagSpecDef(\TrackList).valueList;
 	tracklists.collect({ arg tracklist;
@@ -921,7 +1043,9 @@ TagSpecDef(\TrackListPart, {
 			(0..sizes[channelIdxWithMostParts]-1).collect({ arg idx;
 				// format: (libLabel -> libObj)
 				// type is added by TagSpecDef key
-				(("%.part%".format(tracklist.key, idx)) -> ( tracklist.linePlayerAt(idx) ));
+				var line = tracklist.linePlayerAt(idx);
+				//(("%.part%".format(tracklist.key, idx)) -> ( tracklist.linePlayerAt(idx) ));
+				line.trackKey -> line;
 			})
 		} {
 			nil
@@ -929,13 +1053,14 @@ TagSpecDef(\TrackListPart, {
 	}).flatten.select(_.notNil)
 }).list;
 
-TagSpecDef(\TrackListChannelPart, {
+TagSpecDef(\InstrumentTrackPart, {
 	TagSpecDef(\TrackList).valueList.collect({ arg tracklist;
 		tracklist.children.select{|x|x.isEmpty.not}.collect { arg channel;
 			channel.children.select({|x|x.isEmpty.not}).collect({ arg part, partidx;
 				// format: (libLabel -> libObj)
 				// type is added by TagSpecDef key
-				("%.part%".format(channel.label, partidx) -> part)
+				//("%.%.part%".format(tracklist.key, channel.label, part.index) -> part)
+				part.trackKey -> part
 			}).asArray;
 		}
 	}).flatten(2);
@@ -954,6 +1079,7 @@ TagSpecDef('TrackInstrument', [
 //////////////////////////////////////
 ////////////////////////// Categories
 
+// FIXME: rename to GlobalLibrary.type
 TagSpecDef(\GlobalLibraryType, [
 	\BusDef,
 	\BufDef,
@@ -969,17 +1095,23 @@ TagSpecDef(\GlobalLibraryType, [
 	\PatKitDef,
 	\Sample,
 	\TrackListPart,
-	\TrackListChannelPart,
+	\InstrumentTrackPart,
 	\TrackInstrument,
 ]);
 
+// TODO: add GlobalLibrary.tag which should be the list of tags displayed by browser
+
+// FIXME: rename to GlobalLibrary.category
 TagSpecDef(\GlobalLibraryCategory, [
 	\TrackInstrument,
 	\Effect,
 	\Score,
 	\Preset,
-	\TrackListPart,
-	\TrackListChannelPart,
+	\TrackPart,
+	\TrackGrid,
+	\LineTrack,
+	\Track,
+	\AllTracks,
 	\Clip,
 	\Timeline,
 	\Editable,
@@ -990,6 +1122,7 @@ TagSpecDef(\GlobalLibraryCategory, [
 //]);
 
 
+// FIXME: rename to GlobalLibrary.category.TrackInstrument
 TagSpecDef('GlobalLibrary.type.TrackInstrument', [
 	\TrackInstrument,
 ]);
@@ -1039,14 +1172,35 @@ TagSpecDef('GlobalLibrary.type.Editable', [
 	\Ndef,
 ]);
 
-TagSpecDef('GlobalLibrary.type.TrackListPart', [
+TagSpecDef('GlobalLibrary.type.TrackGrid', [
+	\playergrid,
+	\TrackList,
+]);
+
+TagSpecDef('GlobalLibrary.type.LineTrack', [
+	\lineplayer,
 	\TrackListPart,
 ]);
 
-TagSpecDef('GlobalLibrary.type.TrackListChannelPart', [
-	\TrackListChannelPart,
+TagSpecDef('GlobalLibrary.type.TrackPart', [
+	\InstrumentTrackPart,
+	\playerwrapper,
 ]);
 
+
+TagSpecDef('GlobalLibrary.type.Track', [
+	\InstrumentTrack,
+	\playertrack,
+]);
+
+// group track players of all kind and level
+TagSpecDef('GlobalLibrary.type.AllTracks', {
+	[\TrackGrid, \LineTrack, \TrackPart, \Track].collect { arg item, idx;
+		TagSpecDef("GlobalLibrary.type.%".format(item).asSymbol).list
+	}.flat;
+});
+
+// this is the library browser or select dialog
 WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, defaultValue;
 
 

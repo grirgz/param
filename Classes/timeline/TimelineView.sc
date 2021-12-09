@@ -71,6 +71,8 @@ TimelineView : SCViewHolder {
 	var <>selectionCursorController;
 	var <>previousNormSelRect;
 
+	var <>changeCurveMode = false;
+
 	//// keys
 
 	var <>valueKey = \midinote;
@@ -385,7 +387,12 @@ TimelineView : SCViewHolder {
 				//debug("---------mouseDownAction: prepare for resizing mode");
 				refPoint = gpos; // var used here for reference in trackfunc
 				refWidth = chosennode.width;
-			}
+			};
+			if(this.changeCurveMode) {
+				chosennode = this.findPreviousNode(gpos.x);
+				refWidth = chosennode.curve;
+				refPoint = gpos;
+			};
 		}
 		{
 			if(chosennode !=nil, { // a node is selected
@@ -554,6 +561,21 @@ TimelineView : SCViewHolder {
 				//"resize mode!!!!".debug;
 				trackAction.value(chosennode, chosennode.spritenum, this.normPointToGridPoint(chosennode.nodeloc));
 				this.refresh;
+			};
+
+			if( this.changeCurveMode == true ) {
+				// TODO
+				var newcurve;
+				var node = chosennode;
+				if(node.notNil) {
+					newcurve = refWidth + ( refPoint.y - gpos.y * 40 );
+					Log(\Param).debug("newcurve %, gpos %, ref %", newcurve, gpos, refPoint);
+					node.model.curve = newcurve;
+					node.refresh;
+					this.refresh;
+				} {
+					Log(\Param).debug("changeCurveMode: node nil %", gpos);
+				}
 			}
 
 
@@ -993,10 +1015,14 @@ TimelineView : SCViewHolder {
 		/////////////// the optional waveform
 
 		this.drawWaveform;
+
+		/////////////// the optional curve
+
+		this.drawCurve;
 		
 		/////////////// the selection node
 
-		//this.drawSelection;
+		//this.drawSelection; // on its own layer now
 
 
 		/////////////// background frame
@@ -1005,6 +1031,7 @@ TimelineView : SCViewHolder {
 		pen.strokeRect(bounds); 
 
 	}
+
 
 	drawSelection {
 		var pstartSelPoint, pendSelPoint;
@@ -1057,6 +1084,7 @@ TimelineView : SCViewHolder {
 	}
 
 	drawWaveform {} // for children classes
+	drawCurve {} // for children classes
 
 	drawNodes {
 
@@ -1702,6 +1730,13 @@ TimelineView : SCViewHolder {
 				node;
 			});
 		}).select(_.notNil);
+	}
+
+	findPreviousNode { arg gposx;
+		^paraNodes.reverse.detect { arg node;
+			Log(\Param).debug("findPreviousNode gposx %, origin %, %", gposx, node.origin, node.origin.x >= gposx);
+			node.origin.x <= gposx
+		};
 	}
 
 	findContainedNodes { arg rect, nodes;

@@ -2,19 +2,20 @@
 SimpleServerMeterView : SCViewHolder {
 	// TODO: add player interface (isPlaying)
 
-	classvar serverMeterViews, updateFreq = 10, dBLow = -80, meterWidth = 15, gapWidth = 4, <height = 230;
+	classvar serverMeterViews; 
 	classvar serverCleanupFuncs;
 
 	var inresp, outresp, synthFunc, responderFunc, server, numIns, numOuts, inmeters, outmeters, startResponderFunc;
 	var <bus;
+	var <>updateFreq = 10, <>dBLow = -80, <>meterWidth = 15, <>gapWidth = 4, <>meterHeight = 180;
 
 	*new { |aserver, numIns=0, numOuts=2, bus|
 		^super.new.initSimpleServerMeterView(aserver, numIns, numOuts, bus)
 	}
 
-	*getWidth { arg numIns, numOuts, server;
-		^20+((numIns + numOuts + 2) * (meterWidth + gapWidth))
-	}
+	//*getWidth { arg numIns, numOuts, server;
+		//^20+((numIns + numOuts + 2) * (meterWidth + gapWidth))
+	//}
 
 	bus_ { arg val;
 		bus = val;
@@ -41,7 +42,7 @@ SimpleServerMeterView : SCViewHolder {
 		if(numIns > 0) {
 			// ins
 			inmeters = Array.fill( numIns, { arg i;
-				levelIndic = LevelIndicator( nil, Rect(0, 0, meterWidth, 180) ).warning_(0.9).critical_(1.0)
+				levelIndic = LevelIndicator( nil, Rect(0, 0, meterWidth, meterHeight) ).warning_(0.9).critical_(1.0)
 				.drawsPeak_(true)
 				.numTicks_(9)
 				.numMajorTicks_(3);
@@ -51,7 +52,7 @@ SimpleServerMeterView : SCViewHolder {
 		// outs
 		if(numOuts > 0) {
 			outmeters = Array.fill( numOuts, { arg i;
-				levelIndic = LevelIndicator( nil, Rect(0, 0, meterWidth, 180) ).warning_(0.9).critical_(1.0)
+				levelIndic = LevelIndicator( nil, Rect(0, 0, meterWidth, meterHeight) ).warning_(0.9).critical_(1.0)
 				.drawsPeak_(true)
 				.numTicks_(9)
 				.numMajorTicks_(3);

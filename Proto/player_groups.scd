@@ -203,6 +203,7 @@ ProtoTemplateDef(\NotePlayer, (
 
 // act as a drum kit, play the player in the group according to midinote
 // this use streamPlayer as children
+// used by KitTimeline when pattern list is provided
 ProtoTemplateDef(\ParPlayerGroup, (
 	new: { arg self, list;
 		self = self.deepCopy;
@@ -322,6 +323,7 @@ ProtoTemplateDef(\ParPlayerGroup, (
 
 // seq because a single pattern is read instead of one pattern per note index in parPlayerGroup
 // this use notePlayer as children
+// used by NoteTimeline
 ProtoTemplateDef(\SeqPlayerGroup, (
 	new: { arg self, pat;
 		self = self.deepCopy;
@@ -394,6 +396,7 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 
 // specialisation of parPlayerGroup for PatKitDef: compile string and Def design
 // can't use ProtoTemplateDef because 'all' variable is already used
+// used by KitTimeline through PatKitDef
 ProtoClassDef(\PatKitDef, (
 	protoClass: \PatKitDef,
 	parent: ~parPlayerGroup,

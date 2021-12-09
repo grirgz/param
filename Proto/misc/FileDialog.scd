@@ -450,6 +450,20 @@ WindowDef(\filedialog_insert_bufdef, { arg def, path;
 (
 // TODO: add escape key shortcut
 
+WindowDef(\OkDialog, { arg me, question, okfun;
+	me.windowName = "Info: " ++ question;
+	VLayout (
+		StaticText.new.string_(question),
+		HLayout(
+			nil,
+			BasicButton.new.string_("Ok").action_({ 
+				okfun.();
+				me.closeWindow;
+			}),
+		)
+	)
+});
+
 WindowDef(\ConfirmDialog, { arg me, question, savefun, cancelfun;
 	me.windowName = "Confirm: " ++ question;
 	VLayout (

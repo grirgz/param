@@ -1,10 +1,14 @@
 
 //////////////////////////////// Env and Env node
 
-// should be named TimelineParamView, no ?
+// should be named ParamTimelineView, no ?
 TimelineEnvView : TimelineView {
 	var valueKey = \midinote;
 	var <param;
+
+	changeCurveMode {
+		^true;
+	}
 
 	gridPointToNormPoint { arg point;
 		if(param.notNil) {
@@ -78,10 +82,44 @@ TimelineEnvView : TimelineView {
 			^eventFactory.(pos, nodesize.x);
 		}
 	}
+
+	drawGridY {
+		TimelineDrawer.draw_param_horizontal_lines(this, this.param);
+	}
+
+	drawCurve {
+		var first = true;
+		var nodes = paraNodes.copy.sort({ arg a, b; a.nodeloc.x < b.nodeloc.x });
+		var prevNode;
+		//debug("<<<<<<<<<<<< start drawing nodes");
+		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
+
+		//[this.viewport, this.bounds, this.virtualBounds, this.areasize].debug("drawNodes:bounds");
+		nodes.do({arg node;
+			//[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
+			//[node.rect, this.gridRectToNormRect(node.rect), this.gridRectToPixelRect(node.rect)].debug("drawNodes:rect, norm, pixel");
+
+			// is Set.contains quick enough with big selection ?
+			if(node.visible) {
+				if(node.class != TimelineViewLocatorLineNode) {
+					if(first) { // for env timelines
+						Pen.moveTo(this.gridPointToPixelPoint(node.origin));
+						first = false;
+					};
+					node.drawCurve(prevNode);
+					prevNode = node;
+				}
+			}
+		});
+
+		//debug(";;;;;;;;;;;;;;;;;; stop drawing nodes");
+		Pen.stroke;		
+	}
 }
 
 TimelineEnvViewNode : TimelineViewEventNode {
 	var <>radius = 3;
+	var <>curve = 0;
 
 	*new { arg parent, nodeidx, event;
 		switch(event[\type],
@@ -110,6 +148,8 @@ TimelineEnvViewNode : TimelineViewEventNode {
 			//[model, origin].debug("node action before");
 			model[timeKey] = origin.x;
 			model[this.posyKey] = origin.y;
+			model[this.posyKey] = origin.y;
+			model[\curve] = curve;
 			//model[lenKey] = extent.x;
 		};
 
@@ -128,6 +168,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 					0
 				}
 			);
+			curve = model[\curve] ? 0;
 			origin = Point(model[timeKey] ? 0, posy);
 			color = Color.black;
 			outlineColor = Color.grey;
@@ -147,19 +188,62 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		point = parent.gridPointToPixelPoint(this.origin);
 		//[spritenum, point, this.class].debug("draw");
 
-		Pen.color = ParamViewToolBox.color_ligth;
-		Pen.lineTo(point);
-		Pen.stroke;
+		//Pen.color = ParamViewToolBox.color_ligth;
+		//Pen.lineTo(point);
+		//Pen.stroke;
 
 		Pen.color = this.outlineColor;
 		Pen.addArc(point, radius, 0, 2*pi);
 		//Pen.strokeRect(this.pixelRect);
-		Pen.stroke;
+		Pen.fill;
 
-		Pen.color = Color(0.8,0.8,0.8);
+		//Pen.color = Color(0.8,0.8,0.8);
+		Pen.color = ParamViewToolBox.color_ligth;
 		Pen.addArc(point, radius-1, 0, 2*pi);
 		//Pen.strokeRect(this.pixelRect);
+		Pen.fill;
+
+		Pen.color = this.color;
+		Pen.moveTo(point);
+
+	}
+
+	drawCurve { arg prevNode;
+		var point, prevPoint;
+		var pos;
+		pos = this.origin;
+		point = parent.gridPointToPixelPoint(this.origin);
+		//[spritenum, point, this.class].debug("draw");
+
+		Pen.color = ParamViewToolBox.color_ligth;
+		//Pen.arcTo(point, ( this.curve ? 0 ).clip(1,3));
+		if(prevNode.notNil) {
+			var env;
+			var pointCount;
+			Log(\Param).debug("draw curve from % to %: %", prevNode.origin, this.origin, this.model);
+			prevPoint = parent.gridPointToPixelPoint(prevNode.origin);
+			pointCount = ( (point.x - prevPoint.x)/10 ).asInteger;
+			//Pen.quadCurveTo(point, prevPoint + point / 2 + Point(0,( this.curve*200 ? 0 ).debug("curve").clip2(100)));
+			env = Env.xyc([ [prevPoint.x, prevPoint.y, prevNode.curve], [point.x,point.y] ]);
+			( pointCount+1 ).do { arg idx;
+				var posx = idx/pointCount * (point.x - prevPoint.x) + prevPoint.x;
+				Pen.lineTo(Point(posx, env.at(posx)));
+			};
+		} {
+			Log(\Param).debug("draw line to %: %", this.origin, this.model);
+			Pen.lineTo(point);
+		};
 		Pen.stroke;
+
+		//Pen.color = this.outlineColor;
+		//Pen.addArc(point, radius, 0, 2*pi);
+		////Pen.strokeRect(this.pixelRect);
+		//Pen.fill;
+
+		//Pen.color = Color(0.8,0.8,0.8);
+		//Pen.addArc(point, radius-1, 0, 2*pi);
+		////Pen.strokeRect(this.pixelRect);
+		//Pen.fill;
 
 		Pen.color = this.color;
 		Pen.moveTo(point);

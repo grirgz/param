@@ -3,6 +3,7 @@
 
 // can record seqPlayerGroup (NoteTimeline) and parPlayerGroup (KitTimeline)
 ProtoTemplateDef(\PlayerGroupRecorder, (
+	inQuantMode: false,
 	new: { arg self, group;
 		self = self.deepCopy;
 	
@@ -36,15 +37,35 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 	},
 
 	startRecording: { arg self;
+		var startRecordingTime = self.tempoClock.beats;
 		self.controller.remove;
-		self.controller = self.target.makeListener({ arg player, status, index;
-			Log(\Param).debug("listener: status: %", status);
-			if(status == \play) {
-				player.recordedEvent = self.eventLoop.recordEvent(player.asPlayerEvent);
-				player.recordedEvent[\clockTime] = self.tempoClock.beats;
-				Log(\Param).debug("listener: start: recordedEvent:%", player.recordedEvent);
+		self.controller = self.target.makeListener({ arg player, status, status2;
+			var playStatus, stopStatus;
+			if(status == \PlayerWrapper) {
+				status = status2;
+			};
+			if(self.inQuantMode) {
+				playStatus = \playing;
+				stopStatus = \stopped;
 			} {
-				if(status == \stop and: {player.recordedEvent.notNil}) {
+				playStatus = \play;
+				stopStatus = \stop;
+			};
+			Log(\Param).debug("listener: status: %", status);
+			if(status == playStatus) {
+				if(player.recordedEvent.notNil and: {
+					player.recordedEvent.clockTime > startRecordingTime
+				}) {
+					// this player is already recording an event, ignore duplicate signals
+					// FIXME: how to prevent breaking recording by skipping to nil the recordedEvent ?
+					Log(\Param).debug("listener: playStatus: already recording event for player %", player);
+				} {
+					player.recordedEvent = self.eventLoop.recordEvent(player.asPlayerEvent);
+					player.recordedEvent[\clockTime] = self.tempoClock.beats;
+					Log(\Param).debug("listener: start: player:%, recordedEvent:%", player, player.recordedEvent);
+				}
+			} {
+				if(status == stopStatus and: {player.recordedEvent.notNil}) {
 					player.recordedEvent[\sustain] = self.tempoClock.beats - player.recordedEvent[\clockTime];
 					Log(\Param).debug("listener: stop: recordedEvent:%", player.recordedEvent);
 					player.recordedEvent.changed(\refresh);
@@ -55,7 +76,7 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 				}
 			}
 		});
-		self.eventLoop.startRec(false, self.quant ? Pdef.defaultQuant);
+		self.eventLoop.startRec(false, self.quant ? Pdef.defaultQuant, if(self.inQuantMode ) { 0 });
 	},
 
 	isRecording: { arg self;

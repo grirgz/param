@@ -397,7 +397,7 @@ TimelineEventList : List {
 
 XEventList : TimelineEventList {}
 
-XEventLoop {
+TimelineEventLoop {
 
 	// for now, let all EventLoops live in one dict?
 	// subclasses can redirect to their own this.all
@@ -409,7 +409,7 @@ XEventLoop {
 	var <>keysToRecord;
 	var >clock;
 
-	var <>recordQuant;
+	var <>recordQuant, <>recordLatency;
 
 	var <verbosity = 1;
 
@@ -576,7 +576,7 @@ XEventLoop {
 
 	// recording events:
 
-	startRec { |instant = false, quant|
+	startRec { |instant = false, quant, latency|
 		if(quant.notNil) {
 			this.recordQuant = quant ? 0;
 		};
@@ -589,6 +589,7 @@ XEventLoop {
 		if (verbosity > 0) {
 			"  %.startRec; // recording list[%].\n".postf(this, list.size);
 		};
+		recordLatency = latency ?? { Server.default.latency };
 		if (instant == true) { 
 			list.start(this.getAbsTime(this.recordQuant));
 			//this.getAbsTime.debug("instant start");
@@ -641,12 +642,13 @@ XEventLoop {
 		if (isRecording, { this.stopRec }, { this.startRec(instant) });
 	}
 
-	getAbsTime { arg quant = 0;
+	getAbsTime { arg quant = 0, latency;
 		//var now = thisThread.seconds;
 		var now = this.clock.beats;
+		latency = latency ?? { this.recordLatency };
 		//[now, recStartTime].debug("recStartTime: debug before");
 		if(recStartTime.isNil and: { quant != 0 }) {
-			recStartTime = this.clock.nextTimeOnGrid(quant) - quant + Server.default.latency;
+			recStartTime = this.clock.nextTimeOnGrid(quant) - quant + latency;
 			now = recStartTime;
 		} {
 			recStartTime = recStartTime ? now;
@@ -793,6 +795,8 @@ XEventLoop {
 	
 	}
 }
+
+XEventLoop : TimelineEventLoop {}
 
 // not sure if needed
 XEventEnv : XEventList {

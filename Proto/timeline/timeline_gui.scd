@@ -1206,12 +1206,12 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 ));
 ~clipTimelinePanelView = ProtoTemplateDef(\ClipTimelinePanelView);
 
-ProtoTemplateDef(\trackTimelinePanelView, (
-	parent: ~clipTimelinePanelView,
+ProtoTemplateDef(\TrackTimelinePanelView, (
+	parent: ProtoTemplateDef(\ClipTimelinePanelView),
 
 	new: { arg self, timeline;
 		//"trackTimelinePanelView: start init".debug;
-		self = ~clipTimelinePanelView[\new].(self, timeline);
+		self = ProtoTemplateDef(\ClipTimelinePanelView)[\new].(self, timeline);
 		//"trackTimelinePanelView: init part1".debug;
 	
 		self.timeline_model = { timeline };
@@ -1311,7 +1311,7 @@ ProtoTemplateDef(\trackTimelinePanelView, (
 		//"trackTimelinePanelView.update_track_header: part 4".debug;
 	},
 ));
-~trackTimelinePanelView = ProtoTemplateDef(\trackTimelinePanelView);
+~trackTimelinePanelView = ProtoTemplateDef(\TrackTimelinePanelView);
 
 ProtoTemplateDef(\ParamTimelinePanelView, (
 	parent: ~timelinePanelView,
@@ -1521,10 +1521,27 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 
 	make_track_header: { arg self, timeline;
 		//self.track_header = View.new;
+		var oldnote;
 		self.ruler_y = MidinoteTimelineRulerView.new;
 		self.track_header = self.ruler_y;
 		self.ruler_y.mimicTimeline(timeline);
 		self.ruler_y.view.minWidth_(50);
+		self.ruler_y.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			var noteidx = self.ruler_y.pixelPointToGridPoint(Point(x,y)).y.asInteger;
+			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+
+			Log(\Param).debug("noteidx %", noteidx);
+			if(oldnote.notNil) {
+				self.timeline_model.wrapper.elAt(oldnote).stop;
+			};
+			oldnote = noteidx;
+			self.timeline_model.wrapper.elAt(noteidx).play;
+		});
+		self.ruler_y.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			var noteidx = self.ruler_y.pixelPointToGridPoint(Point(x,y)).y.asInteger;
+			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+			self.timeline_model.wrapper.elAt(oldnote ? noteidx).stop;
+		});
 	},
 
 	makeLayout: { arg self;
@@ -1635,11 +1652,29 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 	},
 
 	make_track_header: { arg self, timeline;
+		var oldnote;
 		//self.track_header = View.new;
 		self.ruler_y = KitTimelineRulerView.new;
 		self.track_header = self.ruler_y;
 		self.ruler_y.mimicTimeline(timeline);
 		self.ruler_y.view.minWidth_(50);
+		self.ruler_y.mapWrapper(self.timeline_model.wrapper);
+		self.ruler_y.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			var noteidx = self.ruler_y.pixelPointToGridPoint(Point(x,y)).y.asInteger;
+			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+
+			Log(\Param).debug("noteidx %", noteidx);
+			if(oldnote.notNil) {
+				self.timeline_model.wrapper.elAt(oldnote).stop;
+			};
+			oldnote = noteidx;
+			self.timeline_model.wrapper.elAt(noteidx).play;
+		});
+		self.ruler_y.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			var noteidx = self.ruler_y.pixelPointToGridPoint(Point(x,y)).y.asInteger;
+			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+			self.timeline_model.wrapper.elAt(oldnote ? noteidx).stop;
+		});
 	},
 
 	timelineInstrumentParamGroup: { arg self;
@@ -2270,14 +2305,16 @@ ProtoTemplateDef(\ClipEditor, (
 	model_to_type_index: { arg self;
 		var track;
 		if(self.model.notNil and: { self.model.receiver.notNil }) {
-			track = self.model.receiver.value.target.parentTrack;
+			//track = self.model.receiver.value.target.parentTrack; // for PlayerWrapperGroup
+			track = self.model.receiver.value.parentTrack;
 			self.trackgroup.detectIndex({ arg x; x.target === track  });
 		}
 	},
 
 	model_to_name_index: { arg self;
 		if(self.model.notNil and: { self.model.receiver.notNil }) {
-			self.model.receiver.value.target.index;
+			//self.model.receiver.value.target.index;
+			self.model.receiver.value.index;
 		}
 	},
 
@@ -2314,7 +2351,7 @@ ProtoTemplateDef(\ClipEditor, (
 	edit_selected: { arg self, model;
 		model = model ? self.model;
 		//[model.type, model].debug("Edit: type");
-		self.model.receiver.value.target.edit;
+		self.model.receiver.value.edit;
 	},
 
 	makeLayout: { arg self;
@@ -2401,13 +2438,16 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 			Log(\Param).debug("OK! libid:%, label:%", libId, label);
 
 			if(libId.notNil) {
-				model.addClipIdToClipList(libId);
+				var score = ProtoTemplateDef(\TrackInstrument).new(libId, label).makeIndependentScore;
+				var scorelibid = ProtoDef(\GlobalLibrary).targetToLibId(score);
+				Log(\Param).debug("************** addClip id %", scorelibid);
+				model.addClipIdToClipList(scorelibid);
 				idef.closeWindow;
 			} {
 				"no name".debug;
 			}
 		});
-		model.gatherClips;
+		//model.gatherClips; // commented for debug
 	});
 	VLayout (
 		HLayout (
@@ -2437,6 +2477,11 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 					model.addAndSelectClipId(FileSystemProject.current.tracklist_selected_track)
 				}
 			}
+		}).mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			//[x, y, modifiers, buttonNumber, clickCount].debug("xyyyyy");
+			if(buttonNumber == 1) { // right click
+				WindowDef(\ClipList_OverlayMenu).front(model, view, x, y, model.clipList[view.value]);
+			};
 		}),
 		HLayout (
 			StaticText.new.followChange(model, \brushClipId, { arg view;
@@ -2498,6 +2543,39 @@ WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 	
 }).border_(false);
 
+WindowDef(\ClipList_OverlayMenu, { arg def, model, view, x=600, y=600, selected;
+	var inview, layout;
+	Log(\Param).debug("xy: %, %", x, y);
+	def.windowDo { arg win;
+		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
+		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
+		win.endFrontAction = { win.close };
+	};
+	inview = View.new;
+
+
+	layout = VLayout (
+		BasicButton.new.string_("Clear list").action_({ 
+			model.clearClipList;
+			def.closeWindow;
+		}),
+		BasicButton.new.string_("Remove " ++ selected.last.key).action_({ 
+			model.clipList.remove(selected);
+			model.changed(\clipList);
+			def.closeWindow;
+		}),
+		BasicButton.new.string_("Edit").action_({ 
+			PlayerWrapper(selected.last.value).edit;
+		}),
+		nil
+	);
+	//def.windowDo { arg win;
+		//win.setInnerExtent(view.bounds.extent.min(20));
+	//};
+	inview.layout_(layout);
+	
+}).border_(false);
+
 WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 	var namefield = TextField.new;
 	var trackInstrumentLabel = StaticText.new;
@@ -2522,7 +2600,7 @@ WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 				trackInstrumentLabel,
 			),
 			WindowDef(\GlobalLibrary).asView(lib, selectedCallback, [
-				\Clip, \TrackListPart, \TrackListChannelPart, \Timeline,
+				\Clip, \AllTracks, \Timeline,
 			]),
 		),
 		HLayout(
@@ -2581,9 +2659,9 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook; // TODO: should cr
 	var selectedLibId;
 	var selectedCallback = { arg libid, strings, clickCount;
 		Log(\Param).debug("selectedCallback itemId:%, str:%", libid, strings);
-		trackInstrumentLabel.string = lib.libIdToLabel(libid);
+		trackInstrumentLabel.string = strings.join("   ");
 		selectedLibId = libid;
-		selectedHook.(def, libid, strings, clickCount);
+		selectedHook.(def, libid, strings.join("   "), clickCount);
 	};
 	VLayout(
 		View.new.layout_(
@@ -2598,7 +2676,7 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook; // TODO: should cr
 				trackInstrumentLabel,
 			),
 			WindowDef(\GlobalLibrary).asView(lib, selectedCallback, [
-				\Clip, \TrackListPart, \TrackListChannelPart, \Timeline,
+				\TrackInstrument
 			]),
 		),
 	/////////////////////////
@@ -2610,12 +2688,15 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook; // TODO: should cr
 			}),
 			BasicButton.new.string_("OK").action_({
 				var label;
-				def.closeWindow;
 				if(namefield.string.trim != "") {
-					label = namefield.name;
+					def.closeWindow;
+					label = namefield.string;
+					Log(\Param).debug("okhook itemId:%, str:%", selectedLibId.asCompileString, label);
+					okHook.(def, selectedLibId, label);
+				} {
+					Log(\Param).error("Please provide a name");
+					WindowDef(\OkDialog).front("Please provide a name, it will be used a the key to store the object");
 				};
-				Log(\Param).debug("okhook itemId:%, str:%", selectedLibId, label);
-				okHook.(def, selectedLibId, label);
 			})
 		)
 	)

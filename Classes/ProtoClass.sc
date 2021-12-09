@@ -268,7 +268,12 @@ ProtoDef : ProtoClass {
 	}
 
 	storeOn { arg stream;
-		stream << "%(%)".format(this.class.asString, this.key.asCompileString);
+		// FIXME: not the same mecanism as ProtoClass
+		if(this[\storeOn].notNil) {
+			this[\storeOn].(this, stream);
+		} {
+			stream << "%(%)".format(this.class.asString, this.key.asCompileString);
+		}
 	}
 
 }

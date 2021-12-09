@@ -651,6 +651,7 @@ TagSpec : ParamNonFloatSpec {
 	}
 
 	menuSpecInit { arg xlist;
+		dynamicLists = dynamicLists ?? { List.new }; // don't erase dynlist by default
 		if(xlist.isKindOf(Function)) { // can init with a dynamic list
 			this.replaceDynamicList(\list -> xlist);
 			xlist = [];
@@ -660,7 +661,6 @@ TagSpec : ParamNonFloatSpec {
 			xlist = [];
 		};
 		list = List.new;
-		dynamicLists = dynamicLists ? List.new; // don't erase dynlist by default
 		xlist.do({ arg item;
 			this.add(item)
 		});

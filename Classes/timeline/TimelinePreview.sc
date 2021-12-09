@@ -48,12 +48,15 @@ TimelinePreview : TimelineView {
 
 	mapModel { arg model;
 		// FIXME: duplicated code in caller
-		//Log(\Param).debug("x==x model % %", model, model[\eventlist]);
+		// FIXME: timeline.asPreview call directly mapEventList, who call mapModel ?
+		Log(\Param).debug("x==x model % %", model, model[\eventlist]);
 		if(model[\eventlist].notNil) {
 			this.mapEventList(model.eventlist);
 		};
 		if(model[\timeline].notNil) {
 			this.mapEventList(model.timeline.eventList);
+			this.areasize = model.timeline.areasize;
+			Log(\Param).debug("areasize preview %, timeline %", this.areasize, model.timeline.areasize);
 		};
 
 
@@ -82,6 +85,7 @@ TimelinePreview_Env : TimelineEnvView {
 	drawFunc {
 		Log(\Param).debug("preview drawFunc env");
 		this.drawNodes;
+		this.drawCurve;
 		this.drawEndLine;
 	}
 

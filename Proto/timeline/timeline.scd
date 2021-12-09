@@ -427,9 +427,12 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	asPreview: { arg self;
-		TimelinePreview.new.mapEventList(self.eventList).view.mouseDownAction_({ 
-			self.edit;
-		}).fixedHeight_(40);
+		TimelinePreview.new
+			.mapEventList(self.eventList)
+			.areasize_(self.areasize)
+			.view.mouseDownAction_({ 
+				self.edit;
+			}).fixedHeight_(40);
 	},
 
 	addHistorySnapshot: { arg self;
@@ -719,29 +722,35 @@ ProtoClassDef(\TrackTimeline, (
 
 	init: { arg self, tracks;
 		var eventfac;
+		// TODO: make a recorder and deprecate eventFactory
+		// FIXME: i removed support for PlayerWrapperGroup, think to add it back
+		self.basicInit;
+		self.mainTrack = tracks;
+		self.tracks = { tracks.children };
 		Log(\Param).debug("TrackTimeline init 1");
-		if(tracks.isKindOf(TrackDef)) {
-			tracks = PlayerWrapperGroup(tracks.children);
-		};
-		self.areasize = 10@4;
+		//if(tracks.isKindOf(TrackDef)) {
+			//var trackdef = tracks;
+			////tracks = PlayerWrapperGroup(tracks.children);
+			////tracks.playerEventWrapper = { arg ev;
+				////ev.receiver = "{ arg self; TrackDef(%).childAt(%) }".format(trackdef.key)
+
+			////}
+		//};
 		//self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
 		Log(\Param).debug("TrackTimeline init 2");
-		self.eventloop = self.makeDefaultEventLoop;
 		//eventfac = ~class_track_event_factory.new(tracks);
 		//self.eventFactory = { eventfac };
 		//self.eventFactory.eventLoop = self.eventloop;
 		//self.eventFactory.mode = \note;
 		//self.eventFactory.playmode = \gate;
 		//self.eventFactory.fullrecord = false;
-		self.quant_ref = Ref(Point(1/8,1)); // TODO: replace by Quant class and change TimelineView code
-		self.proxy = EventPatternProxy.new;
-		self.cursor = CursorTimeline.new;
-		self.cursor.startPosition = self.eventList.startTime;
-		self.selection_cursor = CursorTimeline.new;
 		self.tracks_bypassed = Set.new;
+		//self.wrapper = ProtoTemplateDef(\ParPlayerGroup).new(tracks) !? { arg x; {x} };
+		self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.mainTrack) !? { arg x; {x} };
+		self.recorder.inQuantMode = true; // listen to \playing instead of \play
+		self.recorder.eventLoop = self.eventLoop;
 		Log(\Param).debug("TrackTimeline init 3");
 
-		self.tracks = { tracks };
 		self.clipList = ProtoClassDef(\ClipTimelineClipList).new(self) !? { arg x; {x} };
 
 		self.updateClipList;
@@ -754,11 +763,14 @@ ProtoClassDef(\TrackTimeline, (
 
 	updateClipList: { arg self;
 		var clips = self.tracks.collect { arg track, idx;
-			track.target.children.collect { arg clip, idx;
-				var id = ProtoDef(\GlobalLibrary).targetToLibId(clip);
-				Log(\Param).debug("id %", id);
-				self.clipList.addClipIdToClipList(id);
-				id;
+			track.children.collect { arg clip, idx;
+				var id;
+				if(clip.isEmpty.not) {
+					id = ProtoDef(\GlobalLibrary).targetToLibId(clip);
+					Log(\Param).debug("id %", id);
+					self.clipList.addClipIdToClipList(id);
+					id;
+				}
 			};
 		};
 	},
@@ -784,7 +796,7 @@ ProtoClassDef(\TrackTimeline, (
 
 
 	edit: { arg self;
-		var x = ~trackTimelinePanelView.new(self);
+		var x = ProtoTemplateDef(\TrackTimelinePanelView).new(self);
 		self.editor = { x };
 		x;
 	},
@@ -833,7 +845,6 @@ ProtoClassDef(\NoteTimeline, (
 		self.basicInit;
 		self.param = param; // depends on eventloop
 
-		// TODO: make a recorder and deprecate eventFactory
 	},
 
 	trackInstrument_: { arg self, instr;
@@ -1307,6 +1318,7 @@ ProtoClassDef(\ParamTimeline, (
 		TimelinePreview_Env.new
 			.mapEventList(self.eventList)
 			.mapParam(self.levelParam)
+			.areasize_(self.areasize)
 			.view.mouseDownAction_({ 
 				self.edit;
 			})
@@ -1576,6 +1588,16 @@ ProtoClassDef(\KitTimeline, (
 		self.recorder.isRecording = val;
 	},
 
+	asPreview: { arg self;
+		TimelinePreview.new(\kitIndex)
+			.mapEventList(self.eventList)
+			.viewport_(Rect(0,0,1,1/4))
+			.areasize_(self.areasize)
+			.view.mouseDownAction_({ 
+				self.edit;
+			}).fixedHeight_(40);
+	},
+
 	asArchiveData: { arg self;
 		(
 			name: self.key,
@@ -1784,6 +1806,11 @@ ProtoClassDef(\ClipTimelineClipList, (
 		} {
 			Log(\Param).debug("addClipIdToClipList: no clipId %", clipId);
 		};
+		self.changed(\clipList);
+	},
+
+	clearClipList: { arg self;
+		self.clipList.clear;
 		self.changed(\clipList);
 	},
 

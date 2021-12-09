@@ -95,7 +95,7 @@ Param {
 					//"Ndef: a double asso".debug;
 					args[1] = property.key.key;
 					//(args++[subpro, idx]).debug("NdefParamEnvSlot args");
-					Log(\Param).debug("property_dispatcher: env % %", envclass, args++[subpro, idx]);
+					//Log(\Param).debug("property_dispatcher: env % %", envclass, args++[subpro, idx]);
 					wrapper = envclass.new(*args++[subpro, idx]);
 				},
 				{
@@ -106,7 +106,7 @@ Param {
 							//Log(\Param).error("Ndef: env named segment");
 							//Log(\Param).error("NOT IMPLEMENTED YET!");
 							args[1] = property.key;
-							Log(\Param).debug("property_dispatcher: simple env % %", envclass, args++[property.value]);
+							//Log(\Param).debug("property_dispatcher: simple env % %", envclass, args++[property.value]);
 							wrapper = envclass.new(*args++[property.value])
 						},
 						// else: an index into an array: (\delaytab -> 0)
@@ -116,7 +116,7 @@ Param {
 							args[1] = property.key;
 							idx = property.value;
 							//(args++[idx]).debug("NdefParamSlot args");
-							Log(\Param).debug("property_dispatcher: array % %", arrayclass, args++[idx]);
+							//Log(\Param).debug("property_dispatcher: array % %", arrayclass, args++[idx]);
 							wrapper = arrayclass.new(*args++[idx]);
 						}
 
@@ -761,16 +761,16 @@ Param {
 			}, 
 			updateAction: { arg view, param;
 				var val = "";
-				Log(\Param).debug("mapTextField start: " ++ this.fullLabel);
+				//Log(\Param).debug("mapTextField start: " ++ this.fullLabel);
 				try {
 					//[param, param.stringGet(precision)].debug("Param.mapTextField:get");
 					val = param.stringGet(precision);
 					//val = param.get.asCompileString;
 				} { arg error;
-					Log(\Param).debug("param.get %", param.get);
+					//Log(\Param).debug("param.get %", param.get);
 					val = param.get.asCompileString;
 				};
-				Log(\Param).debug("mapTextField: val: %", val);
+				//Log(\Param).debug("mapTextField: val: %", val);
 				// refresh action
 				{
 					//[val.asCompileString, view.hasFocus].debug("Param.mapTextField: hasfocus");
@@ -781,7 +781,7 @@ Param {
 						// TODO: handle other types than float
 							view.value = val;
 					};
-					Log(\Param).debug("mapTextField: updateAction: end");
+					//Log(\Param).debug("mapTextField: updateAction: end");
 					//"done".debug;
 				}.defer;
 			},
@@ -972,16 +972,18 @@ Param {
 		pm.action = {
 			this.set(pm.value);
 		};
-		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
-			// TODO: do not change the whole row when just one value is updated!
-			//[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
-			if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
-				arg1.includes(this.propertyRoot)
-			} }) {
-				aview.refreshChange;
-			};
-			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
-		});
+
+		this.makeUpdater(view, { view.refreshChange });
+		//view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
+			//// TODO: do not change the whole row when just one value is updated!
+			////[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
+			//if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
+				//arg1.includes(this.propertyRoot)
+			//} }) {
+				//aview.refreshChange;
+			//};
+			////view.value.debug("mapValuePopUpMenu:7 (onchange)");
+		//});
 		mykeys = keys ?? {this.spec};
 		if( mykeys.isKindOf(TagSpecDef)) {
 			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
@@ -1024,7 +1026,9 @@ Param {
 				};
 			};
 			try {
+				//Log(\Param).debug("mapValuePopUpMenu refreshChangeAction labelList %", spec.labelList);
 				if(spec.labelList.notNil) {
+					//spec.labelList.do(_.postln); // for debug
 					view.items = spec.labelList.asArray;
 				};
 				view.value = spec.unmapIndex(val);
@@ -1061,16 +1065,17 @@ Param {
 			//this.get.debug("mapValuePopUpMenu:5 (action)");
 		};
 		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
-		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
-			// TODO: do not change the whole row when just one value is updated!
-			//[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
-			if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
-				arg1.includes(this.propertyRoot)
-			} }) {
-				aview.refreshChange;
-			};
-			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
-		});
+		this.makeUpdater(view, { view.refreshChange });
+		//view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
+			//// TODO: do not change the whole row when just one value is updated!
+			////[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
+			//if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
+				//arg1.includes(this.propertyRoot)
+			//} }) {
+				//aview.refreshChange;
+			//};
+			////view.value.debug("mapValuePopUpMenu:7 (onchange)");
+		//});
 		mykeys = keys ?? {this.spec};
 		if( mykeys.isKindOf(TagSpecDef)) {
 			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
@@ -1087,27 +1092,27 @@ Param {
 		var pm = view;
 		var mykeys;
 		//debug("mapValuePopUpMenu:1");
-		Log(\Param).debug("mapBusPopUpMenu %", keys);
+		//Log(\Param).debug("mapBusPopUpMenu %", keys);
 		if(keys.notNil and: { keys.isKindOf(TagSpec).not }) {
 			keys = TagSpec(keys);
 		};
-		Log(\Param).debug("mapBusPopUpMenu 0.1 %", keys);
+		//Log(\Param).debug("mapBusPopUpMenu 0.1 %", keys);
 
 		view.refreshChangeAction = {
 			var xspec;
 			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
-			Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:1 spec %, keys %", this.spec, keys);
+			//Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:1 spec %, keys %", this.spec, keys);
 			if(keys.notNil) {
 				xspec = keys;
-				Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:2 spec %, keys %", xspec, keys);
+				//Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:2 spec %, keys %", xspec, keys);
 			} {
 
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
 					xspec = this.spec.tagSpec;
-					Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:3 spec %, keys %", xspec, keys);
+					//Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:3 spec %, keys %", xspec, keys);
 				} {
 					xspec = this.spec;
-					Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:4 spec %, keys %", xspec, keys);
+					//Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:4 spec %, keys %", xspec, keys);
 				};
 			};
 			{
@@ -1121,8 +1126,8 @@ Param {
 					error.reportError;
 					//error.throw;
 				};
-			Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:5 spec %, keys %", xspec, keys);
-			Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:6 spec %, keys %", xspec, keys);
+			//Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:5 spec %, keys %", xspec, keys);
+			//Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:6 spec %, keys %", xspec, keys);
 			}.defer;
 			//view.value.debug("mapValuePopUpMenu:1.5");
 		};
@@ -1131,36 +1136,36 @@ Param {
 		//view.value.debug("mapValuePopUpMenu:3");
 		view.action = {
 			var xspec;
-			Log(\Param).debug("mapBusPopUpMenu:action:1: view.value %", view.value);
-			Log(\Param).debug("mapBusPopUpMenu:action:2 spec %, keys %", this.spec, keys);
+			//Log(\Param).debug("mapBusPopUpMenu:action:1: view.value %", view.value);
+			//Log(\Param).debug("mapBusPopUpMenu:action:2 spec %, keys %", this.spec, keys);
 			if(keys.notNil) {
 				xspec = keys;
-				Log(\Param).debug("mapBusPopUpMenu:action:3 spec %, keys %", xspec, keys);
+				//Log(\Param).debug("mapBusPopUpMenu:action:3 spec %, keys %", xspec, keys);
 			} {
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
 					xspec = this.spec.tagSpec;
-					Log(\Param).debug("mapBusPopUpMenu:action:4 spec %, keys %", xspec, keys);
+					//Log(\Param).debug("mapBusPopUpMenu:action:4 spec %, keys %", xspec, keys);
 				} {
 					xspec = this.spec;
-					Log(\Param).debug("mapBusPopUpMenu:action:5 spec %, keys %", xspec, keys);
+					//Log(\Param).debug("mapBusPopUpMenu:action:5 spec %, keys %", xspec, keys);
 				};
 			};
-			Log(\Param).debug("mapBusPopUpMenu:action:6 spec %, keys %", xspec, keys);
+			//Log(\Param).debug("mapBusPopUpMenu:action:6 spec %, keys %", xspec, keys);
 			this.setBus(xspec.mapIndex(view.value));
-			Log(\Param).debug("mapBusPopUpMenu:action: end");
+			//Log(\Param).debug("mapBusPopUpMenu:action: end");
 		};
 		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
 		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
 			// TODO: do not change the whole row when just one value is updated!
-			Log(\Param).debug("mapBusPopUpMenu:onChange: prop:% view:% model:% msg:% arg:%", this.propertyRoot, aview, model, message, arg1);
+			//Log(\Param).debug("mapBusPopUpMenu:onChange: prop:% view:% model:% msg:% arg:%", this.propertyRoot, aview, model, message, arg1);
 			if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
 				arg1.includes(this.propertyRoot)
 			} }) {
-				Log(\Param).debug("mapBusPopUpMenu:onChange: going to refresh");
+				//Log(\Param).debug("mapBusPopUpMenu:onChange: going to refresh");
 				aview.refreshChange;
 			};
 			{
-				Log(\Param).debug("mapBusPopUpMenu:onchange: end", view.value);
+				//Log(\Param).debug("mapBusPopUpMenu:onchange: end", view.value);
 			}.defer;
 		});
 		mykeys = keys ?? {this.spec};
@@ -1320,7 +1325,7 @@ Param {
 	}
 
 	asBusPopUpMenu { arg keys;
-		Log(\Param).debug("asBusPopUpMenu %", keys);
+		//Log(\Param).debug("asBusPopUpMenu %", keys);
 		^PopUpMenu.new.mapBusParam(this, keys) // is Param.mapBusPopUpMenu
 	}
 
@@ -1827,11 +1832,11 @@ ParamAccessor {
 
 			getbus: { arg self;
 				var val;
-				Log(\Param).debug("euhh1");
+				//Log(\Param).debug("euhh1");
 				val = self.obj.parent.getNest;
-				Log(\Param).debug("euhh10 %", val);
+				//Log(\Param).debug("euhh10 %", val);
 				val !? {
-				Log(\Param).debug("euhh11 %", val);
+				//Log(\Param).debug("euhh11 %", val);
 					val[idx];
 				}
 			},
@@ -2233,26 +2238,26 @@ BaseAccessorParam : BaseParam {
 			// Param arg
 			xspec ?? {
 				// halo
-				Log(\Param).debug("to Spec: 1");
+				//Log(\Param).debug("to Spec: 1");
 				xtarget.getSpec(xproperty) ?? {
 					var mysp;
-				Log(\Param).debug("2");
+				//Log(\Param).debug("2");
 					// instrument metadata spec
 					instr = PdefParam.instrument(xtarget);
 					if(instr.notNil) {
-				Log(\Param).debug("3 % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
+				//Log(\Param).debug("3 % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
 						mysp = Param.getSynthDefSpec(xproperty, instr);
 						
 						// arg name in Spec
 						mysp ?? {
-				Log(\Param).debug("4");
+				//Log(\Param).debug("4");
 							// arg name in Spec
 							xproperty.asSpec ?? {
-				Log(\Param).debug("5");
+				//Log(\Param).debug("5");
 								// default value in SynthDef
-				Log(\Param).debug("what %", Param.specFromDefaultValue(xproperty, instr));
+				//Log(\Param).debug("what %", Param.specFromDefaultValue(xproperty, instr));
 								Param.specFromDefaultValue(xproperty, instr) ?? {
-				Log(\Param).debug("5.1");
+				//Log(\Param).debug("5.1");
 									Param.defaultSpec
 								}
 							}
@@ -2309,9 +2314,9 @@ BaseAccessorParam : BaseParam {
 		};
 		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOff(val); 
-			Log(\Param).debug("Val unNested! %", val);
+			//Log(\Param).debug("Val unNested! %", val);
 		};
-		Log(\Param).debug("get:final Val %", val);
+		//Log(\Param).debug("get:final Val %", val);
 		^val;
 	}
 
@@ -2319,7 +2324,7 @@ BaseAccessorParam : BaseParam {
 		// this is not called by accessor, accessor always use parent.setVal
 		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOn(val); 
-			Log(\Param).debug("Val Nested! %", val);
+			//Log(\Param).debug("Val Nested! %", val);
 		};
 		target[property] = val;
 		if(Param.trace == true) {
@@ -2497,29 +2502,29 @@ PdefParam : BaseAccessorParam {
 			// Param arg
 			xspec ?? {
 				// halo
-				Log(\Param).debug("PdefParam: toSpec: 1");
+				//Log(\Param).debug("PdefParam: toSpec: 1");
 				// halo.getSpec return the spec in Spec.specs if not found in halo but we want to check instrument spec before
 				if(xtarget.getSpec !? { arg sp; sp.keys.includes(xproperty) } ? false) {
 					xtarget.getSpec(xproperty)
 				} {
 					var mysp;
-				Log(\Param).debug("2");
+				//Log(\Param).debug("2");
 					// instrument metadata spec
 					instr = PdefParam.instrument(xtarget);
 					if(instr.notNil) {
-				Log(\Param).debug("3 % % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
+				//Log(\Param).debug("3 % % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
 						mysp = Param.getSynthDefSpec(xproperty, instr);
 						
 						// arg name in Spec
 						mysp ?? {
-				Log(\Param).debug("4");
+				//Log(\Param).debug("4");
 							// arg name in Spec
 							xproperty.asSpec ?? {
-				Log(\Param).debug("5");
+				//Log(\Param).debug("5");
 								// default value in SynthDef
-				Log(\Param).debug("sfdv: %", Param.specFromDefaultValue(xproperty, instr));
+				//Log(\Param).debug("sfdv: %", Param.specFromDefaultValue(xproperty, instr));
 								Param.specFromDefaultValue(xproperty, instr) ?? {
-				Log(\Param).debug("5.1");
+				//Log(\Param).debug("5.1");
 									Param.defaultSpec
 								}
 							}
@@ -3499,16 +3504,16 @@ StepEventParam : BaseParam {
 		};
 		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOff(val); 
-			Log(\Param).debug("Val unNested! %", val);
+			//Log(\Param).debug("Val unNested! %", val);
 		};
-		Log(\Param).debug("get:final Val %", val);
+		//Log(\Param).debug("get:final Val %", val);
 		^val;
 	}
 
 	setVal { arg val;
 		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOn(val); 
-			Log(\Param).debug("Val Nested! %", val);
+			//Log(\Param).debug("Val Nested! %", val);
 		};
 		target[property] = val;
 		//Log(\Param).debug("set:final Val %", val);
@@ -3643,6 +3648,12 @@ MessageParam : StandardConstructorParam {
 	get { 
 		^target.receiver.perform(property);	
 	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(this.property, { arg ...args; 
+			action.(view, param);
+		});
+	}
 }
 
 FunctionParam : StandardConstructorParam {
@@ -3775,10 +3786,10 @@ PdefParam_old : BaseParam {
 			// Param arg
 			xspec ?? {
 				// halo
-				Log(\Param).debug("1");
+				//Log(\Param).debug("1");
 				xtarget.getSpec(xproperty) ?? {
 					var mysp;
-				Log(\Param).debug("2");
+				//Log(\Param).debug("2");
 					// instrument metadata spec
 					instr = PdefParam.instrument(xtarget);
 					if(instr.notNil) {
@@ -3786,13 +3797,13 @@ PdefParam_old : BaseParam {
 						
 						// arg name in Spec
 						mysp ?? {
-				Log(\Param).debug("4");
+				//Log(\Param).debug("4");
 							// arg name in Spec
 							xproperty.asSpec ?? {
-				Log(\Param).debug("5");
+				//Log(\Param).debug("5");
 								// default value in SynthDef
 								Param.specFromDefaultValue(xproperty, instr) ?? {
-				Log(\Param).debug("5.1");
+				//Log(\Param).debug("5.1");
 									Param.defaultSpec
 								}
 							}

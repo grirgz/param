@@ -52,6 +52,14 @@ ProtoClassDef(\TrackMixerDef, (
 		self.proxy.set(\inbus, val);
 	},
 
+	inBus: { arg self;
+		self.inbus;
+	},
+
+	inBus_: { arg self, val;
+		self.inbus = val;
+	},
+
 	// output to this bus so we can record mixer output, without having to change outbus and add a master
 	recbus: { arg self;
 		BusDef(\trackMixerDef_record_+++self.key, \audio, self.numchannels)
@@ -176,7 +184,7 @@ ProtoClassDef(\TrackMixerDef, (
 		};
 		idx = idx + offset;
 		if(self.insertFxList[idx].isNil) {
-			self.insertFxList[idx] = ProtoTemplateDef(\TrackMixer_InserFx).new(self.proxy, idx)
+			self.insertFxList[idx] = ProtoTemplateDef(\TrackMixer_InsertFx).new(self.proxy, idx)
 		};
 		self.insertFxList[idx]
 		
@@ -209,7 +217,7 @@ ProtoClassDef(\TrackMixerDef, (
 ));
 ~trackMixerDef = ProtoClassDef(\TrackMixerDef);
 
-ProtoTemplateDef(\TrackMixer_InserFx, (
+ProtoTemplateDef(\TrackMixer_InsertFx, (
 	// ndef style fx
 
 	new: { arg self, proxy, index, synthName;
@@ -239,25 +247,52 @@ ProtoTemplateDef(\TrackMixer_InserFx, (
 		}
 	},
 
+	excludedArgs: [\inbus, \in, \out, \gate],
+
 	wrapFunctionWithIndexedArguments: { arg self;
 		var newArgs = List.new;
 		var index = self.index;
 		var synthName = self.synthName;
-		Log(\Param).debug("synthName %", synthName);
-		newArgs = SynthDesc(synthName).controlNames.collect({ arg item;
-			if(item != \in and: {item.asString.endsWith(index).not}) {
-				( item ++ index ).asSymbol
-			} {
-				item;
-			};
+		var code = SynthDescLib.global.at(synthName).def.func.asCompileString;
+		var regexp =  "[^[:w:]\.](%)[^[:w:]]";
+		var excluded = self.excludedArgs;
+		SynthDesc(synthName).controlNames.do({ arg item;
+			var newname;
+			if(excluded.includes(item).not and: {item.asString.endsWith(index).not}) {
+				newname = ( item ++ index ).asSymbol;
+				code = ~replaceAllRegexp.(code, regexp.format(item), newname);
+			}
 		});
-		"{ arg %; SynthDef.wrap(SynthDesc(%).def.func, nil, [%]); }".format(newArgs.join(", "), synthName.asCompileString, newArgs.join(", ")).interpret;
+		// replace in by out for ndef filters
+		code = ~replaceAllRegexp.(code, regexp.format("inbus"), "out");
+		code.interpret;
+	},
+
+	replaceAllRegexp: { arg self, string, regexp, replaceString;
+		var strar = string.as(Array);
+		var res = string.findRegexp(regexp);
+		res = res.clump(2).collect({ arg x; x.last }).reverse; // retrieve only the grouped expr
+		//res.debug("res");
+		res.do { arg item, idx;
+			//strar[item.first..replaceString.size-1]
+			( item.first .. item.first + item.last.size-1 ).reverseDo { arg remidx;
+				//[remidx, strar[remidx]].debug("remidx");
+				strar.removeAt(remidx);
+			};
+			replaceString.as(Array).do { arg char, repidx;
+				//[char, repidx, repidx + item.first].debug("char repidx");
+				strar = strar.insert(repidx + item.first, char);
+				//strar.join.debug("strar");
+			};
+			
+		};
+		strar.join;
 	},
 
 	controlNames: { arg self;
 		var index = self.index;
 		SynthDesc(self.synthName).controlNames.collect({ arg item;
-			if(item != \in and: {item.asString.endsWith(index).not}) {
+			if(self.excludedArgs.includes(item).not and: {item.asString.endsWith(index).not}) {
 				( item ++ index ).asSymbol
 			} {
 				item;
@@ -269,19 +304,42 @@ ProtoTemplateDef(\TrackMixer_InserFx, (
 		if(self.synthName.notNil) {
 			//\filter -> { arg in; SynthDef.wrap(SynthDesc(self.synthName).def.func, nil, [in]) };
 			//\filter -> SynthDesc(self.synthName).def.func
-			\filter -> self.wrapFunctionWithIndexedArguments;
+			self.wrapFunctionWithIndexedArguments;
 		}
 	},
 
 	asParamGroup: { arg self;
-		var stdNames = SynthDesc(self.synthName).controlNames;
-		//ParamGroup(self.controlNames.collect({ arg x, idx; 
-			//Param(self.proxy, x, Param(self.proxy, stdNames[idx].asSymbol).spec);
-		//}))
-		ParamGroup(self.proxy.objects[self.index].controlNames.collect({ arg x, idx; 
-			Param(self.proxy, x);
+		var stdArgs = List.new;
+		var newArgs = List.new;
+		var index = self.index;
+		var synthName = self.synthName;
+		var excluded = self.excludedArgs;
+		SynthDesc(synthName).controlNames.do({ arg item;
+			var newname;
+			if(excluded.includes(item).not and: {item.asString.endsWith(index).not}) {
+				newname = ( item ++ index ).asSymbol;
+				newArgs.add(newname);
+				stdArgs.add(item);
+			} {
+				if(excluded.includes(item).not) {
+					newArgs.add(item);
+					stdArgs.add(item);
+				}
+			};
+
+		});
+		ParamGroup(newArgs.collect({ arg x, idx; 
+			Param(self.proxy, x, Param.toSynthDefSpec(nil, stdArgs[idx], self.synthName));
 		}))
 
+	},
+
+	getParam: { arg self, val;
+		var oldval = val;
+		if(self.excludedArgs.includes(val).not) {
+			val = (val ++ self.index).asSymbol;
+		};
+		Param(self.proxy, val, Param.toSynthDefSpec(nil, oldval, self.synthName))
 	},
 
 	index: 100,
@@ -304,6 +362,249 @@ ProtoTemplateDef(\TrackMixer_InserFx, (
 		} {
 			self.stop;
 		}
+	},
+
+	edit: { arg self;
+		WindowDef(\InsertFxEditor, { arg def, insertFx;
+			VLayout (
+				HLayout (
+					PlayerWrapper(insertFx).asView,
+					//Param({ mixer.isInsertFxEnabled(idx) }, { mixer.enableInsertFx(idx) }, ParamBoolSpec()).asButton("Fx"++idx),
+					Param(Message(insertFx), \synthName, TagSpecDef(\SynthDef_InsertFx)).asPopUpMenu,
+				),
+				insertFx.asParamGroup.asView
+			)
+		}).front(self)
+	},
+
+));
+
+ProtoTemplateDef(\TrackMixer_InsertFx_equi, (
+	// ndef style fx
+
+	new: { arg self, proxy, index, synthName;
+		self = self.deepCopy;
+	
+		self.index = index;
+		self.proxy = proxy;
+		self.synthName = synthName;
+	
+		self;
+	},
+	
+	offset: 0,
+	absIndex: { arg self;
+		self.offset + self.index;
+	},
+
+	synthName: \default,
+	synthName_: { arg self, val;
+		self[\synthName] = val;
+		self.updateFx;
+	},
+
+	updateFx: { arg self;
+		if(self.proxy[self.index].notNil) {
+			self.proxy[self.index] = self.fxValue
+		}
+	},
+
+	excludedArgs: [\inbus, \in, \out, \gate],
+
+	wrapFunctionWithIndexedArguments: { arg self;
+		var newArgs = List.new;
+		var index = self.index;
+		var synthName = self.synthName;
+		var code = SynthDescLib.global.at(synthName).def.func.asCompileString;
+		var regexp =  "[^[:w:]\.](%)[^[:w:]]";
+		var excluded = self.excludedArgs;
+		SynthDesc(synthName).controlNames.do({ arg item;
+			var newname;
+			if(excluded.includes(item).not and: {item.asString.endsWith(index).not}) {
+				newname = ( item ++ index ).asSymbol;
+				code = ~replaceAllRegexp.(code, regexp.format(item), newname);
+			}
+		});
+		// replace in by out for ndef filters
+		code = ~replaceAllRegexp.(code, regexp.format("inbus"), "out");
+		code.interpret;
+	},
+
+	replaceAllRegexp: { arg self, string, regexp, replaceString;
+		var strar = string.as(Array);
+		var res = string.findRegexp(regexp);
+		res = res.clump(2).collect({ arg x; x.last }).reverse; // retrieve only the grouped expr
+		//res.debug("res");
+		res.do { arg item, idx;
+			//strar[item.first..replaceString.size-1]
+			( item.first .. item.first + item.last.size-1 ).reverseDo { arg remidx;
+				//[remidx, strar[remidx]].debug("remidx");
+				strar.removeAt(remidx);
+			};
+			replaceString.as(Array).do { arg char, repidx;
+				//[char, repidx, repidx + item.first].debug("char repidx");
+				strar = strar.insert(repidx + item.first, char);
+				//strar.join.debug("strar");
+			};
+			
+		};
+		strar.join;
+	},
+
+	controlNames: { arg self;
+		var index = self.index;
+		SynthDesc(self.synthName).controlNames.collect({ arg item;
+			if(self.excludedArgs.includes(item).not and: {item.asString.endsWith(index).not}) {
+				( item ++ index ).asSymbol
+			} {
+				item;
+			};
+		});
+	},
+
+	fxValue: { arg self;
+		if(self.synthName.notNil) {
+			//\filter -> { arg in; SynthDef.wrap(SynthDesc(self.synthName).def.func, nil, [in]) };
+			//\filter -> SynthDesc(self.synthName).def.func
+			self.wrapFunctionWithIndexedArguments;
+		}
+	},
+
+	asParamGroup: { arg self;
+		var stdArgs = List.new;
+		var newArgs = List.new;
+		var index = self.index;
+		var synthName = self.synthName;
+		var excluded = self.excludedArgs;
+		SynthDesc(synthName).controlNames.do({ arg item;
+			var newname;
+			if(excluded.includes(item).not and: {item.asString.endsWith(index).not}) {
+				newname = ( item ++ index ).asSymbol;
+				newArgs.add(newname);
+				stdArgs.add(item);
+			} {
+				if(excluded.includes(item).not) {
+					newArgs.add(item);
+					stdArgs.add(item);
+				}
+			};
+
+		});
+		ParamGroup(newArgs.collect({ arg x, idx; 
+			Param(self.proxy, x, Param.toSynthDefSpec(nil, stdArgs[idx], self.synthName));
+		}))
+
+	},
+
+	getParam: { arg self, val;
+		var oldval = val;
+		if(self.excludedArgs.includes(val).not) {
+			val = (val ++ self.index).asSymbol;
+		};
+		Param(self.proxy, val, Param.toSynthDefSpec(nil, oldval, self.synthName))
+	},
+
+	index: 100,
+
+	play: { arg self;
+		self.proxy[self.index] = self.fxValue
+	},
+
+	stop: { arg self;
+		self.proxy[self.index] = nil
+	},
+	
+	isPlaying: { arg self;
+		self.proxy[self.index].notNil;
+	},
+
+	isPlaying_: { arg self, val;
+		if(val == true) {
+			self.play;
+		} {
+			self.stop;
+		}
+	},
+
+	edit: { arg self;
+
+		WindowDef(\InsertFx_Equi, { arg def, model, inbus, paramdict;
+			var equi, equiparams;
+			var scope = FreqScopeView(nil, Rect(0,0,100,100))
+			.freqMode_(1)
+			.active_(true);
+			if(paramdict.isNil) {
+				paramdict = Dictionary.newFrom([
+					inbus: Param(model, \inbus),
+					mix: Param(model, \mix),
+					gain: Param(model, \gain),
+					out: Param(model, \out),
+				]);
+			};
+			if(inbus.notNil) {
+				scope.inBus = inbus;
+			};
+			scope.onClose = {
+				scope.kill;
+			};
+			scope.followChange(model, \set, {
+				scope.inBus = paramdict[\inbus].get;
+			});
+
+			//equiparams = EQuiParams.new(
+			//* #[
+			//loShelfFreq,
+			//loShelfGain,
+			//loShelfRs,
+			//loPeakFreq,
+			//loPeakGain,
+			//loPeakRq,
+			//midPeakFreq,
+			//midPeakGain,
+			//midPeakRq,
+			//hiPeakFreq,
+			//hiPeakGain,
+			//hiPeakRq,
+			//hiShelfFreq,
+			//hiShelfGain,
+			//hiShelfRs
+			//].collect({ arg key;
+			////key -> model.get(key)
+			//model.get(key)
+			//})
+			//);
+			equi = EQui(nil,nil,model);
+			equi.sync;
+			VLayout (
+				View.new.layout_(
+					VLayout(
+						HLayout (
+							PlayerWrapper(model).asView,
+							BasicButton.new.string_("edit").action_({ 
+								WindowDef(\PdefEditor).front(model)
+							}),
+							BasicButton.new.string_("reset").action_({ 
+								equi.value = EQuiParams.new;
+							}),
+						),
+						ParamGroupLayout.two_panes(
+							ParamGroup ([
+								paramdict[\mix],
+								paramdict[\gain],
+								paramdict[\inbus],
+								paramdict[\out],
+							])
+						)
+					)
+				).maxHeight_(150),
+				View.new.layout_(
+					VLayout (
+						equi
+					)
+				).minHeight_(300),
+				scope,
+			)
+		}).front(self, );
 	},
 
 ));
@@ -486,3 +787,8 @@ ProtoTemplateDef(\NdefTrackMixer, (
 ));
 
 );
+
+/////////////
+// END
+
+TrackMixerDef(\mixer)

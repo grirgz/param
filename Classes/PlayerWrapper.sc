@@ -159,10 +159,7 @@ PlayerWrapper  {
 	}
 
 	asPlayerEvent {
-		var fun = this.playerEventWrapper ? { arg x; x };
-		^fun.(PlayerEvent((
-			receiver: "{ % }".format(this.asCompileString).interpret
-		)))
+		^wrapper.asPlayerEvent;
 	}
 
 	makeListener { arg fun;
@@ -174,6 +171,11 @@ PlayerWrapper  {
 		controller = SimpleController(this.target)
 			.put(\play, listenfun)
 			.put(\stop, listenfun)
+			.put(\userPlayed, listenfun)
+			.put(\userStopped, listenfun)
+			.put(\playing, listenfun)
+			.put(\stopped, listenfun)
+			.put(\PlayerWrapper, listenfun)
 		;
 		^controller
 	}
@@ -211,6 +213,12 @@ PlayerWrapper_Base {
 		^this.label.asSymbol;
 	}
 
+	asPlayerEvent {
+		var fun = this.playerEventWrapper ? { arg x; x };
+		^fun.(PlayerEvent((
+			receiver: "{ % }".format(this.asCompileString).interpret
+		)))
+	}
 
     doesNotUnderstand { arg selector...args;
 		Log(\Param).debug("PlayerWrapper_Base: doesNotUnderstand", [selector, args]);
@@ -590,12 +598,33 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 		^Param(Message(this.target), \outBus, ParamBusSpec()).get;
 	}
 
+	asPlayerEvent {
+		if(target[\asPlayerEvent].isNil) {
+			var fun = this.playerEventWrapper ? { arg x; x };
+			^fun.(PlayerEvent((
+				receiver: "{ % }".format(this.asCompileString).interpret
+			)))
+		} {
+			^target.asPlayerEvent
+		}
+	}
+
 	play {
 		target.play;
 		target.changed(\PlayerWrapper, \userPlayed);
 		this.doWithQuant {
 			target.changed(\PlayerWrapper, \playing);
 		}
+	}
+
+	playNow {
+		target.playNow;
+		target.changed(\PlayerWrapper, \playing);
+	}
+
+	stopNow {
+		target.stopNow;
+		target.changed(\PlayerWrapper, \stopped);
 	}
 
 	label {
@@ -732,10 +761,11 @@ PlayerWrapperGroup : List {
 		this.do({ arg wrapper, idx; 
 			var eventWrapper = { arg ev;
 				if(this.playerEventWrapper.notNil) {
-					this.playerEventWrapper(ev, idx);
+					this.playerEventWrapper.(ev, idx);
 				} {
 					ev[\midinote] = idx;
-				}
+					ev;
+				};
 			};
 			wrapper.playerEventWrapper_(eventWrapper)
 		});

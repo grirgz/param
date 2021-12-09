@@ -1,6 +1,7 @@
 // Timeline helper widgets
 
 ////// x rulers
+// the ruler is a small bar, the grid under the timeline is drawn by TimelineView.drawGridX
 
 TimelineRulerView : TimelineView {
 	// this is a X ruler with graduated bars to measure time in beats
@@ -699,6 +700,7 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 }
 
 ////// y rulers
+// the ruler is a small bar, the grid under the timeline is drawn by TimelineView.drawGridY
 
 MidinoteTimelineRulerView : TimelineView {
 	// the piano roll!
@@ -763,18 +765,23 @@ MidinoteTimelineRulerView : TimelineView {
 KitTimelineRulerView : TimelineView {
 	// simple y ruler for KitTimeline
 	var <>mygrid; // debug
+	var <>wrapper;
 
 	*new { arg w, bounds; 
 		^super.new.specialInit;
 	}
 
+	mapWrapper { arg awrapper;
+		wrapper = awrapper;
+	}
+
 	specialInit { arg w, argbounds;
-		this.view.drawFunc = { TimelineDrawer.draw_quad_lines(this) };
+		this.view.drawFunc = { TimelineDrawer.draw_quad_lines(this, wrapper) };
 	}
 }
 
 ParamTimelineRulerView : TimelineView {
-	// simple y ruler for KitTimeline
+	// simple y ruler for ParamTimeline
 	var <>mygrid; // debug
 	var <>paramTimeline;
 
@@ -1080,7 +1087,7 @@ TimelineDrawer {
 				Pen.color = Color.black;
 				font = Font('sans', 8);
 
-				Pen.stringInRect("C" ++ (py/12).trunc ++" "++py, Rect(next.x+5, next.y-10, timeline.bounds.width, 10), font);
+				Pen.stringInRect("C%   %".format((py/12).trunc.asInteger, py.asInteger), Rect(next.x+5, next.y-10, timeline.bounds.width, 10), font);
 				Pen.line( start, end );
 				Pen.stroke;
 			} {
@@ -1098,24 +1105,45 @@ TimelineDrawer {
 		Pen.alpha = 1;
 	}
 
-	*draw_quad_lines { arg me;
+	*draw_quad_lines { arg me, wrapper;
 		var areasize = me.areasize;
+		var color_on = ParamViewToolBox.color_ligth.copy.alpha_(0.3);
+		var color_on_dark = ParamViewToolBox.color_ligth.copy.alpha_(0.6);
 		//~drawme.(this, areasize);
 		//areasize.debug("drawme: drawFunc: areasize");
 		Pen.use {
 
 			areasize.y.do { arg py;
+				var cellrect = Rect.fromPoints(
+					me.gridPointToPixelPoint(Point(0,py)),
+					me.gridPointToPixelPoint(Point(areasize.x, py+1))
+				);
 				//[this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py))].debug("line");
 				if(py%32 >= 16) {
 
 					Pen.width = 1;
 					Pen.color = Color.gray(alpha:0.3);
-					Pen.fillRect(
-						Rect.fromPoints(
-							me.gridPointToPixelPoint(Point(0,py)),
-							me.gridPointToPixelPoint(Point(areasize.x, py+1))
-						)
-					);
+					if(wrapper.notNil) {
+						if(wrapper.elAt(py.asInteger).isEmpty.not) {
+							Pen.color = color_on_dark;
+							Pen.fillRect(cellrect);
+							Pen.color = Color.black;
+							Pen.stringInRect(wrapper.elAt(py.asInteger).label, cellrect);
+						} {
+							Pen.fillRect(cellrect);
+						};
+					} {
+						Pen.fillRect(cellrect);
+					};
+				} {
+					if(wrapper.notNil) {
+						if(wrapper.elAt(py.asInteger).isEmpty.not) {
+							Pen.color = color_on;
+							Pen.fillRect(cellrect);
+							Pen.color = Color.black;
+							Pen.stringInRect(wrapper.elAt(py.asInteger).label, cellrect);
+						};
+					};
 				};
 				if(py % 4 == 0) {
 					Pen.width = 1;
@@ -1165,23 +1193,29 @@ TimelineDrawer {
 		}
 	}
 
-	*draw_param_values_old { arg me, param;
+	*draw_param_horizontal_lines { arg me, param;
+		//~draw_param_values.(me, param);
+
 		var areasize = me.areasize;
 		//~drawme.(this, areasize);
-		areasize.debug("draw_param_values: areasize");
 		if(param.notNil) {
 			var font = Font.default.copy.size_(9);
 			Pen.use {
-				var pixelPerLine = 20; 
-				var count = (me.bounds.height/pixelPerLine).asInteger;
-
 				Pen.width = 1;
 				Pen.color = Color.black;
-				count.do { arg idx;
-					var val = param.spec.map(( count-idx )/count).asStringPrec(5); // reverse
-					Pen.stringAtPoint(val, Point(1,idx*pixelPerLine), font);
-
-				};
+				TimelineRulerView.horizontal_grid_do(me, { arg y, idx, lineCount;
+					if(idx % 8 == 0) {
+						Pen.color = Color.black;
+					} {
+						if(idx % 4 == 0) {
+							Pen.color = Color.gray;
+						} {
+							Pen.color = Color.gray(alpha:0.3);
+						}
+					};
+					Pen.line(Point(0,y),Point(me.virtualBounds.width, y));
+					Pen.stroke;
+				});
 			}
 		}
 	}
@@ -1207,7 +1241,7 @@ TimelineDrawer {
 		}
 	}
 
-	*draw_param_values_new { arg me, param;
+	*draw_param_values_old2 { arg me, param;
 		var areasize = me.areasize;
 		//~drawme.(this, areasize);
 		areasize.debug("draw_param_values: areasize");
@@ -1227,9 +1261,29 @@ TimelineDrawer {
 				};
 			}
 		}
-
-		
 	}
+
+	*draw_param_values_old { arg me, param;
+		var areasize = me.areasize;
+		//~drawme.(this, areasize);
+		areasize.debug("draw_param_values: areasize");
+		if(param.notNil) {
+			var font = Font.default.copy.size_(9);
+			Pen.use {
+				var pixelPerLine = 20; 
+				var count = (me.bounds.height/pixelPerLine).asInteger;
+
+				Pen.width = 1;
+				Pen.color = Color.black;
+				count.do { arg idx;
+					var val = param.spec.map(( count-idx )/count).asStringPrec(5); // reverse
+					Pen.stringAtPoint(val, Point(1,idx*pixelPerLine), font);
+
+				};
+			}
+		}
+	}
+
 }
 
 
