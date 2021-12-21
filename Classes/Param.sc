@@ -550,6 +550,7 @@ Param {
 			// dependants mode
 			// FIXME: should i free it ? should i reuse it ?
 			var controller;
+			Log(\Param).debug("makeUpdater: controllerTarget:%", this.controllerTarget);
 			controller = SimpleController(param.controllerTarget);
 			{
 				view.onClose = view.onClose.addFunc( { this.class.freeUpdater(view) } );
@@ -581,6 +582,7 @@ Param {
 	}
 
 	putListener { arg view, controller, action;
+		Log(\Param).debug("Param.putListener view:%, wrapper:%", view, wrapper );
 		this.wrapper.putListener(this, view, controller, action);
 	}
 
@@ -2313,6 +2315,7 @@ BaseAccessorParam : BaseParam {
 
 	getVal {
 		// this is not called by accessor, accessor always use parent.getVal
+		// this means this method is always called by the top Param on the top value
 		var val;
 		val = target[property] ?? { 
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
@@ -2390,6 +2393,7 @@ BaseAccessorParam : BaseParam {
 	//}
 
 	putListener { arg param, view, controller, action;
+		Log(\Param).debug("BaseAccessorParam.putListener %", param);
 		controller.put(\set, { arg ...args; 
 			// args: object, \set, keyval_list
 			//args.debug("args");
@@ -2969,8 +2973,10 @@ VolumeParam : BaseParam {
 }
 
 ////////////////// TempoClock
+// maybe could be implemented with MessageParam
 
 TempoClockParam : BaseParam {
+
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
@@ -3640,7 +3646,119 @@ StepEventParam : BaseParam {
 //}
 
 ////////////////// Object property (message)
-MessageParam : StandardConstructorParam {
+MessageParam : BaseAccessorParam {
+
+	*new { arg obj, meth, sp;
+		^this.prNew(obj, meth, sp);
+	}
+
+	controllerTarget {
+		^this.target.receiver;
+	}
+
+	targetLabel {
+		^target.receiver.class
+	}
+
+	getVal {
+		// this is not called by accessor, accessor always use parent.getVal
+		// this means this method is always called by the top Param on the top value
+		var val;
+		val = this.getRaw ?? { 
+			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			this.default
+		};
+		//if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
+			//val = Pdef.nestOff(val); 
+			////Log(\Param).debug("Val unNested! %", val);
+		//};
+		//Log(\Param).debug("get:final Val %", val);
+		^val;
+	}
+
+	setVal { arg val;
+		// this is not called by accessor, accessor always use parent.setVal
+		//if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
+			//val = Pdef.nestOn(val); 
+			////Log(\Param).debug("Val Nested! %", val);
+		//};
+		this.setRaw(val);
+		if(Param.trace == true) {
+			"%: setVal: %".format(this, val).postln;
+		};
+		target.changed(\set, property, val);
+	}
+
+	setRaw { arg val;
+		target.receiver.perform((property++"_").asSymbol, val);	
+		this.controllerTarget.changed(\set, property); // FIXME: may update two times when pointed object already send changed signal
+	}
+
+	getRaw { 
+		^target.receiver.perform(property);	
+	}
+
+	//putListener { arg param, view, controller, action;
+		//controller.put(this.property, { arg ...args; 
+			//action.(view, param);
+		//});
+	//}
+
+	*toSpec { arg xspec, xtarget, xproperty;
+		var instr;
+		var sp;
+		sp =
+			// Param arg
+			xspec ?? {
+				// halo
+				//Log(\Param).debug("to Spec: 1");
+				xtarget.receiver.getSpec(xproperty) ?? {
+					var mysp;
+				//Log(\Param).debug("2");
+					// instrument metadata spec
+					//instr = PdefParam.instrument(xtarget); // commented: no instr in MessageParam
+					if(instr.notNil) { 
+				//Log(\Param).debug("3 % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
+						mysp = Param.getSynthDefSpec(xproperty, instr);
+						
+						// arg name in Spec
+						mysp ?? {
+				//Log(\Param).debug("4");
+							// arg name in Spec
+							xproperty.asSpec ?? {
+				//Log(\Param).debug("5");
+								// default value in SynthDef
+				//Log(\Param).debug("what %", Param.specFromDefaultValue(xproperty, instr));
+								Param.specFromDefaultValue(xproperty, instr) ?? {
+				//Log(\Param).debug("5.1");
+									Param.defaultSpec
+								}
+							}
+						}
+					} {
+						// arg name in Spec
+						xproperty.asSpec ?? {
+							// default value in Pdef
+							var myval = xtarget.receiver.perform(xproperty);
+				//Log(\Param).debug("6");
+							if(myval.notNil) {
+				//Log(\Param).debug("7");
+								Param.valueToSpec(myval);
+							} {
+								// default spec
+				//Log(\Param).debug("8");
+								Param.defaultSpec
+							}
+						}
+					}
+				}
+
+			};
+		^sp.asSpec;
+	}
+}
+
+MessageParam_old : StandardConstructorParam {
 
 	controllerTarget {
 		^this.target.receiver;

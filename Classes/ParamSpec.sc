@@ -9,6 +9,15 @@ ParamBaseSpec : Spec {
 
 	}
 
+	step {
+		// used by MultiSliderView
+		^0
+	}
+
+	range {
+		^1
+	}
+
 }
 
 
@@ -109,6 +118,13 @@ ParamArraySpec : ParamBaseSpec {
 		} {
 			^res
 		}
+	}
+
+	step {
+		^array.first.step
+	}
+	range {
+		^array.first.range
 	}
 }
 

@@ -361,7 +361,7 @@ ParamGroupLayout {
 						st;
 					}.fixedWidth_(80),
 					param.asSlider.orientation_(\horizontal).minWidth_(150),
-					param.asTextField.fixedWidth_(80),
+					param.asTextField(6).fixedWidth_(80),
 				)
 			};
 			lay;
