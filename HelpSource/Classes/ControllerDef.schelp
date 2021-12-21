@@ -6,6 +6,7 @@ related:: Classes/Param, Classes/WindowDef
 DESCRIPTION::
 The main reason to use ControllerDef is to be able to store all controller code in a same place and tag them to automatically detect which controller are available to control a given set of parameters or players
 
+Note::Warning: the design of ControllerDef and how to manage controllers in Param quark is a work in progress and might change. I'm not sure the current design is what fulfill the needs. I'm open to feedback and ideas::
 
 CLASSMETHODS::
 
@@ -22,6 +23,14 @@ ARGUMENT:: tags
 A list of tag (Symbol).
 
 returns:: a ControllerDef
+
+METHOD:: getTagSpec
+Return a TagSpec that match the tag given in argument
+
+ARGUMENT:: tag
+A tag (Symbol).
+
+returns:: a TagSpec or TagSpecDef
 
 METHOD:: getByTag
 Return all ControllerDef matching at least one the given tags
@@ -65,6 +74,7 @@ returns:: A list of tag (Symbol).
 EXAMPLES::
 
 code::
+
 (
 SynthDef(\saw, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
 	var sig;
@@ -87,30 +97,156 @@ Pdef(\help,
 		\amp, 0.1,
 	)
 ).play;
-);
+)
 
 (
-ControllerDef(\knobline, { arg def, params;
+// use MIDIdef.trace to find the ccnums
+ControllerDef(\icon_knobs, { arg def, params;
 	// map 4 knobs with cc number given in the list
 	// note that you can also use OSC protocol here, or anything you want
+	// note that .permanent is false so CmdPeriod will remove the MIDIdef
 	[16,17,21,22].collect({ arg ccnum, idx;
 		if(params[idx].notNil) {
-			MIDIdef.cc(\knob+++idx, { arg val, channel, deviceId;
+			MIDIdef.cc("icon_knob%".format(idx).asSymbol, { arg val, channel, deviceId;
 				[ val, channel, deviceId ].debug;
 				params[idx].normSet(val/127); 
 			}, ccnum);
 		}
 	})
 })
-);
+)
 
 // Now start controlling some params
 (
-ControllerDef(\knobline).startControl([ 
+ControllerDef(\icon_knobs).startControl([ 
 	Param(Pdef(\help), \lpfr),
 	Param(Pdef(\help), \rq),
 ])
-);
+)
 
 Param(Pdef(\help), \lpfr).setBusMode; // set bus mode for finer control
+
+
+////////////
+// build a GUI where you can choose which controller to use
+
+(
+// you have a second controller with a few knobs, let's make it available
+// notice how the MIDIdef have also a different name, because you can use both controllers at the same time
+ControllerDef(\icon_sliders, { arg def, params;
+	[0,1,2,3].collect({ arg chan, idx;
+		if(params[idx].notNil) {
+			MIDIdef.cc("knobline2_knob%".format(idx).asSymbol, { arg val, channel, deviceId;
+				[ val, channel, deviceId ].debug;
+				params[idx].normSet(val/127); 
+			}, 13, chan); // my controller is ugly and use chan to differentiate sliders
+		}
+	})
+}, \knobline); // tag this ControllerDef
+
+ControllerDef(\icon_knobs).tags = \knobline; // also tag the first one
+);
+
+
+
+(
+// this gui display a list of Param and allow to choose a MIDI controller to control them
+WindowDef(\knobline, { arg def, pgroup;
+	// param need a model to control, we create a small one
+	var model = ProtoClass((
+		controller_: { arg self, con;
+			con.debug("con");
+			self[\controller] = con;
+			con.startControl(pgroup)
+		},
+	));
+	VLayout (
+		HLayout(
+			StaticText.new.string_("controller:"),
+			Param(
+				Message(model),
+				\controller, 
+				ControllerDef.getTagSpec(\knobline), // retrieve the list of controllers by tag
+			).asPopUpMenu, 
+		),
+		pgroup.asView
+	)
+});
+)
+
+
+(
+// open the window with a group of params
+WindowDef(\knobline).front(ParamGroup([
+	Param(Pdef(\help), \lpfr),
+	Param(Pdef(\help), \rq),
+]));
+)
+
+Pdef(\help).play; // play the pattern, you can also add a button in the WindowDef
+
+///////////////////// control a keyboard
+
+(
+// midi keyboard is pretty generic, every controller should work
+ControllerDef(\piano_generic, { arg def, target; 
+		var playergroup;
+		playergroup = ProtoTemplateDef(\SeqPlayerGroup).new(target);
+		MIDIdef.noteOn(\piano, { arg ... args;
+			var midinote = args[1];
+			args.debug("generic on");
+			playergroup.elAt(midinote).play;
+		});
+		MIDIdef.noteOff(\piano_off, { arg ... args;
+			var midinote = args[1];
+			args.debug("generic off");
+			playergroup.elAt(midinote).stop;
+		});
+}, \piano);
+// but maybe you have several MIDI keyboards and want to select a different for differents GUI
+ControllerDef(\piano_nektar, { arg def, target; // do not forget first argument is self
+		var playergroup;
+		playergroup = ProtoTemplateDef(\SeqPlayerGroup).new(target);
+		MIDIdef.noteOn(\piano, { arg ... args;
+			var midinote = args[1];
+			args.debug("on");
+			playergroup.elAt(midinote).play;
+		}, srcID:~nektar_device_id);
+		MIDIdef.noteOff(\piano_off, { arg ... args;
+			var midinote = args[1];
+			args.debug("off");
+			playergroup.elAt(midinote).stop;
+		}, srcID:~nektar_device_id);
+}, \piano);
+)
+
+
+(
+WindowDef(\pianokeyboard, { arg def, target;
+	var kb = MIDIKeyboardView.new;
+	var model = ProtoClass((
+		controller_: { arg self, con;
+			con.debug("con");
+			self[\controller] = con;
+			con.startControl(target)
+		},
+	));
+	kb.mapPattern(target); // special method to map a pattern to the GUI keyboard
+	def.windowDo { arg win; // special method of WindowDef to manipulate the Window if available
+		win.setInnerExtent(800,120); // set a default size to look nice at first try
+	};
+	VLayout (
+		HLayout(
+			StaticText.new.string_("controller:"),
+			Param(
+				Message(model),
+				\controller, 
+				ControllerDef.getTagSpec(\piano),
+			).asPopUpMenu,
+		),
+		kb.asView,
+	);
+}).front(Pdef(\help)); // GUI is made generic by taking the pattern as argument
+)
+
 ::

@@ -15,64 +15,6 @@ MIDIKeyboardView : SCViewHolder {
 		^super.new.initMIDIKeyboard(win, bounds, octaves, startnote);
 	}
 
-	bounds { 
-		^this.view.bounds
-	}
-
-	buildKeys {
-		var r;
-		var bounds = this.bounds;
-		keys = List.new;
-		
-		octaves.do({arg j;
-			12.do({arg i;
-				if((i == 1) || (i == 3) || (i == 6) || (i == 8) || (i == 10), { // black keys
-					r = Rect(	( (pix[i]*((bounds.width/octaves) -
-								(bounds.width/octaves/7))).round(1) + ((bounds.width/octaves)*j)).round(1)+1,
-							0, 
-							bounds.width/octaves/10, 
-							bounds.height/1.7);
-					keys.add(XMIDIKey.new(startnote+i+(j*12), r, Color.black));
-				}, { // white keys
-					r = Rect(((pix[i]*((bounds.width/octaves) -
-								(bounds.width/octaves/7))).round(1) + ((bounds.width/octaves)*j)).round(1),
-							0, 
-							bounds.width/octaves/7, 
-							bounds.height);
-					keys.add(XMIDIKey.new(startnote+i+(j*12), r, Color.white));
-				});
-			});
-		});
-
-	}
-
-	refreshKeys {
-		// TODO: XMIDIKey should be rewritten to have normalized coordinates instead of this hack function
-		var r;
-		var bounds = this.bounds;
-		
-		octaves.do({arg j;
-			12.do({arg i;
-				if((i == 1) || (i == 3) || (i == 6) || (i == 8) || (i == 10), { // black keys
-					r = Rect(	( (pix[i]*((bounds.width/octaves) -
-								(bounds.width/octaves/7))).round(1) + ((bounds.width/octaves)*j)).round(1)+1,
-							0, 
-							bounds.width/octaves/10, 
-							bounds.height/1.7);
-					keys[i+(j*12)].rect = r;
-				}, { // white keys
-					r = Rect(((pix[i]*((bounds.width/octaves) -
-								(bounds.width/octaves/7))).round(1) + ((bounds.width/octaves)*j)).round(1),
-							0, 
-							bounds.width/octaves/7, 
-							bounds.height);
-					keys[i+(j*12)].rect = r;
-				});
-			});
-		});
-
-	}
-	
 	initMIDIKeyboard { arg win, argbounds, argoctaves=3, argstartnote;
 		var bounds;
 		var pen;
@@ -159,6 +101,64 @@ MIDIKeyboardView : SCViewHolder {
 					})
 				})
 			});
+	}
+	
+	bounds { 
+		^this.view.bounds
+	}
+
+	buildKeys {
+		var r;
+		var bounds = this.bounds;
+		keys = List.new;
+		
+		octaves.do({arg j;
+			12.do({arg i;
+				if((i == 1) || (i == 3) || (i == 6) || (i == 8) || (i == 10), { // black keys
+					r = Rect(	( (pix[i]*((bounds.width/octaves) -
+								(bounds.width/octaves/7))).round(1) + ((bounds.width/octaves)*j)).round(1)+1,
+							0, 
+							bounds.width/octaves/10, 
+							bounds.height/1.7);
+					keys.add(XMIDIKey.new(startnote+i+(j*12), r, Color.black));
+				}, { // white keys
+					r = Rect(((pix[i]*((bounds.width/octaves) -
+								(bounds.width/octaves/7))).round(1) + ((bounds.width/octaves)*j)).round(1),
+							0, 
+							bounds.width/octaves/7, 
+							bounds.height);
+					keys.add(XMIDIKey.new(startnote+i+(j*12), r, Color.white));
+				});
+			});
+		});
+
+	}
+
+	refreshKeys {
+		// TODO: XMIDIKey should be rewritten to have normalized coordinates instead of this hack function
+		var r;
+		var bounds = this.bounds;
+		
+		octaves.do({arg j;
+			12.do({arg i;
+				if((i == 1) || (i == 3) || (i == 6) || (i == 8) || (i == 10), { // black keys
+					r = Rect(	( (pix[i]*((bounds.width/octaves) -
+								(bounds.width/octaves/7))).round(1) + ((bounds.width/octaves)*j)).round(1)+1,
+							0, 
+							bounds.width/octaves/10, 
+							bounds.height/1.7);
+					keys[i+(j*12)].rect = r;
+				}, { // white keys
+					r = Rect(((pix[i]*((bounds.width/octaves) -
+								(bounds.width/octaves/7))).round(1) + ((bounds.width/octaves)*j)).round(1),
+							0, 
+							bounds.width/octaves/7, 
+							bounds.height);
+					keys[i+(j*12)].rect = r;
+				});
+			});
+		});
+
 	}
 	
 	refresh {

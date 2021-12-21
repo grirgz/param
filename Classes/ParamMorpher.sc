@@ -80,6 +80,7 @@ ParamMorpher : Param {
 	var <>key;
 	var <>optimizedPresets;
 	*new { arg group, presets;
+		// presets is the number of presets to take
 		var pval = ParamValue.new;
 		var inst;
 		pval.spec = ControlSpec(0,presets.size-1,\lin,0,0);

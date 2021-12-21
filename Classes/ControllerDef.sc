@@ -46,9 +46,12 @@ ControllerDef {
 
 	tags_ { arg symlist;
 		// FIXME: tags are not replaced, they are added forever
+		if(symlist.isSequenceableCollection.not) {
+			symlist = [symlist]
+		};
 		tags = symlist;
 		symlist.do { arg sym;
-			var tt = TagSpecDef("ControllerDef_capabilities_%".format(sym).asSymbol).addUnique( this.key -> this );
+			var tt = this.class.getTagSpec(sym).addUnique( this.key -> this );
 			TagSpecDef("ControllerDef_capabilities".asSymbol).addUnique(sym -> tt);
 		};
 	}
@@ -56,9 +59,13 @@ ControllerDef {
 	*getByTag { arg symlist;
 		var dict = IdentityDictionary.new;
 		symlist.collect { arg sym;
-			dict.putAll(TagSpecDef("ControllerDef_capabilities_%".format(sym).asSymbol).associationList)
+			dict.putAll(this.getTagSpec(sym).associationList)
 		};
 		^dict;
+	}
+
+	*getTagSpec { arg sym;
+		^TagSpecDef("ControllerDef_capabilities_%".format(sym).asSymbol);
 	}
 
 	init { arg val, tags;

@@ -310,7 +310,7 @@ ParamGroupDef {
 		lib[key] = nil;
 	}
 
-	save { arg name;
+	save { arg name=\default;
 		group.save(name);
 		this.saveArchive;
 		this.changed(\presets);
@@ -363,6 +363,19 @@ ParamGroupDef {
 		^this; // to act like a Param with subparams
 	}
 
+	presetCompileString {
+		var ret;
+		var params, presets;
+		this.save(\current);
+		params = this.collect({ arg param;
+			"\t" ++ param.asCompileString
+		}).join(",\n");
+		presets = this.presets.keys.as(Array).collect({ arg pkey;
+			"\t% -> %".format(pkey.asCompileString, this.presets[pkey].asCompileString)
+		}).join(",\n");
+		ret = "ParamGroupDef(%, [\n%\n]).presets_(IdentityDictionary[\n%\n]);\n".format(this.key, params, presets);
+		^ret;
+	}
 }
 
 

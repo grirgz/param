@@ -1,0 +1,123 @@
+TITLE:: TagSpecDef
+summary:: A named spec for list of symbols or associations
+categories:: Spec
+related:: Classes/Param, Classes/TagSpec, Reference/ParamBaseSpec
+
+DESCRIPTION::
+Contrary to other specs, TagSpecDef is not numerical but is rather a list of symbols or a list of assocations. This can have several use cases: a list SynthDef names, a list of Pdef names, a list of name of buffers, a list of tags for a SynthDef, a list of SynthDef with a given tag. This is handy for PopUpMenus. You can also control which item in the list is selected using a GUI or MIDI slider.
+
+The difference with TagSpec is you give a name for the TagSpec so you can retrieve it later.
+
+code::
+TagSpecDef(\myfreqs, [ \low -> 120, \mid -> 440, \high -> 2500 ]);
+TagSpecDef(\myfreqs).list; // get list of assocations
+TagSpecDef(\myfreqs).keylList; // get only keys
+TagSpecDef(\myfreqs).valueList; // get only values
+TagSpecDef(\myfreqs).map(0.5); // map a number in range 0..1 to an index in the list then return the value at this index
+TagSpecDef(\myfreqs).unmap(440); // given a value, retrieve its index in the list then scale it to range 0..1
+TagSpecDef(\myfreqs).unmap(441); // return 0 if not found in the list
+TagSpecDef(\myfreqs).mapKey(\mid); // 440
+TagSpecDef(\myfreqs).unmapKey(440); // \mid
+TagSpecDef(\myfreqs).mapIndex(2); // 2500
+TagSpecDef(\myfreqs).unmapIndex(2500); // 2
+Param(Message(()), \testme, TagSpecDef(\myfreqs)).edit; // create a param with this spec and create the default view: a PopUpMenus
+::
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a TagSpecDef. If given a list of symbol instead of a list of association, each symbol will be associated with itself.
+
+ARGUMENT:: key
+The key under which store the TagSpecDef instance
+
+ARGUMENT:: val
+a list of symbol or a list of association in the form \symbol -> value
+
+returns:: a TagSpecDef
+
+METHOD:: all
+Dictionnary of all TagSpecDef instances
+
+returns:: an IdentityDictionnary
+
+
+
+INSTANCEMETHODS::
+
+METHOD:: key
+Key of the instance
+
+returns:: a Symbol
+
+METHOD:: source
+Get or set the list of assocations
+
+ARGUMENT:: val
+a list of symbol or a list of association in the form \symbol -> value
+
+returns:: a list of associations
+
+METHOD:: clear
+Clear the list
+
+returns:: a TagSpecDef
+
+
+
+EXAMPLES::
+
+code::
+(
+// first define a few synthdef and add them to the tag \mysynthlist
+SynthDef(\saw, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+	var sig;
+	sig = LFSaw.ar(freq);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpfr: ControlSpec(0.1,4,\lin, 0, 1)
+))).add;
+TagSpecDef(\mysynthlist).addUnique(\saw);
+
+SynthDef(\pulse, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+	var sig;
+	sig = LFPulse.ar(freq);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpfr: ControlSpec(0.1,4,\lin, 0, 1)
+))).add;
+TagSpecDef(\mysynthlist).addUnique(\pulse);
+
+TagSpecDef(\mysynthlist).addUnique(\default); // also add default instrument
+
+
+// define a pattern
+Pdef(\help, 
+	Pbind(
+		// instrument will be defined by GUI
+		\degree, Pwalk((0..20), Pseq((1..12)-2,inf) % Pseq((2..7),inf)),
+		\dur, 1/2,
+		\amp, 0.1,
+	)
+);
+)
+
+(
+// define a GUI and display it to control instrument of the pattern
+WindowDef(\help, { arg def;
+	VLayout (
+		PlayerWrapper(Pdef(\help)).asView,
+		Param(Pdef(\help), \instrument, TagSpecDef(\mysynthlist)).asView,
+		Param(Pdef(\help), \lpfr, ControlSpec(0.1,5,\lin)).asView,
+		nil
+	)
+}).front;
+)
+::
+

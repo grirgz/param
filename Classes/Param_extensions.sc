@@ -454,11 +454,11 @@
 		}.defer;
 	}
 
-	mapParam { arg param;
+	mapParam { arg param, precision;
 		if(param.isNil) {
 			this.unmapParam
 		} {
-			param.mapTextField(this);
+			param.mapTextField(this, precision);
 		}
 	}
 }

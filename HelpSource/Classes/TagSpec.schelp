@@ -1,0 +1,252 @@
+TITLE:: TagSpec
+summary:: A spec for list of symbols or associations
+categories:: Spec
+related:: Classes/Param, Classes/TagSpecDef, Reference/ParamBaseSpec
+
+DESCRIPTION::
+Contrary to other specs, TagSpec is not numerical but is rather a list of symbols or a list of assocations. This can have several use cases: a list SynthDef names, a list of Pdef names, a list of name of buffers, a list of tags for a SynthDef, a list of SynthDef with a given tag. This is handy for PopUpMenus. You can also control which item in the list is selected using a GUI or MIDI slider.
+
+code::
+~tags = TagSpec([ \low -> 120, \mid -> 440, \high -> 2500 ]);
+~tags.list; // get list of assocations
+~tags.keylList; // get only keys
+~tags.valueList; // get only values
+~tags.map(0.5); // map a number in range 0..1 to an index in the list then return the value at this index
+~tags.unmap(440); // given a value, retrieve its index in the list then scale it to range 0..1
+~tags.unmap(441); // return 0 if not found in the list
+~tags.mapKey(\mid); // 440
+~tags.unmapKey(440); // \mid
+~tags.mapIndex(2); // 2500
+~tags.unmapIndex(2500); // 2
+Param(Message(()), \testme, ~tags).edit; // create a param with this spec and create the default view: a PopUpMenus
+::
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a TagSpec. If given a list of symbol instead of a list of association, each symbol will be associated with itself.
+
+code::
+TagSpec([\low, \mid, \high]); // list of symbols
+TagSpec.index([\low, \mid, \high]); // list of symbols
+TagSpec([ \low -> 120, \mid -> 440, \high -> 2500 ]); // associations
+TagSpec({ Pdef.all.asAssociations }); // dynamic list generation
+TagSpec(\kicks -> { 10.collect({ arg idx; "kick".catArgs(idx).asSymbol }) });// named dynamic list generation
+
+// named dynamic list generation
+~tags = TagSpec(\kicks -> { 10.collect({ arg idx; "kick".catArgs(idx).asSymbol }) }); 
+~tags.list;
+~tags.addDynamicList(\snare -> { 3.collect({ arg idx; "snare".catArgs(idx).asSymbol }) });
+~tags.list;
+~tags.addDynamicList(\snare -> { 3.collect({ arg idx; "snare".catArgs(idx).asSymbol }) }); 
+~tags.list; // notice how it is in double now
+~tags.replaceDynamicList(\kicks -> { 10.collect({ arg idx; "tom".catArgs(idx).asSymbol }) }); 
+~tags.list; // replaceDynamicList avoid doubles
+~tags.addUniqueDynamicList(\snare -> { 7.collect({ arg idx; "snare".catArgs(idx).asSymbol }) });
+~tags.list; // has not replaced it
+::
+
+ARGUMENT:: list
+a list of symbol or a list of association in the form \symbol -> value
+
+returns:: a TagSpec
+
+METHOD:: index
+Create a TagSpec but if given a list of symbol, each symbol will be associated with its index in the list
+
+code::
+~tags = TagSpec.index([\low, \mid, \high]); // list of symbols
+~tags.map(0.5); // return \mid index (1) instead of \mid
+~tags = TagSpec([\low, \mid, \high]); // list of symbols
+~tags.map(0.5); // \mid
+::
+
+ARGUMENT:: list
+a list of symbol or a list of association in the form \symbol -> value
+
+returns:: a TagSpec
+
+
+INSTANCEMETHODS::
+
+METHOD:: dynamicLists
+the list of associations in the form \symbol -> function where the function return a list of associations (or list of symbols)
+
+returns:: a List
+
+METHOD:: unmapIndex
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: addUnique
+(describe method here)
+
+ARGUMENT:: key
+(describe argument here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: default
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: asDict
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: replaceDynamicList
+(describe method here)
+
+ARGUMENT:: newdlist
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: indexMenuSpecInit
+(describe method here)
+
+ARGUMENT:: xlist
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: add
+(describe method here)
+
+ARGUMENT:: key
+(describe argument here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: mapKey
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: valueList
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: keyList
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: indexAdd
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: unmapKey
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: map
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: addUniq
+(describe method here)
+
+ARGUMENT::  ... args
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: associationList
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: list
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: mapIndex
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: menuSpecInit
+(describe method here)
+
+ARGUMENT:: xlist
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: unmap
+(describe method here)
+
+ARGUMENT:: val
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: addDynamicList
+(describe method here)
+
+ARGUMENT:: dlist
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: addUniqueDynamicList
+(describe method here)
+
+ARGUMENT:: newdlist
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: labelList
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: staticList
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+(some example code)
+::

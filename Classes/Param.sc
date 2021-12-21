@@ -209,8 +209,13 @@ Param {
 			},
 			Array: {
 				//target.class.debug("mais what ??");
-				Log(\Param).error("ERROR: not implemented for Array, use List instead");
-				^nil;
+				//Log(\Param).error("ERROR: not implemented for Array, use List instead");
+				//^nil;
+				if(property.isKindOf(Integer)) {
+					wrapper = ListParamSlot(*args);
+				} {
+					wrapper = ListParam(*args);
+				}
 			},
 			Message: {
 				wrapper = MessageParam(*args);
@@ -657,6 +662,7 @@ Param {
 
 	mapMultiSlider { arg slider, action, trackCursor=false;
 		var cursorAction;
+		slider.step_(this.spec.step/this.spec.range);
 		if(trackCursor) {
 			cursorAction = { arg self, index;
 				defer {
@@ -1262,8 +1268,8 @@ Param {
 		^StaticText.new.mapParamLabel(this, labelmode);
 	}
 
-	asTextField {
-		^TextField.new.mapParam(this);
+	asTextField { arg precision;
+		^TextField.new.mapParam(this, precision);
 	}
 
 	asNumberBox {
@@ -2607,7 +2613,11 @@ PdefParam : BaseAccessorParam {
 	getVal {
 		// FIXME: the bus mode is managed inside Pdef.getVal. Is it possible and desirable to use accessor for that ?
 		var val;
-		val = target.getVal(property) ?? { 
+		val = if(this.spec.isKindOf(TagSpec)) {
+			target.get(property)
+		} {
+			target.getVal(property)
+		} ?? { 
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
 			this.default
 		};

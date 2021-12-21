@@ -601,6 +601,7 @@ TagSpec : ParamNonFloatSpec {
 
 	associationList {
 		var ret = list.copy;
+		// Note: if there is already an item in the list the dynamic list will put it in double
 		dynamicLists.do({ arg dlist;
 			try {
 				dlist.value.value.do { arg x; // asso.value then execute
@@ -632,6 +633,12 @@ TagSpec : ParamNonFloatSpec {
 			if(this.labelList.includes(key.key).not) {
 				list.add(key.key -> key.value);
 				//dirty = true;
+			} {
+				// replace existing non dynamic value, important if previous value is nil somehow
+				var idx = list.detectIndex({ arg it; it.key == key.key });
+				if(idx.notNil) {
+					list[idx] = key.key -> key.value;
+				}
 			}
 		} {
 			var xval = val ? key;
@@ -711,7 +718,7 @@ TagSpec : ParamNonFloatSpec {
 	}
 
 	unmap { arg val;
-		^this.unmapIndex(val) / ( this.valueList.size - 1);
+		^this.unmapIndex(val) ? 0 / ( this.valueList.size - 1);
 	}
 }
 

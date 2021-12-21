@@ -25,11 +25,11 @@ ProtoClassDef(\TrackMixerDef, (
 		self.stages = (
 			in: 0,
 			prefader: 1000,
-			prefx: 3000,
-			sends: 1100,
-			postfx: 2000,
-			postfader: 3000,
-			recbus: 4000,
+			prefx: 2000,
+			sends: 2100,
+			postfx: 3000,
+			postfader: 4000,
+			recbus: 5000,
 		);
 
 		self.outbus = outbus;

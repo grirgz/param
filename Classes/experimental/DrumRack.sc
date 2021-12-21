@@ -1,4 +1,4 @@
-// the DrumRack system is kind of deprecated by parPlayerGroup which is simpler (less features, mut more idiomatic)
+// the DrumRack system is kind of deprecated by parPlayerGroup which is simpler (less features, but more idiomatic)
 
 DrumRack {
 	// A drumrack proxy actually

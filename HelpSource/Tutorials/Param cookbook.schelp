@@ -1,13 +1,14 @@
 title:: Param Cookbook
 summary:: Tricks with GUI and controllers
 categories:: GUI
+related:: Classes/Param
 
 section::Automatic GUI Generation
 
 
 code::
 (
-SynthDef(\saw, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+SynthDef(\saw_help, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
 	var sig, sig1, sig2, sig3;
 	sig = LFSaw.ar(freq * [1.01,1,0.99]);
 	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
@@ -18,9 +19,9 @@ SynthDef(\saw, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneA
 );
 
 (
-Pdef(\saw, 
+Pdef(\help, 
 	Pbind(
-		\instrument, \saw,
+		\instrument, \saw_help,
 		\degree, Pseq([Prand([Pwhite(0,1.0,Pwhite(0,7,1)), Pwhite(0,12,Pwhite(0,70,1).asStream)]),Pseq((0..10),1)],inf),
 		\dur, Pseq([Prand([Pwhite(0,1.0,Pwhite(0,70,1)), Pwhite(0,12,Pwhite(0,70,1))])],inf)/12,
 		\amp, 0.1,
@@ -28,9 +29,9 @@ Pdef(\saw,
 ).play;
 );
 
-Pdef(\saw).edit; // use default pdef editor
+Pdef(\help).edit; // use default pdef editor
 
-WindowDef(\NdefEditor).front(Ndef(\saw)); // since Ndef already have an editor, you can use the default one with WindowDef
+WindowDef(\NdefEditor).front(Ndef(\help)); // since Ndef already have an editor, you can use the default one with WindowDef
 ::
 
 
@@ -199,7 +200,7 @@ It's often easier to have a separate attack parameter than manipulate the Env di
 Param let you target a specific segment of an envelope or array to easily assign a GUI or controller knob
 
 code::
-Param(Pdef(\saw_help), \adsr -> \attack); // this point to the attack time value of the adsr Env
+Param(Pdef(\help), \adsr -> \attack); // this point to the attack time value of the adsr Env
 ::
 
 
@@ -340,7 +341,7 @@ Pdef(\demo,
 		),
 		Pdef(\melo, 
 			Pbind(
-				\instrument, \saw,
+				\instrument, \saw_help,
 				\degree, Pseq((1..20).mirror,inf) % Pseq((3..15),inf),
 				\dur, 1/4,
 				\amp, 0.1,
@@ -467,7 +468,77 @@ WindowDef(\help, {
 
 subsection:: Have presets
 
+There is more than one way to design a preset system, so no solution will fit all needs.
+
+There is a built-in preset system in link::Classes/ParamGroup:: and link::Classes/ParamGroupDef::.
+
+code::
+ParamGroupDef(\group1, [
+	Param(Pdef(\help), \lpfr),
+	Param(Pdef(\help), \rq),
+]);
+
+ParamGroupDef(\group1).edit; 
+ParamGroupDef(\group1).save(\preset1);
+ParamGroupDef(\group1).load(\preset1);
+::
+
+
+You can use WindowDef(\PresetSelectorView) to display a PopUpMenu for selecting presets
+
+code::
+(
+WindowDef(\help, { arg def, pg;
+	VLayout (
+		WindowDef(\PresetSelectorView).asView(pg),
+		pg.asView,
+	)
+	
+}).front(ParamGroupDef(\group1));
+)
+::
+
+To save on disk, just write the presetCompileString in some file and execute it to load the presets
+
+code::
+ParamGroupDef(\group1).presetCompileString;
+::
+
+You can also use the link::Classes/Archive:: system (which is unreliable for me for unknown reasons)
+
+code::
+ParamGroupDef(\group1).saveArchive;
+ParamGroupDef(\group1).loadArchive;
+::
+
 subsection:: Morph between presets
+
+code::
+(
+ParamGroupDef(\group1, [
+	Param(Pdef(\help), \lpfr),
+	Param(Pdef(\help), \rq),
+]);
+)
+
+// this create a morpher on a preset list named \preset0 to \preset7
+~morpher = PresetListMorpher(ParamGroupDef(\group1), 8);
+~morpher.normSet(0.5); // morph between presets at the center
+~morpher.asSlider; // a morpher is a Param, you can use it in your GUI
+::
+
+You can use code::WindowDef(\PresetListMorpherView):: to have a basic GUI where you can store, load and morph between presets
+
+code::
+(
+WindowDef(\help, { arg def, pg;
+	VLayout (
+		WindowDef(\PresetListMorpherView).asView(pg),
+		pg.asView,
+	)
+}).front(ParamGroupDef(\group1));
+)
+::
 
 subsection:: Defining macro parameter to control several parameters
 
@@ -478,7 +549,111 @@ with them, you might want to use a borderless window instead. The benefit is
 you can put any GUI component on it and make it as large as you want. I call
 this kind of contextual borderless windows: Overlay menus.
 
+code::
+(
+// first define the overlay menu window
+WindowDef(\MyOverlayMenu, { arg def, model, view, x=0, y=0;
+	var inview, layout;
+	def.windowDo { arg win;
+		// move window at the position of the click
+		// x and y are relative to view top left corner
+		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
+		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
+		win.endFrontAction = { win.close };
+	};
+	inview = View.new;
+
+
+	layout = VLayout (
+		BasicButton.new.string_("hello").action_({
+			// typically will act on model
+			def.closeWindow; // handy to close window if we click a button
+		}), 
+		BasicButton.new.string_("hello2"),
+		nil
+	);
+	inview.layout_(layout);
+	
+}).border_(false);
+)
+
+(
+// then we can call it from any GUI
+WindowDef(\help, { arg def;
+	VLayout (
+		BasicButton.new.string_("...").action_({ arg view;
+			// we do not have x and y, it will use view top left corner
+			// there is no model in this example so first argument is nil
+			WindowDef(\MyOverlayMenu).front(nil, view)
+		}),
+		// show the overlay menu when right clicking on a view
+		PlayerWrapper(Pdef(\help)).asView.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			if(buttonNumber == 1) { // if right click
+				WindowDef(\MyOverlayMenu).front(nil, view, x, y)
+			} 
+			
+		}),
+		nil,
+	)
+}).front;
+)
+::
+
 subsection:: Choose the instrument in a PopUpMenu
+
+code::
+(
+// first define a few synthdef and add them to the tag \mysynthlist
+SynthDef(\saw_help, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+	var sig;
+	sig = LFSaw.ar(freq);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpfr: ControlSpec(0.1,4,\lin, 0, 1)
+))).add;
+TagSpecDef(\mysynthlist).addUnique(\saw_help);
+
+SynthDef(\pulse, { arg out=0, gate=1, amp=0.1, pan=0, freq=200;
+	var sig;
+	sig = LFPulse.ar(freq);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpfr: ControlSpec(0.1,4,\lin, 0, 1)
+))).add;
+TagSpecDef(\mysynthlist).addUnique(\pulse);
+
+TagSpecDef(\mysynthlist).addUnique(\default); // also add default instrument
+
+
+// define a pattern
+Pdef(\help, 
+	Pbind(
+		// instrument will be defined by GUI
+		\degree, Pwalk((0..20), Pseq((1..12)-2,inf) % Pseq((2..7),inf)),
+		\dur, 1/2,
+		\amp, 0.1,
+	)
+);
+)
+
+(
+// define a GUI and display it to control instrument of the pattern
+WindowDef(\help, { arg def;
+	VLayout (
+		PlayerWrapper(Pdef(\help)).asView,
+		Param(Pdef(\help), \instrument, TagSpecDef(\mysynthlist)).asView,
+		Param(Pdef(\help), \lpfr, ControlSpec(0.1,5,\lin)).asView,
+		nil
+	)
+}).front;
+)
+::
 
 subsection:: Foldable/Expandable panel
 
@@ -529,6 +704,22 @@ subsection:: Write a GUI that can modify SynthDefs
 
 
 
+section:: GUI Dialogs
+
+
+subsection:: Choose a file
+
+subsection:: Choose a directory
+
+subsection:: Choose a sample
+
+subsection:: Choose a waveform sample
+
+subsection:: Choose a SynthDef, Pdef, Timeline, etc (GlobalLibrary dialog)
+
+subsection:: Choose a Param
+
+
 section:: Sequencers
 
 subsection:: Display a sequencer GUI for a Pbind
@@ -554,6 +745,7 @@ subsection:: Record your launchpad controller
 subsection:: Record a parameter 
 
 
+subsection: add a preview of a timeline in a GUI
 
 
 
@@ -651,6 +843,54 @@ MIDIdef.cc(\knob1, { arg val, channel, deviceId;
 
 subsection:: Control a player with a MIDI button
 
+There is nothing special, except we use a PlayerWrapper because Pdef(\help).stop stops immediately without following quant, PlayerWrapper make sure all players behave the same.
+
+code::
+MIDIdef.noteOn(\track1, { arg velocity, noteNum, channel, deviceId;
+	[ velocity, noteNum, channel, deviceId ].debug;
+	PlayerWrapper(Pdef(\help)).togglePlay; // togglePlay method is added by PlayerWrapper
+}, noteNum:8);
+::
+
+
+Or you can stop the pattern when you release the button:
+
+code::
+(
+MIDIdef.noteOn(\track1, { arg velocity, noteNum, channel, deviceId;
+	[ velocity, noteNum, channel, deviceId ].debug;
+	PlayerWrapper(Pdef(\help)).play
+}, noteNum:8);
+MIDIdef.noteOff(\track1_off, { arg velocity, noteNum, channel, deviceId;
+	[ velocity, noteNum, channel, deviceId ].debug;
+	PlayerWrapper(Pdef(\help)).stop
+}, noteNum:8);
+)
+::
+
+
+Use .playNow to ignore quant:
+
+code::
+(
+MIDIdef.noteOn(\track1, { arg velocity, noteNum, channel, deviceId;
+	[ velocity, noteNum, channel, deviceId ].debug;
+	PlayerWrapper(Pdef(\help)).playNow
+}, noteNum:8);
+MIDIdef.noteOff(\track1_off, { arg velocity, noteNum, channel, deviceId;
+	[ velocity, noteNum, channel, deviceId ].debug;
+	PlayerWrapper(Pdef(\help)).stopNow
+}, noteNum:8);
+)
+::
+
+If you use Modality quark, there is an extension method mapPlayer that can map a button for you.
+code::
+
+MKtl(\apc40).elAt(\bt, \clip, 0,0,\on).mapPlayer(PlayerWrapper(Pdef(\help))); // when you push the button, the pattern start playing or stop if already playing
+
+MKtl(\apc40).elAt(\bt, \clip, 0,0).mapPlayer(PlayerWrapper(Pdef(\help))); // this map \on and \off actions so when you release the button, the pattern stop
+::
 
 subsection:: Control a player with a MIDI knob
 
@@ -661,6 +901,103 @@ subsection:: Control a PopUpMenu with a controller
 
 subsection:: Select controller by a PopUpMenu
 
+code::
+
+(
+// use MIDIdef.trace to find the ccnums
+
+// define two controllers blocks
+
+ControllerDef(\icon_knobs, { arg def, params;
+	// map 4 knobs with cc number given in the list
+	// note that you can also use OSC protocol here, or anything you want
+	// note that .permanent is false so CmdPeriod will remove the MIDIdef
+	[16,17,21,22].collect({ arg ccnum, idx;
+		if(params[idx].notNil) {
+			MIDIdef.cc("icon_knob%".format(idx).asSymbol, { arg val, channel, deviceId;
+				[ val, channel, deviceId ].debug;
+				params[idx].normSet(val/127); 
+			}, ccnum);
+		}
+	})
+}, \knobline);
+
+ControllerDef(\icon_sliders, { arg def, params;
+	[0,1,2,3].collect({ arg chan, idx;
+		if(params[idx].notNil) {
+			MIDIdef.cc("knobline2_knob%".format(idx).asSymbol, { arg val, channel, deviceId;
+				[ val, channel, deviceId ].debug;
+				params[idx].normSet(val/127); 
+			}, 13, chan); // my controller is ugly and use chan to differentiate sliders
+		}
+	})
+}, \knobline); // tag this ControllerDef
+
+);
+
+
+
+(
+// this gui display a list of Param and allow to choose a MIDI controller to control them
+WindowDef(\knobline, { arg def, pgroup;
+	// param need a model to control, we create a small one
+	var model = ProtoClass((
+		controller_: { arg self, con;
+			con.debug("con");
+			self[\controller] = con;
+			con.startControl(pgroup)
+		},
+	));
+	VLayout (
+		HLayout(
+			StaticText.new.string_("controller:"),
+			Param(
+				Message(model),
+				\controller, 
+				ControllerDef.getTagSpec(\knobline), // retrieve the list of controllers by tag
+			).asPopUpMenu, 
+		),
+		pgroup.asView
+	)
+});
+)
+
+
+(
+// open the window with a group of params
+WindowDef(\knobline).front(ParamGroup([
+	Param(Pdef(\help), \lpfr),
+	Param(Pdef(\help), \rq),
+]));
+)
+
+Pdef(\help).play; // play the pattern, you can also add a button in the WindowDef
+
+(
+// you can create another window on the same template
+WindowDef(\knobline2, WindowDef(\knobline)).front(ParamGroup([
+	Param(Pdef(\help2), \lpfr),
+	Param(Pdef(\help2), \rq),
+]));
+)
+
+(
+// or show both in the same window
+WindowDef(\allknoblines, {
+	VLayout (
+		WindowDef(\knobline).asView(ParamGroup([
+			Param(Pdef(\help), \lpfr),
+			Param(Pdef(\help), \rq),
+		])),
+		WindowDef(\knobline).asView(ParamGroup([
+			Param(Pdef(\help2), \lpfr),
+			Param(Pdef(\help2), \rq),
+		])),
+		nil
+	)
+}).front;
+)
+::
 
 subsection:: Generate a GUI for a MIDI synth
 
