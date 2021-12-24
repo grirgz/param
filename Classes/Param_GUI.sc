@@ -394,7 +394,7 @@ ParamGroupLayout {
 					} {
 						StaticText.new.string_(param.property)
 					},
-					param.asMultiSlider.minHeight_(minHeight),
+					param.asMultiSlider.minHeight_(minHeight).attachContextMenu,
 					param.asTextField,
 				)
 			};

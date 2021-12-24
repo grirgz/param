@@ -26,6 +26,7 @@ WindowDef {
 	var <>alwaysRecreate = true;
 	var <>windowName;
 	var <>simpleController;
+	var <>simpleControllerDict;
 	var <>startRenderingTime;
 	var <>border = true;
 	var <>parentDef; // deprecated
@@ -84,6 +85,7 @@ WindowDef {
 	init { arg val;
 		this.source = val;
 		windowProperties = IdentityDictionary.new;
+		simpleControllerDict = IdentityDictionary.new;
 	}
 
 	front { arg ...args;
@@ -212,7 +214,7 @@ WindowDef {
 		}
 	}
 
-	waitIfNeeded { arg self;
+	waitIfNeeded { 
 		if(thisThread.clock === AppClock) {
 			if(Process.elapsedTime > ( startRenderingTime + 0.01 )) {
 				//"WindowsDef rendering: WAITING !!!!!!".debug([ startRenderingTime, Process.elapsedTime ]);
@@ -255,15 +257,24 @@ WindowDef {
 		^followChange(*args)
 	}
 
-	followChange { arg model, key, func;
-		simpleController = simpleController ?? { SimpleController(model) };
-		simpleController.put(key, {
+	followChange { arg model, key, func, init=true;
+		var con; 
+		simpleControllerDict[model] = simpleControllerDict[model] ?? { SimpleController(model) };
+		con = simpleControllerDict[model];
+		con.put(key, { arg ...args;
 			if(this.window.isNil or: { this.window.isClosed }) {
-				simpleController.remove;
+				con.remove;
 			} {
-				func.value;
+				func.value(*args);
 			};
-		})
+		});
+		if(init==true) {
+			func.value(model, key);
+		};
+	}
+	
+	freeAllSimpleControllers {
+		simpleControllerDict.values.do(_.remove);
 	}
 
 	windowDo { arg fun;

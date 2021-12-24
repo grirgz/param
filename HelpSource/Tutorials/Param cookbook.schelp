@@ -724,21 +724,267 @@ section:: Sequencers
 
 subsection:: Display a sequencer GUI for a Pbind
 
+This Pbindef is a sequencer by itself. To control it by GUI, you just have to access to the list inside Pseq. This is done by using the special property code::\stepseq::.
+
+This only works with Pbindef since we want to change invididual keys. You can convert any Pdef containing a Pbind into a Pbindef by using the method code::Pdef(\help).convertToPbindef::.
+
+code::
+(
+Pbindef(\myseq,
+	\instrument, \saw,
+	\degree, Pseq([4,1,0,2],inf),
+	\dur, 1/8,
+	\amp, 0.1,
+).play;
+)
+
+// quick GUI creation
+Param(Pbindef(\myseq), \degree -> \stepseq, ControlSpec(0,12,\lin,1)).edit;
+
+(
+// build a real GUI
+WindowDef(\help, { arg def;
+	VLayout (
+		PlayerWrapper(Pbindef(\myseq)),
+		Param(Pbindef(\myseq), \degree -> \stepseq, ControlSpec(0,12,\lin,1)).asMultiSlider,
+		Param(Pbindef(\myseq), \lpfr, ControlSpec(0.1,4,\lin)).asView
+	)
+}).front;
+);
+::
+
+You can replace Pseq by PstepSeq, the main benefit is you can now have a cursor that show the progression in the sequence.
+
+One nice thing to have in a sequencer is being able to have rests. You can simply sequence code::\amp:: but you may want to not launch a Synth node at all when there is a rest. This is done by having a key (code::\muter::) that output code::\rest:: if another key (code::\isNote::) is true. code::\rest:: is special and change the whole event into a rest. Then we can sequence code::\isNote:: to mute some steps.
+
+code::
+(
+Pbindef(\myseq,
+	\instrument, \saw,
+	\degree, PstepSeq([4,1,0,2],inf),
+	\isNote, PstepSeq(true!4,inf),
+	\muter, Pif(Pkey(\isNote), 0,\rest),
+	\dur, 1/8,
+	\amp, 0.1,
+).play;
+)
+
+(
+// quick GUI creation using ParamGroup
+ParamGroup([
+	Param(Pbindef(\myseq), \degree -> \stepseq, ControlSpec(0,12,\lin,1)),
+	Param(Pbindef(\myseq), \isNote -> \stepseq, ParamBoolSpec()), // notice the spec to have boolean values
+]).edit
+)
+::
+
 subsection:: Have a bank of sequences for a sequencer
+
+Since you can point to a PstepSeq with a Param, it's only a matter of storing PstepSeqs somewhere, use them in pattern and in GUI.
+
+code::
+(
+// first define a model which will store the score data, you can also use ProtoDef
+~model = (
+	bank: [
+		PstepSeq(0!8),
+		PstepSeq(0!8),
+		PstepSeq(0!8),
+		PstepSeq(0!8),
+	],
+	selector: PstepSeq(0!8,inf), // this pattern is the index in the list of sequences
+	proxy: Pbindef(\help),
+);
+
+// define a pattern which will be our sequencer
+Pbindef(\help,
+	\instrument, \saw,
+	// Pswitch select a pattern in a list according to another pattern
+	\degree, Pswitch(~model.bank, ~model.selector), 
+	\amp, 0.1,
+);
+)
+
+// this Param point to the first sequence in our bank
+// we use Message construct since there is no PstepSeq Param wrapper
+Param( Message(~model.bank[0] ), \list).edit;
+
+(
+// here we build the full GUI
+WindowDef(\help, { arg def, model;
+	VLayout (
+		PlayerWrapper(model.proxy),
+
+		// for each sequence, we create a label and a MultiSliderView
+		VLayout (* // there is a star because VLayout does not want a list but several arguments
+			model.bank.collect { arg seq, idx;
+				HLayout (
+					StaticText.new.string_("seq" + idx).fixedWidth_(50),
+					Param( Message(seq), \list, ControlSpec(0,12,\lin,1)).asMultiSlider
+				)
+			};
+		),
+
+		// selector sequencer GUI
+		HLayout (
+			StaticText.new.string_("selector").fixedWidth_(50),
+			Param( Message(model.selector), \list, ControlSpec(0,model.bank.size-1,\lin,1)).asMultiSlider,
+		),
+
+		// control the dur of the pattern
+		Param(Pbindef(\help), \dur, ControlSpec(0.01,1,\exp)),
+	)
+}).front(~model);
+)
+
+
+
+// little trick to have your editor with you everywhere
+~model[\edit] = { arg self; WindowDef(\help).front(self) }; // add an edit method to the model
+Pbindef(\help).setModel(~model); // set it (extension method)
+
+Pbindef(\help).edit; // now you can access the custom editor from your Pbindef
+::
+
+
 
 subsection:: Have a bank of sequences for several sequencers
 
 
+subsection:: Transform automatically a Pbindef into a sequencer
 
+(
+// each Pseq or PstepSeq will become a graphical sequencer
+Pbindef(\myseq,
+	\instrument, \saw,
+	\degree, Pseq(0!8,inf),
+	\lpfr, PstepSeq(1!8,inf),
+	\rq, Pseq(0.1!8,inf),
+	\isRest, Pseq(false!8,inf),
+	\muter, Pif(Pkey(\isRest), \rest, 0),
+	\dur, 1/8,
+	\amp, 0.1,
+).play;
+
+// add some specs
+SynthDesc(\saw).addSpec(\lpfr,ControlSpec(0.1,4,\lin) );
+Spec.add(\isRest, ParamBoolSpec(reverse:true));
+Spec.add(\degree, ControlSpec(0,14,\lin,1));
+)
+
+(
+WindowDef(\PbindefSeq, { arg def, target;
+	VLayout (
+		PlayerWrapper(target),
+		VLayout (*
+			// we retrieve each [key,val] of the Pbindef
+			target.source.pairs.clump(2).collect({ arg pair;
+				pair.debug("pair");
+				if(pair[1].source.isKindOf(ListPattern)) {
+					// if it's a ListPattern, build a param with special key \stepseq to point to the list
+					var param = Param(target, pair[0] -> \stepseq);
+					HLayout (
+						param.asStaticTextLabel.fixedWidth_(60),
+						param.asMultiSlider.attachContextMenu, // add right-click menu allowing you to change number of steps
+					)
+				}
+			}).select(_.notNil)
+		)
+	)
+	
+}).front(Pdef(\myseq));
+);
+
+subsection:: Control a sequencer with MIDI controller
+
+Once you have your Param pointing to a list, you can assign any slot of this list to a MIDI controller knob or button
+
+code::
+(
+// 8 knobs with cc number from 16 to 23
+(16..23).do { arg ccnum, idx;
+	MIDIdef.cc(\knob+++idx, { arg val, channel, deviceId;
+		[ ccnum, val, channel, deviceId ].debug("cc");
+		Param(Pbindef(\help), \lpfr -> \stepseq -> idx).normSet(val/127);
+	}, ccnum); 
+};
+)
+::
+
+With Modality Toolkit, there is a extension method that allow you to quickly map a group of knobs or other elements
+
+code::
+// MKtl(\icon)[\kn] is a MKtlElementGroup containing 9 knobs
+MKtl(\icon)[\kn].mapParam( Param( Pbindef(\help), \lpfr -> \stepseq ) );
+
+(
+// arbitrary param group mapping
+MKtl(\icon)[\kn].mapParam([
+	Param( Pdef(\bete), \degree -> \stepseq -> 2 ), // assign first knob to step 2 of the degree Pseq
+	Param( Pdef(\bete), \rq -> \stepseq -> 1 ),
+])
+)
+::
 
 
 section:: Timelines
 
 subsection:: Visualize a Pbind score
 
+You can use TimelineEventList.newFrom to create a TimelineEventList from a Pattern. Then assign this list to a timeline, and you can visualize it.
+
+code::
+(
+// assign a new TimelineEventList to a NoteTimeline
+NoteTimeline(\help).eventList = TimelineEventList.newFrom(
+	Pbind(
+		\instrument, \default,
+		\degree, Pseq((0..9),inf) % Pseq((3..16),inf),
+		\dur, 1/8,
+		\amp, 0.1,
+	),
+	64, // how many event to record
+);
+)
+
+NoteTimeline(\help).edit; // now display it
+::
+
+Custom GUI
+
+code::
+(
+WindowDef(\help, { arg def;
+	VLayout (
+		NoteTimeline(\help).asPreview, // minimal view
+		NoteTimeline(\help).asView, // full editor
+	)
+	
+}).front;
+);
+::
+
 subsection:: Record your piano controller
 
+Use NoteTimeline for recording notes from a piano controller.
+On the GUI, there is a record button, there is also in the code::...:: menu a popup menu that allow to choose which controller in connected to this timeline.
+
+code::
+NoteTimeline(\help).edit; // default SynthDef
+
+// use custom SynthDef and patterns
+Pdef(\mysynth, Pbind(\instrument, \saw)); 
+NoteTimeline(\help, Pdef(\mysynth)).edit;
+::
+
+
 subsection:: Record your drumpad controller
+
+Instead of taking notes from a Pdef like NoteTimeline, we have an array of pattern, each one represent a particular drum, so when we hit a drumpad, the corresponding drum pattern is played.gtg
+Use KitTimeline for recording notes from a drumpad controller.
+On the GUI, there is a record button, there is also in the code::...:: menu a popup menu that allow to choose which controller in connected to this timeline.
+
+
 
 subsection:: Record your launchpad controller
 
@@ -747,7 +993,16 @@ subsection:: Record a parameter
 
 subsection: add a preview of a timeline in a GUI
 
-
+code::
+(
+WindowDef(\help, { arg def;
+	VLayout (
+		NoteTimeline(\help).asPreview, // minimal view
+	)
+	
+}).front;
+);
+::
 
 section:: Controllers (MIDI, OSC, ...)
 
@@ -897,7 +1152,77 @@ subsection:: Control a player with a MIDI knob
 
 subsection:: Learn MIDI ccnum to control any Param
 
+Note that with default editors like PdefEditor, you can right-click on a Param label and you will get a window allowing you to map this Param to a learned MIDI knob.
+
+This is how it is done under the hood:
+
+code::
+(
+// define a pattern
+Pdef(\help, 
+	Pbind(
+		\instrument, \default,
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+);
+
+(
+// the first knob you will turn will be assigned to this Param
+MIDIFunc.cc({ arg val ...args;
+	Param(Pdef(\help), \freq).normSet(val/127)
+}).learn; // learn!
+)
+
+(
+// you can also use MIDIdef to avoid mapping the same knob to several Param
+MIDIdef.cc(\knob1, { arg val ...args;
+	Param(Pdef(\help), \freq).normSet(val/127)
+}).fix.learn; // fix it so CmdPeriod will not remove it
+)
+::
+
+
+Param(Pdef(\help), \freq).setBusMode(true); // easy bus mode
+
 subsection:: Control a PopUpMenu with a controller
+
+note::
+You will have to clear the Pbindef if you executed the previous recipes because sequencer data and all other keys will remain
+::
+
+code::
+Pbindef(\help).clear;
+Pbindef(\help).envir.clear;
+::
+
+Now let's write our three parts: the model, the GUI and the MIDI controller
+
+code::
+(
+// define a pattern to play
+Pbindef(\help,
+	\degree, Pseq([3,1,2,0],inf),
+).play;
+
+// define a spec, we will select the instrument from this list
+TagSpecDef(\instrlist, [\default, \saw]);
+~param = Param(Pbindef(\help), \instrument, TagSpecDef(\instrlist));
+
+// define a GUI
+WindowDef(\help, { arg def;
+	~param.asView; // display the list as a PopUpMenu
+}).frontTop;
+);
+
+(
+MIDIFunc.cc({ arg val ...args;
+   	// setting the Param will automatically select the corresponding instrument in the list and update the PopUpMenu
+	~param.normSet(val/127);
+}).learn; // learn!
+)
+::
 
 subsection:: Select controller by a PopUpMenu
 

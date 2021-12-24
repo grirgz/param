@@ -49,20 +49,34 @@ Ndef(\target_object).addSpec(\env_param, ParamEnvSpec(\unipolar ! 4));
 
 SynthDef(\target_synthdef, { arg freq=200, pan=0, amp=0.1;
 	var sig;
-	sig = SinOsc.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5)).mean;
+	sig = LFSaw.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5)).mean;
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
 	sig = sig * EnvGen.kr(\env_param.kr(Env([0,1,0.5,0],[0.1,0.8,0.1])), \gate.kr(1), doneAction:2);
 	sig = Pan2.ar(sig, pan, amp);
 	Out.ar(\out.kr(0), sig);
 }, metadata:(specs:(
 		env_param: ParamEnvSpec(\unipolar ! 4),
+		lpfr: ControlSpec(0.1,6,\lin),
 		//array_param: ParamArraySpec(), // FIXME: this should be commented, Param should detect spec from default value, but bug in 3.11
 ))).add;
 
 ~envspec = ParamEnvSpec(\unipolar ! 4);
 
+Pdefn(\lpfr_pdefn, PstepSeq([1,2,2.3,0.4],inf));
+Pdefn(\rq_pdefn, 0.3);
+
 Pdef(\target_object, Pbind(
-	\instrument, \target_synthdef
+	\instrument, \target_synthdef,
+	\lpfr, Pdefn(\lpfr_pdefn),
+	\rq, Pdefn(\rq_pdefn),
 ));
+
+Pbindef(\target_pbindef, 
+	\instrument, \target_synthdef,
+	\lpfr, PstepSeq([1,0,3,6],inf),
+	\scalar_param, Pseq([0,100,200,0],inf),
+	\rq, 0.1,
+);
 
 StepEventDef(\target_object);
 StepEventDef(\target_object)[\instrument] = \target_synthdef;
@@ -125,6 +139,15 @@ Param.trace = true;
 	~array_individual_params.(Pdef(\target_object)),
 	~three.(StepEventDef(\target_object)),
 	~three.(~dict),
+
+	Param(Pdefn(\lpfr_pdefn), \stepseq),
+	Param(Pdefn(\rq_pdefn)),
+
+	Param(Pbindef(\target_pbindef), \lpfr -> \stepseq),
+	Param(Pbindef(\target_pbindef), \scalar_param -> \stepseq),
+	Param(Pbindef(\target_pbindef), \rq),
+	Param(Pbindef(\target_pbindef).source.at(\rq)).label_("rq proxy"),
+
 	Param(Pdef(\target_object), \scalar_bus_param).setBusMode, // bus mode for Pdef
 	Param(~steplist, \list), // this bug preset
 	Param(~list, \list), // this bug preset
@@ -132,7 +155,10 @@ Param.trace = true;
 	Param(Ndef(\target_object), "vol"), // no gui update
 	//Param(~bus, \value), // this is not working yet
 
+
 	Param(Message(StepList[1,2,3]), \stepCount),
+	Param(Message((arr:[3,2,1,2])), \arr),
+	Param(Message((arr:[3,2,1,2])), \arr -> 1),
 	Param(Builder(\target_object), \scalar_param),
 	//// TODO: add test for each spec !
 
@@ -269,6 +295,7 @@ WindowDef(\testgui, {
 		HLayout (
 			PlayerWrapper(Ndef(\target_object)).asView,
 			PlayerWrapper(Pdef(\target_object)).asView,
+			PlayerWrapper(Pdef(\target_pbindef)).asView,
 			EventClass.presetSelectorView.(ParamGroupDef(\all_targets)),
 			EventClass.presetSelectorView.(~pg),
 		),

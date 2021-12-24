@@ -213,11 +213,15 @@
 +Pdef {
 	edit { 
 		ParamProto.init;
-		if(WindowDef(\PdefEditor).notNil) {
-			^WindowDef("PdefEditor_%".format(this.key).asSymbol, WindowDef(\PdefEditor)).front(this)
+		if(this.getHalo(\model).notNil) {
+			this.getHalo(\model).edit;
 		} {
-			Log(\Param).info("no editor found: WindowDef(\\PdefEditor) is not defined");
-			^nil
+			if(WindowDef(\PdefEditor).notNil) {
+				^WindowDef("PdefEditor_%".format(this.key).asSymbol, WindowDef(\PdefEditor)).front(this)
+			} {
+				Log(\Param).info("no editor found: WindowDef(\\PdefEditor) is not defined");
+				^nil
+			}
 		}
 	}
 

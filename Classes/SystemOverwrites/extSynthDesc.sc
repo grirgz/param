@@ -47,16 +47,23 @@
 	specs {
 		var val;
 		val = this.metadata;
-		if(val.notNil) {
-			val = val.specs;
-			if(val.notNil) {
-				^val.composeEvent(this.getHalo(\specs))
-			} {
-				^this.getHalo(\specs)
-			}
-		} {
-			^this.getHalo(\specs)
-		}
+		if(this.metadata.isNil) {
+			// FIXME: load metadata from somewhere ?
+			this.metadata = (specs:());
+		};
+		^this.metadata.specs
+	}
+
+	allSpecs {
+		^this.specs.composeEvents(this.getHalo(\spec) ?? {()})
+	}
+
+	specs_ { arg val;
+		if(this.metadata.isNil) {
+			// FIXME: load metadata from somewhere ?
+			this.metadata = ();
+		};
+		this.metadata[\specs] = val;
 	}
 
 	defaultValue { arg argname;

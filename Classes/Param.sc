@@ -154,6 +154,7 @@ Param {
 					}
 				);
 			},
+
 			Pdef: {
 				wrapper = PdefParam(*args);
 				//switch(property.class,
@@ -169,6 +170,14 @@ Param {
 			EventPatternProxy: {
 				wrapper = EventPatternProxyParam(*args);
 			},
+
+			Pdefn: {
+				wrapper = PdefnParam(*args);
+			}, 
+			PatternProxy: {
+				wrapper = PatternProxyParam(*args);
+			}, 
+
 			PbindSeqDef: {
 				switch(property.class,
 					Association, {
@@ -186,6 +195,9 @@ Param {
 			TempoClock: {
 				//"wrapper: VolumeParam".debug;
 				wrapper = TempoClockParam(*args);
+			},
+			PstepSeq: {
+				wrapper = PstepSeq(*args);
 			},
 			List: {
 				if(property.isKindOf(Integer)) {
@@ -238,6 +250,9 @@ Param {
 		class_dispatcher['Ppredef'] = class_dispatcher['Pdef'];
 		class_dispatcher['Pbindef'] = class_dispatcher['Pdef'];
 
+		class_dispatcher['Pseq'] = class_dispatcher['PstepSeq'];
+		class_dispatcher['Prand'] = class_dispatcher['PstepSeq'];
+
 		class_dispatcher['StepList'] = class_dispatcher['List'];
 		class_dispatcher['DictStepList'] = class_dispatcher['List'];
 		class_dispatcher['ParDictStepList'] = class_dispatcher['List'];
@@ -270,6 +285,7 @@ Param {
 		} {
 			// ParamValue goes here
 			// FIXME: this is error prone when target is not recognized
+			Log(\Param).debug("FIXME: should not create Param with a wrapper as arg");
 			wrapper = target;
 		}
 	}
@@ -475,6 +491,7 @@ Param {
 	/////////////////// GUI mapping
 
 	makeSimpleController { arg slider, action, updateAction, initAction, customAction, cursorAction;
+		// define view action to update model and make a controller to update the view
 		var param = this;
 		slider.toolTip = this.fullLabel; // FIXME: not really a good place, but so it can quicly apply to every view
 
@@ -529,7 +546,7 @@ Param {
 	}
 
 	makeCursorUpdater { arg view, action;
-		var con = view.getHalo(\simpleController);
+		var con = view.getHalo(\simpleControllerCursor) ?? { view.getHalo(\simpleController) };
 		con.put(\cursor, { arg obj, message, idx, idx2;
 			action.(view, idx, idx2)
 		});
@@ -549,7 +566,8 @@ Param {
 		if(updateMode == \dependants) {
 			// dependants mode
 			// FIXME: should i free it ? should i reuse it ?
-			var controller;
+			//		refreshUpdater free it before calling makeUpdater
+			var controller, controllerCursor;
 			Log(\Param).debug("makeUpdater: controllerTarget:%", this.controllerTarget);
 			controller = SimpleController(param.controllerTarget);
 			{
@@ -557,6 +575,13 @@ Param {
 			}.defer;
 			view.addHalo(\simpleController, controller);
 			simpleControllers.add(controller);
+
+			Log(\Param).debug("makeUpdater controllerTargetCursor %", param.controllerTargetCursor);
+			if(param.controllerTargetCursor.notNil) {
+				controllerCursor = SimpleController(param.controllerTargetCursor);
+				simpleControllers.add(controllerCursor);
+				view.addHalo(\simpleControllerCursor, controllerCursor);
+			};
 
 			this.putListener(view, controller, action);
 		} {
@@ -659,6 +684,9 @@ Param {
 		^this.wrapper.controllerTarget;
 	}
 
+	controllerTargetCursor {
+		^this.wrapper.controllerTargetCursor;
+	}
 
 	////// widgets
 
@@ -690,13 +718,16 @@ Param {
 			customAction:action,
 			cursorAction: cursorAction
 		);
-		slider.addUniqueMethod(\attachOverlayMenu, {
+		slider.addUniqueMethod(\attachContextMenu, {
 			slider.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 				if(buttonNumber == 1) {
 					ParamProto.init;
 					WindowDef(\OverlayMenu).front(slider, x, y, { arg def;
-						Param(Message(slider), \size, ControlSpec(1,32,\lin,1,4)).asNumberBox.maxWidth_(100)
+						HLayout (
+							StaticText.new.string_("List size"),
+							Param(Message(slider), \size, ControlSpec(1,32,\lin,1,4)).asNumberBox.maxWidth_(100)
+						)
 					} );
 					false
 				};
@@ -1033,17 +1064,19 @@ Param {
 					spec = this.spec;
 				};
 			};
-			try {
-				//Log(\Param).debug("mapValuePopUpMenu refreshChangeAction labelList %", spec.labelList);
-				if(spec.labelList.notNil) {
-					//spec.labelList.do(_.postln); // for debug
-					view.items = spec.labelList.asArray;
+			{
+				try {
+					//Log(\Param).debug("mapValuePopUpMenu refreshChangeAction labelList %", spec.labelList);
+					if(spec.labelList.notNil) {
+						//spec.labelList.do(_.postln); // for debug
+						view.items = spec.labelList.asArray;
+					};
+					view.value = spec.unmapIndex(val);
+				} { arg error;
+					"In %.mapValuePopUpMenu:refreshChangeAction".format(this).error;
+					error.reportError;
 				};
-				view.value = spec.unmapIndex(val);
-			} { arg error;
-				"In %.mapValuePopUpMenu:refreshChangeAction".format(this).error;
-				error.reportError;
-			};
+			}.defer;
 			//view.value.debug("mapValuePopUpMenu:1.5");
 		};
 		view.refreshChange;
@@ -1360,7 +1393,6 @@ Param {
 				//^this.asKnob;
 			//}
 		//)
-
 	}
 
 	edit {
@@ -1421,20 +1453,25 @@ Param {
 	}
 
 	*getSynthDefSpec { arg argName, defname=nil;
-		var val;
-		var rval;
-		val = SynthDescLib.global.synthDescs[defname];
-		//Log(\Param).debug("synthdesc % % %", argName, defname, val);
-		if(val.notNil) {
-			val = val.metadata;
-			if(val.notNil) {
-				val = val.specs;
-				if(val.notNil) {
-					rval = val[argName];
-				}
-			}
-		};
-		^rval;
+		//var val;
+		//var rval;
+		//var desc;
+		//val = SynthDescLib.global.synthDescs[defname];
+		//desc = val;
+		////Log(\Param).debug("synthdesc % % %", argName, defname, val);
+		//if(val.notNil) {
+			//val = val.metadata;
+			//if(val.notNil) {
+				//val = val.specs;
+				//if(val.notNil) {
+					//rval = val[argName];
+				//}
+			//} {
+				//rval = desc.getSpec[argName]
+			//}
+		//};
+		//^rval;
+		^SynthDesc(defname).allSpecs[argName]
 	}
 
 	*specFromDefaultValue { arg argname, defname, default_spec;
@@ -1514,6 +1551,7 @@ Param {
 
 }
 
+///////////////// parent classes
 
 BaseParam {
 	var <target, <property, <>spec, <key;
@@ -1522,7 +1560,7 @@ BaseParam {
 	var <>combinatorEnabled = true;
 	var <>labelmode;
 	var >default;
-	var >label;  // why not in BaseParam ?
+	var >label; 
 
 	/////// labels
 
@@ -1564,10 +1602,14 @@ BaseParam {
 	}
 	
 	label { arg alabelmode;
-		if(( alabelmode ? labelmode ) == \full) {
-			^this.fullLabel
+		if(label.notNil) {
+			^label
 		} {
-			^this.propertyLabel
+			if(( alabelmode ? labelmode ) == \full) {
+				^this.fullLabel
+			} {
+				^this.propertyLabel
+			}
 		}
 	}
 
@@ -1678,6 +1720,10 @@ BaseParam {
 		^this.target
 	}
 
+	controllerTargetCursor {
+		^nil
+	}
+
 	instrument { nil }
 
 	default {
@@ -1774,6 +1820,7 @@ BaseParam {
 }
 
 ParamAccessor {
+	// self.obj is the param, set by BaseAccessorParam.init
 	*neutral { 
 		^(
 			key: \neutral,
@@ -1782,6 +1829,7 @@ ParamAccessor {
 			},
 
 			getval: { arg self;
+				Log(\Param).debug("neutral.getval obj %", self.obj);
 				self.obj.getVal;
 			},
 
@@ -1851,6 +1899,7 @@ ParamAccessor {
 
 			getval: { arg self;
 				var val;
+				Log(\Param).debug("neutral.getval obj %", self.obj);
 				val = self.obj.parent.get;
 				val[idx]
 			},
@@ -1921,6 +1970,220 @@ ParamAccessor {
 	}
 
 	// WIP
+
+	*stepseq { arg selector;
+		// Pbindef key with PstepSeq inside
+		// note: work also with Pseq
+		// build with Param( Pbindef(\bla), \rq -> \stepseq)
+		^(
+			key: \stepseq,
+			setval: { arg self, val;
+				var res;
+				Log(\Param).debug("stepseq.setval % %", self.obj, val);
+				res = self.obj.target.source.at(selector);
+				res.source.list = val;
+				self.obj.target.changed(\set, self.obj.parent.property); // we don't call Pdef.set so no changed message
+			},
+
+			getval: { arg self;
+				var res;
+				Log(\Param).debug("stepseq.getval %", self.obj);
+				res = self.obj.target.source.at(selector);
+				res.source.list
+			},
+
+			setbus: { arg self, val;
+				// TODO
+				// set the bus (or map) and not its value
+				self.obj.setRaw(val);
+			},
+
+
+			getbus: { arg self;
+				// TODO
+				self.obj.getRaw;
+			},
+
+			toSpec: { arg self, sp;
+				if(sp.isKindOf(ParamArraySpec).not) {
+					ParamArraySpec(sp.asSpec);
+				} {
+					sp;
+				}
+			},
+
+			property: { arg self, prop;
+				prop
+			},
+
+			propertyLabel: { arg self;
+				"% seq".format(selector)
+			},
+
+			path: { arg self, prop;
+				prop -> selector
+			},
+
+			controllerTargetCursor: { arg self;
+				self.obj.target.source.at(selector).source
+			},
+		)
+	}
+
+	*stepseqitem { arg selector, index;
+		// Pbindef key with PstepSeq inside
+		// build with Param( Pbindef(\bla), \rq -> \stepseq -> 0 )
+		^(
+			key: \stepseqitem,
+			setval: { arg self, val;
+				var res;
+				res = self.obj.target.source.at(selector);
+				res.source.list.put(index, val);
+				self.obj.target.changed(\set, self.obj.parent.property, index); // we don't call Pdef.set so no changed message
+			},
+
+			getval: { arg self;
+				var res;
+				res = self.obj.target.source.at(selector);
+				res.source.list.at(index)
+			},
+
+			setbus: { arg self, val;
+				// TODO
+				// set the bus (or map) and not its value
+				self.obj.setRaw(val);
+			},
+
+
+			getbus: { arg self;
+				// TODO
+				self.obj.getRaw;
+			},
+
+			toSpec: { arg self, sp;
+				sp.asSpec;
+			},
+
+			property: { arg self, prop;
+				prop
+			},
+
+			propertyLabel: { arg self;
+				"% %".format(self.obj.parent.property, index)
+			},
+
+			path: { arg self, prop;
+				prop -> selector -> index
+			},
+		)
+	}
+
+	*pdefn_stepseq { 
+		// Pbindef key with PstepSeq inside
+		// note: work also with Pseq
+		// build with Param( Pbindef(\bla), \rq -> \stepseq)
+		^(
+			key: \stepseq, // used by controllerTargetCursor not sure if i need to change it
+			setval: { arg self, val;
+				var res;
+				Log(\Param).debug("stepseq.setval % %", self.obj, val);
+				res = self.obj.target;
+				res.source.list = val;
+				self.obj.target.changed(\set); // we don't call Pdef.set so no changed message
+			},
+
+			getval: { arg self;
+				var res;
+				Log(\Param).debug("stepseq.getval %", self.obj);
+				res = self.obj.target;
+				res.source.list
+			},
+
+			setbus: { arg self, val;
+				// TODO
+				// set the bus (or map) and not its value
+				self.obj.setRaw(val);
+			},
+
+
+			getbus: { arg self;
+				// TODO
+				self.obj.getRaw;
+			},
+
+			toSpec: { arg self, sp;
+				ParamArraySpec(sp.asSpec);
+			},
+
+			property: { arg self, prop;
+				prop
+			},
+
+			propertyLabel: { arg self;
+				"seq"
+			},
+
+			path: { arg self, prop;
+				prop
+			},
+
+			controllerTargetCursor: { arg self;
+				self.obj.target.source
+			},
+		)
+	}
+
+	*pdefn_stepseqitem { arg index;
+		// Pbindef key with PstepSeq inside
+		// build with Param( Pbindef(\bla), \rq -> \stepseq -> 0 )
+		^(
+			key: \stepseqitem,
+			setval: { arg self, val;
+				var res;
+				res = self.obj.target;
+				res.source.list.put(index, val);
+				self.obj.target.changed(\set, index); // we don't call Pdef.set so no changed message
+			},
+
+			getval: { arg self;
+				var res;
+				res = self.obj.target;
+				res.source.list.at(index)
+			},
+
+			setbus: { arg self, val;
+				// TODO
+				// set the bus (or map) and not its value
+				self.obj.setRaw(val);
+			},
+
+
+			getbus: { arg self;
+				// TODO
+				self.obj.getRaw;
+			},
+
+			toSpec: { arg self, sp;
+				if(sp.isKindOf(ParamArraySpec)) {
+					sp[index]
+				} {
+					sp.asSpec;
+				}
+			},
+
+			property: { arg self, prop;
+				prop
+			},
+
+			propertyLabel: { arg self;
+				"seq %".format(index)
+			},
+
+			path: { arg self, prop;
+				prop -> index
+			},
+		)
+	}
 
 	*busmode { 
 		^(
@@ -2054,6 +2317,7 @@ BaseAccessorParam : BaseParam {
 			// init rootparam spec from default spec
 			rootparam.spec = rootparam.toSpec(nil); // need rootspec -> rootspec
 			acc = this.propertyToAccessor(propertyArray, rootparam);
+			Log(\Param).debug("BaseAccessorParam.prNew: acc %, obj %", acc, obj);
 			slotparam = super.new.init(obj, meth, sp, acc);
 			slotparam.spec = sp !? { acc.toSpec(sp) } ?? { acc.toSpec(rootparam.spec) }; // need slotspec -> slotspec
 			slotparam.parent = rootparam;
@@ -2064,6 +2328,7 @@ BaseAccessorParam : BaseParam {
 	init { arg obj, meth, sp, acc;
 		target = obj;
 		property = meth;
+		Log(\Param).debug("BaseAccessorParam.init: target %, property %, sp %, acc %", obj, meth, sp, acc);
 		accessor = acc ?? { ParamAccessor.neutral };
 		accessor.obj = this;
 		//Log(\Param).debug("init accessor % %".format(this, accessor));
@@ -2114,23 +2379,36 @@ BaseAccessorParam : BaseParam {
 	}
 
 	*propertyToAccessor { arg propertyArray, rootparam;
+		Log(\Param).debug("propertyToAccessor: propertyArray %, rootparam %", propertyArray, rootparam);
 		^switch(propertyArray.size,
 			3, {
-				ParamAccessor.envitem(propertyArray[1], propertyArray[2])
+				if(propertyArray[1] == \stepseq) { 
+					// special property for Pbindef Pstepseq with index
+					Log(\Param).debug("123");
+					ParamAccessor.stepseqitem(propertyArray[0], propertyArray[2]);
+				} {
+					ParamAccessor.envitem(propertyArray[1], propertyArray[2])
+				}
 			},
 			2, {
 				switch( propertyArray[1].class, 
 					Symbol, { 
-						// env named segment: (\adsr -> \sustain) 
 						var res;
-						res = switch(propertyArray[1],
-							\attack, { [\times, 0] },
-							\decay, { [\times, 1] },
-							\sustain, { [\levels, rootparam.get.releaseNode] },
-							\release, { [\times, rootparam.get.releaseNode] },
-							\peak, { [\levels, 1] },
-						);
-						ParamAccessor.envitem(res[0], res[1]);
+						if(propertyArray[1] == \stepseq) {
+							// special property for Pbindef Pstepseq
+							Log(\Param).debug("123324");
+							ParamAccessor.stepseq(propertyArray[0]);
+						} {
+							// env named segment: (\adsr -> \sustain) 
+							res = switch(propertyArray[1],
+								\attack, { [\times, 0] },
+								\decay, { [\times, 1] },
+								\sustain, { [\levels, rootparam.get.releaseNode] },
+								\release, { [\times, rootparam.get.releaseNode] },
+								\peak, { [\levels, 1] },
+							);
+							ParamAccessor.envitem(res[0], res[1]);
+						};
 					},
 					// else: an index into an array: (\delaytab -> 0)
 					{ 
@@ -2646,10 +2924,251 @@ PdefParam : BaseAccessorParam {
 		};
 		//target.changed(\set, property, val); // Pdef already send a changed message
 	}
+
+	controllerTargetCursor {
+		if(accessor.key == \stepseq) {
+			^accessor.controllerTargetCursor
+		} {
+			^nil
+		}
+	}
+
 }
 
 EventPatternProxyParam : PdefParam {
 
+	targetLabel {
+		^target.hash.asString;
+	}
+
+}
+
+////////////////// Pdefn
+
+PdefnParam : PdefParam {
+
+	*toSpec { arg xspec, xtarget, xproperty;
+		var instr;
+		var sp;
+		sp =
+			// Param arg
+			xspec ?? {
+				// halo
+				//Log(\Param).debug("to Spec: 1");
+				xtarget.getSpec(xproperty) ?? {
+					var mysp;
+				//Log(\Param).debug("2");
+					// instrument metadata spec
+					instr = PdefParam.instrument(xtarget);
+					if(instr.notNil) {
+				//Log(\Param).debug("3 % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
+						mysp = Param.getSynthDefSpec(xproperty, instr);
+						
+						// arg name in Spec
+						mysp ?? {
+				//Log(\Param).debug("4");
+							// arg name in Spec
+							xproperty.asSpec ?? {
+				//Log(\Param).debug("5");
+								// default value in SynthDef
+				//Log(\Param).debug("what %", Param.specFromDefaultValue(xproperty, instr));
+								Param.specFromDefaultValue(xproperty, instr) ?? {
+				//Log(\Param).debug("5.1");
+									Param.defaultSpec
+								}
+							}
+						}
+					} {
+						// arg name in Spec
+						xproperty.asSpec ?? {
+							// default value in Pdef
+							var myval = xtarget.source;
+				//Log(\Param).debug("6");
+							if(myval.notNil) {
+				//Log(\Param).debug("7");
+								Param.valueToSpec(myval);
+							} {
+								// default spec
+				//Log(\Param).debug("8");
+								Param.defaultSpec
+							}
+						}
+					}
+				}
+
+			};
+		^sp.asSpec;
+	}
+
+	getVal {
+		// FIXME: the bus mode is managed inside Pdef.getVal. Is it possible and desirable to use accessor for that ?
+		var val;
+		val = target.source ?? { 
+			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			this.default
+		};
+		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
+			val = Pdef.nestOff(val); 
+			//Log(\Param).debug("Val unNested! %", val);
+		};
+		//this.dumpBackTrace;
+		//Log(\Param).debug("get:final Val %", val);
+		^val;
+	}
+
+	setVal { arg val;
+		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
+			val = Pdef.nestOn(val); 
+			//Log(\Param).debug("Val Nested! %", val);
+		};
+		target.source = val;
+		//Log(\Param).debug("set:final Val %", val);
+		if(Param.trace == true) {
+			"%: setVal: %".format(this, val).postln;
+		};
+		//target.changed(\set, property, val); // Pdef already send a changed message
+	}
+
+	getRaw {
+		^target.source
+	}
+
+	setRaw { arg val;
+		^target.source = val
+	}
+
+	inBusMode {
+		// TODO
+		^false
+	}
+
+	inBusMode_ {
+		// TODO
+	}
+
+
+	putListener { arg param, view, controller, action;
+		var updateAction;
+		Log(\Param).debug("PdefnParam.putListener %", param);
+		updateAction = { arg ...args;
+			// args: object, \set, keyval_list
+			//args.debug("args");
+
+			// update only if concerned key is set
+			// do not update if no key is specified
+			// FIXME: may break if property is an association :(
+			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+
+			// debug variables
+			var property = param.property;
+			var target = param.target;
+			var spec = param.spec;
+
+			if(Param.trace == true) {
+				"%: % received update message: %".format(this, view, args).postln;
+			};
+
+			// action
+			//if(args[2].notNil and: {
+				//args[2].asSequenceableCollection.any({ arg x; x == param.propertyRoot })
+			//}) {
+				if(Param.trace == true) {
+					"%: % received update message: matching property! do update: %".format(this, view, args).postln;
+				};
+				action.(view, param);
+			//};
+			//param.refreshUpdater(view, action);
+		};
+		controller.put(\source, { arg ...args; 
+			updateAction.();
+			if(view.isKindOf(MultiSliderView)) {
+				// we just want to listen to the new source for cursor message
+				// if we remap other views, StaticTextLabel become a value StaticText
+				view.unmapParam;
+				view.mapParam(param);
+			}
+		});
+		controller.put(\set, { arg ...args; 
+			// this is called by accessor when changing the stepseq value
+			// avoid to unmap remap Param
+			updateAction.();
+		});
+		//controller.put(\target, { arg ...args;
+			//param.refreshUpdater(view, action)
+		//});
+		//controller.put(\combinator, { arg ...args;
+			//if(param.baseWrapper.isNil) {
+				//var target = param.target;
+				//param.wrapper = param.combinator.baseParam.wrapper;
+				//param.baseWrapper = param.wrapper;
+				//target.changed(\target);
+			//} {
+				////param.wrapper = param.combinator.baseParam.wrapper;
+
+			//}
+		//});
+	}
+
+	*associationToArray { arg asso;
+		// this is a hack to trigger accessor construction by having more than one property
+		if(asso == \stepseq) {
+			asso = \stepseq -> nil
+		};
+		^if(asso.isKindOf(Association)) {
+			switch(asso.key.class,
+				Association, { // index of ((\adsr -> \levels) -> 0)
+					[asso.key.key, asso.key.value, asso.value]
+				},
+				{
+					[asso.key, asso.value]
+				}
+			);
+		} {
+			[asso]
+		}
+	}
+
+	*propertyToAccessor { arg propertyArray, rootparam;
+		// no property needed for Pdefn, \stepseq is a special property
+		Log(\Param).debug("propertyToAccessor: propertyArray %, rootparam %", propertyArray, rootparam);
+		^switch(propertyArray.size,
+			1, {
+				if(propertyArray.first == \stepseq) {
+					ParamAccessor.pdefn_stepseq
+				} {
+					if(propertyArray.first.isKindOf(Number)) {
+						ParamAccessor.array(propertyArray.first)
+					}
+				}
+			},
+			2, {
+				if(propertyArray.first == \stepseq) {
+					if(propertyArray.last.isKindOf(Number)) {
+						ParamAccessor.pdefn_stepseqitem(propertyArray.last)
+					} {
+						if(propertyArray.last.isNil) {
+							ParamAccessor.pdefn_stepseq
+						}
+					};
+				}
+			},
+			{
+				Log(\Param).error("propertyToAccessor: propertyArray should have at least 2 items");
+			}
+		)
+	}
+
+	controllerTargetCursor {
+		if(accessor.key == \stepseq) {
+			^accessor.controllerTargetCursor
+		} {
+			^nil
+		}
+	}
+}
+
+PatternProxyParam : PdefnParam {
+	
 	targetLabel {
 		^target.hash.asString;
 	}
@@ -2745,7 +3264,7 @@ NdefParam : BaseAccessorParam {
 	}
 }
 
-////////////////// Ndef vol
+/// Ndef vol
 
 NdefVolParam : NdefParam {
 	*new { arg obj, meth, sp;
@@ -2912,124 +3431,219 @@ NodeParam : BaseAccessorParam {
 	}
 }
 
-////////////////// Volume
+////////////////// ListPattern (PstepSeq, Pseq, Prand)
 
-VolumeParam : BaseParam {
-	*new { arg obj, meth, sp;
-		^super.new.init(obj, meth, sp);
+ListPatternParam : BaseAccessorParam {
+
+	*toSpec { arg xspec, xtarget, xproperty;
+		var instr;
+		var sp;
+		sp =
+			// Param arg
+			xspec ?? {
+				// halo
+				//Log(\Param).debug("to Spec: 1");
+				xtarget.getSpec(xproperty) ?? {
+					var mysp;
+				//Log(\Param).debug("2");
+					// instrument metadata spec
+					//instr = PdefParam.instrument(xtarget);
+					if(instr.notNil) {
+				//Log(\Param).debug("3 % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
+						mysp = Param.getSynthDefSpec(xproperty, instr);
+						
+						// arg name in Spec
+						mysp ?? {
+				//Log(\Param).debug("4");
+							// arg name in Spec
+							xproperty.asSpec ?? {
+				//Log(\Param).debug("5");
+								// default value in SynthDef
+				//Log(\Param).debug("what %", Param.specFromDefaultValue(xproperty, instr));
+								Param.specFromDefaultValue(xproperty, instr) ?? {
+				//Log(\Param).debug("5.1");
+									Param.defaultSpec
+								}
+							}
+						}
+					} {
+						// arg name in Spec
+						xproperty.asSpec ?? {
+							// default value in Pdef
+							var myval = xtarget.list;
+				//Log(\Param).debug("6");
+							if(myval.notNil) {
+				//Log(\Param).debug("7");
+								Param.valueToSpec(myval);
+							} {
+								// default spec
+				//Log(\Param).debug("8");
+								Param.defaultSpec
+							}
+						}
+					}
+				}
+
+			};
+		^sp.asSpec;
 	}
 
-	targetLabel {
-		if(key == \volume or: { key == \amp }) {
-			^"Vol";
-		} {
-			^"Vol %".format(key)
-		}
-	}
-
-	init { arg obj, meth, sp;
-		target = obj;
-		property = meth;
-		//sp.debug("sp1");
-		spec = this.toSpec(sp);
-		key = meth ? \volume;
-	}
-
-	// retrieve default spec if no default spec given
-	toSpec { arg sp;
-		//ControlSpec(0,1,\lin)
-		if(sp.isNil) {
-			^\db.asSpec
-		} {
-			^sp.asSpec;
-		}
-	}
-
-	get {
+	getVal {
+		// FIXME: the bus mode is managed inside Pdef.getVal. Is it possible and desirable to use accessor for that ?
 		var val;
-		val = target.volume;
+		val = target.list ?? { 
+			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			this.default
+		};
+		//this.dumpBackTrace;
+		//Log(\Param).debug("get:final Val %", val);
 		^val;
 	}
 
-	set { arg val;
-		target.volume = val;
+	setVal { arg val;
+		target.list = val;
+		//Log(\Param).debug("set:final Val %", val);
+		if(Param.trace == true) {
+			"%: setVal: %".format(this, val).postln;
+		};
+		//target.changed(\set, property, val); // Pdef already send a changed message
 	}
 
-	normGet {
-		^spec.unmap(this.get)
+	getRaw {
+		^target.list
 	}
 
-	normSet { arg val;
-		this.set(spec.map(val))
+	setRaw { arg val;
+		^target.list = val
 	}
+
+	inBusMode {
+		// TODO
+		^false
+	}
+
+	inBusMode_ {
+		// TODO
+	}
+
 
 	putListener { arg param, view, controller, action;
-		controller.put(\amp, { arg obj, name, volume; 
-			// args: object, \amp, volume
+		var updateAction;
+		Log(\Param).debug("PdefnParam.putListener %", param);
+		updateAction = { arg ...args;
+			// args: object, \set, keyval_list
 			//args.debug("args");
-			action.(view, param);
+
+			// update only if concerned key is set
+			// do not update if no key is specified
+			// FIXME: may break if property is an association :(
+			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+
+			// debug variables
+			var property = param.property;
+			var target = param.target;
+			var spec = param.spec;
+
+			if(Param.trace == true) {
+				"%: % received update message: %".format(this, view, args).postln;
+			};
+
+			// action
+			//if(args[2].notNil and: {
+				//args[2].asSequenceableCollection.any({ arg x; x == param.propertyRoot })
+			//}) {
+				if(Param.trace == true) {
+					"%: % received update message: matching property! do update: %".format(this, view, args).postln;
+				};
+				action.(view, param);
+			//};
+			//param.refreshUpdater(view, action);
+		};
+		//controller.put(\source, { arg ...args; 
+			//updateAction.();
+			//if(view.isKindOf(MultiSliderView)) {
+				//// we just want to listen to the new source for cursor message
+				//// if we remap other views, StaticTextLabel become a value StaticText
+				//view.unmapParam;
+				//view.mapParam(param);
+			//}
+		//});
+		controller.put(\set, { arg ...args; 
+			// this is called by accessor when changing the stepseq value
+			// avoid to unmap remap Param
+			updateAction.();
 		});
+		//controller.put(\target, { arg ...args;
+			//param.refreshUpdater(view, action)
+		//});
+		//controller.put(\combinator, { arg ...args;
+			//if(param.baseWrapper.isNil) {
+				//var target = param.target;
+				//param.wrapper = param.combinator.baseParam.wrapper;
+				//param.baseWrapper = param.wrapper;
+				//target.changed(\target);
+			//} {
+				////param.wrapper = param.combinator.baseParam.wrapper;
+
+			//}
+		//});
 	}
-}
 
-////////////////// TempoClock
-// maybe could be implemented with MessageParam
-
-TempoClockParam : BaseParam {
-
-	*new { arg obj, meth, sp;
-		^super.new.init(obj, meth, sp);
-	}
-
-	targetLabel {
-		if(key == \tempo ) {
-			^"Tempo";
+	*associationToArray { arg asso;
+		// this is a hack to trigger accessor construction by having more than one property
+		if(asso == \stepseq) {
+			asso = \stepseq -> nil
+		};
+		^if(asso.isKindOf(Association)) {
+			switch(asso.key.class,
+				Association, { // index of ((\adsr -> \levels) -> 0)
+					[asso.key.key, asso.key.value, asso.value]
+				},
+				{
+					[asso.key, asso.value]
+				}
+			);
 		} {
-			^"Tempo %".format(key)
+			[asso]
 		}
 	}
 
-	init { arg obj, meth, sp;
-		target = obj;
-		property = meth;
-		//sp.debug("sp1");
-		spec = this.toSpec(sp);
-		key = meth ? \tempo;
+	*propertyToAccessor { arg propertyArray, rootparam;
+		// no property needed for Pdefn, \stepseq is a special property
+		Log(\Param).debug("propertyToAccessor: propertyArray %, rootparam %", propertyArray, rootparam);
+		^switch(propertyArray.size,
+			1, {
+				if(propertyArray.first == \stepseq) {
+					ParamAccessor.pdefn_stepseq
+				} {
+					if(propertyArray.first.isKindOf(Number)) {
+						ParamAccessor.array(propertyArray.first)
+					}
+				}
+			},
+			2, {
+				if(propertyArray.first == \stepseq) {
+					if(propertyArray.last.isKindOf(Number)) {
+						ParamAccessor.pdefn_stepseqitem(propertyArray.last)
+					} {
+						if(propertyArray.last.isNil) {
+							ParamAccessor.pdefn_stepseq
+						}
+					};
+				}
+			},
+			{
+				Log(\Param).error("propertyToAccessor: propertyArray should have at least 2 items");
+			}
+		)
 	}
 
-	// retrieve default spec if no default spec given
-	toSpec { arg sp;
-		if(sp.isNil) {
-			^ControlSpec(10/60,300/60,\lin,0,1)
+	controllerTargetCursor {
+		if(accessor.key == \stepseq) {
+			^accessor.controllerTargetCursor
 		} {
-			^sp.asSpec;
+			^nil
 		}
-	}
-
-	get {
-		var val;
-		val = target.tempo;
-		^val;
-	}
-
-	set { arg val;
-		target.tempo = val;
-	}
-
-	normGet {
-		^spec.unmap(this.get)
-	}
-
-	normSet { arg val;
-		this.set(spec.map(val))
-	}
-
-	putListener { arg param, view, controller, action;
-		controller.put(\tempo, { arg obj, name, volume; 
-			// args: object, \amp, volume
-			//args.debug("args");
-			action.(view, param);
-		});
 	}
 }
 
@@ -3202,31 +3816,11 @@ ListParamSlot : BaseParam {
 	}
 }
 
-///////////
-
-PbindSeqDefParam : PdefParam {
-	spec {
-		var si = this.get.size;
-		if(si == 0) {
-			^spec;
-		} {
-			^ParamArraySpec(spec ! si);
-		}
-	}
-}
-
-PbindSeqDefParamSlot : PdefParamSlot {
-	//spec {
-	//	^ParamArraySpec(spec ! this.get.size);
-	//}
-
-}
 
 
 ////////////////// Dictionary
 
 DictionaryParam : BaseParam {
-	
 	*new { arg obj, meth, sp;
 		^super.new.init(obj, meth, sp);
 	}
@@ -3383,7 +3977,336 @@ DictionaryParamEnvSlot : DictionaryParamSlot {
 	
 }
 
-//////////////////// StepEvent
+////////////////// Object property (message)
+
+MessageParam : BaseAccessorParam {
+	*new { arg obj, meth, sp;
+		^this.prNew(obj, meth, sp);
+	}
+
+	controllerTarget {
+		^this.target.receiver;
+	}
+
+	targetLabel {
+		^target.receiver.class
+	}
+
+	getVal {
+		// this is not called by accessor, accessor always use parent.getVal
+		// this means this method is always called by the top Param on the top value
+		var val;
+		val = this.getRaw ?? { 
+			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			this.default
+		};
+		//if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
+			//val = Pdef.nestOff(val); 
+			////Log(\Param).debug("Val unNested! %", val);
+		//};
+		//Log(\Param).debug("get:final Val %", val);
+		^val;
+	}
+
+	setVal { arg val;
+		// this is not called by accessor, accessor always use parent.setVal
+		//if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
+			//val = Pdef.nestOn(val); 
+			////Log(\Param).debug("Val Nested! %", val);
+		//};
+		this.setRaw(val);
+		if(Param.trace == true) {
+			"%: setVal: %".format(this, val).postln;
+		};
+		target.changed(\set, property, val);
+	}
+
+	setRaw { arg val;
+		target.receiver.perform((property++"_").asSymbol, val);	
+		this.controllerTarget.changed(\set, property); // FIXME: may update two times when pointed object already send changed signal
+	}
+
+	getRaw { 
+		^target.receiver.perform(property);	
+	}
+
+	//putListener { arg param, view, controller, action;
+		//controller.put(this.property, { arg ...args; 
+			//action.(view, param);
+		//});
+	//}
+
+	instrument {
+		^nil
+	}
+
+	*toSpec { arg xspec, xtarget, xproperty;
+		var instr;
+		var sp;
+		sp =
+			// Param arg
+			xspec ?? {
+				// halo
+				//Log(\Param).debug("to Spec: 1");
+				xtarget.receiver.getSpec(xproperty) ?? {
+					var mysp;
+				//Log(\Param).debug("2");
+					// instrument metadata spec
+					//instr = PdefParam.instrument(xtarget); // commented: no instr in MessageParam
+					if(instr.notNil) { 
+				//Log(\Param).debug("3 % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
+						mysp = Param.getSynthDefSpec(xproperty, instr);
+						
+						// arg name in Spec
+						mysp ?? {
+				//Log(\Param).debug("4");
+							// arg name in Spec
+							xproperty.asSpec ?? {
+				//Log(\Param).debug("5");
+								// default value in SynthDef
+				//Log(\Param).debug("what %", Param.specFromDefaultValue(xproperty, instr));
+								Param.specFromDefaultValue(xproperty, instr) ?? {
+				//Log(\Param).debug("5.1");
+									Param.defaultSpec
+								}
+							}
+						}
+					} {
+						// arg name in Spec
+						xproperty.asSpec ?? {
+							// default value in Pdef
+							var myval = xtarget.receiver.perform(xproperty);
+				//Log(\Param).debug("6");
+							if(myval.notNil) {
+				//Log(\Param).debug("7");
+								Param.valueToSpec(myval);
+							} {
+								// default spec
+				//Log(\Param).debug("8");
+								Param.defaultSpec
+							}
+						}
+					}
+				}
+
+			};
+		^sp.asSpec;
+	}
+}
+
+////////////////// Custom set/get
+
+FunctionParam : StandardConstructorParam {
+	var <getFunc, <setFunc;
+
+	typeLabel {
+		^"F"
+	}
+
+	targetLabel {
+		^target.identityHash
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+
+		getFunc = obj;
+		setFunc = meth;
+
+		spec = this.toSpec(sp);
+		//key = obj.identityHash.asSymbol;
+	}
+
+	toSpec { arg sp;
+		sp = sp ?? { Param.defaultSpec };
+		^sp.asSpec;
+	}
+
+	set { arg val;
+		setFunc.(val, this);
+	}
+
+	get { 
+		^getFunc.(this);
+	}
+}
+
+////////////////// Builder
+
+BuilderParam : StandardConstructorParam {
+
+	typeLabel {
+		^"B"
+	}
+
+	targetLabel {
+		^( target.key ? "" );
+	}
+
+	init { arg obj, meth, sp;
+		//this.class.debug("init");
+		target = obj;
+		property = meth;
+		spec = this.toSpec(sp);
+	}
+
+	set { arg val;
+		target.set(property, val);
+	}
+
+	get { 
+		^target.get(property);
+	}
+}
+
+////////////////// Bus
+
+BusParam : StandardConstructorParam {
+	controllerTarget {
+		^this.target;
+	}
+
+	targetLabel {
+		^target.class
+	}
+
+	set { arg val;
+		//target.receiver.perform((property++"_").asSymbol, val);	
+		this.target.set(val);
+		this.controllerTarget.changed(\set); // FIXME: may update two times when pointed object already send changed signal
+	}
+
+	get { 
+		^target.getSynchronous; // could use cached bus
+	}
+}
+
+//////////////////////// Various objects
+
+////////////////// Volume
+
+VolumeParam : BaseParam {
+	*new { arg obj, meth, sp;
+		^super.new.init(obj, meth, sp);
+	}
+
+	targetLabel {
+		if(key == \volume or: { key == \amp }) {
+			^"Vol";
+		} {
+			^"Vol %".format(key)
+		}
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		//sp.debug("sp1");
+		spec = this.toSpec(sp);
+		key = meth ? \volume;
+	}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg sp;
+		//ControlSpec(0,1,\lin)
+		if(sp.isNil) {
+			^\db.asSpec
+		} {
+			^sp.asSpec;
+		}
+	}
+
+	get {
+		var val;
+		val = target.volume;
+		^val;
+	}
+
+	set { arg val;
+		target.volume = val;
+	}
+
+	normGet {
+		^spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\amp, { arg obj, name, volume; 
+			// args: object, \amp, volume
+			//args.debug("args");
+			action.(view, param);
+		});
+	}
+}
+
+////////////////// TempoClock
+// maybe could be implemented with MessageParam
+
+TempoClockParam : BaseParam {
+	*new { arg obj, meth, sp;
+		^super.new.init(obj, meth, sp);
+	}
+
+	targetLabel {
+		if(key == \tempo ) {
+			^"Tempo";
+		} {
+			^"Tempo %".format(key)
+		}
+	}
+
+	init { arg obj, meth, sp;
+		target = obj;
+		property = meth;
+		//sp.debug("sp1");
+		spec = this.toSpec(sp);
+		key = meth ? \tempo;
+	}
+
+	// retrieve default spec if no default spec given
+	toSpec { arg sp;
+		if(sp.isNil) {
+			^ControlSpec(10/60,300/60,\lin,0,1)
+		} {
+			^sp.asSpec;
+		}
+	}
+
+	get {
+		var val;
+		val = target.tempo;
+		^val;
+	}
+
+	set { arg val;
+		target.tempo = val;
+	}
+
+	normGet {
+		^spec.unmap(this.get)
+	}
+
+	normSet { arg val;
+		this.set(spec.map(val))
+	}
+
+	putListener { arg param, view, controller, action;
+		controller.put(\tempo, { arg obj, name, volume; 
+			// args: object, \amp, volume
+			//args.debug("args");
+			action.(view, param);
+		});
+	}
+}
+
+////////////////////// experimental
+
+//////////// StepEvent
 
 StepEventParam : BaseParam {
 	var <>accessor;
@@ -3570,193 +4493,28 @@ StepEventParam : BaseParam {
 		});
 	}
 }
-//EventPatternProxyParam : StepEventParam {
 
-	//unset {
-		//target.set(property, nil)
-	//}
+////////// seq
 
-	//isSet {
-		//^target.envir.notNil and: {
-			//target.envir.includes(property)
-		//}
-	//}
-
-	//setBusMode { arg enable=true, free=true;
-		//target.setBusMode(property, enable, free);
-	//}
-
-	//inBusMode {
-		//^target.inBusMode(property)
-	//}
-
-	//inBusMode_ { arg val;
-		//if(val == true) {
-			//this.setBusMode(true)
-		//} {
-			//this.setBusMode(false)
-		//}
-	//}
-
-
-	//instrument {
-		//// before setting any key, the .envir is nil and .get(\instrument) return nil
-		//// after, it return \default even if \instrument is not defined (default event)
-		//// so if result is \default, i still check halo instrument to be sure
-		//var res = target.get(\instrument);
-		//if(res == \default) {
-			//if(target.getHalo(\instrument).notNil) {
-				//res = target.getHalo(\instrument)
-			//}
-		//};
-		//^res ?? { 
-			//target.getHalo(\instrument) ?? {
-				//(target !? { this.class.getInstrumentFromPbind(target.source) }) ? \default;
-			//};
-		//}
-	//}
-
-	//getVal {
-		//var val;
-		//val = target.getVal(property) ?? { 
-			////this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
-			//this.default
-		//};
-		//if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
-			//val = Pdef.nestOff(val); 
-			//Log(\Param).debug("Val unNested! %", val);
-		//};
-		//// FIXME: this function is called four times, why ? maybe one for each widget so it's normal
-		////Log(\Param).debug("get:final Val %", val); 
-		//^val;
-	//}
-
-	//setVal { arg val;
-		//if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
-			//val = Pdef.nestOn(val); 
-			//Log(\Param).debug("Val Nested! %", val);
-		//};
-		//if(Param.trace == true) {
-			//"%: setVal: %".format(this, val).postln;
-		//};
-		//target.setVal(property, val);
-		////Log(\Param).debug("set:final Val %", val);
-		//target.changed(\set, property, val);
-	//}
-//}
-
-////////////////// Object property (message)
-MessageParam : BaseAccessorParam {
-
-	*new { arg obj, meth, sp;
-		^this.prNew(obj, meth, sp);
-	}
-
-	controllerTarget {
-		^this.target.receiver;
-	}
-
-	targetLabel {
-		^target.receiver.class
-	}
-
-	getVal {
-		// this is not called by accessor, accessor always use parent.getVal
-		// this means this method is always called by the top Param on the top value
-		var val;
-		val = this.getRaw ?? { 
-			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
-			this.default
-		};
-		//if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
-			//val = Pdef.nestOff(val); 
-			////Log(\Param).debug("Val unNested! %", val);
-		//};
-		//Log(\Param).debug("get:final Val %", val);
-		^val;
-	}
-
-	setVal { arg val;
-		// this is not called by accessor, accessor always use parent.setVal
-		//if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
-			//val = Pdef.nestOn(val); 
-			////Log(\Param).debug("Val Nested! %", val);
-		//};
-		this.setRaw(val);
-		if(Param.trace == true) {
-			"%: setVal: %".format(this, val).postln;
-		};
-		target.changed(\set, property, val);
-	}
-
-	setRaw { arg val;
-		target.receiver.perform((property++"_").asSymbol, val);	
-		this.controllerTarget.changed(\set, property); // FIXME: may update two times when pointed object already send changed signal
-	}
-
-	getRaw { 
-		^target.receiver.perform(property);	
-	}
-
-	//putListener { arg param, view, controller, action;
-		//controller.put(this.property, { arg ...args; 
-			//action.(view, param);
-		//});
-	//}
-
-	*toSpec { arg xspec, xtarget, xproperty;
-		var instr;
-		var sp;
-		sp =
-			// Param arg
-			xspec ?? {
-				// halo
-				//Log(\Param).debug("to Spec: 1");
-				xtarget.receiver.getSpec(xproperty) ?? {
-					var mysp;
-				//Log(\Param).debug("2");
-					// instrument metadata spec
-					//instr = PdefParam.instrument(xtarget); // commented: no instr in MessageParam
-					if(instr.notNil) { 
-				//Log(\Param).debug("3 % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
-						mysp = Param.getSynthDefSpec(xproperty, instr);
-						
-						// arg name in Spec
-						mysp ?? {
-				//Log(\Param).debug("4");
-							// arg name in Spec
-							xproperty.asSpec ?? {
-				//Log(\Param).debug("5");
-								// default value in SynthDef
-				//Log(\Param).debug("what %", Param.specFromDefaultValue(xproperty, instr));
-								Param.specFromDefaultValue(xproperty, instr) ?? {
-				//Log(\Param).debug("5.1");
-									Param.defaultSpec
-								}
-							}
-						}
-					} {
-						// arg name in Spec
-						xproperty.asSpec ?? {
-							// default value in Pdef
-							var myval = xtarget.receiver.perform(xproperty);
-				//Log(\Param).debug("6");
-							if(myval.notNil) {
-				//Log(\Param).debug("7");
-								Param.valueToSpec(myval);
-							} {
-								// default spec
-				//Log(\Param).debug("8");
-								Param.defaultSpec
-							}
-						}
-					}
-				}
-
-			};
-		^sp.asSpec;
+PbindSeqDefParam : PdefParam {
+	spec {
+		var si = this.get.size;
+		if(si == 0) {
+			^spec;
+		} {
+			^ParamArraySpec(spec ! si);
+		}
 	}
 }
+
+PbindSeqDefParamSlot : PdefParamSlot {
+	//spec {
+	//	^ParamArraySpec(spec ! this.get.size);
+	//}
+
+}
+
+////////////////////// deprecated
 
 MessageParam_old : StandardConstructorParam {
 
@@ -3783,91 +4541,6 @@ MessageParam_old : StandardConstructorParam {
 		});
 	}
 }
-
-FunctionParam : StandardConstructorParam {
-	var <getFunc, <setFunc;
-
-	typeLabel {
-		^"F"
-	}
-
-	targetLabel {
-		^target.identityHash
-	}
-
-	init { arg obj, meth, sp;
-		target = obj;
-		property = meth;
-
-		getFunc = obj;
-		setFunc = meth;
-
-		spec = this.toSpec(sp);
-		//key = obj.identityHash.asSymbol;
-	}
-
-	toSpec { arg sp;
-		sp = sp ?? { Param.defaultSpec };
-		^sp.asSpec;
-	}
-
-	set { arg val;
-		setFunc.(val, this);
-	}
-
-	get { 
-		^getFunc.(this);
-	}
-}
-
-BuilderParam : StandardConstructorParam {
-
-	typeLabel {
-		^"B"
-	}
-
-	targetLabel {
-		^( target.key ? "" );
-	}
-
-	init { arg obj, meth, sp;
-		//this.class.debug("init");
-		target = obj;
-		property = meth;
-		spec = this.toSpec(sp);
-	}
-
-	set { arg val;
-		target.set(property, val);
-	}
-
-	get { 
-		^target.get(property);
-	}
-}
-
-BusParam : StandardConstructorParam {
-	controllerTarget {
-		^this.target;
-	}
-
-	targetLabel {
-		^target.class
-	}
-
-	set { arg val;
-		//target.receiver.perform((property++"_").asSymbol, val);	
-		this.target.set(val);
-		this.controllerTarget.changed(\set); // FIXME: may update two times when pointed object already send changed signal
-	}
-
-	get { 
-		^target.getSynchronous; // could use cached bus
-	}
-}
-
-////////////////////// deprecated
-
 
 PdefParam_old : BaseParam {
 	var <multiParam = false;
@@ -4350,3 +5023,77 @@ NdefParamEnvSlot : NdefParam {
 	}
 }
 
+//EventPatternProxyParam : StepEventParam {
+
+	//unset {
+		//target.set(property, nil)
+	//}
+
+	//isSet {
+		//^target.envir.notNil and: {
+			//target.envir.includes(property)
+		//}
+	//}
+
+	//setBusMode { arg enable=true, free=true;
+		//target.setBusMode(property, enable, free);
+	//}
+
+	//inBusMode {
+		//^target.inBusMode(property)
+	//}
+
+	//inBusMode_ { arg val;
+		//if(val == true) {
+			//this.setBusMode(true)
+		//} {
+			//this.setBusMode(false)
+		//}
+	//}
+
+
+	//instrument {
+		//// before setting any key, the .envir is nil and .get(\instrument) return nil
+		//// after, it return \default even if \instrument is not defined (default event)
+		//// so if result is \default, i still check halo instrument to be sure
+		//var res = target.get(\instrument);
+		//if(res == \default) {
+			//if(target.getHalo(\instrument).notNil) {
+				//res = target.getHalo(\instrument)
+			//}
+		//};
+		//^res ?? { 
+			//target.getHalo(\instrument) ?? {
+				//(target !? { this.class.getInstrumentFromPbind(target.source) }) ? \default;
+			//};
+		//}
+	//}
+
+	//getVal {
+		//var val;
+		//val = target.getVal(property) ?? { 
+			////this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			//this.default
+		//};
+		//if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			//val = Pdef.nestOff(val); 
+			//Log(\Param).debug("Val unNested! %", val);
+		//};
+		//// FIXME: this function is called four times, why ? maybe one for each widget so it's normal
+		////Log(\Param).debug("get:final Val %", val); 
+		//^val;
+	//}
+
+	//setVal { arg val;
+		//if(target.getHalo(\nestMode) == true) { // FIXME: what about more granularity ?
+			//val = Pdef.nestOn(val); 
+			//Log(\Param).debug("Val Nested! %", val);
+		//};
+		//if(Param.trace == true) {
+			//"%: setVal: %".format(this, val).postln;
+		//};
+		//target.setVal(property, val);
+		////Log(\Param).debug("set:final Val %", val);
+		//target.changed(\set, property, val);
+	//}
+//}

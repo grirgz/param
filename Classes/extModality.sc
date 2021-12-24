@@ -32,22 +32,32 @@
 
 + MKtlElementGroup {
 	mapParam { arg param;
-		if(this.elements.size == 2) { // button with on/off
-			if(param.isNil) {
-				this[0].action = nil;
-				this[1].action = nil;
+		if(param.size > 0) {
+			if(this.elements.size > 0) {
+				min(this.elements.size, param.size).do { arg idx;
+					this[idx].mapParam(param.at(idx))
+				};
 			} {
-				// on
-				this[0].action = { arg me; 
-					param.normSet(1)
-				};
-				// off
-				this[1].action = { arg me;
-					param.normSet(0)
-				};
-			}
+				"MKtlElementGroup.mapParam: can't map subparams because not an array of slider".error;
+			};
 		} {
-			"MKtlElementGroup.mapParam: Not a button".error;
+			if(this.elements.size == 2) { // button with on/off
+				if(param.isNil) {
+					this[0].action = nil;
+					this[1].action = nil;
+				} {
+					// on
+					this[0].action = { arg me; 
+						param.normSet(1)
+					};
+					// off
+					this[1].action = { arg me;
+						param.normSet(0)
+					};
+				}
+			} {
+				"MKtlElementGroup.mapParam: Not a button".error;
+			}
 		}
 	}
 

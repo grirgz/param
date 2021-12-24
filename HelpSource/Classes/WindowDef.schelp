@@ -7,23 +7,56 @@ DESCRIPTION::
 The first reason for using WindowDef is preventing opening the same windows multiple times.
 It can happen when you don't see the window was already open, or when you develop your GUI and run the same code several times with a few changes. Or when a button open a window.
 
+It is also nice to have GUI code in a function and why not give an unique name to this function you can retrieve everywhere.
+
+It is also possible to embed a WindowDef in another WindowDef so you can modularize your GUI code (see link::-asView::).
+
 WindowDef also remember size and position of the window. 
 
 
 CLASSMETHODS::
 
 METHOD:: new
-(describe method here)
+Define a new WindowDef (or replace it if it already exists)
 
 ARGUMENT:: key
 A Symbol identifier for the instance. You should not set it yourself.
 
 ARGUMENT:: val
 A function that return a View or a Layout.
-WindowDef will automatically put it in a Window if you call code::front::
-(describe argument here)
+WindowDef will automatically put it in a Window if you call link::#-front::
+First argument is always the WindowDef instance itself.
 
-returns:: (describe returnvalue here)
+code::
+(
+// define a window
+WindowDef(\mywindow, { arg def;
+	Button.new.string_("hello");
+});
+)
+::
+
+You can also use an event, this allow you to have more complex WindowDefs. In this case, the asView method is called when you run .front or .asView and should return a View or a Layout.
+
+First argument is the event prototype itself, second is the WindowDef instance, and then come the arguments provided to link::-front:: or link::-asView::
+
+code::
+(
+WindowDef(\test, (
+	asView: { arg self, def, param1;
+		BasicButton.new
+	},
+));
+)
+::
+
+Finally you can copy a WindowDef by giving another WindowDef as second argument
+
+code::
+WindowDef(\testcopy, WindowDef(\test));
+::
+
+returns:: a WindowDef
 
 METHOD:: all
 An internal PresetDictionary containing all instances of WindowDef. You should not modify it directly.
@@ -48,27 +81,74 @@ METHOD:: front
 Execute the function and put the result in a Window, then display it.
 
 ARGUMENT::  ... args
-All arguments provided to code::front:: will be passed to the function.
+All arguments provided to link::-front:: will be passed to the function.
 
 METHOD:: frontTop
-Same as code::front:: but also set the window in always-on-top mode.
+Same as link::-front:: but also set the window in always-on-top mode.
 
 ARGUMENT::  ... args
 All arguments provided will be passed to the function.
 
 METHOD:: asView
-Execute the function and return the result.
+Same as link::-front:: but instead of creating a Window, it will return the View.
+This allow you to embed a WindowDef in another window.
+
+code::
+(
+// define two Pdef
+Pdef(\help1, 
+	Pbind(
+		\instrument, \default,
+	)
+);
+Pdef(\help2, 
+	Pbind(
+		\instrument, \saw,
+	)
+);
+)
+
+(
+// make a double Pdef editor!
+WindowDef(\doubleEditor, { arg def, pdefkey1, pdefkey2;
+	ParamProto.init; // PdefEditor is in prototype lib
+	HLayout (
+		WindowDef(\PdefEditor).asView(Pdef(pdefkey1)),
+		WindowDef(\PdefEditor).asView(Pdef(pdefkey2)),
+	)
+}).front(\help1, \help2);
+)
+::
 
 ARGUMENT::  ... args
 All arguments provided will be passed to the function.
 
+
 returns:: a View or a Layout
 
 METHOD:: embedView
-Same as code::asView:: except the first argument is the parent WindowDef. This allow the child to access the window througt code::def.window::. The child WindowDef receive instead the parent WindowDef as first argument so can access to window.
+Same as link::-asView:: except the first argument is the parent WindowDef. This allow the child to access the window througt code::def.window::. The child WindowDef receive instead the parent WindowDef as first argument so can access to window.
+
+code::
+(
+WindowDef(\closeButton, { arg def, name="close";
+	BasicButton.new.string_(name).action_({
+		def.closeWindow; // this only work if def.window is defined
+	});
+});
+
+WindowDef(\help, { arg def;
+	VLayout (
+		WindowDef(\closeButton).asView("close (will fail)"),
+		WindowDef(\closeButton).embedView(def, "close (will work)"),
+		nil,
+	)
+}).front;
+);
+::
 
 ARGUMENT:: def
-The parent WindowDef instance the child will be embeded
+The parent WindowDef instance the child will be embeded to
 
 ARGUMENT::  ... args
 All remaining arguments provided will be passed to the function.
@@ -99,20 +179,68 @@ Set or get the name of the window. Does nothing if there is no window available 
 
 returns:: a String or nil
 
+METHOD:: proto
+If the WindowDef was created using an event prototype, it is stored here.
+
+returns:: an Event
+
+
+
 
 subsection::Window
 
 
 METHOD:: windowDo
 If the WindowDef is executed with code::asView::, the function have no access to the window. 
-Since you don't know if the WindowDef will create itself its window or be used a View
+Instead of checking manually for the window, use this function to mark part of the code to be executed only if a window is found.
 
 ARGUMENT:: fun
-The function will only be executed if there is a window
+The function will only be executed if there is a window. First argument is the window
+
+code::
+(
+WindowDef(\help, { arg def;
+	def.windowDo { arg win;
+		win.userCanClose = false; // create an unclosable window
+	};
+	BasicButton.new.string_("Close").action_({ def.closeWindow; }); // manual close
+}).front;
+);
+::
 
 
 METHOD:: followChange
 Listen to messages sent by code::model:: and run the function given in argument. Stop listening when window is closed.
+
+code::
+(
+Pdef(\model, Pbind(\instrument, \default));
+
+// this window will update its content each time a different Pbind inside the Pdef
+WindowDef(\help, { arg def, pdef;
+	var view = View.new;
+	def.followChange(pdef, \source, { arg ...args;
+		args.debug("change!");
+		ParamProto.init; // PdefEditor is in prototype lib
+		view.removeAll; // always remove before adding again
+		view.layout = WindowDef(\PdefEditor).asView(pdef);
+	}); 
+	view;
+}).frontTop(Pdef(\model));
+)
+
+
+Pdef(\model, Pbind(\instrument, \saw)); // load another Pbind and see GUI updating automatically
+Pdef(\model, Pbind(\instrument, \default));
+Pdef(\model).changed(\source); // send changed signal manually
+::
+
+internally, it is implemented with SimpleController
+
+code::
+WindowDef(\help).simpleControllerDict;
+WindowDef(\help).freeAllSimpleControllers; // free them all if something goes wrong
+::
 
 ARGUMENT:: model
 The object to listen to code::changed:: messages
@@ -139,6 +267,7 @@ subsection::Options
 METHOD:: alwaysRecreate
 If set to true, it will always recreate the window when you run code::front::.
 If false and the window is already open, it will simply bring the window to foreground.
+It defaults to true.
 
 returns:: a Boolean
 
@@ -157,6 +286,8 @@ subsection:Others
 METHOD:: waitIfNeeded
 If clock is late, wait until it catchs on. Else do nothing. When the GUI is very big, displaying it can disturb sound processes, this try to mitigate this problem.
 
+This only works if code::thisThread.clock:: is an code::AppClock::. This is the case by default in WindowDef code. Pattern code is run on TempoClock so will need a code::defer:: function.
+
 
 
 
@@ -173,5 +304,29 @@ WindowDef(\mywindow, {
 // Now you can open your window with .front, it will always close the previous window if already open:
 
 WindowDef(\mywindow).front;
+
+
+
+////////// WindowDef with prototype
+
+(
+WindowDef(\test, (
+	buttonName: "hello",
+	asView: { arg self, def, param1;
+		BasicButton.new.string_(self.buttonName)
+	},
+));
+)
+WindowDef(\test).front;
+
+(
+// you can inherit a WindowDef prototype
+// here asView is inherited, but button label will be different;
+WindowDef(\test_child, (
+	buttonName: "hello child",
+	parent: WindowDef(\test).proto,
+)).front;
+)
+
 ::
 
