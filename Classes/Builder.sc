@@ -5,10 +5,17 @@ Builder {
 	var <source;
 	var >envir;
 	var <>key;
+	var <>proxy;
+	var <>editor;
+	var >label;
 	classvar <all;
 
 	*initClass {
 		all = IdentityDictionary.new;
+	}
+
+	label {
+		^label ?? { this.key }
 	}
 
 	*new { arg key, fun;
@@ -79,6 +86,10 @@ Builder {
 		^source.valueWithEnvir(this.envir);
 	}
 
+	buildInit {
+		source.valueWithEnvir(this.envir);
+	}
+
 	set { arg ...args;
 		var hasChanged = false;
 		args.pairsDo { arg key, val; 
@@ -108,6 +119,32 @@ Builder {
 
 	storeOn { arg stream;
 		stream << "%(%)".format(this.class.asString, this.key.asCompileString);
+	}
+
+	///// player support
+
+	play {
+		proxy.play;
+	}
+
+	stop {
+		proxy.stop;
+	}
+
+	isPlaying {
+		^PlayerWrapper(proxy).isPlaying;
+	}
+
+	isPlaying_ { arg val;
+		PlayerWrapper(proxy).isPlaying = val;
+	}
+
+	edit {
+		editor.front;
+	}
+
+	asView {
+		editor.asView;
 	}
 
 }

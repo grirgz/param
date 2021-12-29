@@ -74,18 +74,24 @@
 
 	}
 
+	*symbolIsBus { arg sym;
+		var num = #[ $1, $2, $3, $4, $5, $6, $7, $8, $9, $0  ];
+		sym = sym.asString;
+		^[$c, $a].includes(sym[0]) and: { sym.drop(1).every({ arg x; num.includes(x) }) };
+	}
+
 	inBusMode { arg key;
 		var val = this.get(key);
 		if(val.isSequenceableCollection) {
 			// multichannel
 			if(val[0].isSequenceableCollection) {
 				// nested
-				^(val[0][0].class == Symbol)
+				^(val[0][0].class == Symbol) and: { this.class.symbolIsBus(val[0][0]) }
 			} {
-				^(val[0].class == Symbol)
+				^(val[0].class == Symbol) and: { this.class.symbolIsBus(val[0]) }
 			}
 		} {
-			^(val.class == Symbol or: { val.isKindOf(ParamCombinator) or: { this.getHalo(( \ParamCombinator_++key ).asSymbol) !? (_.inBusMode) == true } })
+			^((val.class == Symbol and: { this.class.symbolIsBus(val) }) or: { val.isKindOf(ParamCombinator) or: { this.getHalo(( \ParamCombinator_++key ).asSymbol) !? (_.inBusMode) == true } })
 		}
 	}
 

@@ -285,7 +285,7 @@ Param {
 		} {
 			// ParamValue goes here
 			// FIXME: this is error prone when target is not recognized
-			Log(\Param).debug("FIXME: should not create Param with a wrapper as arg");
+			Log(\Param).debug("FIXME: should not create Param with a wrapper as arg %, %", target.class, target);
 			wrapper = target;
 		}
 	}
@@ -1303,7 +1303,7 @@ Param {
 		^StaticText.new.mapParamLabel(this, labelmode);
 	}
 
-	asTextField { arg precision;
+	asTextField { arg precision=6;
 		^TextField.new.mapParam(this, precision);
 	}
 
@@ -1347,8 +1347,10 @@ Param {
 		^view;
 	}
 
-	asButton { arg label = "";
-		var but = Button.new
+	asButton { arg label;
+		var but;
+		label = label ?? { this.propertyLabel ?? { "" }};
+		but = Button.new
 			.states_([
 				[label, Color.black, Color.white],
 				[label, Color.black, ParamViewToolBox.color_ligth],
@@ -1432,7 +1434,7 @@ Param {
 
 	*toSpec { arg spec, argName, default_spec=\widefreq;
 		if(spec.isNil, {
-			if( argName.asSpec.notNil, {
+			if( argName.notNil and: {argName.asSpec.notNil}, {
 				spec = argName.asSpec;
 			}, {
 				spec = default_spec.asSpec;
@@ -1450,6 +1452,20 @@ Param {
 			});
 		});
 		^spec
+	}
+
+	*specFromDefaultValue { arg argname, defname, default_spec;
+		var def = Param.getSynthDefDefaultValue(argname, defname);
+		var rval;
+		default_spec = default_spec ? Param.defaultSpec;
+		if(def.class == Float) {
+			rval = default_spec;
+		} {
+			if(def.isSequenceableCollection) {
+				rval = ParamArraySpec(default_spec!def.size);
+			}
+		};
+		^rval;
 	}
 
 	*getSynthDefSpec { arg argName, defname=nil;
@@ -1474,37 +1490,28 @@ Param {
 		^SynthDesc(defname).allSpecs[argName]
 	}
 
-	*specFromDefaultValue { arg argname, defname, default_spec;
-		var def = Param.getSynthDefDefaultValue(argname, defname);
-		var rval;
-		default_spec = default_spec ? Param.defaultSpec;
-		if(def.class == Float) {
-			rval = default_spec;
-		} {
-			if(def.isSequenceableCollection) {
-				rval = ParamArraySpec(default_spec!def.size);
-			}
-		};
-		^rval;
-	}
-
 	*toSynthDefSpec { arg spec, argName, defname=nil, default_spec=\widefreq;
 		if(spec.isNil) {
 			var val;
 			var rval;
 			val = SynthDescLib.global.synthDescs[defname];
 			if(val.notNil) {
+				// if there is a SynthDesc, check metadata, then Spec.specs, then deduce from default value
 				val = val.metadata;
 				if(val.notNil) {
 					val = val.specs;
 					if(val.notNil) {
 						rval = val[argName];
 					}
-				} {
+				};
+				if(rval.isNil and: {argName.notNil and: { argName.asSpec.notNil }}) {
+					rval = argName.asSpec;
+				};
+			   	if(rval.isNil) {
 					// no metadata but maybe a default value
 					var def = Param.getSynthDefDefaultValue(argName, defname);
 					if(def.class == Float) {
-						rval = default_spec;
+						rval = default_spec.asSpec;
 					} {
 						if(def.class.isSequenceableCollection) {
 							rval = ParamArraySpec(default_spec!def.size);
@@ -1512,8 +1519,8 @@ Param {
 					};
 				};
 			};
-			rval = rval.asSpec;
-			spec = this.toSpec(spec, argName, default_spec);
+			//rval = rval.asSpec; // if rval is nil, asSpec return \unipolar
+			spec = this.toSpec(rval, argName, default_spec);
 		};
 		^spec;
 	}
@@ -2021,7 +2028,7 @@ ParamAccessor {
 			},
 
 			path: { arg self, prop;
-				prop -> selector
+				prop
 			},
 
 			controllerTargetCursor: { arg self;
@@ -2073,7 +2080,7 @@ ParamAccessor {
 			},
 
 			path: { arg self, prop;
-				prop -> selector -> index
+				prop
 			},
 		)
 	}
@@ -2865,7 +2872,9 @@ PdefParam : BaseAccessorParam {
 		var val;
 		val = target.getHalo(\instrument) ?? { 
 			var inval = target.source;
-			this.getInstrumentFromPbind(inval);
+			this.getInstrumentFromPbind(inval) ?? {
+				target.get(\instrument)
+			};
 		};
 		^val;
 	}
@@ -2895,11 +2904,18 @@ PdefParam : BaseAccessorParam {
 	getVal {
 		// FIXME: the bus mode is managed inside Pdef.getVal. Is it possible and desirable to use accessor for that ?
 		var val;
-		val = if(this.spec.isKindOf(TagSpec)) {
-			target.get(property)
-		} {
-			target.getVal(property)
-		} ?? { 
+
+		// no need to check for TagSpec anymore, Pdef.inBusMode check the bus format
+		//val = if(this.spec.isKindOf(TagSpec)) {
+			//target.get(property)
+		//} {
+			//target.getVal(property)
+		//} ?? { 
+			////this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			//this.default
+		//};
+
+		val = target.getVal(property) ?? { 
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
 			this.default
 		};

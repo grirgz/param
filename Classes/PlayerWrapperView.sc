@@ -354,9 +354,12 @@ RecordButton {
 		var xlabel;
 		var playing;
 
-		//[changed, changer, args].debug("changed, changer");
+		//[changed, changer, args, button.value].debug("RecordButton: changed, changer");
 
         if(changer !== this) {  
+			// there is no way to know if recording is pending or really started
+			// this override the waiting state, to avoid this problem, we only update when not
+			// in a waiting state
 			if([0,2].includes(button.value)) {
 				xlabel = label ?? {model.label};
 				button.states = this.getStates(xlabel);

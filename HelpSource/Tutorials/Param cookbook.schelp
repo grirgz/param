@@ -700,7 +700,48 @@ subsection:: Changing a part of the GUI when some parameter change
 
 The key is to use View as a placeholder. When some change is detected, remove all children of this view and recreate them.
 
+This example display a PopUpMenu for changing the instrument, when instrument change is detected, it reload the list of sliders to match the parameters of the selected SynthDef
+
+code::
+(
+Pdef(\help, 
+	Pbind(
+		// no instrument key to change it from GUI
+		\degree, Pseq([0],inf),
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+);
+
+(
+WindowDef(\help, { arg def, proxy;
+	var paramView = View.new;
+	// SynthDef_keys is the Spec for all the SynthDefs keys from Param GlobalLibrary
+	var instrparam = Param(proxy, \instrument, TagSpecDef(\SynthDef_keys));
+
+	// any view have a followChange method, when view is closed, the hook is automatically removed to avoid errors
+	paramView.followChange(proxy, \set, { arg view, model, msg, pairs;
+		[view, model, msg, pairs].postln;
+		if(pairs.notNil and: {pairs.includes(\instrument)}) {
+			paramView.removeAll;
+			paramView.layout = proxy.asParamGroup.asView; // handy method to create view from a Pdef
+		};
+	});
+
+	paramView.layout = proxy.asParamGroup.asView; // init
+
+	VLayout (
+		instrparam.asPopUpMenu,
+		paramView;
+	)
+}).front(Pdef(\help));
+);
+::
+
 subsection:: Write a GUI that can modify SynthDefs
+
+
 
 
 
@@ -709,15 +750,94 @@ section:: GUI Dialogs
 
 subsection:: Choose a file
 
+The first argument (here nil) is the default path, you can use it to browse automatically to a file when the dialog is opened (the last opened file for example).
+
+code::
+(
+WindowDef(\filedialog_save).front(nil,{ arg path;
+	"save to this file %".format(path).debug;
+})
+)
+
+(
+WindowDef(\filedialog).front(nil,{ arg path;
+	"load from this file %".format(path).debug;
+})
+)
+::
+
 subsection:: Choose a directory
+
+
 
 subsection:: Choose a sample
 
+This file dialog only display audio files
+
+code::
+(
+WindowDef(\filedialog_sample).front(nil,{ arg path;
+	"load this sample %".format(path).debug;
+})
+)
+::
+
+
+
+
 subsection:: Choose a waveform sample
+
+
+
 
 subsection:: Choose a SynthDef, Pdef, Timeline, etc (GlobalLibrary dialog)
 
+code::
+(
+WindowDef(\GlobalLibrary).front(nil, { arg val; val.debug("selected") }, [
+	\Clip, \AllTracks, \Timeline,
+]);
+)
+::
+
+code::
+(
+WindowDef(\GlobalLibrary_open, { arg def, defaultValue, okHook, categories;
+	var selected;
+	VLayout (
+		WindowDef(\GlobalLibrary).asView(nil, { arg val; 
+			selected = val;
+	   	}, categories),
+		HLayout (
+			BasicButton.new.string_("Cancel").action_({
+				def.closeWindow;
+			}),
+			BasicButton.new.string_("Ok").action_({
+				okHook.(selected);
+				def.closeWindow;
+			}),
+		)
+	)
+}).front(nil, { arg val; val.debug("selected") })
+)
+::
+
+
+
 subsection:: Choose a Param
+
+FIXME: this WindowDef is not yet added in quark
+
+code::
+(
+WindowDef(\ParamSelectDialog).front(nil, { arg param; 
+	param.debug("selected param") 
+});
+)
+::
+
+
+
 
 
 section:: Sequencers
@@ -1149,6 +1269,13 @@ MKtl(\apc40).elAt(\bt, \clip, 0,0).mapPlayer(PlayerWrapper(Pdef(\help))); // thi
 
 subsection:: Control a player with a MIDI knob
 
+The trick is to build a Param pointing to the property \isPlaying of the PlayerWrapper. When the knob value > 0.5, the Pdef is played, when < 0.5 it is stopped.
+
+code::
+MIDIdef.cc(\knob1, { arg val ...args;
+	Param( Message(PlayerWrapper(Pdef(\help))), \isPlaying, ParamBoolSpec() ).normSet(val/127);
+}, ccNum:8);
+::
 
 subsection:: Learn MIDI ccnum to control any Param
 

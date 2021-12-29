@@ -1035,7 +1035,8 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			//mute_button, // useless with "M" button
 			self.make_quant_popup,
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			Param(Message(self.timeline_model), \isRecording, XBoolSpec()).asButton("Rec"),
+			//Param(Message(self.timeline_model), \isRecording, XBoolSpec()).asButton("Rec"),
+			RecordButton(self.timeline_model.recorder, "Rec"),
 			Param(Message(self.timeline_model), \bindPlayWithRecord, XBoolSpec()).asButton("PlayRec"),
 			XSimpleButton.new.label_("Samples").action_({
 				WindowDef("%_SampleManager".format(self.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(self.timeline_model);
@@ -1388,7 +1389,7 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			RecordButton(self.timeline_model, "Rec"),
+			RecordButton(self.timeline_model.recorder, "Rec"),
 			BasicButton.new.string_("Select param").action_({
 				WindowDef(\ParamSelectDialog).front(nil, { arg param;
 					self.timeline_model.param = param;
@@ -1501,10 +1502,11 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
-				["Rec", Color.black, Color.white],
-				["Rec", Color.black, Color.red],
-			]),
+			RecordButton( self.timeline_model.recorder, "Rec" ),
+			//Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
+				//["Rec", Color.black, Color.white],
+				//["Rec", Color.black, Color.red],
+			//]),
 			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 				WindowDef(\TimelineOverlayMenu).front(self.timeline_model, view, x, y)
@@ -1628,10 +1630,11 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
-				["Rec", Color.black, Color.white],
-				["Rec", Color.black, Color.red],
-			]),
+			RecordButton(self.timeline_model.recorder, "Rec"),
+			//Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
+				//["Rec", Color.black, Color.white],
+				//["Rec", Color.black, Color.red],
+			//]),
 			Param(
 				Message(self.timeline_model),
 				\outBus, 
@@ -2533,6 +2536,9 @@ WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 				\controller, 
 				TagSpecDef(\NoteTimeline_controller),
 			).asPopUpMenu,
+			//BasicButton.new.string("Go").fixedWidth_(15).action_({
+				//model.startControl;
+			//})
 		),
 		nil
 	);

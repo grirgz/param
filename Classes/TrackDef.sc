@@ -17,6 +17,11 @@ TrackMixerDef : ProtoDef {
 	// FIXME: redirect to defined protoclass or be a placeholder ?
 	//		or defined protoclass could be the default ? but constructor signature will be different than TrackDef
 
+	*new { arg key ...args;
+		ParamProto.init;
+		^ProtoInst(\TrackMixerDef, key, *args)
+	}
+
 	*all {
 		^PresetDictionary.new(\TrackMixerDef);
 	}

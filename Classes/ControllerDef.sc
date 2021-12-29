@@ -16,7 +16,7 @@ ControllerDef {
 		};
 		if(key.isNil or: {all[key].isNil}) {
 			if(val.notNil) {
-				^super.new.init(val, tags).prAdd(key)
+				^super.new.prAdd(key).init(val, tags)
 			} {
 				^nil
 			}
@@ -58,7 +58,7 @@ ControllerDef {
 
 	*getByTag { arg symlist;
 		var dict = IdentityDictionary.new;
-		symlist.collect { arg sym;
+		symlist.asSequenceableCollection.collect { arg sym;
 			dict.putAll(this.getTagSpec(sym).associationList)
 		};
 		^dict;
@@ -68,9 +68,9 @@ ControllerDef {
 		^TagSpecDef("ControllerDef_capabilities_%".format(sym).asSymbol);
 	}
 
-	init { arg val, tags;
+	init { arg val, intags;
 		source = val;
-		tags = tags;
+		this.tags = intags;
 	}
 
 	startControl { arg ... args;

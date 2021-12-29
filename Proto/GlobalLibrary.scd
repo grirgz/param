@@ -949,6 +949,10 @@ TagSpecDef(\SynthDef_all, {
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat;
 });
 
+TagSpecDef(\SynthDef_keys, {
+	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.keys.as(Array) }).flat;
+});
+
 TagSpecDef(\SynthDef, {
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat.reject({ arg item;
 		item.key.asString.beginsWith("system_")

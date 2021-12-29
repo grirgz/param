@@ -77,6 +77,8 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 			}
 		});
 		self.eventLoop.startRec(false, self.quant ? Pdef.defaultQuant, if(self.inQuantMode ) { 0 });
+		self.changed(\startedRecording);
+		self.changed(\isRecording);
 	},
 
 	isRecording: { arg self;
@@ -94,6 +96,8 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 	stopRecording: { arg self;
 		self.controller.remove;
 		self.eventLoop.stopRec;
+		self.changed(\stoppedRecording);
+		self.changed(\isRecording);
 	},
 
 	presetCompileStringPbind: { arg self;
@@ -173,6 +177,8 @@ ProtoTemplateDef(\ParamRecorder, (
 	},
 
 	startRecording: { arg self;
+		// should i notify the record only start at first input or not ?
+		// say no
 		if(self.eventLoop.notNil) {
 			if(self.controller.notNil) {
 				self.controller.remove;
@@ -185,6 +191,7 @@ ProtoTemplateDef(\ParamRecorder, (
 			self.eventLoop.startRec(false, 0);
 			Log(\Param).info("recording started");
 			self.changed(\isRecording);
+			self.changed(\startedRecording);
 		}
 	},
 
@@ -196,6 +203,7 @@ ProtoTemplateDef(\ParamRecorder, (
 			self.eventLoop.stopRec;
 			Log(\Param).info("recording stopped");
 			self.changed(\isRecording);
+			self.changed(\stoppedRecording);
 		}
 	},
 
@@ -529,15 +537,24 @@ ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder, (
 			var toRec = self.recorders.select({ arg r; r.track.recordArmed });
 			if(toRec.size == 0) {
 				"No track is armed for record".debug;
+				self.changed(\stoppedRecording);
 			} {
 				toRec.do(_.startRecording);
 				self[\isRecording] = true;
+				self.changed(\userStartedRecording);
+				PlayerWrapper(toRec.first).doWithQuant({
+					self.changed(\startedRecording);
+				})
 			};
 		}
 	},
 	stopRecording: { arg self;
 		self[\isRecording] = false;
+		self.changed(\userStoppedRecording);
 		self.recorders.do(_.stopRecording);
+		PlayerWrapper(self.recorders.first).doWithQuant({
+			self.changed(\stoppedRecording);
+		})
 	},
 
 ));

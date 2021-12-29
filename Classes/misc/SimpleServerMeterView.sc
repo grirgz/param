@@ -24,18 +24,8 @@ SimpleServerMeterView : SCViewHolder {
 		this.start;
 	}
 
-	initSimpleServerMeterView { arg aserver, anumIns, anumOuts, abus;
-		var innerView, viewWidth, levelIndic, palette;
-
-		server = aserver ?? { Server.default };
-
-		if(abus.isKindOf(Bus)) {
-			abus = abus.index;
-		};
-		bus = abus ? 0;
-
-		numIns = anumIns ?? { server.options.numInputBusChannels };
-		numOuts = anumOuts ?? { server.options.numOutputBusChannels };
+	makeLayout {
+		var levelIndic;
 
 		// dB scale
 
@@ -63,6 +53,22 @@ SimpleServerMeterView : SCViewHolder {
 			HLayout(* inmeters).margins_(0),
 			HLayout(* outmeters).margins_(0),
 		).margins_(5);
+	}
+
+	initSimpleServerMeterView { arg aserver, anumIns, anumOuts, abus;
+		var innerView, viewWidth, palette;
+
+		server = aserver ?? { Server.default };
+
+		if(abus.isKindOf(Bus)) {
+			abus = abus.index;
+		};
+		bus = abus ? 0;
+
+		numIns = anumIns ?? { server.options.numInputBusChannels };
+		numOuts = anumOuts ?? { server.options.numOutputBusChannels };
+
+		this.makeLayout;
 
 		this.setSynthFunc(inmeters, outmeters);
 		startResponderFunc = {this.startResponders};
@@ -196,5 +202,84 @@ SimpleServerMeterView : SCViewHolder {
 
 	remove {
 		view.remove
+	}
+}
+
+CompactServerMeterView : SimpleServerMeterView {
+	var <orientation = \vertical;
+	var <numTicks = 9;
+	var <numMajorTicks = 3;
+	var <minViewWidth = 3; // TODO: write setter (makeLayout happen before setting it)
+	var <hideTicks = false;
+	var <>ticksView;
+	makeLayout {
+
+		var ticks = LevelIndicator.new.numTicks_(numTicks).numMajorTicks_(numMajorTicks);
+		var layout;
+		var fixedSetter, minSetter;
+		ticksView = ticks;
+		if(orientation == \vertical) {
+			ticks.fixedWidth_(minViewWidth);
+			fixedSetter = \fixedWidth_;
+			minSetter = \minWidth_;
+			layout = HLayout;
+		} {
+			fixedSetter = \fixedHeight_;
+			minSetter = \minHeight_;
+			layout = VLayout;
+		};
+		ticks.perform(fixedSetter, minViewWidth);
+		inmeters = numIns.collect { arg idx;
+			LevelIndicator.new
+				.perform(minSetter, minViewWidth)
+		   		.warning_(0.9)
+				.critical_(1.0)
+				.drawsPeak_(true)
+			;
+		};
+		outmeters = numOuts.collect { arg idx;
+			LevelIndicator.new
+				.perform(minSetter, minViewWidth)
+		   		.warning_(0.9)
+				.critical_(1.0)
+				.drawsPeak_(true)
+			;
+		};
+		if(this.view.notNil) {
+			this.view.remove;
+		};
+		this.view = View.new;
+		this.view.layout = layout.new (* 
+			inmeters ++ outmeters ++ if(hideTicks == true) {
+				[]
+			} {
+				[ticks] 
+			};
+		).spacing_(0).margins_(0);
+	}
+
+	hideTicks_ { arg val;
+		hideTicks = val;
+		ticksView.visible = val.not;
+	}
+
+	numTicks_ { arg val;
+		numTicks = val;
+		ticksView.numTicks_(val)
+	}
+
+	numMajorTicks_ { arg val;
+		numMajorTicks = val;
+		ticksView.numMajorTicks_(val)
+	}
+
+	orientation_ { arg val;
+		orientation = val;
+		this.makeLayout;
+	}
+
+	minViewWidth_ { arg val;
+		minViewWidth = val;
+		this.makeLayout;
 	}
 }

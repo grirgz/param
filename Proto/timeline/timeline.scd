@@ -722,11 +722,8 @@ ProtoClassDef(\TrackTimeline, (
 
 	init: { arg self, tracks;
 		var eventfac;
-		// TODO: make a recorder and deprecate eventFactory
 		// FIXME: i removed support for PlayerWrapperGroup, think to add it back
 		self.basicInit;
-		self.mainTrack = tracks;
-		self.tracks = { tracks.children };
 		Log(\Param).debug("TrackTimeline init 1");
 		//if(tracks.isKindOf(TrackDef)) {
 			//var trackdef = tracks;
@@ -744,11 +741,11 @@ ProtoClassDef(\TrackTimeline, (
 		//self.eventFactory.mode = \note;
 		//self.eventFactory.playmode = \gate;
 		//self.eventFactory.fullrecord = false;
+
+		self.tracks = tracks;
+
 		self.tracks_bypassed = Set.new;
 		//self.wrapper = ProtoTemplateDef(\ParPlayerGroup).new(tracks) !? { arg x; {x} };
-		self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.mainTrack) !? { arg x; {x} };
-		self.recorder.inQuantMode = true; // listen to \playing instead of \play
-		self.recorder.eventLoop = self.eventLoop;
 		Log(\Param).debug("TrackTimeline init 3");
 
 		self.clipList = ProtoClassDef(\ClipTimelineClipList).new(self) !? { arg x; {x} };
@@ -760,6 +757,24 @@ ProtoClassDef(\TrackTimeline, (
 
 		self;
 	},
+
+	tracks_: { arg self, tracks;
+		// FIXME: i removed support for PlayerWrapperGroup, think to add it back
+		self[\tracks] = { tracks.children };
+		self.mainTrack = tracks;
+		//self.tracks = { tracks.children };
+		self.areasize = Point(self.areasize.x, self.tracks.size );
+		if(self.recorder.notNil) {
+			self.recorder.stopRecording;
+			self.recorder.target = self.mainTrack;
+		} {
+			self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.mainTrack) !? { arg x; {x} };
+			self.recorder.inQuantMode = true; // listen to \playing instead of \play
+			self.recorder.eventLoop = self.eventLoop;
+		};
+		self.changed(\tracks);
+	},
+
 
 	updateClipList: { arg self;
 		var clips = self.tracks.collect { arg track, idx;
@@ -826,6 +841,11 @@ ProtoClassDef(\NoteTimeline, (
 	eventType: \noteTimeline,
 	composeParamPattern: true,
 	controller: { TagSpecDef(\NoteTimeline_controller).list.asDict[\generic_piano] },
+	controller_: { arg self, val;
+		self[\controller] = val;
+		self.startControl;
+		self.changed(\controller);
+	},
 
 	new: { arg self, name, param;
 

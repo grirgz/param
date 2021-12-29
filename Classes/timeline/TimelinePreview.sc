@@ -106,8 +106,12 @@ TimelinePreview_Sample : SampleTimelineView {
 	}
 
 	mapModel { arg model;
-		this.mapData(model.timeline);
-		this.mapEventList(model.timelines.eventList);
+		if(model.timeline.notNil) {
+			this.mapData(model.timeline);
+			this.mapEventList(model.timeline.eventList);
+		} {
+			Log(\Param).debug("No timeline in this model, no preview (absDur:%)", model.absDur);
+		}
 	}
 }
 

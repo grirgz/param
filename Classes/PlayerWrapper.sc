@@ -26,6 +26,9 @@ PlayerWrapper  {
 			{ target.isKindOf(PlayerWrapper) } {
 				^target
 			}
+			{ target.isKindOf(PlayerWrapperGroup) } {
+				PlayerWrapper_PlayerWrapperGroup(target, this)
+			}
 			{ target.isKindOf(ProtoClass) } {
 				PlayerWrapper_ProtoClass(target, this)
 			}
@@ -40,6 +43,9 @@ PlayerWrapper  {
 			}
 			{ target.isKindOf(EventPatternProxy) } {
 				PlayerWrapper_EventPatternProxy(target, this)
+			}
+			{ target.isKindOf(Builder) } {
+				PlayerWrapper_Builder(target, this)
 			}
 			{ target.isKindOf(Param) } {
 				PlayerWrapper_Param.new(target, this)
@@ -91,7 +97,7 @@ PlayerWrapper  {
 			^wrapper.perform(selector, * args);
 		} {
 			if(wrapper.target.class.findRespondingMethodFor(selector).notNil) {
-				Log(\Param).debug("PlayerWrapper: perform on target");
+				Log(\Param).debug("PlayerWrapper: perform on target %", selector);
 				^wrapper.target.perform(selector, * args);
 			} {
 				Log(\Param).debug("PlayerWrapper: class, wrapper and target does not understand %".format(selector));
@@ -221,7 +227,7 @@ PlayerWrapper_Base {
 	}
 
     doesNotUnderstand { arg selector...args;
-		Log(\Param).debug("PlayerWrapper_Base: doesNotUnderstand", [selector, args]);
+		Log(\Param).debug("PlayerWrapper_Base: doesNotUnderstand %", [selector, args]);
 		if(target.class.findRespondingMethodFor(selector).notNil) {
 			Log(\Param).debug("perform on target");
 			^target.perform(selector, * args);
@@ -734,6 +740,22 @@ PlayerWrapper_Nil : PlayerWrapper_Base {
 
 }
 
+PlayerWrapper_PlayerWrapperGroup : PlayerWrapper_Base {
+	
+}
+
+PlayerWrapper_Builder : PlayerWrapper_Base {
+
+	outBus_ { arg val;
+		Param(this.target, \outBus, ParamBusSpec()).set(val);
+	}
+
+	outBus { arg val;
+		^Param(this.target, \outBus, ParamBusSpec()).get;
+	}
+
+	
+}
 
 ///////////////////////////////////////:
 
@@ -742,6 +764,9 @@ PlayerWrapperGroup : List {
 	var <>label;
 	var <>controllerList;
 	var <>playerEventWrapper;
+
+	// TODO: integrate with PlayerTracker
+
 	*new { arg anArray;
 		var inst;
 		inst = super.new.setCollection( anArray.collect({ arg item, idx;
@@ -814,5 +839,37 @@ PlayerWrapperGroup : List {
 		}
 	}
 	
+	isPlaying_ { arg val;
+		if(val == true) {
+			this.do(_.play);
+		} {
+			this.do(_.stop);
+		}
+	}
+
+	edit { 
+		WindowDef("%_%".format(\PlayerWrapperGroup, this.identityHash).asSymbol, { arg def;
+			VLayout (
+				PlayerWrapperView(this).asView,
+				StaticText.new,
+				VLayout(
+					*this.collect({ arg player;
+						var view = player.asView.rightClickEditorEnabled_(true);
+						//var follower = { arg ...args;
+				
+						//};
+						//player.target.addDependant(follower);
+						//view.onClose({ plaer.target.removeDependant(follower) });
+
+						//view.button.followChange(player.target, \PlayerWrapper, { arg but, pw, changed, status;
+							////if(a)
+				
+						//});
+						view;
+					}) ++ [nil]
+				)
+			)
+		}).front;
+	}
 }
 

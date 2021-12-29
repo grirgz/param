@@ -49,7 +49,7 @@ ParamViewToolBox {
 			HLayout (
 				label = StaticText.new,
 				slider = param.asSlider.orientation_(\horizontal),
-				val = param.asTextField,
+				val = param.asTextField(6),
 			)
 		);
 		view.addUniqueMethod(\label, { label });
@@ -356,7 +356,7 @@ ParamGroupLayout {
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					} {
-						var st = StaticText.new.string_(param.property);
+						var st = StaticText.new.string_(param.propertyLabel);
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					}.fixedWidth_(80),
@@ -375,7 +375,7 @@ ParamGroupLayout {
 					if(label_mode == \full) {
 						param.asStaticTextLabel(\full);
 					} {
-						StaticText.new.string_(param.property)
+						StaticText.new.string_(param.propertyLabel)
 					},
 					param.asEnvelopeView.minHeight_(minHeight),
 					param.asTextField,
@@ -392,7 +392,7 @@ ParamGroupLayout {
 					if(label_mode == \full) {
 						param.asStaticTextLabel(\full);
 					} {
-						StaticText.new.string_(param.property)
+						StaticText.new.string_(param.propertyLabel)
 					},
 					param.asMultiSlider.minHeight_(minHeight).attachContextMenu,
 					param.asTextField,
@@ -409,7 +409,7 @@ ParamGroupLayout {
 					if(label_mode == \full) {
 						param.asStaticTextLabel(\full);
 					} {
-						StaticText.new.string_(param.property)
+						StaticText.new.string_(param.propertyLabel)
 					}.fixedWidth_(80),
 					param.asPopUpMenu.minWidth_(150),
 					//param.asTextField.minWidth_(70),
@@ -426,7 +426,7 @@ ParamGroupLayout {
 					if(label_mode == \full) {
 						param.asStaticTextLabel(\full);
 					} {
-						StaticText.new.string_(param.property)
+						StaticText.new.string_(param.propertyLabel)
 					}.fixedWidth_(80),
 					param.asBusPopUpMenu.minWidth_(150),
 					//param.asTextField.minWidth_(70),
@@ -443,7 +443,7 @@ ParamGroupLayout {
 					if(label_mode == \full) {
 						param.asStaticTextLabel(\full);
 					} {
-						StaticText.new.string_(param.property)
+						StaticText.new.string_(param.propertyLabel)
 					}.fixedWidth_(80),
 					param.asStaticText.minWidth_(150),
 					//param.asTextField.minWidth_(70),
@@ -545,7 +545,7 @@ ParamGroupLayout {
 				[
 					statictext,
 					param.asSlider.orientation_(\horizontal),
-					param.asTextField,
+					param.asTextField(6),
 				]
 			}) 
 
@@ -601,7 +601,7 @@ ParamGroupLayout {
 								StaticText.new.string_(param.property)
 							},
 							param.asSlider.orientation_(\horizontal).minWidth_(150),
-							param.asTextField.minWidth_(70),
+							param.asTextField(6).minWidth_(70),
 						]
 					}
 				}) ++ [{ View.new }!3]
@@ -635,7 +635,7 @@ ParamGroupLayout {
 						StaticText.new.string_(param.property)
 					},
 					param.asSlider.orientation_(\horizontal),
-					param.asTextField,
+					param.asTextField(6),
 				]
 			})
 		);
