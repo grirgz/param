@@ -1124,6 +1124,58 @@ WindowDef(\help, { arg def;
 );
 ::
 
+
+subsection:: Import a MIDI file in a timeline
+
+You will need the SimpleMIDIFile from wslib quark.
+The idea is to convert the midi file to a pattern then convert the pattern to a TimelineEventList.
+
+code::
+// here is how to play a pattern from a MIDI file
+// note: it's not required to play the pattern to convert it, it's just for demo purpose
+// no need to set tempo either since event time is in beats
+m = SimpleMIDIFile.read( "~/Téléchargements/Super Mario Bros 2 - Mario Dreams.mid" ); 
+(
+	TempoClock.default.tempo = m.tempo/60; 
+	Pdef(\midipat, 
+		Pbind(
+			\instrument, \default,
+			[\midinote, \dur, \sustain, \amp], Prout({ arg ev;
+				var timescale = 1/480/2;
+				var prevev;
+				m.noteSustainEvents.collect({ arg item, idx;
+					// [track, absTime, \noteOn, channel, note, velo, dur, upVelo]
+					// compute relative time and scale
+					if(idx == 0) {
+						prevev = [item[4], item[1], item[6] * timescale, item[5]/127]
+					} {
+						prevev[1] = item[1] - prevev[1] * timescale;
+						ev = prevev.yield;
+						prevev = [item[4], item[1], item[6] * timescale, item[5]/127];
+					};
+				});
+				prevev[1] = prevev[2];
+				ev = prevev.yield; // last event
+			}),
+			\midinote, Pkey(\midinote) - 12, // one octave lower
+			\amp, 0.1,
+		)
+	).play
+)
+
+
+/// now that we have our pattern, let's import it
+NoteTimeline(\help).eventList = TimelineEventList.newFrom( Pdef(\midipat),4000 ); // 4000 is the max number of event to record
+
+NoteTimeline(\help).edit; // now visualize
+::
+
+
+
+
+
+
+
 section:: Controllers (MIDI, OSC, ...)
 
 I talk only about MIDI controllers, but OSC controllers can connect to Param the same way using link::Classes/OSCdef:: (well anything really).

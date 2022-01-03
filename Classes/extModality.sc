@@ -5,7 +5,8 @@
 			this.action = nil
 		} {
 			this.action = { arg me;
-				param.normSet(me.value)
+				param.normSet(me.value);
+				Param.lastTweaked = param;
 			};
 		}
 	}
@@ -48,11 +49,13 @@
 				} {
 					// on
 					this[0].action = { arg me; 
-						param.normSet(1)
+						param.normSet(1);
+						Param.lastTweaked = param;
 					};
 					// off
 					this[1].action = { arg me;
-						param.normSet(0)
+						param.normSet(0);
+						Param.lastTweaked = param;
 					};
 				}
 			} {

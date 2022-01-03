@@ -638,6 +638,10 @@ Param {
 		^cont
 	}
 
+	sendChanged {
+		this.set(this.get); // ugly, but works
+	}
+
 	*freeAllSimpleControllers {
 		// used to free all controllers when something break in the GUI and you can't access the controller anymore to remove it
 		simpleControllers.do { arg con;
@@ -1044,12 +1048,13 @@ Param {
 		};
 
 		view.refreshChangeAction = {
-			var spec;
+			var vspec;
 			var val;
 			//var isMapped = false;
 			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
+			Log(\Param).debug("refreshChangeAction %", this);
 			if(keys.notNil) {
-				spec = keys;
+				vspec = keys;
 				val = this.get;
 			} {
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
@@ -1058,20 +1063,20 @@ Param {
 					} {
 						val = this.get;
 					};
-					spec = this.spec.tagSpec;
+					vspec = this.spec.tagSpec;
 				} {
 					val = this.get;
-					spec = this.spec;
+					vspec = this.spec;
 				};
 			};
 			{
 				try {
-					//Log(\Param).debug("mapValuePopUpMenu refreshChangeAction labelList %", spec.labelList);
-					if(spec.labelList.notNil) {
-						//spec.labelList.do(_.postln); // for debug
-						view.items = spec.labelList.asArray;
+					Log(\Param).debug("mapValuePopUpMenu refreshChangeAction labelList %", vspec.labelList);
+					if(vspec.labelList.notNil) {
+						vspec.labelList.do(_.postln); // for debug
+						view.items = vspec.labelList.asArray;
 					};
-					view.value = spec.unmapIndex(val);
+					view.value = vspec.unmapIndex(val);
 				} { arg error;
 					"In %.mapValuePopUpMenu:refreshChangeAction".format(this).error;
 					error.reportError;
@@ -1119,7 +1124,14 @@ Param {
 		//});
 		mykeys = keys ?? {this.spec};
 		if( mykeys.isKindOf(TagSpecDef)) {
-			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
+			view.followChange(mykeys, \list, { arg aview, model, message, arg1;
+				aview.refreshChange;
+			});
+		};
+		if( mykeys.isKindOf(ParamBufferSpec)) {
+			Log(\Param).debug("Enable PopUpMenu listener %", this);
+			view.followChange(mykeys.tagSpec, \list, { arg aview, model, message, arg1;
+				Log(\Param).debug("PopUpMenu listener %", this);
 				aview.refreshChange;
 			});
 		};

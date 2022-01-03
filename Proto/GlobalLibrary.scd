@@ -1026,6 +1026,19 @@ TagSpecDef(\BufDef, {
 	[\0->0] ++ BufDef.all.keys.as(Array).sort.collect({ arg k; k -> BufDef(k).bufnum }) 
 });
 
+TagSpecDef(\BufDef_mono, {
+	[\0->0] ++ BufDef.all.keys.as(Array).sort
+		.collect({ arg k; k -> BufDef(k) })
+		.select({ arg kv; kv.value.numChannels == 1 }) 
+		.collect({ arg kv; kv.key -> kv.value.bufnum })
+});
+
+TagSpecDef(\BufDef_stereo, {
+	[\0->0] ++ BufDef.all.keys.as(Array).sort
+		.collect({ arg k; k -> BufDef(k) })
+		.select({ arg kv; kv.value.numChannels == 2 }) 
+		.collect({ arg kv; kv.key -> kv.value.bufnum })
+});
 
 TagSpecDef(\BusDefDefault, {
 	[\default -> nil] ++ TagSpecDef(\BusDef).list
@@ -1119,6 +1132,7 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\Clip,
 	\Timeline,
 	\Editable,
+	\AudioBuffer,
 ]);
 
 //TagSpecDef('GlobalLibrary.type.TrackInstrument', [
@@ -1195,6 +1209,10 @@ TagSpecDef('GlobalLibrary.type.TrackPart', [
 TagSpecDef('GlobalLibrary.type.Track', [
 	\InstrumentTrack,
 	\playertrack,
+]);
+
+TagSpecDef('GlobalLibrary.type.AudioBuffer', [
+	\BufDef,
 ]);
 
 // group track players of all kind and level
@@ -1345,6 +1363,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 	resultView = TreeView.new
 		.columns_(["Name", "Type", "Category", "Tags"])
+		.setColumnWidth(0,300)
 		.itemPressedAction_({ arg view;
 			var itemId = treeViewItemToLibId.(view.currentItem);
 			Log(\Param).debug("itemPressedAction_ itemIds:%, idx:%", itemIds.size, view.currentItem.index);
@@ -1398,6 +1417,25 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 	lay;
 
 
+});
+
+WindowDef(\GlobalLibrary_select, { arg def, defaultValue, okHook, categories;
+	var selected;
+	categories = [ \AudioBuffer ];
+	VLayout (
+		WindowDef(\GlobalLibrary).asView(nil, { arg val; 
+			selected = val;
+		}, categories),
+		HLayout (
+			BasicButton.new.string_("Cancel").action_({
+				def.closeWindow;
+			}),
+			BasicButton.new.string_("Ok").action_({
+				okHook.(selected);
+				def.closeWindow;
+			}),
+		)
+	);
 });
 
 )

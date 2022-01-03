@@ -420,8 +420,24 @@ XTrigSpec : ParamTrigSpec {}
 ParamBufferSpec : ParamNonFloatSpec {
 	// arg: channel count
 	var >tagSpec;
+	var <>numChannels;
+
+	*new { arg numChannels;
+		^super.new.initParamBufferSpec(numChannels);
+	}
+
+	initParamBufferSpec { arg innumChannels;
+		numChannels = innumChannels;
+	}
+
 	tagSpec { arg self;
-		^tagSpec ?? { TagSpecDef(\BufDef) }
+		^tagSpec ?? { 
+			switch(numChannels,
+				1, { TagSpecDef(\BufDef_mono) },
+				2, { TagSpecDef(\BufDef_stereo) },
+				{ TagSpecDef(\BufDef) }
+			);
+		}
 	}
 
 	default { ^0 } // maybe return an empty buffer
@@ -429,15 +445,16 @@ ParamBufferSpec : ParamNonFloatSpec {
 }
 XBufferSpec : ParamBufferSpec {}
 
-ParamSampleSpec : ParamBufferSpec {
+ParamAudioBufferSpec : ParamBufferSpec {
 	// WIP
 	// FIXME: how to specify sampler parameters and list of available buffers/samples ?
-	var <>numChannels, <>startParamName, sustainParamName, endParamName, speedParamName, startType, sustainType, endType;
+	var <>startParamName, <>sustainParamName, <>endParamName, <>speedParamName, <>startType, <>sustainType, <>endType;
 	new { arg self, numChannels, startParamName, sustainParamName, endParamName, speedParamName, startType, sustainType, endType;
 		^this.newCopyArgs(numChannels, startParamName, sustainParamName, endParamName, speedParamName, startType, sustainType, endType);
 	}
 }
-XSampleSpec : ParamSampleSpec {}
+ParamSampleSpec : ParamAudioBufferSpec {} // compat
+XSampleSpec : ParamAudioBufferSpec {} // compat
 
 ParamDoneActionSpec : ParamNonFloatSpec {
 
@@ -788,8 +805,8 @@ TagSpecDef : TagSpec {
 	}
 }
 
-MenuSpec : TagSpec { }
-MenuSpecDef : TagSpecDef { }
+MenuSpec : TagSpec { } // compat
+MenuSpecDef : TagSpecDef { } // compat
 
 MenuSpecFuncDef : TagSpecDef { } // deprecated
 

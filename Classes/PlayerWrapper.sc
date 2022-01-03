@@ -53,7 +53,7 @@ PlayerWrapper  {
 			{
 				// assume target respond to wrapper interface
 				// FIXME: errors are hard to find, deprecate this feature
-				Log(\Param).debug("ERROR: PlayerWrapper target class not recognized: %", target.class);
+				Log(\Param).warning("ERROR: PlayerWrapper target class not recognized: %", target.class);
 				target
 			}
 		;
@@ -91,16 +91,16 @@ PlayerWrapper  {
 	///////////////
 
     doesNotUnderstand { arg selector...args;
-		Log(\Param).debug("PlayerWrapper: doesNotUnderstand %",[selector, args]);
+		//Log(\Param).debug("PlayerWrapper: doesNotUnderstand %",[selector, args]);
         if(wrapper.class.findRespondingMethodFor(selector).notNil) {
-			Log(\Param).debug("PlayerWrapper: perform on wrapper");
+			//Log(\Param).debug("PlayerWrapper: perform on wrapper");
 			^wrapper.perform(selector, * args);
 		} {
 			if(wrapper.target.class.findRespondingMethodFor(selector).notNil) {
-				Log(\Param).debug("PlayerWrapper: perform on target %", selector);
+				//Log(\Param).debug("PlayerWrapper: perform on target %", selector);
 				^wrapper.target.perform(selector, * args);
 			} {
-				Log(\Param).debug("PlayerWrapper: class, wrapper and target does not understand %".format(selector));
+				Log(\Param).error("PlayerWrapper: class, wrapper and target does not understand %".format(selector));
 				DoesNotUnderstandError.throw;
 			}
 		};
@@ -227,12 +227,12 @@ PlayerWrapper_Base {
 	}
 
     doesNotUnderstand { arg selector...args;
-		Log(\Param).debug("PlayerWrapper_Base: doesNotUnderstand %", [selector, args]);
+		//Log(\Param).debug("PlayerWrapper_Base: doesNotUnderstand %", [selector, args]);
 		if(target.class.findRespondingMethodFor(selector).notNil) {
-			Log(\Param).debug("perform on target");
+			//Log(\Param).debug("perform on target");
 			^target.perform(selector, * args);
 		} {
-			Log(\Param).debug("PlayerWrapper_Base: wrapper and target doesn't respond to %", selector);
+			Log(\Param).error("PlayerWrapper_Base: wrapper and target doesn't respond to %", selector);
 			DoesNotUnderstandError.throw;
 		}
 	}
@@ -747,7 +747,9 @@ PlayerWrapper_PlayerWrapperGroup : PlayerWrapper_Base {
 PlayerWrapper_Builder : PlayerWrapper_Base {
 
 	outBus_ { arg val;
+		Log(\Param).debug("WTF %", this.target);
 		Param(this.target, \outBus, ParamBusSpec()).set(val);
+		^this.parent
 	}
 
 	outBus { arg val;

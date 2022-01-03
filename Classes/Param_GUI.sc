@@ -344,6 +344,9 @@ ParamGroupLayout {
 
 		// do not call .asView here because it call recursively formEntry !
 		var minHeight = 70;
+		var minWidth_main = 150;
+		var minWidth_label = 80;
+		var minWidth_right = 70;
    
 		var scalar_entry = { arg param;
 			var lay;
@@ -359,9 +362,9 @@ ParamGroupLayout {
 						var st = StaticText.new.string_(param.propertyLabel);
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
-					}.fixedWidth_(80),
-					param.asSlider.orientation_(\horizontal).minWidth_(150),
-					param.asTextField(6).fixedWidth_(80),
+					}.fixedWidth_(minWidth_label),
+					param.asSlider.orientation_(\horizontal).minWidth_(minWidth_main),
+					param.asTextField(6).fixedWidth_(minWidth_right),
 				)
 			};
 			lay;
@@ -410,9 +413,49 @@ ParamGroupLayout {
 						param.asStaticTextLabel(\full);
 					} {
 						StaticText.new.string_(param.propertyLabel)
-					}.fixedWidth_(80),
-					param.asPopUpMenu.minWidth_(150),
+					}.fixedWidth_(minWidth_label),
+					param.asPopUpMenu.minWidth_(minWidth_main),
 					//param.asTextField.minWidth_(70),
+				)
+			};
+			lay;
+		};
+		var popup_buffer_entry = { arg param;
+			var lay;
+			lay = if(param.isNil) {
+				nil;
+			} {
+				HLayout(
+					if(label_mode == \full) {
+						param.asStaticTextLabel(\full);
+					} {
+						StaticText.new.string_(param.propertyLabel)
+					}.fixedWidth_(minWidth_label),
+					param.asPopUpMenu.minWidth_(minWidth_main).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+						[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+						if(buttonNumber == 1) {
+							WindowDef(\GlobalLibrary_select).front(nil, { arg val; 
+								val.debug("selected");
+								// val: [ Class, (key -> bufnum) ]
+								param.set(val.last.value)
+							}, [\AudioBuffer])
+						}
+					}),
+
+					BasicButton.new.string_("Load").fixedWidth_(minWidth_right).action_({
+						WindowDef(\filedialog_sample).front(nil, { arg path;
+							switch(param.spec.numChannels,
+								1, { param.set(BufDef.mono(path).bufnum) },
+								2, { param.set(BufDef.stereo(path).bufnum) },
+								{ param.set(BufDef(path).bufnum) }
+							);
+							 {
+								param.spec.tagSpec.changed(\list);
+								param.sendChanged;
+							}.defer(0.1);
+				
+						})
+					})
 				)
 			};
 			lay;
@@ -427,8 +470,8 @@ ParamGroupLayout {
 						param.asStaticTextLabel(\full);
 					} {
 						StaticText.new.string_(param.propertyLabel)
-					}.fixedWidth_(80),
-					param.asBusPopUpMenu.minWidth_(150),
+					}.fixedWidth_(minWidth_label),
+					param.asBusPopUpMenu.minWidth_(minWidth_main),
 					//param.asTextField.minWidth_(70),
 				)
 			};
@@ -444,8 +487,8 @@ ParamGroupLayout {
 						param.asStaticTextLabel(\full);
 					} {
 						StaticText.new.string_(param.propertyLabel)
-					}.fixedWidth_(80),
-					param.asStaticText.minWidth_(150),
+					}.fixedWidth_(minWidth_label),
+					param.asStaticText.minWidth_(minWidth_main),
 					//param.asTextField.minWidth_(70),
 				)
 			};
@@ -466,6 +509,9 @@ ParamGroupLayout {
 						},
 						{ item.spec.isKindOf(TagSpec) }, {
 							popup_entry.(item)
+						},
+						{ item.spec.isKindOf(ParamAudioBufferSpec) }, {
+							popup_buffer_entry.(item)
 						},
 						{ item.spec.isKindOf(ParamBusSpec) }, {
 							popup_busmap_entry.(item)
@@ -681,6 +727,45 @@ ParamGroupLayout {
 		layout;
 		scrollview = ScrollView.new.canvas_(View.new.layout_(layout));
 		^VLayout(scrollview)
+	}
+
+	*knobView { arg param, showValue=false;
+		var pa = param;
+		var lay;
+		lay = VLayout (
+			[pa.asStaticTextLabel, align:\center],
+			pa.asKnob.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				if(buttonNumber == 2) {
+					Param.lastTweaked = pa;
+					Param.changed(\lastTweaked);
+					false;
+				} {
+					if(buttonNumber == 1) {
+						view.mode = \horiz;
+					};
+				}
+			})
+			.mouseMoveAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				if(buttonNumber == 2) {
+					false;
+				}
+			})
+			.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				if(buttonNumber == 2) {
+					false;
+				} {
+					if(buttonNumber == 1) {
+						view.mode = \round;
+					}
+				}
+			})
+			.centered_(pa.spec.minval == pa.spec.maxval.neg),
+		);
+		if(showValue == true) {
+			lay.add([param.asTextField, align:\center])
+		};
+		^lay
 	}
 
 	*cursorRow { arg param;

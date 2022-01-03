@@ -55,7 +55,15 @@ BufDef {
 					Log(\Param).debug("BufName: special cons: %", name);
 					^BufDef(name.asSymbol, name.asString, channels)
 				} {
-					^nil
+					if(name == \0) {
+						// special case for buffer named \0 corresponding to bufnum 0
+						// do not add it to .all because TagSpecDef(\BufDef) already have it
+						//this.all.put(\0, Buffer.cachedBufferAt(Server.default, 0) );
+						//^this.all.at(\0);
+						^Buffer.cachedBufferAt(Server.default, 0);
+					} {
+						^nil
+					}
 				}
 			} {
 				var path = this.all.at(name);

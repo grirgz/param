@@ -7,6 +7,7 @@ Builder {
 	var <>key;
 	var <>proxy;
 	var <>editor;
+	var >proto;
 	var >label;
 	classvar <all;
 
@@ -16,6 +17,13 @@ Builder {
 
 	label {
 		^label ?? { this.key }
+	}
+
+	proto {
+		if(proto.isNil) {
+			proto = ProtoClass(());
+		};
+		^proto;
 	}
 
 	*new { arg key, fun;
