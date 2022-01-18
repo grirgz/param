@@ -568,7 +568,7 @@ Param {
 			// FIXME: should i free it ? should i reuse it ?
 			//		refreshUpdater free it before calling makeUpdater
 			var controller, controllerCursor;
-			Log(\Param).debug("makeUpdater: controllerTarget:%", this.controllerTarget);
+			//Log(\Param).debug("makeUpdater: controllerTarget:%", this.controllerTarget);
 			controller = SimpleController(param.controllerTarget);
 			{
 				view.onClose = view.onClose.addFunc( { this.class.freeUpdater(view) } );
@@ -576,7 +576,7 @@ Param {
 			view.addHalo(\simpleController, controller);
 			simpleControllers.add(controller);
 
-			Log(\Param).debug("makeUpdater controllerTargetCursor %", param.controllerTargetCursor);
+			//Log(\Param).debug("makeUpdater controllerTargetCursor %", param.controllerTargetCursor);
 			if(param.controllerTargetCursor.notNil) {
 				controllerCursor = SimpleController(param.controllerTargetCursor);
 				simpleControllers.add(controllerCursor);
@@ -607,7 +607,7 @@ Param {
 	}
 
 	putListener { arg view, controller, action;
-		Log(\Param).debug("Param.putListener view:%, wrapper:%", view, wrapper );
+		//Log(\Param).debug("Param.putListener view:%, wrapper:%", view, wrapper );
 		this.wrapper.putListener(this, view, controller, action);
 	}
 
@@ -797,12 +797,8 @@ Param {
 	}
 
 	mapTextField { arg view, precision=6, action;
-		this.makeSimpleController(view, 
-			action: { arg view, param;
-				param.set(view.value.interpret);
-				//"done".debug;
-			}, 
-			updateAction: { arg view, param;
+		var updateAction = { arg force=false; 
+			{ arg view, param;
 				var val = "";
 				//Log(\Param).debug("mapTextField start: " ++ this.fullLabel);
 				try {
@@ -819,16 +815,25 @@ Param {
 					//[val.asCompileString, view.hasFocus].debug("Param.mapTextField: hasfocus");
 					// hasFocus is nil in some unidentified cases
 					// i think the goal is to prevent continuously updating widgets in minimized windows
-					if(view.hasFocus.notNil and: {view.hasFocus.not}) {
+					// i think the real goal is to prevent updating the field while we are editing it
+					if(force or: {view.hasFocus.notNil and: {view.hasFocus.not}}) {
 
-						// TODO: handle other types than float
-							view.value = val;
+						view.value = val;
+					} {
+						Log(\Param).debug("mapTextField: focus, no set, view %, val %", view, val);
 					};
 					//Log(\Param).debug("mapTextField: updateAction: end");
 					//"done".debug;
 				}.defer;
-			},
-			initAction: nil,
+			};
+		};
+		this.makeSimpleController(view, 
+			action: { arg view, param;
+				param.set(view.value.interpret);
+				//"done".debug;
+			}, 
+			updateAction: updateAction.value(false),
+			initAction: updateAction.value(true),
 			customAction: action
 		)
 	}
@@ -1052,7 +1057,7 @@ Param {
 			var val;
 			//var isMapped = false;
 			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
-			Log(\Param).debug("refreshChangeAction %", this);
+			//Log(\Param).debug("refreshChangeAction %", this);
 			if(keys.notNil) {
 				vspec = keys;
 				val = this.get;
@@ -1071,9 +1076,9 @@ Param {
 			};
 			{
 				try {
-					Log(\Param).debug("mapValuePopUpMenu refreshChangeAction labelList %", vspec.labelList);
+					//Log(\Param).debug("mapValuePopUpMenu refreshChangeAction labelList %", vspec.labelList);
 					if(vspec.labelList.notNil) {
-						vspec.labelList.do(_.postln); // for debug
+						//vspec.labelList.do(_.postln); // for debug
 						view.items = vspec.labelList.asArray;
 					};
 					view.value = vspec.unmapIndex(val);
@@ -1110,6 +1115,32 @@ Param {
 			};
 			//this.get.debug("mapValuePopUpMenu:5 (action)");
 		};
+
+		view.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			if(buttonNumber == 1) {
+				var speclist;
+				if(keys.notNil) {
+					speclist = keys;
+				} {
+					if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec)}) {
+						speclist = this.spec.tagSpec.list;
+					} {
+						if(this.spec.isKindOf(TagSpec)) {
+							speclist = this.spec.list;
+						};
+					};
+				};
+				if(speclist.notNil) {
+					ParamProto.init;
+					//speclist.debug("speclist");
+					WindowDef(\ListSelectDialog).front(speclist, { arg selected, asso;
+						//selected.asCompileString.debug("selected");
+						this.set(asso.value)
+					}, this.get)
+				}
+			}
+		});
 		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
 		this.makeUpdater(view, { view.refreshChange });
 		//view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
@@ -1129,9 +1160,9 @@ Param {
 			});
 		};
 		if( mykeys.isKindOf(ParamBufferSpec)) {
-			Log(\Param).debug("Enable PopUpMenu listener %", this);
+			//Log(\Param).debug("Enable PopUpMenu listener %", this);
 			view.followChange(mykeys.tagSpec, \list, { arg aview, model, message, arg1;
-				Log(\Param).debug("PopUpMenu listener %", this);
+				//Log(\Param).debug("PopUpMenu listener %", this);
 				aview.refreshChange;
 			});
 		};
@@ -1207,6 +1238,33 @@ Param {
 			this.setBus(xspec.mapIndex(view.value));
 			//Log(\Param).debug("mapBusPopUpMenu:action: end");
 		};
+
+		view.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			if(buttonNumber == 1) {
+				var speclist;
+				if(keys.notNil) {
+					speclist = keys;
+				} {
+					if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec)}) {
+						speclist = this.spec.tagSpec.list;
+					} {
+						if(this.spec.isKindOf(TagSpec)) {
+							speclist = this.spec.list;
+						};
+					};
+				};
+				if(speclist.notNil) {
+					ParamProto.init;
+					//speclist.debug("speclist");
+					WindowDef(\ListSelectDialog).front(speclist, { arg selected, asso;
+						//selected.asCompileString.debug("selected");
+						this.setRaw(asso.value)
+					}, this.getRaw)
+				}
+			}
+		});
+
 		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
 		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
 			// TODO: do not change the whole row when just one value is updated!
@@ -1848,7 +1906,7 @@ ParamAccessor {
 			},
 
 			getval: { arg self;
-				Log(\Param).debug("neutral.getval obj %", self.obj);
+				//Log(\Param).debug("neutral.getval obj %", self.obj);
 				self.obj.getVal;
 			},
 
@@ -1918,7 +1976,7 @@ ParamAccessor {
 
 			getval: { arg self;
 				var val;
-				Log(\Param).debug("neutral.getval obj %", self.obj);
+				//Log(\Param).debug("neutral.getval obj %", self.obj);
 				val = self.obj.parent.get;
 				val[idx]
 			},
@@ -1998,7 +2056,7 @@ ParamAccessor {
 			key: \stepseq,
 			setval: { arg self, val;
 				var res;
-				Log(\Param).debug("stepseq.setval % %", self.obj, val);
+				//Log(\Param).debug("stepseq.setval % %", self.obj, val);
 				res = self.obj.target.source.at(selector);
 				res.source.list = val;
 				self.obj.target.changed(\set, self.obj.parent.property); // we don't call Pdef.set so no changed message
@@ -2006,7 +2064,7 @@ ParamAccessor {
 
 			getval: { arg self;
 				var res;
-				Log(\Param).debug("stepseq.getval %", self.obj);
+				//Log(\Param).debug("stepseq.getval %", self.obj);
 				res = self.obj.target.source.at(selector);
 				res.source.list
 			},
@@ -2105,7 +2163,7 @@ ParamAccessor {
 			key: \stepseq, // used by controllerTargetCursor not sure if i need to change it
 			setval: { arg self, val;
 				var res;
-				Log(\Param).debug("stepseq.setval % %", self.obj, val);
+				//Log(\Param).debug("stepseq.setval % %", self.obj, val);
 				res = self.obj.target;
 				res.source.list = val;
 				self.obj.target.changed(\set); // we don't call Pdef.set so no changed message
@@ -2113,7 +2171,7 @@ ParamAccessor {
 
 			getval: { arg self;
 				var res;
-				Log(\Param).debug("stepseq.getval %", self.obj);
+				//Log(\Param).debug("stepseq.getval %", self.obj);
 				res = self.obj.target;
 				res.source.list
 			},
@@ -2336,7 +2394,7 @@ BaseAccessorParam : BaseParam {
 			// init rootparam spec from default spec
 			rootparam.spec = rootparam.toSpec(nil); // need rootspec -> rootspec
 			acc = this.propertyToAccessor(propertyArray, rootparam);
-			Log(\Param).debug("BaseAccessorParam.prNew: acc %, obj %", acc, obj);
+			//Log(\Param).debug("BaseAccessorParam.prNew: acc %, obj %", acc, obj);
 			slotparam = super.new.init(obj, meth, sp, acc);
 			slotparam.spec = sp !? { acc.toSpec(sp) } ?? { acc.toSpec(rootparam.spec) }; // need slotspec -> slotspec
 			slotparam.parent = rootparam;
@@ -2347,7 +2405,7 @@ BaseAccessorParam : BaseParam {
 	init { arg obj, meth, sp, acc;
 		target = obj;
 		property = meth;
-		Log(\Param).debug("BaseAccessorParam.init: target %, property %, sp %, acc %", obj, meth, sp, acc);
+		//Log(\Param).debug("BaseAccessorParam.init: target %, property %, sp %, acc %", obj, meth, sp, acc);
 		accessor = acc ?? { ParamAccessor.neutral };
 		accessor.obj = this;
 		//Log(\Param).debug("init accessor % %".format(this, accessor));
@@ -2398,12 +2456,12 @@ BaseAccessorParam : BaseParam {
 	}
 
 	*propertyToAccessor { arg propertyArray, rootparam;
-		Log(\Param).debug("propertyToAccessor: propertyArray %, rootparam %", propertyArray, rootparam);
+		//Log(\Param).debug("propertyToAccessor: propertyArray %, rootparam %", propertyArray, rootparam);
 		^switch(propertyArray.size,
 			3, {
 				if(propertyArray[1] == \stepseq) { 
 					// special property for Pbindef Pstepseq with index
-					Log(\Param).debug("123");
+					//Log(\Param).debug("123");
 					ParamAccessor.stepseqitem(propertyArray[0], propertyArray[2]);
 				} {
 					ParamAccessor.envitem(propertyArray[1], propertyArray[2])
@@ -2415,7 +2473,7 @@ BaseAccessorParam : BaseParam {
 						var res;
 						if(propertyArray[1] == \stepseq) {
 							// special property for Pbindef Pstepseq
-							Log(\Param).debug("123324");
+							//Log(\Param).debug("123324");
 							ParamAccessor.stepseq(propertyArray[0]);
 						} {
 							// env named segment: (\adsr -> \sustain) 
@@ -2690,7 +2748,7 @@ BaseAccessorParam : BaseParam {
 	//}
 
 	putListener { arg param, view, controller, action;
-		Log(\Param).debug("BaseAccessorParam.putListener %", param);
+		//Log(\Param).debug("BaseAccessorParam.putListener %", param);
 		controller.put(\set, { arg ...args; 
 			// args: object, \set, keyval_list
 			//args.debug("args");
@@ -3077,7 +3135,7 @@ PdefnParam : PdefParam {
 
 	putListener { arg param, view, controller, action;
 		var updateAction;
-		Log(\Param).debug("PdefnParam.putListener %", param);
+		//Log(\Param).debug("PdefnParam.putListener %", param);
 		updateAction = { arg ...args;
 			// args: object, \set, keyval_list
 			//args.debug("args");
@@ -3158,7 +3216,7 @@ PdefnParam : PdefParam {
 
 	*propertyToAccessor { arg propertyArray, rootparam;
 		// no property needed for Pdefn, \stepseq is a special property
-		Log(\Param).debug("propertyToAccessor: propertyArray %, rootparam %", propertyArray, rootparam);
+		//Log(\Param).debug("propertyToAccessor: propertyArray %, rootparam %", propertyArray, rootparam);
 		^switch(propertyArray.size,
 			1, {
 				if(propertyArray.first == \stepseq) {
@@ -3200,6 +3258,11 @@ PatternProxyParam : PdefnParam {
 	targetLabel {
 		^target.hash.asString;
 	}
+
+}
+
+PbindefParam : PdefnParam {
+	
 
 }
 
@@ -3557,7 +3620,7 @@ ListPatternParam : BaseAccessorParam {
 
 	putListener { arg param, view, controller, action;
 		var updateAction;
-		Log(\Param).debug("PdefnParam.putListener %", param);
+		//Log(\Param).debug("PdefnParam.putListener %", param);
 		updateAction = { arg ...args;
 			// args: object, \set, keyval_list
 			//args.debug("args");
@@ -3638,7 +3701,7 @@ ListPatternParam : BaseAccessorParam {
 
 	*propertyToAccessor { arg propertyArray, rootparam;
 		// no property needed for Pdefn, \stepseq is a special property
-		Log(\Param).debug("propertyToAccessor: propertyArray %, rootparam %", propertyArray, rootparam);
+		//Log(\Param).debug("propertyToAccessor: propertyArray %, rootparam %", propertyArray, rootparam);
 		^switch(propertyArray.size,
 			1, {
 				if(propertyArray.first == \stepseq) {

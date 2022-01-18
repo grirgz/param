@@ -1133,6 +1133,7 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\Timeline,
 	\Editable,
 	\AudioBuffer,
+	\SynthDef,
 ]);
 
 //TagSpecDef('GlobalLibrary.type.TrackInstrument', [
@@ -1143,6 +1144,10 @@ TagSpecDef(\GlobalLibraryCategory, [
 // FIXME: rename to GlobalLibrary.category.TrackInstrument
 TagSpecDef('GlobalLibrary.type.TrackInstrument', [
 	\TrackInstrument,
+]);
+
+TagSpecDef('GlobalLibrary.type.SynthDef', [
+	\SynthDef,
 ]);
 
 
@@ -1230,10 +1235,12 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 	var searchBox;
 	var typeView;
 	var categoryView;
+	var tagView;
 	var lay;
 	var itemIds = List.new;
 	var updateItems;
 	var treeViewItemToLibId;
+	var tagList;
 
 
 	treeViewItemToLibId = { arg item;
@@ -1254,6 +1261,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 	updateItems = {
 		var view = resultView;
+		var oldTagSelection;
 		var model = def;
 
 		var superitem;
@@ -1288,9 +1296,15 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		}).flatten;
 		//Log(\Param).debug("itemIds %", itemIds);
 
+		tagList = Set.new;
 		itemIds = itemIds.collect({ arg id;
+			var tags = Halo.at(id.last.value, \tag) !? _.keys ?? {[]};
+			//var tags = [];
+			tagList.addAll(tags);
 			(
-				strings: lib.libIdToStrings(id),
+				strings: lib.libIdToStrings(id) ++ [tags.asArray.join(", ")],
+				//strings: lib.libIdToStrings(id),
+				tags: tags,
 				libId: id,
 			);
 		}).select({ arg obj;
@@ -1300,12 +1314,22 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 			} {
 				true
 			}
+		}).select({ arg obj;
+	   
+			( tagView.selection.size ) == 0 or: {tagView.selection.any({ arg idx;
+				obj.tags.includes(tagView.items[idx])
+			})}
 		});
 		
 		itemIds.do { arg obj;
 			//Log(\Param).debug("strings to add %", obj.strings);
 			view.addItem(obj.strings)
-		}
+		};
+
+		tagList.debug("tagList");
+		oldTagSelection = tagView.selection;
+		tagView.items = tagList.asArray;
+		tagView.selection = oldTagSelection;
 
 	};
 
@@ -1360,9 +1384,23 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		})
 	;
 
+	tagView = ListView.new
+		.selection_([])
+		.action_({ arg view;
+			//view.selection.debug("cat action");
+			def.changed(\results);
+		})
+		.selectionMode_(\multi)
+		.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//view.selection.debug("cat mouse up");
+			def.changed(\results);
+			
+		})
+	;
 
 	resultView = TreeView.new
-		.columns_(["Name", "Type", "Category", "Tags"])
+		.columns_(["Name", "Type", "Tags"])
 		.setColumnWidth(0,300)
 		.itemPressedAction_({ arg view;
 			var itemId = treeViewItemToLibId.(view.currentItem);
@@ -1411,7 +1449,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		[HLayout (
 			typeView,
 			categoryView,
-			ListView.new,
+			tagView,
 		), stretch:1]
 	);
 	lay;
@@ -1421,17 +1459,17 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 WindowDef(\GlobalLibrary_select, { arg def, defaultValue, okHook, categories;
 	var selected;
-	categories = [ \AudioBuffer ];
+	//categories = [ \AudioBuffer ];
 	VLayout (
 		WindowDef(\GlobalLibrary).asView(nil, { arg val; 
 			selected = val;
-		}, categories),
+		}, categories, defaultValue),
 		HLayout (
-			BasicButton.new.string_("Cancel").action_({
-				def.closeWindow;
-			}),
 			BasicButton.new.string_("Ok").action_({
 				okHook.(selected);
+				def.closeWindow;
+			}),
+			BasicButton.new.string_("Cancel").action_({
 				def.closeWindow;
 			}),
 		)

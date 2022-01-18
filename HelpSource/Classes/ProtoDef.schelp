@@ -6,6 +6,9 @@ related:: Classes/ProtoTemplateDef, Classes/ProtoClass, Classes/TrackDef, Classe
 DESCRIPTION::
 You can write object prototypes using Event, but there are several methods that are defined by the Event class which make it impossible to redefine them. link::Classes/ProtoClass:: allow you to redefine theses methods. ProtoDef is a ProtoClass with an identifer stored in a global dictionary for easy access.
 
+Note::
+When you run code::ProtoDef(\test, ( valA: 12 ));:: and then code::ProtoDef(\test, ( valB: 42 ));::, that means both valA and valB are now defined in code::ProtoDef(\test)::. Remember it when you remove a method and you are puzzled because it behave like this method is still here. Run code::ProtoDef(\test).clear:: to remove everything
+::
 
 CLASSMETHODS::
 

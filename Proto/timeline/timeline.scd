@@ -1452,7 +1452,7 @@ ProtoClassDef(\ParamTimeline, (
 			var previous_val;
 			var nextval; // ugly hack (FIXME: for what ?)
 
-			val.debug("pattern_to_envpattern start");
+			//val.debug("pattern_to_envpattern start");
 
 			block { arg break;
 				while({
@@ -1466,7 +1466,7 @@ ProtoClassDef(\ParamTimeline, (
 					var is_rest = { arg val;
 						val.type == \rest or: { val.type == \start or: { val.type == \end } };
 					};
-					val.debug("pattern_to_envpattern val");
+					//val.debug("pattern_to_envpattern val");
 					if(first == true) {
 						if(is_rest.(val)) {
 							//val.type.debug("pattern_to_envpattern: start/end");

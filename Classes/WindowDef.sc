@@ -75,7 +75,7 @@ WindowDef {
 		} {
 			if(val.class == Event) {
 				proto = ProtoClass(val);
-				source = { arg def ...args; def.proto.asView(def, *args) };
+				source = { arg def ...args; ProtoClass((parent:def.proto)).asView(def, *args) };
 			} {
 				source = val;
 			};
@@ -216,6 +216,9 @@ WindowDef {
 
 	waitIfNeeded { 
 		if(thisThread.clock === AppClock) {
+			if(startRenderingTime.isNil) {
+				startRenderingTime = thisThread.seconds;
+			};
 			if(Process.elapsedTime > ( startRenderingTime + 0.01 )) {
 				//"WindowsDef rendering: WAITING !!!!!!".debug([ startRenderingTime, Process.elapsedTime ]);
 				0.001.wait;

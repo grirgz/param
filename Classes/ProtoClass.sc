@@ -73,6 +73,14 @@ ProtoClass : Event {
 		^this[\isPlaying].(this, * args)
 	}
 
+	isPlaying_ { arg ... args;
+		if(this[\isPlaying_].notNil) {
+			^this[\isPlaying_].(this, * args)
+		} {
+			this[\isPlaying] = args[0];
+		}
+	}
+
 	source { arg ... args;
 		^this[\source].(this, * args)
 	}

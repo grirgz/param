@@ -392,6 +392,7 @@
 +Slider {
 	unmapParam {
 		Param.unmapView(this);
+		this.value = 0;
 	}
 
 	mapParam { arg param;
@@ -406,6 +407,7 @@
 +Knob {
 	unmapParam {
 		Param.unmapView(this);
+		this.value = 0;
 	}
 
 	mapParam { arg param;
@@ -530,23 +532,43 @@
 }
 
 +PopUpMenu {
+	unmapParam {
+		Param.unmapView(this);
+		this.items = [];
+	}
+
 	// map index of popupmenu to param 
 	mapParam { arg param, keys;
-		param.mapPopUpMenu(this, keys);
+		if(param.isNil) {
+			this.unmapParam;
+		} {
+			param.mapPopUpMenu(this, keys);
+		}
 	}
 
 	mapValueParam { arg param, keys;
-		param.mapValuePopUpMenu(this, keys);
+		if(param.isNil) {
+			this.unmapParam;
+		} {
+			param.mapValuePopUpMenu(this, keys);
+		}
 	}
 
 	mapBusParam { arg param, keys;
 		//Log(\Param).debug("mapBusParam %", keys);
-		param.mapBusPopUpMenu(this, keys);
-		^this
+		if(param.isNil) {
+			this.unmapParam;
+		} {
+			param.mapBusPopUpMenu(this, keys);
+		}
 	}
 
 	mapIndexParam { arg param, keys;
-		param.mapIndexPopUpMenu(this, keys)
+		if(param.isNil) {
+			this.unmapParam;
+		} {
+			param.mapIndexPopUpMenu(this, keys)
+		}
 	}
 }
 
@@ -566,6 +588,7 @@
 			if(this.isClosed) {
 				//[model, key, fun, init].debug("update followChange2");
 				con.remove;
+				Halo.lib.removeAt(this);
 			} {
 				//[model, key, fun, init].debug("update followChange3");
 				try {
@@ -579,6 +602,10 @@
 			};
 		});
 		this.addHalo(\followChangeController, con);
+		this.onClose = this.onClose.addFunc({
+			con.remove;
+			Halo.lib.removeAt(this);
+		});
 				//[model, key, fun, init].debug("update followChange6");
 		if(init==true) { 
 				//[model, key, fun, init].debug("update followChange7");

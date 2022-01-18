@@ -507,13 +507,16 @@ ParamGroupLayout {
 						{ item.type == \array }, {
 							array_entry.(item)
 						},
-						{ item.spec.isKindOf(TagSpec) }, {
-							popup_entry.(item)
-						},
 						{ item.spec.isKindOf(ParamAudioBufferSpec) }, {
 							popup_buffer_entry.(item)
 						},
+						{ item.spec.isKindOf(TagSpec) }, {
+							popup_entry.(item)
+						},
 						{ item.spec.isKindOf(ParamBusSpec) }, {
+							popup_entry.(item)
+						},
+						{ item.spec.isKindOf(ParamMappedBusSpec) }, {
 							popup_busmap_entry.(item)
 						}, {
 							failback_entry.(item)

@@ -194,6 +194,15 @@ SimpleServerMeterView : SCViewHolder {
 			serverCleanupFuncs.removeAt(server, bus);
 		};
 
+		outmeters.do { arg item, idx;
+			item.peakLevel = -inf;
+			item.value = -inf;
+		};
+		inmeters.do { arg item, idx;
+			item.peakLevel = -inf;
+			item.value = -inf;
+		};
+
 		(numIns > 0).if( { inresp.free; });
 		(numOuts > 0).if( { outresp.free; });
 

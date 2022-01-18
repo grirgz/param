@@ -5,7 +5,8 @@ ProtoClassDef(\TrackMixerDef, (
 	new: { arg self, key, numchannels=2, outbus=0;
 	
 		if(self.all[key].isNil) {
-			self = self.deepCopy;
+			//self = self.deepCopy;
+			self = ProtoClass((parent:self));
 			self.key = key;
 			self.init(key, numchannels, outbus);
 			self.all[key] = self;
@@ -15,6 +16,14 @@ ProtoClassDef(\TrackMixerDef, (
 		};
 	
 		self;
+	},
+
+	storeOn: { arg self, str; 
+		str << self.refCompileString
+	},
+
+	refCompileString: { arg self;
+		"TrackMixerDef(%)".format(self.key.asCompileString);
 	},
 
 	clear: { arg self;
@@ -576,6 +585,7 @@ WindowDef(\TrackMixerDef_fxlist, { arg me, mixer, slotCount;
 	var layout;
 	var num = slotCount ? 4;
 	layout = VLayout(* num.collect { arg idx;
+		me.waitIfNeeded;
 		HLayout (
 			PlayerWrapper(mixer.insertFxAt(idx)).label_(idx.asString).asView,
 			Param(Message(mixer.insertFxAt(idx)), \synthName, TagSpecDef(\SynthDef_InsertFx)).asPopUpMenu,
@@ -618,14 +628,24 @@ WindowDef(\TrackMixerDef_advanced, (
 		var stack;
 		var textfield;
 		var slider = Slider.new.orientation_(\vertical).background_(Color.clear);
-		var meterout = CompactServerMeterView(nil, 0,2, mixer[self.meterMode].value(mixer).debug("out"));
 		var param = mixer.getParam(self.faderMode);
+
+		[mixer, param].debug("TrackMixerDef_advanced: makeFader: mixer param");
 
 		slider.mapParam(param);
 		slider.minWidth_(10);
 		slider.thumbSize_(10).knobColor_(Color.clear.alpha_(1));
+		self.slider = slider;
 
 		if(self.showMeter) {
+			var bus, meterout;
+			if(mixer[self.meterMode].notNil) {
+				bus = mixer[self.meterMode].value(mixer).debug("out");
+			} {
+				bus = BusDef(\zero, \audio);
+			};
+			meterout = CompactServerMeterView(nil, 0,2, bus);
+			self.meterOut = meterout;
 			stack = StackLayout(
 				slider, 
 				meterout.view,
@@ -637,12 +657,15 @@ WindowDef(\TrackMixerDef_advanced, (
 
 		if(self.showFaderTextField) {
 			textfield = TextField.new;
+			textfield.font_(Font.default.copy.size_(9));
 			textfield.mapParam(param, 5);
+			self.textfield = textfield;
 			VLayout (
 				stack,
 				textfield,
 			)
 		} {
+			self.textfield = nil;
 			stack
 		};
 	},
@@ -660,6 +683,7 @@ WindowDef(\TrackMixerDef_advanced, (
 				item.mapParam( mixer.sendParam(idx) );
 				//item.toolTip = "%: %".format(send.key, mixerTemplate[\sendbus +++ send.key].value(mixerTemplate));
 			};
+			self.knobs = knobs;
 			lay;
 		} {
 			nil
@@ -670,19 +694,30 @@ WindowDef(\TrackMixerDef_advanced, (
 		var delayview;
 		var mixerview;
 		var boxview = self.boxview;
+		var playbut;
+		if(mixer.isNil) {
+			mixer = () // ugly trick to not have to test if model is nil everywhere
+		};
 		boxview.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			if(buttonNumber == 1) {
 				//WindowDef(\SimpleMixerOverlayMenu).front(simpleMixer, boxview, x, y);
-				WindowDef(\TrackMixerDef_advanced_OverlayMenu).front(self, view, x, y)
+				if(self.model.notNil) {
+					WindowDef(\TrackMixerDef_advanced_OverlayMenu).front(self, view, x, y)
+				}
 			};
 		});
-		delayview = TextField.new;
-		delayview.mapParam( Param(mixer.proxy, \postdelay, ControlSpec(0,0.1,\lin)) );
+		if(self.showPlay) {
+			delayview = TextField.new;
+			self.delayView = delayview;
+			if(mixer.proxy.notNil) {
+				delayview.mapParam( Param(mixer.proxy, \postdelay, ControlSpec(0,0.1,\lin)) );
+			};
+		};
 		boxview.layout = VLayout ( 
 			*[
 				if(self.showPlay) {
-					PlayerWrapper(mixer.proxy)
+					playbut = PlayerWrapper(mixer.proxy)
 						.label_("%".format(mixer.name ?? mixer.key))
 						.asView
 						.minSize_(Point(10,18))
@@ -697,22 +732,115 @@ WindowDef(\TrackMixerDef_advanced, (
 					HLayout(StaticText.new.string_("postdelay:"), delayview);
 				},
 				if(self.showOutbus) {
-					Param(Message(mixer), \outbus,TagSpecDef(\BusDef)).asPopUpMenu.minWidth_(60).addAction({ 
-						mixer.play;
-						"kjkj".postln
-					})
+					self.outMenu = PopUpMenu.new.minWidth_(60);
+					//Param(Message(mixer), \outbus,TagSpecDef(\BusDef)).asPopUpMenu.addAction({ 
+						//mixer.play;
+						//"kjkj".postln
+					//});
+					self.outMenu;
 				},
 				if(self.showFx) {
 					self.makeTinyFxView(mixer)
 				},
 			].select(_.notNil)
 		).spacing_(5).margins_(5);
+		self.playerButton = playbut;
 		boxview.background = Color.gray;
 		boxview.maxWidth_(self.maxWidth - if(self.showSends) { 0 } { 30 });
 		boxview.addUniqueMethod(\model_, { arg me, val;
-			mixerview.model = val;
+			val.debug("TrackMixerDef_advanced: model_");
+			//self.model = val;
+			self.setModel(val);
+			//self.refreshView;
 		});
 		boxview;
+	},
+
+	setModel: { arg self, model;
+		// TODO
+		var mixer, param;
+		self[\model] = model;
+		mixer = model;
+		
+		if(mixer.notNil) {
+			if(self.playerButton.notNil) {
+				self.playerButton.model = PlayerWrapper(mixer);
+			};
+
+			self.knobs.do { arg item, idx;
+				item.mapParam( mixer.sendParam(idx) );
+				//item.toolTip = "%: %".format(send.key, mixerTemplate[\sendbus +++ send.key].value(mixerTemplate));
+			};
+			param = mixer.getParam(self.faderMode);
+
+			[mixer, param].debug("TrackMixerDef_advanced: setModel: mixer fader param");
+
+			self.slider.mapParam(param);
+
+			if(self.meterOut.notNil) {
+				var bus;
+				if(mixer[self.meterMode].notNil) {
+					bus = mixer[self.meterMode].value(mixer).debug("out");
+					self.meterOut.bus = bus;
+				} {
+					self.meterOut.stop;
+					//bus = BusDef(\zero, \audio);
+				};
+			};
+
+			if(self.textfield.notNil) {
+				self.textfield.mapParam(param, 5);
+			};
+
+			if(self.delayView.notNil and: {mixer.proxy.notNil}) {
+				self.delayView.mapParam(Param(mixer.proxy, \postdelay, ControlSpec(0,0.1,\lin)));
+			};
+
+
+			if(self.outMenu.notNil) {
+				self.outMenu.mapParam(Param(Message(mixer), \outbus,TagSpecDef(\BusDef))).addAction({ 
+					mixer.play;
+					Log(\Param).debug("mixer play from outbus menu: ", mixer);
+				});
+			};
+
+			if(self.fxButtons.notNil) {
+				self.fxButtons.do { arg fxbut, idx;
+					fxbut.model = PlayerWrapper(mixer.insertFxAt(idx)).label_(idx.asString);
+				};
+			}
+		} {
+			if(self.playerButton.notNil) {
+				self.playerButton.model = nil;
+			};
+			
+			self.knobs.do { arg item, idx;
+				item.mapParam(nil);
+			};
+
+			self.slider.mapParam(nil);
+
+			if(self.meterOut.notNil) {
+				var bus;
+				//bus = BusDef(\zero, \audio);
+				//self.meterOut.bus = bus;
+				self.meterOut.stop;
+			};
+
+			if(self.textfield.notNil) {
+				self.textfield.mapParam(nil);
+			};
+			if(self.delayView.notNil) {
+				self.delayView.mapParam(nil);
+			};
+			if(self.outMenu.notNil) {
+				self.outMenu.mapParam(nil);
+			};
+			self.fxButtons.do { arg fxbut, idx;
+				fxbut.model = nil
+			};
+			//self.boxview.removeAll;
+		}
 	},
 
 	refreshView: { arg self;
@@ -723,21 +851,28 @@ WindowDef(\TrackMixerDef_advanced, (
 	makeTinyFxView: { arg self, mixer;
 		var layout;
 		var num = self.fxCount ? 4;
-		layout = HLayout(* num.collect { arg idx;
+		var fxButtons;
+		layout = HLayout(* 
+			fxButtons = num.collect { arg idx;
 				PlayerWrapper(mixer.insertFxAt(idx)).label_(idx.asString).asView
-					.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-						[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-						
-						if(buttonNumber == 1) {
-							//WindowDef(\SimpleMixerOverlayMenu).front(simpleMixer, boxview, x, y);
+				.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+					[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+
+					if(buttonNumber == 1) {
+						//WindowDef(\SimpleMixerOverlayMenu).front(simpleMixer, boxview, x, y);
+						Log(\Param).debug("makeTinyFxView: model %", self.model);
+						if(self.model.notNil) {
 							WindowDef(\TrackMixerDef_advanced_fx_OverlayMenu).front(self, idx, view, x, y);
-							true;
 						};
-					})
-					.minSize_(Point(8,15))
-					.font_(Font.default.size_(8))
+						true; // do not trigger the general right click menu of Fx view
+					};
+				})
+				.minSize_(Point(8,15))
+				.font_(Font.default.size_(8))
 				;
-		} ++ [nil]).spacing_(1);
+			} ++ [nil]
+		).spacing_(1);
+		self.fxButtons = fxButtons.select(_.notNil); // remove nil from layout
 		layout;
 	},
 
@@ -767,7 +902,12 @@ WindowDef(\TrackMixerDef_advanced, (
 		};
 	},
 
-	asView: { arg self, def, mixer;
+	asView: { arg self, def, mixer, options;
+		Log(\Param).debug("TrackMixerDef_advanced.asView: mixer: %", mixer);
+		( options ?? { () } ).keysValuesDo { arg key, val;
+			Log(\Param).debug("set option % %", key, val);
+			self[key] = val;
+		};
 		self.makePropertySetters;
 		self.model = mixer;
 		self.boxview = View.new;
@@ -804,6 +944,7 @@ WindowDef(\TrackMixerDef_advanced_OverlayMenu, { arg def, mixerview, view, x=600
 		WindowDef(\TrackMixerDef_fxlist).asView(mixer),
 		HLayout (
 			* mixerview.displayOptions.collect { arg item, idx;
+				def.waitIfNeeded;
 				Param(Message(mixerview), item, ParamBoolSpec()).asButton;
 			};
 		),

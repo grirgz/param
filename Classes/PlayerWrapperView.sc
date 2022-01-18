@@ -68,7 +68,9 @@ PlayerWrapperView {
 			button.maxWidth_(x); 
 			v;
 		});
-		lay.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
+		lay.addUniqueMethod(\button, { button }); // compat
+		lay.addUniqueMethod(\model_, { arg view, val; this.model = val; });
+		lay.addUniqueMethod(\model, { this.model; });
 		lay.addUniqueMethod(\parentView, { this }); 
 		if(rightClickEditorEnabled == true) {
 			// init state
@@ -331,6 +333,7 @@ RecordButton {
 			skipjack.stop;
 		};
 		if(button.notNil) { // else fail when model is set before the layout in init
+			button.states = this.getStates(label ?? { model.label });
 			this.makeDependentListener;
 		};
 	}
@@ -448,6 +451,8 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 		view.addUniqueMethod(\labelView, { labelView });
 		view.addUniqueMethod(\selected, { arg me, x; this.selected });
 		view.addUniqueMethod(\selected_, { arg me, x; this.selected = x });
+		view.addUniqueMethod(\model_, { arg me, x; this.model = x });
+		view.addUniqueMethod(\model, { arg me; this.model });
 		view.addUniqueMethod(\parentView, { this });
 		this.makeUpdater;
 		this.update;
@@ -503,6 +508,9 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 			skipjack.stop;
 		};
 		if(button.notNil) { // else fail when model is set before the layout in init
+			//button.states = this.getStates;
+			//labelView.string = ( label ?? { model.label } ) ++ " ";
+			this.update;
 			this.makeDependentListener;
 		};
 	}

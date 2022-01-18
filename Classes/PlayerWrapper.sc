@@ -60,6 +60,14 @@ PlayerWrapper  {
 		
 	}
 
+	*doWithQuant { arg quant, fun;
+		if(quant.isNil) {
+			fun.()
+		} {
+			TempoClock.default.schedAbs(TempoClock.default.nextTimeOnGrid(quant), fun)
+		}
+	}
+
 	mapPlayer { arg  val;
 		this.target = val;
 	}
@@ -100,7 +108,9 @@ PlayerWrapper  {
 				//Log(\Param).debug("PlayerWrapper: perform on target %", selector);
 				^wrapper.target.perform(selector, * args);
 			} {
-				Log(\Param).error("PlayerWrapper: class, wrapper and target does not understand %".format(selector));
+				Log(\Param).error("PlayerWrapper: class, wrapper and target does not understand %, %, %"
+					.format(selector, wrapper.class, wrapper.target)
+				);
 				DoesNotUnderstandError.throw;
 			}
 		};
@@ -120,6 +130,14 @@ PlayerWrapper  {
 		}
 	}
 
+	isActive {
+		// used by PlayerWrapperGridCellView
+		^wrapper.isActive
+	}
+
+	isActive_ { arg val;
+		wrapper.isActive = val;
+	}
 
 	stop {
 		wrapper.stop;
@@ -241,6 +259,14 @@ PlayerWrapper_Base {
 
 	isPlaying {
 		^target.isPlaying;
+	}
+
+	isActive {
+		^false
+	}
+
+	isActive_ {
+		// NOOP
 	}
 
 	stop {
@@ -639,6 +665,14 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 
 	isPlaying {
 		^target.isPlaying
+	}
+
+	isActive {
+		^target.isActive
+	}
+
+	isActive_ { arg val;
+		target.isActive = val;
 	}
 
 	quant {
