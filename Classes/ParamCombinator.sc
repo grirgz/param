@@ -1,3 +1,4 @@
+// GUI is in proto/editors.scd: WindowDef(\ParamCombinatorEditor)r)
 
 ParamCombinator : Pattern {
 	// replace the value of the target param with itself
@@ -280,31 +281,57 @@ ParamCombinator : Pattern {
 		^busMode
 	}
 
-	embedInStream {
+	inBusMode_ { arg val;
+		this.setBusMode(val)
+	}
+
+	embedInStream { arg in;
+		^this.asPattern.embedInStream(in);
+	}
+
+	asStream { arg in;
+		^this.asPattern.asStream(in);
+	}
+
+	streamArg {
+		^this.asStream;
+	}
+
+	asPattern { 
+		Log(\Param).debug("asPattern");
 		^if(this.inBusMode) {
-			proxy.asMap.asSymbol.embedInStream;
+			Log(\Param).debug("asPattern busmode");
+			Pfunc({
+				this.playAll;
+				proxy.asMap.asSymbol
+			});
 		} {
-			Pfunc({ this.resultParam.get }).embedInStream;
+			Log(\Param).debug("asPattern value");
+			Pfunc({ 
+				this.playAll;
+				this.resultParam.get 
+			});
 		}
 	}
 
-	asPattern {
-		^if(this.inBusMode) {
-			proxy.asMap.asSymbol.asPattern;
-		} {
-			Pfunc({ this.resultParam.get }).asPattern;
-		}
-	}
 
-	asStream { 
-		Log(\Param).debug("asStream");
-		^if(this.inBusMode) {
-			Log(\Param).debug("asStream busmode");
-			proxy.asMap.asSymbol.asStream;
-		} {
-			Log(\Param).debug("asStream value");
-			Pfunc({ this.resultParam.get }).asStream;
-		}
+	playAll {
+		if(this.inBusMode) {
+			proxy.wakeUp;
+		};
+		this.inputParam.do { arg param, idx;
+			var val = param.get;
+			[val.asCompileString, idx, param, proxy].debug("playAll: val");
+			if(val.isKindOf(Symbol) or: { val.isKindOf(String) }) {
+				var nkey = TagSpecDef(\ParamCombinatorInput_asMap).unmapKey(val);
+				Log(\Param).debug("ParamCombinator.playAll: nkey %", nkey);
+				if(nkey.notNil) {
+					Ndef(nkey).wakeUp;
+				} {
+					Log(\Param).debug("ParamCombinator.playAll: key not found for %", val);
+				}
+			}
+		};
 	}
 
 	/// interface of CachedBus

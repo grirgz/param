@@ -266,6 +266,8 @@ Param {
 		class_dispatcher['IdentityDictionary'] = class_dispatcher['Dictionary'];
 		class_dispatcher['Environment'] = class_dispatcher['Dictionary'];
 
+		class_dispatcher['BusDef'] = class_dispatcher['Bus'];
+
 
 		if(args.size == 2) {
 			// no spec given, normalize args size to 3
@@ -427,6 +429,10 @@ Param {
 	at { arg idx;
 		// current implementation is: wrapper.at should return a Param, not a wrapper
 		^wrapper.at(idx);
+	}
+
+	parent { 
+		^Param.fromWrapper(wrapper.parent);
 	}
 
 	asParamList {
@@ -1420,7 +1426,7 @@ Param {
 	asButton { arg label;
 		var but;
 		label = label ?? { this.propertyLabel ?? { "" }};
-		but = Button.new
+		but = BoolButton.new
 			.states_([
 				[label, Color.black, Color.white],
 				[label, Color.black, ParamViewToolBox.color_ligth],
@@ -1561,6 +1567,7 @@ Param {
 	}
 
 	*toSynthDefSpec { arg spec, argName, defname=nil, default_spec=\widefreq;
+		// try to deduce spec from default value if no spec defined for the synthdef
 		if(spec.isNil) {
 			var val;
 			var rval;
@@ -1583,7 +1590,7 @@ Param {
 					if(def.class == Float) {
 						rval = default_spec.asSpec;
 					} {
-						if(def.class.isSequenceableCollection) {
+						if(def.isSequenceableCollection) {
 							rval = ParamArraySpec(default_spec!def.size);
 						}
 					};
@@ -1811,7 +1818,7 @@ BaseParam {
 		};
 		instr = this.instrument;
 		if(instr.notNil) {
-			val = Param.getSynthDefDefaultValue(property, instr) ?? { spec !? _.default ? 0 };
+			val = Param.getSynthDefDefaultValue(this.propertyRoot, instr) ?? { spec !? _.default ? 0 };
 			if(spec.isKindOf(ParamEnvSpec)) {
 				val = val.asEnv;
 			};
@@ -2046,7 +2053,7 @@ ParamAccessor {
 		);
 	}
 
-	// WIP
+	// pbindef and stepseq
 
 	*stepseq { arg selector;
 		// Pbindef key with PstepSeq inside
@@ -2058,7 +2065,11 @@ ParamAccessor {
 				var res;
 				//Log(\Param).debug("stepseq.setval % %", self.obj, val);
 				res = self.obj.target.source.at(selector);
-				res.source.list = val;
+				if(res.source.isKindOf(ListPattern)) {
+					res.source.list = val;
+				} {
+					res.source = val;
+				};
 				self.obj.target.changed(\set, self.obj.parent.property); // we don't call Pdef.set so no changed message
 			},
 
@@ -2066,7 +2077,11 @@ ParamAccessor {
 				var res;
 				//Log(\Param).debug("stepseq.getval %", self.obj);
 				res = self.obj.target.source.at(selector);
-				res.source.list
+				if(res.source.isKindOf(ListPattern)) {
+					res.source.list
+				} {
+					res.source
+				}
 			},
 
 			setbus: { arg self, val;
@@ -2258,6 +2273,191 @@ ParamAccessor {
 
 			path: { arg self, prop;
 				prop -> index
+			},
+		)
+	}
+
+	// WIP
+
+	*pbindef_source { arg selector;
+		// access Pbindef key source directly
+		// build with Param( Pbindef(\bla), \rq -> \source)
+		// TODO: not updated when set from code with Pbindef, should listen to \source
+		// TODO: default value is not from the SynthDef
+		^(
+			key: \pbindef_source,
+			setval: { arg self, val;
+				var res;
+				//Log(\Param).debug("stepseq.setval % %", self.obj, val);
+				res = self.obj.target.source;
+				if(res.isNil) {
+					self.obj.target.source = PbindProxy.new;
+					res = self.obj.target.source;
+				};
+				res = res.at(selector);
+				//if(val.isKindOf(SequenceableCollection) or: { val.isKindOf(Env) } ) {
+				if(self.obj.shouldBeNested(val)) {
+					val = Pdef.nestOn(val);
+				};
+				if(res.isNil) {
+					self.obj.target.source.set(selector, val);
+				} {
+					if(self.inBusMode) {
+						var curval = res.source;
+						var bus;
+						curval = Pdef.nestOff(curval);
+						bus = curval.asCachedBus;
+						if(val.isKindOf(ParamCombinator)) {
+							// if the value we set is a ParamCombinator, set it as source
+							res.source = val;
+						} {
+							if(curval.isKindOf(ParamCombinator)) {
+								// if the param has a combinator, set its base param
+								curval.baseParam.set(val)
+							} {
+								if(curval.isSequenceableCollection) {
+									bus.setn(val);
+								} {
+									bus.set(val);
+								};
+							}
+						}
+					} {
+						res.source = val;
+					}
+				};
+				self.obj.target.changed(\set, self.obj.parent.property); // we don't call Pdef.set so no changed message
+			},
+
+			getval: { arg self;
+				var res;
+				//Log(\Param).debug("stepseq.getval %", self.obj);
+				res = self.obj.target.source;
+				if(res.notNil) {
+					res = res.at(selector);
+					res.source !? { arg x; 
+						if(self.inBusMode) {
+							x.asCachedBus.getCached;
+						} {
+							Pdef.nestOff(x) 
+						}
+					} ?? { self.obj.default }
+				} {
+					Log(\Param).debug("Param.get: no source defined for Pbindef %", self.obj.target);
+					self.obj.default
+				}
+			},
+
+			getRaw: { arg self;
+				var res;
+				//Log(\Param).debug("stepseq.getval %", self.obj);
+				res = self.obj.target.source;
+				if(res.notNil) {
+					res = res.at(selector);
+					res.source 
+				};
+			},
+
+			setRaw: { arg self, val;
+				var res;
+				//Log(\Param).debug("stepseq.setval % %", self.obj, val);
+				res = self.obj.target.source;
+				if(res.isNil) {
+					self.obj.target.source = PbindProxy.new;
+					res = self.obj.target.source;
+				};
+				res = res.at(selector);
+				//if(val.isKindOf(SequenceableCollection) or: { val.isKindOf(Env) } ) {
+				if(res.isNil) {
+					self.obj.target.source.set(selector, val);
+				} {
+					res.source = val;
+				};
+				self.obj.target.changed(\set, self.obj.parent.property); // we don't call Pdef.set so no changed message
+			},
+
+			unset: { arg self;
+				if(self.obj.target.source.at(selector).notNil) { // Pbindef recreate key if not defined
+					self.obj.target.source.set(selector, nil)
+				}
+			},
+
+			inBusMode_: { arg self, enable;
+				if(enable == true) {
+					var val = self.getval;
+					var numChannels = 1;
+					var bus;
+					//"3whatktktj".debug;
+					//val.debug("setBusMode: val");
+					if(val.isSequenceableCollection) {
+						numChannels = val.size;
+					};
+					//numChannels.debug("setBusMode: nc");
+					bus = CachedBus.control(Server.default,numChannels );
+						// FIXME: hardcoded server
+						// hardcoded rate, but can't convert audio data to a number, so it's ok
+					//bus.debug("setBusMode: bus");
+					if(val.isSequenceableCollection) {
+						bus.setn(val);
+					} {
+						bus.set(val);
+					};
+					//val.debug("setBusMode: val");
+					//this.set(key, this.class.nestOn(bus.asMap));
+
+					self.obj.target.source.set(selector, bus.asMap);
+					self.obj.target.changed(\set, self.obj.parent.property); // we don't call Pdef.set so no changed message
+				} {
+					self.obj.target.source.set(selector, self.getval);
+				}
+			},
+
+			inBusMode: { arg self;
+				var val = self.obj.target.source.at(selector).source;
+				var key = selector;
+				if(val.isSequenceableCollection) {
+					// multichannel
+					if(val[0].isSequenceableCollection) {
+						// nested
+						(val[0][0].class == Symbol) and: { EventPatternProxy.symbolIsBus(val[0][0]) }
+					} {
+						(val[0].class == Symbol) and: { EventPatternProxy.symbolIsBus(val[0]) }
+					}
+				} {
+					((val.class == Symbol and: { EventPatternProxy.symbolIsBus(val) }) or: { val.isKindOf(ParamCombinator) or: { this.getHalo(( \ParamCombinator_++key ).asSymbol) !? (_.inBusMode) == true } })
+				}
+			},
+
+			setbus: { arg self, val;
+				// TODO
+				// set the bus (or map) and not its value
+				self.obj.setRaw(val);
+			},
+
+
+			getbus: { arg self;
+				// TODO
+				self.obj.getRaw;
+			},
+
+			toSpec: { arg self, sp;
+				sp;
+			},
+
+			property: { arg self, prop;
+				prop
+			},
+
+			propertyLabel: { arg self;
+				"% src".format(selector)
+			},
+
+			path: { arg self, prop;
+				prop
+			},
+
+			controllerTargetCursor: { arg self;
+				self.obj.target.source.at(selector).source
 			},
 		)
 	}
@@ -2476,15 +2676,21 @@ BaseAccessorParam : BaseParam {
 							//Log(\Param).debug("123324");
 							ParamAccessor.stepseq(propertyArray[0]);
 						} {
-							// env named segment: (\adsr -> \sustain) 
-							res = switch(propertyArray[1],
-								\attack, { [\times, 0] },
-								\decay, { [\times, 1] },
-								\sustain, { [\levels, rootparam.get.releaseNode] },
-								\release, { [\times, rootparam.get.releaseNode] },
-								\peak, { [\levels, 1] },
-							);
-							ParamAccessor.envitem(res[0], res[1]);
+							if(propertyArray[1] == \source) {
+								// special property for Pbindef source
+								ParamAccessor.pbindef_source(propertyArray[0]);
+
+							} {
+								// env named segment: (\adsr -> \sustain) 
+								res = switch(propertyArray[1],
+									\attack, { [\times, 0] },
+									\decay, { [\times, 1] },
+									\sustain, { [\levels, rootparam.get.releaseNode] },
+									\release, { [\times, rootparam.get.releaseNode] },
+									\peak, { [\levels, 1] },
+								);
+								ParamAccessor.envitem(res[0], res[1]);
+							}
 						};
 					},
 					// else: an index into an array: (\delaytab -> 0)
@@ -2812,7 +3018,7 @@ StandardConstructorParam : BaseParam {
 	}
 
 	normGet {
-		var val = this.get;
+		//var val = this.get;
 		^this.spec.unmap(this.get ?? {this.spec.default})
 	}
 
@@ -2920,13 +3126,31 @@ PdefParam : BaseAccessorParam {
 		^this.class.toSpec(xspec, target, property);
 	}
 
+	size {
+		^this.get.size; // use real value size else multichannel pbind on scalar synthparam is not seen as array
+		//if(this.spec.tryPerform(\isDynamic) == true) {
+			//^this.get.size
+		//} {
+			//^this.spec.size
+		//}
+	}
+
 	setBusMode { arg enable=true, free=true;
-		target.setBusMode(property, enable, free);
-		this.changed(\inBusMode); // FIXME: not sure if useful because on wrapper
+		if(accessor[\inBusMode_].notNil) {
+			accessor.inBusMode = enable;
+			this.changed(\inBusMode); // FIXME: not sure if useful because on wrapper
+		} {
+			target.setBusMode(property, enable, free);
+			this.changed(\inBusMode); // FIXME: not sure if useful because on wrapper
+		}
 	}
 
 	inBusMode {
-		^target.inBusMode(property)
+		if(accessor[\inBusMode].notNil) {
+			^accessor.inBusMode;
+		} {
+			^target.inBusMode(property)
+		}
 	}
 
 	inBusMode_ { arg val;
@@ -2954,7 +3178,11 @@ PdefParam : BaseAccessorParam {
 	}
 
 	unset { 
-		target.unset(property);
+		if(accessor[\unset].notNil) {
+			^accessor.unset
+		} {
+			^target.unset(property);
+		}
 	}
 
 	getNest {
@@ -2968,6 +3196,35 @@ PdefParam : BaseAccessorParam {
 
 	setNest { arg val;
 		this.setRaw(EventPatternProxy.nestOn(val));
+	}
+
+	shouldBeNested { arg val;
+		var instr, mysp;
+		instr = PdefParam.instrument(this.target);
+		if(instr.notNil) {
+			//Log(\Param).debug("3 % % % %", xproperty, instr, Param.getSynthDefSpec(xproperty, instr));
+			mysp = Param.toSynthDefSpec(nil, this.propertyRoot, instr);
+			if(mysp.isKindOf(ParamArraySpec) or: { mysp.isKindOf(ParamEnvSpec) }) {
+				^true
+			}
+		};
+		^false
+	}
+
+	getRaw {
+		if(accessor[\getRaw].notNil) {
+			^accessor.getRaw;
+		} {
+			^target.get(property)
+		}
+	}
+
+	setRaw { arg val;
+		if(accessor[\setRaw].notNil) {
+			^accessor.setRaw(val);
+		} {
+			^target.set(property, val)
+		}
 	}
 
 
@@ -3026,6 +3283,11 @@ EventPatternProxyParam : PdefParam {
 	targetLabel {
 		^target.hash.asString;
 	}
+
+}
+
+PbindefParam : PdefParam {
+	
 
 }
 
@@ -3261,10 +3523,6 @@ PatternProxyParam : PdefnParam {
 
 }
 
-PbindefParam : PdefnParam {
-	
-
-}
 
 ////////////////// Ndef
 

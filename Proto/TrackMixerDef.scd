@@ -1,5 +1,16 @@
 
 (
+SynthDef(\ifx_default, { arg out=0, gate=1;
+	var sig;
+	var in = In.ar(out, 2); 
+	sig = in;
+	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.1,0.1,0.8,0.1)), gate, doneAction:2);
+	XOut.ar(out, \wet.kr(0), sig* \gain.kr(1));
+}, metadata:(specs:(
+	gain: \unipolar.asSpec,
+))).add;
+
+
 ProtoClassDef(\TrackMixerDef, (
 	all: {PresetDictionary(\trackMixerDef)},
 	new: { arg self, key, numchannels=2, outbus=0;
@@ -211,6 +222,30 @@ ProtoClassDef(\TrackMixerDef, (
 		
 	},
 
+	playIfNotPlaying: { arg self;
+		if(self.isPlaying.not) {
+			self.play;
+		}
+	},
+
+	asStream: { arg self;
+		Pfunc({ self.playIfNotPlaying; self.inbus }).asStream; // don't know if playing at each event is a problem
+	},
+
+	streamArg: { arg self; self.asStream }, // needed by Pbindef
+	next: { arg self;
+		self.playIfNotPlaying; self.inbus;
+		
+	},
+
+	embedInStream: { arg self;
+		Pfunc({ self.playIfNotPlaying; self.inbus }).embedInStream;
+	},
+
+	asUgenInput: { arg self;
+		self.inbus
+	},
+
 	//enableInsertFx: { arg self, idx, val = true, offset;
 		//if(offset.isNil) {
 			//offset = self.stages.postfx;
@@ -241,7 +276,7 @@ ProtoClassDef(\TrackMixerDef, (
 ProtoTemplateDef(\TrackMixer_InsertFx, (
 	// ndef style fx
 
-	new: { arg self, proxy, index, synthName, mixerKey;
+	new: { arg self, proxy, index, mixerKey, synthName;
 		self = self.deepCopy;
 	
 		self.index = index;
@@ -259,7 +294,7 @@ ProtoTemplateDef(\TrackMixer_InsertFx, (
 		self.offset + self.index;
 	},
 
-	synthName: \default,
+	synthName: \ifx_default, // overriden by constructor
 	synthName_: { arg self, val;
 		self[\synthName] = val;
 		self.updateFx;
@@ -304,9 +339,9 @@ ProtoTemplateDef(\TrackMixer_InsertFx, (
 			nil
 		}
 	},
-
-
 ));
+//TagSpecDef(\SynthDef_InsertFx).addUnique(nil);
+TagSpecDef(\SynthDef_InsertFx).addUnique(\ifx_default);
 
 ProtoTemplateDef(\TrackMixer_InsertFx_SynthDef, (
 	// ndef style fx
@@ -326,11 +361,16 @@ ProtoTemplateDef(\TrackMixer_InsertFx_SynthDef, (
 
 	asParamGroup: { arg self;
 		ParamGroup(
-			SynthDesc(self.synthName).controlNames
-				.reject({ arg x; self.excludedArgs.includes(x) })
-				.collect({ arg item;
-					self.getParam(item)
-				})
+			* [
+				if(self.synthName.notNil) {
+
+					SynthDesc(self.synthName).controlNames
+					.reject({ arg x; self.excludedArgs.includes(x) })
+					.collect({ arg item;
+						self.getParam(item)
+					})
+				}
+			].select(_.notNil)
 		);
 	},
 
@@ -341,7 +381,8 @@ ProtoTemplateDef(\TrackMixer_InsertFx_SynthDef, (
 			val = (val ++ self.index).asSymbol;
 		};
 		pa = Param(self.proxy, val, Param.toSynthDefSpec(nil, oldval, self.synthName));
-		pa.default = Param.getSynthDefDefaultValue(oldval, self.synthName);
+		pa.label_(oldval);
+		pa.default = Param.getSynthDefDefaultValue(oldval, self.synthName ? \ifx_default);
 		pa;
 	},
 

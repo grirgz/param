@@ -307,13 +307,9 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	isRecording_: { arg self, val;
-		// deprecated
-		//if(self.eventFactory.notNil) {
-		//	self.eventFactory.isRecording = val;
-		//}
-
+		// note that RecordButton call directly recorder.startRecording
 		if(self.recorder.notNil) {
-			self.startControl;
+			//self.startControl; // in hook now
 			self.recorder.isRecording = val;
 		}
 	},
@@ -840,7 +836,7 @@ ProtoClassDef(\NoteTimeline, (
 
 	eventType: \noteTimeline,
 	composeParamPattern: true,
-	controller: { TagSpecDef(\NoteTimeline_controller).list.asDict[\generic_piano] },
+	controller: { ControllerDef.getTagSpec(\piano).list.asDict[\piano_generic] },
 	controller_: { arg self, val;
 		self[\controller] = val;
 		self.startControl;
@@ -884,6 +880,7 @@ ProtoClassDef(\NoteTimeline, (
 		self.wrapper = ProtoTemplateDef(\SeqPlayerGroup).new(param.target) !? { arg x; {x} };
 		self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.wrapper) !? { arg x; {x} };
 		self.recorder.eventLoop = self.eventLoop;
+		self.recorder.startRecordingHook = { arg iself; self.startControl };
 
 		//self.eventFactory = ~class_event_factory.new(self.param.target);
 		//self.eventFactory.eventLoop = self.eventloop;
@@ -1101,8 +1098,8 @@ ProtoClassDef(\ParamTimeline, (
 			if(param.target.isKindOf(Bus)) {
 				self[\outBus] = param.target;
 			} {
-				// FIXME: should always call newInstance with a bus param or custom bus
-				// else everything write to the same bus
+				// FIXME: should always provide a bus or customBus when calling newInstance
+				// else everything write to the same bus since .key is the same
 				self[\outBus] = BusDef("ParamTimeline_%".format(self.key), \control);
 			};
 		} {
@@ -1240,6 +1237,32 @@ ProtoClassDef(\ParamTimeline, (
 			//~pattern_to_envpattern.(pat).embedInStream(inval ? ()); 
 			self.pattern_to_envpattern(pat).embedInStream;
 		}
+	},
+
+	asInlinePattern: { arg self;
+		Prout({ arg ev;
+			ev[\finish] = ev[\finish].addFunc({
+				var ev = self.asPlayerEvent;
+				ev.sustain = \inf;
+				ev.play;
+			});
+			loop{
+				ev = self.outBus.asMap.yield;
+			};
+			ev;
+		})
+	},
+
+	asStream: { arg self;
+		if(self.inlineModeEnabled == true) {
+			self.asInlinePattern.asStream;
+		} {
+			self.asPattern.asStream;
+		}
+	},
+
+	streamArg: { arg self;
+		self.asStream;
 	},
 
 	//asPattern_old: { arg self, relStartTime, totalDur;

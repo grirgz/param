@@ -51,6 +51,9 @@
 			// FIXME: load metadata from somewhere ?
 			this.metadata = (specs:());
 		};
+		if(this.metadata.specs.isNil) {
+			this.metadata[\specs] = ();
+		}
 		^this.metadata.specs
 	}
 

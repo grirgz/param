@@ -120,7 +120,15 @@ ProtoClass : Event {
 		if(this[\asStream].notNil) {
 			^this[\asStream].(this, * args)
 		} {
-			super.asStream;
+			^super.asStream;
+		}
+	}
+
+	streamArg { arg ... args;
+		if(this[\streamArg].notNil) {
+			^this[\streamArg].(this, * args)
+		} {
+			^super.streamArg;
 		}
 	}
 

@@ -1257,7 +1257,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 	}).keyUpAction_({ arg me, key, modifiers, unicode, keycode;
 		//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
 		def.changed(\results);
-	});
+	}).focus(true);
 
 	updateItems = {
 		var view = resultView;

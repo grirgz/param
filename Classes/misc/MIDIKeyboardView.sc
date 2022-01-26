@@ -314,10 +314,11 @@ MIDIKeyboardView : SCViewHolder {
 		if((note>startnote) && (note<(startnote + (octaves*12))), {^true}, {^false});
 	}
 	
-	mapPattern { arg pattern;
+	mapPattern { arg pattern, mode = \pre;
 		var player;
 		ParamProto.init;
 		player = ProtoTemplateDef(\SeqPlayerGroup).new(pattern);
+		player.chainingMode = mode;
 		this.mapPlayer(player);
 	}
 

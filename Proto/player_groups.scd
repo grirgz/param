@@ -132,15 +132,19 @@ ProtoTemplateDef(\NotePlayer, (
 		if(self.ev.isNil) {
 			self.ev = Event.default;
 		};
+		Log(\Param).debug("NotePlayer: play: ev 1: %", self.ev);
 		self.ev = self.ev.copy.putAll(self.pre_event);
 		self.ev = self.ev.copy.putAll(local_pre_event ?? {()});
 		//self.ev.debug("play: before next: ev");
+		Log(\Param).debug("NotePlayer: play: ev 2: %", self.ev);
 		self.ev = self.stream.next(self.ev);
 		//self.ev.debug("play: ev");
 
 		// processing
+		Log(\Param).debug("NotePlayer: play: ev 3: %", self.ev);
 		self.ev.putAll(self.post_event);
 		self.ev.putAll(local_post_event ?? { () });
+		Log(\Param).debug("NotePlayer: play: ev 4: %", self.ev);
 
 		// recording
 		self.raw_ev = self.ev.copy; // for recording, find better property name
@@ -325,12 +329,26 @@ ProtoTemplateDef(\ParPlayerGroup, (
 // this use notePlayer as children
 // used by NoteTimeline
 ProtoTemplateDef(\SeqPlayerGroup, (
+	eventType: \SeqPlayerGroup,
 	new: { arg self, pat;
-		self = self.deepCopy;
-	
-		self.init(pat);
-	
-		self;
+		var res;
+
+		if(pat.isKindOf(ProtoClass)) {
+			res = switch(pat.eventType,
+				\SeqPlayerGroup, { pat },
+				\noteTimeline, { pat.wrapper },
+			);
+		};
+
+		if(res.notNil) {
+			res;
+		} {
+			self = self.deepCopy;
+
+			self.init(pat);
+
+			self;
+		}
 	},
 
 	init: { arg self, pat;
@@ -346,6 +364,8 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 		SimpleController.new(self).put(\play, listenfun).put(\stop, listenfun)
 	},
 
+	chainingMode: \pre, 
+
 	stream: { arg self;
 		var targ;
 		if(self[\prStream].isNil) {
@@ -359,9 +379,14 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 	},
 
 	newChild: { arg parent_self, x;
-		var post_event = ();
+		var post_event = (), pre_event = ();
+		if(parent_self.chainingMode == \pre) {
+			pre_event = (midinote:x);
+		} {
+			post_event = (midinote:x);
+		};
 	//	PlayerWrapper(
-			ProtoTemplateDef(\NotePlayer).new(parent_self, x, parent_self.stream, (midinote:x), post_event);
+			ProtoTemplateDef(\NotePlayer).new(parent_self, x, parent_self.stream, pre_event, post_event);
 	//	)
 	},
 

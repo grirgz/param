@@ -5,6 +5,7 @@ related:: Classes/EnvelopeView
 
 DESCRIPTION::
 The default EnvelopeView is very useful when you want to control proportion of each segment and have a separate knob for scaling the whole envelope. But sometime, you want to give an Env to your envelope view, edit it graphically and get the modified Env back with preserved absolute values. This is only possible with FixedEnvelopeView.
+This view also allow to zoom horizontally (right click) and modify curves (when holding Shift).
 
 Note::
 code::elasticSelection:: mode seems broken for the moment.
@@ -66,6 +67,7 @@ Get or set the loop node of the Env
 
 METHOD:: rightClickZoomEnabled
 When enabled, you can zoom and unzoom by dragging the view with right click.
+This also enable curve modification: hold Shift then left-click and drag up or down to modify the curve under the cursor. If a node is selected, this will modify the selected curve node instead.
 
 ARGUMENT:: val
 true or false to enable/disable

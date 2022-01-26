@@ -2534,8 +2534,9 @@ WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 			Param(
 				Message(model),
 				\controller, 
-				TagSpecDef(\NoteTimeline_controller),
-			).asPopUpMenu,
+				ControllerDef.getTagSpec(\piano),
+				//TagSpecDef(\NoteTimeline_controller),
+			).asPopUpMenu.allowsReselection_(true),
 			//BasicButton.new.string("Go").fixedWidth_(15).action_({
 				//model.startControl;
 			//})

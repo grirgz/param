@@ -26,7 +26,7 @@ ParamValue : BaseParam {
 	}
 
 	asParam {
-		^Param(this)
+		^Param.fromWrapper(this)
 	}
 
 	set { arg val;

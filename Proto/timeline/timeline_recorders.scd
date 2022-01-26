@@ -79,6 +79,7 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 		self.eventLoop.startRec(false, self.quant ? Pdef.defaultQuant, if(self.inQuantMode ) { 0 });
 		self.changed(\startedRecording);
 		self.changed(\isRecording);
+		self.startRecordingHook;
 	},
 
 	isRecording: { arg self;
@@ -98,6 +99,7 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 		self.eventLoop.stopRec;
 		self.changed(\stoppedRecording);
 		self.changed(\isRecording);
+		self.stopRecordingHook;
 	},
 
 	presetCompileStringPbind: { arg self;

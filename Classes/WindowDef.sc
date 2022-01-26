@@ -18,6 +18,7 @@ WindowLayout {
 
 WindowDef {
 	classvar <>all;
+	classvar <>tryModeEnabled = true; // debugging tool
 	var <>key;
 	var <source;
 	var <>proto;
@@ -91,6 +92,10 @@ WindowDef {
 	front { arg ...args;
 		this.windowize(*args);
 		window.front;
+	}
+
+	edit { arg ...args; // convenient
+		this.front(*args);
 	}
 
 	frontTop { arg ...args;
@@ -182,16 +187,20 @@ WindowDef {
 			Task({ // defering because sometime GUI need to wait to allow processing of sound while loading
 				startRenderingTime = thisThread.seconds;
 				window.view.removeAll;
-				try {
+				if(this.class.tryModeEnabled == true) {
+					try {
+						val = source.value(this, *args);
+					} { arg err;
+						"In WindowDef: %".format(key).error;
+						//err.errorString.postln;
+						//err.what.postln;
+						//err.adviceLink.postln;
+						//err.postProtectedBacktrace;
+						err.dumpBackTrace;
+						err.reportError;
+					};
+				} {
 					val = source.value(this, *args);
-				} { arg err;
-					"In WindowDef: %".format(key).error;
-					//err.errorString.postln;
-					//err.what.postln;
-					//err.adviceLink.postln;
-					//err.postProtectedBacktrace;
-					err.dumpBackTrace;
-					err.reportError;
 				};
 				window.name = this.windowName ? key ? "";
 				if(val.isKindOf(Layout)) {

@@ -470,6 +470,14 @@ ParamBusSpec : ParamNonFloatSpec {
 	// arg: channel count
 	var <>numChannels;
 	var >tagSpec;
+	new { arg spec;
+		var inst = super.new;
+		if(spec.notNil) {
+			inst.tagSpec = spec;
+		};
+		^inst;
+	}
+
 	tagSpec { arg self;
 		^tagSpec ?? { TagSpecDef(\BusDef) }
 	}
