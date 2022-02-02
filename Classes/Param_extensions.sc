@@ -222,11 +222,15 @@
 		if(this.getHalo(\model).notNil) {
 			this.getHalo(\model).edit;
 		} {
-			if(WindowDef(\PdefEditor).notNil) {
-				^WindowDef("PdefEditor_%".format(this.key).asSymbol, WindowDef(\PdefEditor)).front(this)
+			if(this.class == Pbindef and: { WindowDef(\PbindefEditor).notNil }) {
+				^WindowDef("PbindefEditor_%".format(this.key).asSymbol, WindowDef(\PbindefEditor)).front(this)
 			} {
-				Log(\Param).info("no editor found: WindowDef(\\PdefEditor) is not defined");
-				^nil
+				if(WindowDef(\PdefEditor).notNil) {
+					^WindowDef("PdefEditor_%".format(this.key).asSymbol, WindowDef(\PdefEditor)).front(this)
+				} {
+					Log(\Param).info("no editor found: WindowDef(\\PdefEditor) is not defined");
+					^nil
+				}
 			}
 		}
 	}
@@ -492,6 +496,7 @@
 +Button {
 	unmapParam {
 		Param.unmapView(this);
+		this.value = 0;
 	}
 
 	mapParam { arg param;

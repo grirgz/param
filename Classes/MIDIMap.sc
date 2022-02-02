@@ -231,7 +231,7 @@ MIDIMap {
 				MIDIMap(key, param, blockmode)
 			};
 			resp.free;
-		});
+		}).learn;
 	}
 
 	*updateViews { arg path, param;

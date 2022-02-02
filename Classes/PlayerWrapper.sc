@@ -44,6 +44,9 @@ PlayerWrapper  {
 			{ target.isKindOf(EventPatternProxy) } {
 				PlayerWrapper_EventPatternProxy(target, this)
 			}
+			{ target.isKindOf(Node) } {
+				PlayerWrapper_Node(target, this)
+			}
 			{ target.isKindOf(Builder) } {
 				PlayerWrapper_Builder(target, this)
 			}
@@ -782,6 +785,33 @@ PlayerWrapper_Builder : PlayerWrapper_Base {
 
 	outBus_ { arg val;
 		Log(\Param).debug("WTF %", this.target);
+		Param(this.target, \outBus, ParamBusSpec()).set(val);
+		^this.parent
+	}
+
+	outBus { arg val;
+		^Param(this.target, \outBus, ParamBusSpec()).get;
+	}
+
+	
+}
+
+PlayerWrapper_Node : PlayerWrapper_Base {
+
+	play {
+		// NOOP
+	}
+
+	stop {
+		this.target.release;
+	}
+
+	label {
+		^"S" + this.target.nodeID.asString
+	}
+
+	outBus_ { arg val;
+		//Log(\Param).debug("WTF %", this.target);
 		Param(this.target, \outBus, ParamBusSpec()).set(val);
 		^this.parent
 	}

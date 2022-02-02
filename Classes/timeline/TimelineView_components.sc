@@ -1062,6 +1062,7 @@ TimelineDrawer {
 			var next;
 			var end;
 			var pkey;
+			py = py+1; // else there is an incorrect offset of one semitone
 			//[timelines.gridPointToPixelPoint(Point(0,py)),timelines.gridPointToPixelPoint(Point(areasize.x, py))].debug("line");
 			start = timeline.gridPointToPixelPoint(Point(0,py));
 			start = Point(0, start.y);
@@ -1082,12 +1083,13 @@ TimelineDrawer {
 			Pen.fillRect( pkey );
 
 
-			if((py+1)%12==0) {
+			if((py)%12==0) {
 				var font;
 				Pen.color = Color.black;
 				font = Font('sans', 8);
 
-				Pen.stringInRect("C%   %".format((py/12).trunc.asInteger, py.asInteger), Rect(next.x+5, next.y-10, timeline.bounds.width, 10), font);
+				// C4 should be midinote 60 in scientific pitch notation
+				Pen.stringInRect("C%   %".format((py/12).trunc.asInteger - 1, py.asInteger), Rect(next.x+5, next.y-10, timeline.bounds.width, 10), font);
 				Pen.line( start, end );
 				Pen.stroke;
 			} {

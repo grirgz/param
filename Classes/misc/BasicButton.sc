@@ -36,6 +36,21 @@ BasicButton : Button {
 		this.states = [[label, color, background]];
 	}
 
+	unmapParam {
+		Param.unmapView(this);
+		this.value = 0;
+		this.states = [[""]];
+	}
+
+	mapParam { arg param;
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			this.updateStates;
+			param.mapButton(this);
+		}
+	}
+
 }
 
 BoolButton : Button {
@@ -71,6 +86,20 @@ BoolButton : Button {
 		]);
 	}
 
+	unmapParam {
+		Param.unmapView(this);
+		this.value = 0;
+		this.states = [[""]];
+	}
+
+	mapParam { arg param;
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			this.updateStates;
+			param.mapButton(this);
+		}
+	}
 }
 
 

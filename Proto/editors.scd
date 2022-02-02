@@ -296,4 +296,31 @@ WindowDef(\ParamCombinatorEditor, { arg def, combi;
 		//Param(Pdef(\param), \xlpfr).asPopUpMenu([\bla,\rah]),
 	)
 });
-)
+);
+
+(
+WindowDef(\ServerVolumeEditor, { arg def, server;
+	var slider;
+	var stack, meterout;
+	server = server ?? { Server.default };
+	def.windowDo { arg win;
+		win.bounds = Rect(100,100,70,440);
+	};
+	{
+		slider.focus(true);
+	}.defer(1/100);
+	meterout = CompactServerMeterView(server, 0,2, 0);
+	slider = Slider.new.orientation_(\vertical);
+	slider.mapParam( Param(server.volume, \volume, \db) );
+	slider.background_(Color.clear);
+	stack = StackLayout(
+		slider, 
+		meterout.view,
+	).mode_(\stackAll);
+	VLayout (
+		Param(server.volume, \volume, \db).asTextField(4),
+		stack,
+	)
+	
+});
+);

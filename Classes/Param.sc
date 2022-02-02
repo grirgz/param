@@ -11,6 +11,7 @@ Param {
 	classvar <>editFunction;
 	classvar <>lastTweaked;
 	classvar <>trace = false;
+	classvar <>midiFuncList;
 
 	*initClass {
 		Class.initClassTree(List);
@@ -484,15 +485,95 @@ Param {
 
 	/////////////////// MIDI mapping
 
-	// FIXME: ambigous name, maybe rename to midiMap. Also map mean something different for the wrapper class
+	// old name was .map and .unmap
 
-	map { arg msgNum, chan, msgType=\control, srcID, blockmode;
-		MIDIMap(this, msgNum, chan, msgType, srcID, blockmode);
+	midiMap { arg msgNum, chan, msgType=\control, srcID, blockmode;
+		var mf;
+		mf = MIDIFunc({ arg val, noteNum, channel, deviceId;
+			//[ velocity, noteNum, channel, deviceId ].debug;
+			this.normSet(val/127);
+			
+		}, msgNum, chan, msgType, srcID).fix;
+		this.class.midiFuncList = this.class.midiFuncList.add(this -> mf);
+		^mf;
+		//MIDIMap(this, msgNum, chan, msgType, srcID, blockmode);
 	}
 
-	unmap { arg msgNum, chan, msgType, srcID, blockmode;
-		MIDIMap.free(msgNum, chan, msgType, srcID, blockmode);
+	*midiUnmap { arg msgNum, chan, msgType, srcID;
+		//MIDIMap.free(msgNum, chan, msgType, srcID, blockmode);
+		var lists;
+		lists = this.midiFuncList.inject([List(),List()], { arg lists, asso;
+			var resp = asso.value;
+			var list = if(
+				(msgNum.isNil or: { resp.msgNum == msgNum })
+				and: { chan.isNil or: { resp.chan == chan } }
+				and: { msgType.isNil or: { resp.msgType == msgType } }
+				and: { srcID.isNil or: { resp.srcID == srcID } }
+			) {
+				lists.first;
+			} {
+				lists.last;
+			};
+			list.add(asso);
+			lists;
+		});
+		lists.first.collect(_.value.free);
+		this.midiFuncList = lists.last;
 	}
+
+	midiUnmap { arg msgNum, chan, msgType, srcID;
+		var lists;
+		lists = this.class.midiFuncList.inject([List(),List()], { arg lists, asso;
+			var resp = asso.value;
+			var list = if(
+				asso.key == this and: {
+					(msgNum.isNil or: { resp.msgNum == msgNum })
+					and: { chan.isNil or: { resp.chan == chan } }
+					and: { msgType.isNil or: { resp.msgType == msgType } }
+					and: { srcID.isNil or: { resp.srcID == srcID } }
+				}
+			) {
+				lists.first;
+			} {
+				lists.last;
+			};
+			list.add(asso);
+			lists;
+		});
+		lists.first.collect(_.value.free);
+		this.class.midiFuncList = lists.last;
+	}
+
+	midiLearn { arg blockmode, msgType=\control;
+		//MIDIMap.learn(this, blockmode);
+		var mf;
+		mf = MIDIFunc({ arg val, noteNum, channel, deviceId;
+			//[ velocity, noteNum, channel, deviceId ].debug;
+			this.normSet(val/127);
+			
+		}, msgType:msgType).learn.fix;
+		this.class.midiFuncList = this.class.midiFuncList.add(this -> mf);
+		^mf
+	}
+	
+	*getMidiMappedParams { arg msgNum, chan, msgType, srcID;
+		// what params are mapped to this midi knob ?
+		^this.midiFuncList.select({ arg asso;
+			var resp = asso.value;
+			(msgNum.isNil or: { resp.msgNum == msgNum })
+			and: { chan.isNil or: { resp.chan == chan } }
+			and: { msgType.isNil or: { resp.msgType == msgType } }
+			and: { srcID.isNil or: { resp.srcID == srcID } }
+		})
+	}
+
+	midiMapList {
+		// to what knobs this param is mapped ?
+		^this.class.midiFuncList.select({ arg asso;
+			asso.key == this
+		})
+	}
+
 
 	/////////////////// GUI mapping
 
@@ -577,7 +658,10 @@ Param {
 			//Log(\Param).debug("makeUpdater: controllerTarget:%", this.controllerTarget);
 			controller = SimpleController(param.controllerTarget);
 			{
-				view.onClose = view.onClose.addFunc( { this.class.freeUpdater(view) } );
+				view.onClose = view.onClose.addFunc({
+				   	this.class.freeUpdater(view);
+					Halo.lib.removeAt(view);
+			   	});
 			}.defer;
 			view.addHalo(\simpleController, controller);
 			simpleControllers.add(controller);
@@ -620,12 +704,35 @@ Param {
 	makeListener { arg action, obj; 
 		// helper method for external to listen to param value changes
 		// WARNING: caller is responsible for freeing the controller !
+		// obj is a view
 		// action.(obj, param)
 		var cont;
 		cont = SimpleController.new(this.controllerTarget);
 		this.class.userSimpleControllers = this.class.userSimpleControllers.add(cont);
 		this.putListener(obj, cont, action);
 		^cont
+	}
+
+	attachListener { arg view, action;
+		// this should be the top level method, used to easily adapt a GUI to Param
+		var con;
+		this.removeListener(view);
+		view.onClose = view.onClose.addFunc({ this.removeListener(view) });
+		con = this.makeListener({ arg lview, pa;
+			if(lview.isClosed) {
+				this.removeListener(lview);
+			} {
+				action.(lview, pa);
+			}
+		}, view);
+		view.addHalo(\paramListener, con);
+	}
+
+	removeListener { arg view;
+		view.getHalo(\paramListener) !? { arg x; x.remove; };
+		if(view.isClosed) {
+			Halo.lib.removeAt(view);
+		}
 	}
 
 	// FIXME: too many methods for the same thing, with fuzzy semantics
@@ -963,7 +1070,7 @@ Param {
 			//this.get.debug("mapValuePopUpMenu:5 (action)");
 		};
 		//[view, this.controllerTarget].value.debug("mapValuePopUpMenu:3.5");
-		view.onChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
+		view.followChange(this.controllerTarget, \set, { arg aview, model, message, arg1;
 			// TODO: do not change the whole row when just one value is updated!
 			//[view, me, arg1, arg2, arg3].value.debug("mapValuePopUpMenu:6 (onchange)");
 			if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
@@ -975,7 +1082,7 @@ Param {
 		});
 		keys = keys ?? {this.spec};
 		if( keys.isKindOf(TagSpecDef)) {
-			view.onChange(keys, \list, onChange ? { arg aview, model, message, arg1;
+			view.followChange(keys, \list, onChange ? { arg aview, model, message, arg1;
 				//var idx = view.value;
 				view.items = keys.labelList.asArray;
 				aview.refreshChange;
@@ -1300,17 +1407,18 @@ Param {
 	}
 
 	mapButton { arg view, action;
-		this.makeSimpleController(view, { arg view, param;
-			var size;
-			size = view.states.size;
-			param.normSet(view.value.linlin(0,size-1,0,1));
-		}, { arg view, param;
+		var update = { arg view, param;
 			var size;
 			{
 				size = view.states.size;
 				view.value = param.normGet.linlin(0,1,0,size-1);
 			}.defer
-		}, nil, action)
+		};
+		this.makeSimpleController(view, { arg view, param;
+			var size;
+			size = view.states.size;
+			param.normSet(view.value.linlin(0,size-1,0,1));
+		}, update, nil, action)
 	}
 
 	*freeUpdater { arg view;
@@ -1426,11 +1534,11 @@ Param {
 	asButton { arg label;
 		var but;
 		label = label ?? { this.propertyLabel ?? { "" }};
-		but = BoolButton.new
-			.states_([
-				[label, Color.black, Color.white],
-				[label, Color.black, ParamViewToolBox.color_ligth],
-			]);
+		but = BoolButton.new.string_(label);
+			//.states_([
+				//[label, Color.black, Color.white],
+				//[label, Color.black, ParamViewToolBox.color_ligth],
+			//]);
 		but.mapParam(this);
 		^but;
 	}
@@ -3669,7 +3777,7 @@ NdefVolParam : NdefParam {
 ////////////////// Node
 
 NodeParam : BaseAccessorParam {
-	var <multiParam = false;
+	var <multiParam = false; // deprecated
 
 	*new { arg obj, meth, sp;
 		^this.prNew(obj, meth, sp);
@@ -3689,6 +3797,10 @@ NodeParam : BaseAccessorParam {
 
 	targetLabel {
 		^target.nodeID.asString;
+	}
+
+	instrument {
+		target.defName;
 	}
 
 	toSpec { arg sp;
@@ -3759,7 +3871,7 @@ NodeParam : BaseAccessorParam {
 				//target.changed(\set, property); // Synth do not use changed messages
 			});
 		};
-		val = this.cachedValue;
+		val = this.cachedValue ?? { this.default };
 		if(spec.isKindOf(ParamEnvSpec)) {
 			val = val.asEnv;
 		};

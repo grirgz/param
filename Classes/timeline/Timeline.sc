@@ -14,10 +14,25 @@ ClipTimeline {
 	}
 }
 
-NoteTimeline {
+//NoteTimeline {
+	//*new { arg ... args;
+		//ParamProto.init;
+		//^ProtoClassDef(\NoteTimeline).new(*args)
+	//}
+//}
+
+// this design allow proto classes to answer correctly .isKindOf(NoteTimeline) instead of using .eventType
+// maybe also make them herits Timeline or BaseTimeline (because Timeline is a too generic name) to test if this is a kind of timeline
+//	this allow to know that some methods are shared accross all timelines
+NoteTimeline : ProtoClass {
 	*new { arg ... args;
+		var inst, proto;
 		ParamProto.init;
-		^ProtoClassDef(\NoteTimeline).new(*args)
+		inst = super.new;
+		proto = ProtoClassDef(\NoteTimeline).new(*args);
+		inst.putAll(proto);
+		inst.parent = proto.parent;
+		^inst;
 	}
 }
 

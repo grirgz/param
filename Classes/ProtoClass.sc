@@ -33,8 +33,10 @@ ProtoClass : Event {
 		//"bla".debug;
 		//xevent.debug("xevent");
 		inst = super.new;
-		inst.putAll(xevent);
-		inst.parent = xevent.parent; // is not copied with putAll
+		if(xevent.notNil) {
+			inst.putAll(xevent);
+			inst.parent = xevent.parent; // is not copied with putAll
+		}
 		^inst;
 	}
 
@@ -159,6 +161,19 @@ ProtoClass : Event {
 			this[\isEmpty] = args[0]
 		}
 	}
+
+	off { arg ... args;
+		^this[\off].(this, * args)
+	}
+
+	off_ { arg ... args;
+		if(this[\off_].notNil) {
+			this[\off_].(this, * args)
+		} {
+			this[\off] = args[0]
+		}
+	}
+
 
 	render { arg ... args;
 		^this[\render].(this, * args)

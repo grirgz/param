@@ -11,7 +11,7 @@ SynthDef(\ifx_default, { arg out=0, gate=1;
 ))).add;
 
 
-ProtoClassDef(\TrackMixerDef, (
+ProtoClassDef(\TrackMixerDef, ( 
 	all: {PresetDictionary(\trackMixerDef)},
 	new: { arg self, key, numchannels=2, outbus=0;
 	
@@ -98,6 +98,13 @@ ProtoClassDef(\TrackMixerDef, (
 		self.proxy[self.stages.in] = {
 			InFeedback.ar(\inbus.kr(self.inbus), self.numchannels);
 		};
+
+		// mute + solo
+		self.proxy[self.stages.in + 1] = \filter -> { arg in;
+			//Select.ar(( \mute.kr(0) - \solo.kr(0) ).clip(0,1), [in, DC.ar(0)]);
+			in * ( 1 - ( \mute.kr(0) - \solo.kr(0) ).clip(0,1) );
+		};
+
 		self.proxy[self.stages.prefader] = \filter -> { arg in;
 			in * \prefader.kr(0).dbamp;
 		};
@@ -113,6 +120,39 @@ ProtoClassDef(\TrackMixerDef, (
 		self.proxy.addSpec(\prefader, \db);
 		self.proxy.addSpec(\postfader, \db);
 		self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter);
+	},
+
+	muteMode_: { arg self, val;
+		self.proxy.set(\mute, val.asInteger);
+		self.changed(\muteMode);
+	},
+
+	muteMode: { arg self;
+		self.proxy.get(\mute) == 1;
+	},
+
+	soloMode_: { arg self, val;
+		self.proxy.set(\solo, val.asInteger);
+		self.soloModeHook(val); // this should call .muteBySolo on all other tracks
+		self.changed(\soloMode);
+	},
+
+	muteBySolo: { arg self, val;
+		if(val == true) {
+			// another track is soloed, should mute this one except if soloed too
+			if(self.proxy.get(\solo) != 1) {
+				self.proxy.set(\solo, -1);
+			}
+		} {
+			// another track is no longer soloed, should unmute this one except if soloed too
+			if(self.proxy.get(\solo) != 1) {
+				self.proxy.set(\solo, 0);
+			}
+		}
+	},
+
+	soloMode: { arg self;
+		self.proxy.get(\solo) == 1;
 	},
 
 	play: { arg self;
@@ -139,7 +179,11 @@ ProtoClassDef(\TrackMixerDef, (
 			self.build_sender(idx);
 			Param(self.proxy, key);
 		} {
-			Param(self.proxy, key);
+			if([\soloMode, \muteMode].includes(key)) {
+				Param(Message(self), key, ParamBoolSpec());
+			} {
+				Param(self.proxy, key);
+			}
 		}
 	},
 
@@ -194,10 +238,10 @@ ProtoClassDef(\TrackMixerDef, (
 
 	asView: { arg self, options;
 		var windef = WindowDef("TrackMixerDef_%".format(self.key).asSymbol, WindowDef(\TrackMixerDef_advanced));
-		( options ?? { [] } ).clump(2).do { arg item, idx;
-			windef.proto.perform(item.first.asSetter, item.last)
-		};
-		windef.asView(self);
+		//( options ?? { [] } ).clump(2).do { arg item, idx;
+			//windef.proto.perform(item.first.asSetter, item.last)
+		//};
+		windef.asView(self, options);
 	},
 
 	insertFxList: { arg self;
@@ -272,6 +316,8 @@ ProtoClassDef(\TrackMixerDef, (
 
 ));
 ~trackMixerDef = ProtoClassDef(\TrackMixerDef);
+
+//////////////// InsertFx
 
 ProtoTemplateDef(\TrackMixer_InsertFx, (
 	// ndef style fx
@@ -565,23 +611,11 @@ ProtoTemplateDef(\TrackMixer_InsertFx_equi, (
 ));
 TagSpecDef(\SynthDef_InsertFx).addUnique(\equi);
 
-WindowDef(\TrackMixer_InsertFxEditor, { arg def, insertFx;
-	var paramView = View.new;
-	paramView.followChange(insertFx, \synthName, {
-		paramView.removeAll;
-		paramView.layout = insertFx.asParamView;
-	});
-	VLayout (
-		HLayout (
-			PlayerWrapper(insertFx).asView,
-			//Param({ mixer.isInsertFxEnabled(idx) }, { mixer.enableInsertFx(idx) }, ParamBoolSpec()).asButton("Fx"++idx),
-			Param(Message(insertFx), \synthName, TagSpecDef(\SynthDef_InsertFx)).asPopUpMenu,
-		),
-		paramView
-	)
-});
 
-WindowDef(\TrackMixerDef, { arg me, mixer;
+////////////////////////////////////////////////////
+/////////////////// GUI
+
+WindowDef(\TrackMixerDef, { arg me, mixer; // not used much, TrackMixerDef_advanced is much better
 	var param;
 	var sends = [];
 	var layout;
@@ -648,6 +682,7 @@ WindowDef(\TrackMixerDef_advanced, (
 	showDelay: false,
 	showOutbus: false,
 	showMeter: true,
+	showMuteSolo: true,
 	showPlay: true,
 	showFx: false,
 	showSends: true,
@@ -663,7 +698,7 @@ WindowDef(\TrackMixerDef_advanced, (
 	maxWidth: 100,
 
 
-	displayOptions: [\showSends, \showOutbus, \showPlay, \showFx, \showFaderTextField, \showDelay, \showMeter],
+	displayOptions: [\showSends, \showOutbus, \showPlay, \showFx, \showFaderTextField, \showDelay, \showMeter, \showMuteSolo],
 
 	makeFader: { arg self, mixer;
 		var stack;
@@ -731,6 +766,15 @@ WindowDef(\TrackMixerDef_advanced, (
 		};
 	},
 
+	makeMuteSoloButtons: { arg self, mixer;
+		self.soloButton = Param(Message(mixer), \soloMode, ParamBoolSpec()).asButton.string_("S").minSize_(Point(5,15));
+		self.muteButton = Param(Message(mixer), \muteMode, ParamBoolSpec()).asButton.string_("M").minSize_(Point(5,15));
+		HLayout (
+			self.muteButton,
+			self.soloButton,
+		)
+	},
+
 	makeMixerView: { arg self, mixer;
 		var delayview;
 		var mixerview;
@@ -772,6 +816,9 @@ WindowDef(\TrackMixerDef_advanced, (
 				if(self.showDelay) {
 					HLayout(StaticText.new.string_("postdelay:"), delayview);
 				},
+				if(self.showMuteSolo) {
+					self.makeMuteSoloButtons(mixer);
+				},
 				if(self.showOutbus) {
 					self.outMenu = PopUpMenu.new.minWidth_(60);
 					//Param(Message(mixer), \outbus,TagSpecDef(\BusDef)).asPopUpMenu.addAction({ 
@@ -794,6 +841,9 @@ WindowDef(\TrackMixerDef_advanced, (
 			self.setModel(val);
 			//self.refreshView;
 		});
+		boxview.addUniqueMethod(\proto, { self });
+		boxview.addUniqueMethod(\slider, { self.slider });
+		boxview.addUniqueMethod(\textfield, { self.textfield });
 		boxview;
 	},
 
@@ -833,6 +883,14 @@ WindowDef(\TrackMixerDef_advanced, (
 				self.textfield.mapParam(param, 5);
 			};
 
+
+			if(self.soloButton.notNil) {
+				self.soloButton.mapParam(Param(Message(mixer), \soloMode, ParamBoolSpec()));
+			};
+			if(self.muteButton.notNil) {
+				self.muteButton.mapParam(Param(Message(mixer), \muteMode, ParamBoolSpec()));
+			};
+
 			if(self.delayView.notNil and: {mixer.proxy.notNil}) {
 				self.delayView.mapParam(Param(mixer.proxy, \postdelay, ControlSpec(0,0.1,\lin)));
 			};
@@ -866,6 +924,13 @@ WindowDef(\TrackMixerDef_advanced, (
 				//bus = BusDef(\zero, \audio);
 				//self.meterOut.bus = bus;
 				self.meterOut.stop;
+			};
+
+			if(self.soloButton.notNil) {
+				self.soloButton.mapParam(nil);
+			};
+			if(self.muteButton.notNil) {
+				self.muteButton.mapParam(nil);
 			};
 
 			if(self.textfield.notNil) {
@@ -1033,6 +1098,24 @@ WindowDef(\TrackMixerDef_advanced_fx_OverlayMenu, { arg def, mixerview, idx, vie
 }).border_(false);
 
 //WindowDef(\TrackMixerDef_advanced).front(ProtoInst(\TrackMixerDef, \tr1))
+
+/////////////////////////////// InsertFx GUI
+
+WindowDef(\TrackMixer_InsertFxEditor, { arg def, insertFx;
+	var paramView = View.new;
+	paramView.followChange(insertFx, \synthName, {
+		paramView.removeAll;
+		paramView.layout = insertFx.asParamView;
+	});
+	VLayout (
+		HLayout (
+			PlayerWrapper(insertFx).asView,
+			//Param({ mixer.isInsertFxEnabled(idx) }, { mixer.enableInsertFx(idx) }, ParamBoolSpec()).asButton("Fx"++idx),
+			Param(Message(insertFx), \synthName, TagSpecDef(\SynthDef_InsertFx)).asPopUpMenu,
+		),
+		paramView
+	)
+});
 );
 
 
@@ -1177,3 +1260,49 @@ ProtoTemplateDef(\NdefTrackMixer, (
 // END
 
 TrackMixerDef(\mixer)
+
+(
+// TrackMixerDef_volume can be used to mimic a mixer that control Server.volume instead
+// but you can also simply do:
+// trackMixerView.slider.mapParam(Param(Server.default.volume, \volume));
+// trackMixerView.textfield.mapParam(Param(Server.default.volume, \volume));
+// trackMixerView.proto.showSends = false;
+// trackMixerView.proto.showMuteSolo = false;
+ProtoClassDef(\TrackMixerDef_volume, (
+	parent: ProtoClassDef(\TrackMixerDef),
+	play:{},
+	stop:{},
+	isPlaying: true,
+	key: {Server.default.name},
+	refCompileString: { arg self;
+		"ProtoClassDef(\\TrackMixerDef_volume)"
+	},
+	new: { arg self, server;
+		self = ProtoClass((parent: self));
+		self.server = server ? Server.default;
+		self.key = self.server.name;
+		self;
+	},
+
+	server: { arg self;
+		Server.default;
+	},
+
+	recbus: { arg self;
+		0
+	},
+
+	getParam: { arg self, key;
+		case(
+			{ key == \postfader or: { key == \prefader } }, {
+				Param(self.server.volume, \volume, \db);
+			}, {
+				Param(Message(()), key); // dummy param
+			}
+		)
+		
+	},
+
+));
+);
+

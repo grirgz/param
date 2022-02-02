@@ -2,12 +2,14 @@
 + MKtlElement {
 	mapParam { arg param;
 		if(param.isNil) {
-			this.action = nil
+			this.action = nil;
+			this.value = 0;
 		} {
 			this.action = { arg me;
 				param.normSet(me.value);
 				Param.lastTweaked = param;
 			};
+			this.value = param.normGet;
 		}
 	}
 
@@ -15,13 +17,23 @@
 		this.mapParam(nil)
 	}
 
-	mapPlayer { arg player;
+	mapPlayer { arg player, updateAction;
 		if(player.isNil) {
-			this.action = nil
+			this.action = nil;
+			this.value = 0;
 		} {
 			this.action = { arg me;
 				player.togglePlay
 			};
+			this.getHalo(\ParamListener) !? { arg x; x.remove };
+			this.addHalo(\ParamListener, PlayerWrapper(player).makeListener({ arg me, msg, args;
+				[ msg, player, PlayerWrapper(player).isPlaying.asInteger ].debug("MKtlElement.mapPlayer listener: receive");
+				if(updateAction.notNil) {
+					updateAction.(player, msg, args)
+				} {
+					this.value = PlayerWrapper(player).isPlaying.asInteger;
+				};
+			}));
 		}
 		
 	}
@@ -32,34 +44,50 @@
 }
 
 + MKtlElementGroup {
-	mapParam { arg param;
-		if(param.size > 0) {
-			if(this.elements.size > 0) {
-				min(this.elements.size, param.size).do { arg idx;
-					this[idx].mapParam(param.at(idx))
+	mapParam { arg param, toggleMode=false;
+		if(param.isNil) {
+			this[0].action = nil;
+			this[1].action = nil;
+			this[0].value = 0;
+		} {
+			if(param.size > 0) {
+				if(this.elements.size > 0) {
+					min(this.elements.size, param.size).do { arg idx;
+						this[idx].mapParam(param.at(idx))
+					};
+				} {
+					"MKtlElementGroup.mapParam: can't map subparams because not an array of slider".error;
 				};
 			} {
-				"MKtlElementGroup.mapParam: can't map subparams because not an array of slider".error;
-			};
-		} {
-			if(this.elements.size == 2) { // button with on/off
-				if(param.isNil) {
-					this[0].action = nil;
-					this[1].action = nil;
+				if(this.elements.size == 2) { // button with on/off
+					if(toggleMode == true) {
+						// on
+						this[0].action = { arg me; 
+							if(param.normGet == 0) {
+								param.normSet(1);
+							} {
+								param.normSet(0);
+							};
+							Param.lastTweaked = param;
+						};
+						this[0].value = param.normGet;
+						// off
+						this[1].action = nil
+					} {
+						// on
+						this[0].action = { arg me; 
+							param.normSet(1);
+							Param.lastTweaked = param;
+						};
+						// off
+						this[1].action = { arg me;
+							param.normSet(0);
+							Param.lastTweaked = param;
+						};
+					}
 				} {
-					// on
-					this[0].action = { arg me; 
-						param.normSet(1);
-						Param.lastTweaked = param;
-					};
-					// off
-					this[1].action = { arg me;
-						param.normSet(0);
-						Param.lastTweaked = param;
-					};
+					"MKtlElementGroup.mapParam: Not a button".error;
 				}
-			} {
-				"MKtlElementGroup.mapParam: Not a button".error;
 			}
 		}
 	}
