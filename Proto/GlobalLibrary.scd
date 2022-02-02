@@ -309,7 +309,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					Log.error("clipFactories.pdef: ERROR: edit: don't know what to do with type of %", player)
+					Log(\Param).error("clipFactories.pdef: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -523,7 +523,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					Log.error("clipFactories.patkitdef: ERROR: edit: don't know what to do with type of %", player)
+					Log(\Param).error("clipFactories.patkitdef: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -615,7 +615,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					Log.error("clipFactories.instrumenttrack: ERROR: edit: don't know what to do with type of %", player)
+					Log(\Param).error("clipFactories.instrumenttrack: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -720,7 +720,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					Log.error("clipFactories.instrumenttrackpart: ERROR: edit: don't know what to do with type of %", player)
+					Log(\Param).error("clipFactories.instrumenttrackpart: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -808,7 +808,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					Log.error("clipFactories.bufdef: ERROR: edit: don't know what to do with type of %", player)
+					Log(\Param).error("clipFactories.bufdef: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -901,7 +901,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					Log.error("clipFactories.trackinstrument: ERROR: edit: don't know what to do with type of %", player)
+					Log(\Param).error("clipFactories.trackinstrument: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
