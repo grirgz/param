@@ -63,7 +63,7 @@ SampleTimelineView : TimelineView {
 
 	drawWaveform {
 		if(this.class.mydraw.notNil) {
-			this.class.mydraw.debug("mydraw");
+			//this.class.mydraw.debug("mydraw");
 			this.class.mydraw.(this);
 		} {
 			this.drawImageWaveform;

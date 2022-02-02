@@ -1230,7 +1230,7 @@ Param {
 		};
 
 		view.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			if(buttonNumber == 1) {
 				var speclist;
 				if(keys.notNil) {
@@ -1353,7 +1353,7 @@ Param {
 		};
 
 		view.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			if(buttonNumber == 1) {
 				var speclist;
 				if(keys.notNil) {

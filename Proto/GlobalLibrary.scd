@@ -309,7 +309,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+					Log.error("clipFactories.pdef: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -523,7 +523,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+					Log.error("clipFactories.patkitdef: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -615,7 +615,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+					Log.error("clipFactories.instrumenttrack: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -720,7 +720,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+					Log.error("clipFactories.instrumenttrackpart: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -808,7 +808,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+					Log.error("clipFactories.bufdef: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -901,7 +901,7 @@ ProtoDef(\GlobalLibrary, (
 						player.asParamGroup.edit;
 					}
 				} {
-					"clipFactories.pdef: ERROR: edit: don't know what type!!!".debug;
+					Log.error("clipFactories.trackinstrument: ERROR: edit: don't know what to do with type of %", player)
 				}
 			},
 
@@ -1326,7 +1326,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 			view.addItem(obj.strings)
 		};
 
-		tagList.debug("tagList");
+		//tagList.debug("tagList");
 		oldTagSelection = tagView.selection;
 		tagView.items = tagList.asArray;
 		tagView.selection = oldTagSelection;
@@ -1428,10 +1428,10 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 			var idx;
 			updateItems.();
 			libIds = itemIds.collect(_.libId);
-			[defaultValue, libIds.indexOf(defaultValue), libIds.indexOfEqual(defaultValue), libIds].debug("default value");
+			//[defaultValue, libIds.indexOf(defaultValue), libIds.indexOfEqual(defaultValue), libIds].debug("default value");
 			idx = libIds.indexOfEqual(defaultValue);
 			if(idx.notNil) {
-				resultView.itemAt(idx).debug("item");
+				resultView.itemAt(idx);
 			} {
 				nil
 			};

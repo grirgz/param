@@ -44,19 +44,19 @@ PlayerWrapperView {
 				// value first increment then action is called
 				switch(view.value,
 					0+1, {
-						[view.value, model].debug("was stopped: play");
+						Log(\Param).debug("was stopped: play %", [view.value, model]);
 						model.play;
 					},
 					1+1, {
-						[view.value, model].debug("cancel scheduled playing");
+						Log(\Param).debug("cancel scheduled playing %", [view.value, model]);
 						model.stop;
 					},
 					2+1, {
-						[view.value, model].debug("was playing: stop");
+						Log(\Param).debug("was playing: stop %", [view.value, model]);
 						model.stop;
 					},
 					0, {
-						[view.value, model].debug("cancel scheduled stopping");
+						Log(\Param).debug("cancel scheduled stopping %", [view.value, model]);
 						model.play;
 					}
 				);
@@ -251,19 +251,19 @@ RecordButton {
 				// value first increment then action is called
 				switch(view.value,
 					0+1, {
-						[view.value, model].debug("was stopped: start record");
+						Log(\Param).debug("was stopped: start record %", [view.value, model]);
 						model.isRecording = true;
 					},
 					1+1, {
-						[view.value, model].debug("cancel user played: stop record");
+						Log(\Param).debug("cancel user played: stop record %", [view.value, model]);
 						model.isRecording = false;
 					},
 					2+1, {
-						[view.value, model].debug("was playing: stop");
+						Log(\Param).debug("was playing: stop %", [view.value, model]);
 						model.isRecording = false;
 					},
 					0, {
-						[view.value, model].debug("cancel user stopped: play");
+						Log(\Param).debug("cancel user stopped: play %", [view.value, model]);
 						model.isRecording = true;
 					}
 				);
@@ -423,19 +423,19 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 				// value first increment then action is called
 				switch(view.value,
 					0+1, {
-						[view.value, model].debug("was stopped: play");
+						Log(\Param).debug("was stopped: play %", [view.value, model]);
 						model.play;
 					},
 					1+1, {
-						[view.value, model].debug("user played: stop");
+						Log(\Param).debug("user played: stop %", [view.value, model]);
 						model.stop;
 					},
 					2+1, {
-						[view.value, model].debug("was playing: stop");
+						Log(\Param).debug("was playing: stop %", [view.value, model]);
 						model.stop;
 					},
 					0, {
-						[view.value, model].debug("user stopped: play");
+						Log(\Param).debug("user stopped: play %", [view.value, model]);
 						model.play;
 					}
 				);
@@ -444,7 +444,7 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 		);
 		view = View.new.layout_(lay.margins_(0)).background_(ParamViewToolBox.color_light).maxSize_(200@30).mouseDownAction_({ 
 			arg xview, x, y, modifiers, buttonNumber, clickCount;
-			[xview, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			Log(\Param).debug("mouseDownAction %", [xview, x, y, modifiers, buttonNumber, clickCount]);
 			this.selectAction.(this, view);
 		});
 		view.addUniqueMethod(\button, { button });
@@ -472,7 +472,7 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 
 	selected_ { arg val;
 		selected = val;
-		[selected, val].debug( "PlayerWrapperSelectorView.selected" );
+		Log(\Param).debug( "PlayerWrapperSelectorView.selected %", [selected, val]);
 		this.update;
 		//if(val == true) {
 			//this.view.debug("seltrue");
@@ -633,7 +633,7 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 		);
 		view = View.new.layout_(lay.margins_(0)).background_(ParamViewToolBox.color_light).maxSize_(200@30).mouseDownAction_({ 
 			arg xview, x, y, modifiers, buttonNumber, clickCount;
-			[xview, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			Log(\Param).debug("mouseDownAction %", [xview, x, y, modifiers, buttonNumber, clickCount]);
 			this.selectAction.(this, view);
 		});
 		view.addUniqueMethod(\button, { button });
@@ -655,12 +655,12 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 
 	selected_ { arg val;
 		selected = val;
-		[selected, val].debug( "PlayerWrapperSelectorView.selected" );
+		Log(\Param).debug( "PlayerWrapperSelectorView.selected %", [selected, val]);
 		if(val == true) {
-			this.view.debug("seltrue");
+			//this.view.debug("seltrue");
 			this.view.background_(color_selected);
 		} {
-			this.view.debug("selfalse");
+			//this.view.debug("selfalse");
 			this.view.background_(color_deselected);
 		};
 	}

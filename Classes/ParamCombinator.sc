@@ -321,7 +321,7 @@ ParamCombinator : Pattern {
 		};
 		this.inputParam.do { arg param, idx;
 			var val = param.get;
-			[val.asCompileString, idx, param, proxy].debug("playAll: val");
+			//[val.asCompileString, idx, param, proxy].debug("playAll: val");
 			if(val.isKindOf(Symbol) or: { val.isKindOf(String) }) {
 				var nkey = TagSpecDef(\ParamCombinatorInput_asMap).unmapKey(val);
 				Log(\Param).debug("ParamCombinator.playAll: nkey %", nkey);

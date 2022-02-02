@@ -432,10 +432,10 @@ ParamGroupLayout {
 						StaticText.new.string_(param.propertyLabel)
 					}.fixedWidth_(minWidth_label),
 					param.asPopUpMenu.minWidth_(minWidth_main).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-						[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+						//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 						if(buttonNumber == 1) {
 							WindowDef(\GlobalLibrary_select).front(nil, { arg val; 
-								val.debug("selected");
+								//val.debug("selected");
 								// val: [ Class, (key -> bufnum) ]
 								param.set(val.last.value)
 							}, [\AudioBuffer])
@@ -738,7 +738,7 @@ ParamGroupLayout {
 		lay = VLayout (
 			[pa.asStaticTextLabel, align:\center],
 			pa.asKnob.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-				[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 				if(buttonNumber == 2) {
 					Param.lastTweaked = pa;
 					Param.changed(\lastTweaked);

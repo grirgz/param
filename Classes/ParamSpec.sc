@@ -176,7 +176,7 @@ ParamEnvSpec : ParamBaseSpec {
 		levels = levels.collect(_.asSpec);
 		curves = curves.collect(_.asSpec);
 
-		curves.debug("ParamEnvSpec:curves");
+		//curves.debug("ParamEnvSpec:curves");
 
 		if(
 			levels.any { arg val;

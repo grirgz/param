@@ -61,8 +61,8 @@ SampleChooserView : SCViewHolder {
 			)
 		);
 		this.view.layout = layout;
-		this.view.addUniqueMethod(\action_, { arg view, val; val.debug("fuckset"); this.action = val; }); // compat with makeSimpleController
-		this.view.addUniqueMethod(\action, { arg view, val;"fuckget".debug; this.action });
+		this.view.addUniqueMethod(\action_, { arg view, val; this.action = val; }); // compat with makeSimpleController
+		this.view.addUniqueMethod(\action, { arg view, val; this.action });
 	}
 
 	buffer_ { arg buf;

@@ -48,8 +48,8 @@ WindowDef(\TrackMixer, { arg def, track;
 		var layout;
 		var slider, knobs = List.new, textfield;
 		var stack;
-		var meterin = SimpleServerMeterView(nil, 0,2, mixer.inbus.debug("out"));
-		var meterout = SimpleServerMeterView(nil, 0,2, mixer.outbus.debug("out"));
+		var meterin = SimpleServerMeterView(nil, 0,2, mixer.inbus);
+		var meterout = SimpleServerMeterView(nil, 0,2, mixer.outbus);
 		slider = Slider.new.orientation_(\vertical).background_(Color.clear);
 
 
@@ -78,11 +78,11 @@ WindowDef(\TrackMixer, { arg def, track;
 		);
 		layout.addUniqueMethod(\model_, { arg me, mixer;
 			if(mixer.isKindOf(Volume)) {
-				"volume".debug;
+				//"volume".debug;
 				param = Param(mixer, \volume);
 				sends = mixer.sendCount.collect({ arg x; x -> nil });
 			} {
-				"mixer".debug;
+				//"mixer".debug;
 				param = mixer.asParam(\postfader);
 				allsends = mixer.sendCount.collect({ arg x; x -> mixer.asParam(\send+++x) });
 				//sends = allsends.select{ arg assoidx;

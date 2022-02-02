@@ -276,7 +276,7 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 		var tl = self.timeline;
 		if(self.isRecording == false) {
 			self[\isRecording] = true;
-			"prepare Start recording".debug(name);
+			Log(\Param).debug("prepare Start recording %", name);
 			self.changed(\userStartedRecording);
 
 			self.recordName = name;
@@ -315,16 +315,16 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 				self.changed(\startedRecording);
 			});
 		} {
-			"Already recording".debug;
+			Log(\Param).debug("Already recording");
 		}
 
 	},
 	stopRecording: { arg self;
 		if(self.isRecording == true) {
-			"prepare Stop recording".debug(self.filename);
+			Log(\Param).debug("prepare Stop recording %", self.filename);
 			self.changed(\userStoppedRecording);
 			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo * self.latencyScale), {
-				"Stop recording".debug(self.filename);
+				Log(\Param).debug("Stop recording %", self.filename);
 				self[\isRecording] = false;
 				self.changed(\isRecording);
 				self.changed(\stoppedRecording);
@@ -339,17 +339,14 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 				};
 				{
 					var buf = BufDef(self.filename.asSymbol);
-					self.filename.asSymbol.asCompileString.debug("recorded filename");
-					buf.debug("recorded buf");
-					BufDef(self.filename.asSymbol).debug("bufdef");
+					Log(\Param).debug("recorded filename %, buf %, bufdef", self.filename.asSymbol.asCompileString, buf, BufDef(self.filename.asSymbol));
 					self.recordedClip.buffer = buf;
-					self.recordedClip.debug("recorded clip");
-					self.recordedClip.buffer.debug("recorded clip buffer");
+					Log(\Param).debug("recorded clip %, clip buffer %", self.recordedClip, self.recordedClip.buffer);
 					self.recordedClip.eventList.setEndPosition(self.recordedDuration);
 				}.defer(2);
 			});
 		} {
-			"Was not recording".debug;
+			Log(\Param).info("Was not recording");
 		}
 	},
 

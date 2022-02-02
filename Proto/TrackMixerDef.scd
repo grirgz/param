@@ -348,15 +348,15 @@ ProtoTemplateDef(\TrackMixer_InsertFx, (
 	},
 
 	updateFx: { arg self;
-		self.synthName.asCompileString.debug("updateFx");
-		self[\edit].asCompileString.debug("edit function");
+		//self.synthName.asCompileString.debug("updateFx");
+		//self[\edit].asCompileString.debug("edit function");
 		if(self.synthName == \equi) {
 			self.proto = ProtoTemplateDef(\TrackMixer_InsertFx_equi);
-			self[\edit].asCompileString.debug("edit function XXX");
+			//self[\edit].asCompileString.debug("edit function XXX");
 		} {
 			self.proto = ProtoTemplateDef(\TrackMixer_InsertFx_SynthDef);
 		};
-		self[\edit].asCompileString.debug("edit function");
+		//self[\edit].asCompileString.debug("edit function");
 		if(self.proxy[self.index].notNil) {
 			self.proxy[self.index] = self.fxValue
 		}
@@ -706,7 +706,7 @@ WindowDef(\TrackMixerDef_advanced, (
 		var slider = Slider.new.orientation_(\vertical).background_(Color.clear);
 		var param = mixer.getParam(self.faderMode);
 
-		[mixer, param].debug("TrackMixerDef_advanced: makeFader: mixer param");
+		//[mixer, param].debug("TrackMixerDef_advanced: makeFader: mixer param");
 
 		slider.mapParam(param);
 		slider.minWidth_(10);
@@ -716,7 +716,7 @@ WindowDef(\TrackMixerDef_advanced, (
 		if(self.showMeter) {
 			var bus, meterout;
 			if(mixer[self.meterMode].notNil) {
-				bus = mixer[self.meterMode].value(mixer).debug("out");
+				bus = mixer[self.meterMode].value(mixer);
 			} {
 				bus = BusDef(\zero, \audio);
 			};
@@ -784,7 +784,7 @@ WindowDef(\TrackMixerDef_advanced, (
 			mixer = () // ugly trick to not have to test if model is nil everywhere
 		};
 		boxview.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			if(buttonNumber == 1) {
 				//WindowDef(\SimpleMixerOverlayMenu).front(simpleMixer, boxview, x, y);
 				if(self.model.notNil) {
@@ -836,7 +836,7 @@ WindowDef(\TrackMixerDef_advanced, (
 		boxview.background = Color.gray;
 		boxview.maxWidth_(self.maxWidth - if(self.showSends) { 0 } { 30 });
 		boxview.addUniqueMethod(\model_, { arg me, val;
-			val.debug("TrackMixerDef_advanced: model_");
+			//val.debug("TrackMixerDef_advanced: model_");
 			//self.model = val;
 			self.setModel(val);
 			//self.refreshView;
@@ -864,14 +864,14 @@ WindowDef(\TrackMixerDef_advanced, (
 			};
 			param = mixer.getParam(self.faderMode);
 
-			[mixer, param].debug("TrackMixerDef_advanced: setModel: mixer fader param");
+			//[mixer, param].debug("TrackMixerDef_advanced: setModel: mixer fader param");
 
 			self.slider.mapParam(param);
 
 			if(self.meterOut.notNil) {
 				var bus;
 				if(mixer[self.meterMode].notNil) {
-					bus = mixer[self.meterMode].value(mixer).debug("out");
+					bus = mixer[self.meterMode].value(mixer);
 					self.meterOut.bus = bus;
 				} {
 					self.meterOut.stop;
@@ -962,7 +962,7 @@ WindowDef(\TrackMixerDef_advanced, (
 			fxButtons = num.collect { arg idx;
 				PlayerWrapper(mixer.insertFxAt(idx)).label_(idx.asString).asView
 				.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-					[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+					//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 
 					if(buttonNumber == 1) {
 						//WindowDef(\SimpleMixerOverlayMenu).front(simpleMixer, boxview, x, y);
@@ -1026,7 +1026,7 @@ WindowDef(\TrackMixerDef_advanced_OverlayMenu, { arg def, mixerview, view, x=600
 	var inview, layout;
 	var sends;
 	var mixer = mixerview.model;
-	[x, y].debug("xy");
+	//[x, y].debug("xy");
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
 		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 300,100);
@@ -1070,7 +1070,7 @@ WindowDef(\TrackMixerDef_advanced_fx_OverlayMenu, { arg def, mixerview, idx, vie
 	var inview, layout;
 	var sends;
 	var mixer = mixerview.model;
-	[x, y].debug("xy");
+	//[x, y].debug("xy");
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
 		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 300,100);

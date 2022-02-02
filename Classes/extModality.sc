@@ -27,7 +27,7 @@
 			};
 			this.getHalo(\ParamListener) !? { arg x; x.remove };
 			this.addHalo(\ParamListener, PlayerWrapper(player).makeListener({ arg me, msg, args;
-				[ msg, player, PlayerWrapper(player).isPlaying.asInteger ].debug("MKtlElement.mapPlayer listener: receive");
+				//[ msg, player, PlayerWrapper(player).isPlaying.asInteger ].debug("MKtlElement.mapPlayer listener: receive");
 				if(updateAction.notNil) {
 					updateAction.(player, msg, args)
 				} {

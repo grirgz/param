@@ -93,7 +93,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 			self.fileName = newfilename;
 			self.buffer = BufDef(newfilename.asSymbol);
 		} {
-			"Keep: Already kept or no file name".debug(self.fileName);
+			Log(\Param).info("Keep: Already kept or no file name: %", self.fileName);
 		}
 		
 	},
@@ -376,7 +376,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 			self.areasize = Point(self.areasize.x, self.bufferInfo.numChannels ? 2);
 			self.changed(\areasize);
 			self.changed(\data);
-			"refreshBufferData: buffer loaded".debug;
+			Log(\Param).debug("refreshBufferData: buffer loaded");
 		});
 	},
 
@@ -385,7 +385,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 			block { arg break;
 				10.do {
 					if(self.buffer.numFrames.isNil) {
-						self.buffer.debug("waiting for buffer");
+						Log(\Param).debug("waiting for buffer %", self.buffer);
 						1.wait;
 					} {
 						//self.computeResampledData;
@@ -393,7 +393,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 						break.value;
 					}
 				};
-				self.buffer.debug("abort waiting for buffer")
+				Log(\Param).debug("abort waiting for buffer %", self.buffer)
 			}
 
 		}.fork;
@@ -643,7 +643,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 					//model.changed(\buffer);
 					//model.isModified = true;
 					model.refreshBufferData;
-					"erasing done".debug;
+					Log(\Param).info("erasing done");
 				})
 			})
 		}
@@ -670,7 +670,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 					//model.changed(\buffer);
 					//model.isModified = true;
 					model.refreshBufferData;
-					"reverse done".debug;
+					Log(\Param).info("reverse done");
 				})
 			})
 	},
@@ -694,7 +694,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 					//model.changed(\buffer);
 					//model.isModified = true;
 					model.refreshBufferData;
-					"pasting done".debug;
+					Log(\Param).info("pasting done");
 				})
 			})
 		}
@@ -783,7 +783,7 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 		BasicButton.new.string_("Edit with audacity").action_({ 
 			"audacity %".format(model.bufferInfo.fileName).unixCmd { arg res, pid;
 				BufDef.reload(model.bufferInfo.fileName);
-				"done.".debug;
+				Log(\Param).info("edit done");
 			};
 		}),
 		BasicButton.new.string_("Export selection to buffer").action_({ 

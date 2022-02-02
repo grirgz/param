@@ -562,7 +562,7 @@ WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue;
 	var selectAction = { arg view, x, y, modifiers, buttonNumber, clickCount;
 		[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 
-		[view.value, view.items].debug("double click select: ");
+		//[view.value, view.items].debug("double click select: ");
 		if(view.items.size > 0 and: {view.value.notNil}) {
 			selectedView.string = filteredList[view.value].key.asString;
 		}

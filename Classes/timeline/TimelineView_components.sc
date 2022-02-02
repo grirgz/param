@@ -1246,7 +1246,7 @@ TimelineDrawer {
 	*draw_param_values_old2 { arg me, param;
 		var areasize = me.areasize;
 		//~drawme.(this, areasize);
-		areasize.debug("draw_param_values: areasize");
+		//areasize.debug("draw_param_values: areasize");
 		if(param.notNil) {
 			var font = Font.default.copy.size_(9);
 			var pixelPerLine = 20;
@@ -1268,7 +1268,7 @@ TimelineDrawer {
 	*draw_param_values_old { arg me, param;
 		var areasize = me.areasize;
 		//~drawme.(this, areasize);
-		areasize.debug("draw_param_values: areasize");
+		//areasize.debug("draw_param_values: areasize");
 		if(param.notNil) {
 			var font = Font.default.copy.size_(9);
 			Pen.use {
