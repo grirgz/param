@@ -1148,7 +1148,13 @@ Param {
 		mykeys = keys ?? {this.spec};
 		if( mykeys.isKindOf(TagSpecDef)) {
 			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
-				aview.refreshChange;
+				if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
+					arg1.includes(this.propertyRoot)
+				} }) {
+					//Log(\Param).debug("mapBusPopUpMenu:onChange: going to refresh");
+					aview.refreshChange;
+				};
+				//aview.refreshChange;
 			});
 		}
 	}
@@ -1395,7 +1401,12 @@ Param {
 		mykeys = keys ?? {this.spec};
 		if( mykeys.isKindOf(TagSpecDef)) {
 			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
-				aview.refreshChange;
+				if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
+					arg1.includes(this.propertyRoot)
+				} }) {
+					//Log(\Param).debug("mapBusPopUpMenu:onChange: going to refresh");
+					aview.refreshChange;
+				};
 			});
 		}
 		//view.value.debug("mapValuePopUpMenu:8");

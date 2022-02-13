@@ -337,6 +337,14 @@ ParamGroupLayout {
 
 	}
 
+	*entryGroup { arg pgroup;
+		^VLayout (
+			*pgroup.collect { arg item, idx;
+				ParamGroupLayout.formEntry(item)
+			};
+		)
+	}
+
 	*formEntry { arg item, label_mode;
 		// if player, show a button
 		// if param scalar, show horizontally a label, horizontal slider and textField

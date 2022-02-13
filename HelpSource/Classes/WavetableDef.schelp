@@ -157,5 +157,12 @@ Pdef(\help,
 	])
 ).play;
 );
+
+
+///////// create a WavetableDef from a Wavetable
+
+WavetableDef(\saw16, Wavetable.sineFill(2048, (1..16).reciprocal));
+WavetableDef(\saw16).plotWavetable;
+
 ::
 

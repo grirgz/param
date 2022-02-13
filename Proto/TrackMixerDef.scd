@@ -13,13 +13,13 @@ SynthDef(\ifx_default, { arg out=0, gate=1;
 
 ProtoClassDef(\TrackMixerDef, ( 
 	all: {PresetDictionary(\trackMixerDef)},
-	new: { arg self, key, numchannels=2, outbus=0;
+	new: { arg self, key, numChannels=2, outbus=0;
 	
 		if(self.all[key].isNil) {
 			//self = self.deepCopy;
 			self = ProtoClass((parent:self));
 			self.key = key;
-			self.init(key, numchannels, outbus);
+			self.init(key, numChannels, outbus);
 			self.all[key] = self;
 		} {
 			self = self.all[key];
@@ -41,7 +41,7 @@ ProtoClassDef(\TrackMixerDef, (
 		self.all[self.key] = nil;
 	},
 
-	init: { arg self, key, numchannels, outbus;
+	init: { arg self, key, numChannels, outbus;
 		self.stages = (
 			in: 0,
 			prefader: 1000,
@@ -53,18 +53,14 @@ ProtoClassDef(\TrackMixerDef, (
 		);
 
 		self.outbus = outbus;
-		self.numchannels = numchannels;
+		self.numChannels = numChannels;
 		self.define_mixer;
 		self.asParam(\inbus).set(self.inbus);
 
 	},
 
-	numChannels: { arg self;
-		self.numchannels
-	},
-
 	inbus: { arg self;
-		BusDef(\trackMixerDef_+++self.key, \audio, self.numchannels)
+		BusDef(\trackMixerDef_+++self.key, \audio, self.numChannels)
 	},
 
 	inbus_: { arg self, val;
@@ -82,7 +78,7 @@ ProtoClassDef(\TrackMixerDef, (
 
 	// output to this bus so we can record mixer output, without having to change outbus and add a master
 	recbus: { arg self;
-		BusDef(\trackMixerDef_record_+++self.key, \audio, self.numchannels)
+		BusDef(\trackMixerDef_record_+++self.key, \audio, self.numChannels)
 	},
 
 	recbus_: { arg self, val;
@@ -90,13 +86,15 @@ ProtoClassDef(\TrackMixerDef, (
 		self.proxy.set(\recbus, val);
 	},
 
-	numchannels: 2,
+	numChannels: 2,
+
+	numchannels: { arg self; self.numChannels }, // compat
 
 	define_mixer: { arg self;
 		//self.proxy = NodeProxy.new;
 		self.proxy = Ndef(\trackMixerDef_+++self.key);
 		self.proxy[self.stages.in] = {
-			InFeedback.ar(\inbus.kr(self.inbus), self.numchannels);
+			InFeedback.ar(\inbus.kr(self.inbus), self.numChannels);
 		};
 
 		// mute + solo
@@ -120,6 +118,7 @@ ProtoClassDef(\TrackMixerDef, (
 		self.proxy.addSpec(\prefader, \db);
 		self.proxy.addSpec(\postfader, \db);
 		self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter);
+		self.defineMixerHook;
 	},
 
 	muteMode_: { arg self, val;
@@ -161,7 +160,7 @@ ProtoClassDef(\TrackMixerDef, (
 			outbus = outbus.index;
 		};
 		self.proxy.parentGroup = GroupDef(\mixer, nil, \addAfter);
-		self.proxy.play(outbus, self.numchannels, GroupDef(\mixer, nil, \addAfter));
+		self.proxy.play(outbus, self.numChannels, GroupDef(\mixer, nil, \addAfter));
 	},
 
 	setOut: { arg self, outbus;
@@ -204,11 +203,11 @@ ProtoClassDef(\TrackMixerDef, (
 	},
 
 	nullbus: { arg self;
-		BusDef(\null+++self.numchannels, \audio, self.numchannels)
+		BusDef(\null+++self.numChannels, \audio, self.numChannels)
 	},
 
 	zerobus: { arg self;
-		BusDef(\zero+++self.numchannels, \audio, self.numchannels)
+		BusDef(\zero+++self.numChannels, \audio, self.numChannels)
 	},
 
 	build_sender: { arg self, idx, force=false;
@@ -844,6 +843,7 @@ WindowDef(\TrackMixerDef_advanced, (
 		boxview.addUniqueMethod(\proto, { self });
 		boxview.addUniqueMethod(\slider, { self.slider });
 		boxview.addUniqueMethod(\textfield, { self.textfield });
+		self.setModel(mixer);
 		boxview;
 	},
 
@@ -1026,6 +1026,7 @@ WindowDef(\TrackMixerDef_advanced_OverlayMenu, { arg def, mixerview, view, x=600
 	var inview, layout;
 	var sends;
 	var mixer = mixerview.model;
+	var sendView;
 	//[x, y].debug("xy");
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
@@ -1033,13 +1034,8 @@ WindowDef(\TrackMixerDef_advanced_OverlayMenu, { arg def, mixerview, view, x=600
 		win.endFrontAction = { win.close };
 	};
 	inview = View.new;
+	sendView = View.new;
 
-	sends = mixerview.sendCount.collect({ arg idx;
-		HLayout(
-			StaticText.new.string_("send %".format(idx)),
-			Param(mixer.proxy, "%%".format(\sendbus, idx).asSymbol, TagSpecDef(\BusDef_object)).asPopUpMenu,
-		)
-	});
 
 	layout = VLayout (
 		//PlayerWrapper(mixerTemplate).asView,
@@ -1054,9 +1050,19 @@ WindowDef(\TrackMixerDef_advanced_OverlayMenu, { arg def, mixerview, view, x=600
 				Param(Message(mixerview), item, ParamBoolSpec()).asButton;
 			};
 		),
-		VLayout(
-			*sends
-		),
+		[BasicButton.new.string_("> Sends").background_(Color.clear).action_({
+			sendView.removeAll;
+			sends = mixerview.sendCount.collect({ arg idx;
+				HLayout(
+					StaticText.new.string_("send %".format(idx)),
+					Param(mixer.proxy, "%%".format(\sendbus, idx).asSymbol, TagSpecDef(\BusDef_object)).asPopUpMenu,
+				)
+			});
+			sendView.layout = VLayout(
+				*sends
+			);
+		}), align:\left],
+		sendView,
 		nil
 	);
 	//def.windowDo { arg win;

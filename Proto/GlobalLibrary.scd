@@ -1044,6 +1044,16 @@ TagSpecDef(\BusDefDefault, {
 	[\default -> nil] ++ TagSpecDef(\BusDef).list
 });
 
+TagSpecDef(\WavetableDef, {
+	WavetableDef.all.keys.as(Array).sort.collect({ arg k; k -> WavetableDef(k).bufnum }) 
+});
+
+TagSpecDef(\WavetableDef_object, {
+	WavetableDef.all.keys.as(Array).sort.collect({ arg k; k -> WavetableDef(k) }) 
+});
+
+///////////////////
+
 //TagSpecDef(\TrackList, { }); // updated by TrackTemplateDef(\TrackList) when adding a track
 
 TagSpecDef(\TrackListPart, {

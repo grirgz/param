@@ -824,10 +824,14 @@
 	}
 
 	asCompileString {
-		if(this.key.notNil) {
-			^"BufDef(%)".format(this.key.asCompileString)
+		if(this.getHalo(\asCompileString).notNil) { // WavetableDef support
+			^this.getHalo(\asCompileString)
 		} {
-			^super.asCompileString;
+			if(this.key.notNil) {
+				^"BufDef(%)".format(this.key.asCompileString)
+			} {
+				^super.asCompileString;
+			}
 		}
 	}
 

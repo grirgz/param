@@ -52,7 +52,7 @@ BufDef {
 				if(name.asString.contains("/")) {
 					// special constructor with file path as name
 					name = this.abspath_to_relpath(name.asString);
-					Log(\Param).debug("BufName: special cons: %", name);
+					//Log(\Param).debug("BufName: special cons: %", name);
 					^BufDef(name.asSymbol, name.asString, channels)
 				} {
 					if(name == \0) {
@@ -402,7 +402,7 @@ WavetableDef : BufDef {
 	*new { arg name, path, channels;
 		var multipath, keypath;
 		keypath = path;
-		Log(\Param).debug("BufDef.new: % % %", name, path, channels);
+		//Log(\Param).debug("BufDef.new: % % %", name, path, channels);
 		if(path.isKindOf(Array)) {
 			multipath = path;
 			// this is support for loading different files in same buffer, not well tested
@@ -415,7 +415,7 @@ WavetableDef : BufDef {
 				if(name.asString.contains("/")) {
 					// special constructor with file path as name
 					name = this.abspath_to_relpath(name);
-					Log(\Param).debug("BufName: special cons: %", name);
+					//Log(\Param).debug("BufName: special cons: %", name);
 					^BufDef(name.asSymbol, name.asString, channels)
 				} {
 					^nil
@@ -433,7 +433,7 @@ WavetableDef : BufDef {
 					} {
 						// standard wavetable
 						path = this.relpath_to_abspath(path);
-						^this.getBufferForPath(path, channels, nil, multipath);
+						^this.getBufferForPath(path, channels, nil, multipath).addHalo(\asCompileString, "WavetableDef(%)".format(name.asCompileString));
 					};
 				}
 			}
@@ -453,24 +453,48 @@ WavetableDef : BufDef {
 				}
 
 			} {
-				//// file buffer
-				if(this.all.at(name).isNil) {
-					var inst;
-					// doesn't exists, define it
-					path = this.relpath_to_abspath(keypath.asString);
-					inst = this.getBufferForPath(path, channels, nil, multipath).key_(name);
-					this.all.put(name, keypath.asString);
-					^inst;
-					//^BufferPool.get_stereo_sample(client, path).key_(name);
-				} {
-					// already defined
-					var path = this.all.at(name);
-					if(path.isKindOf(Buffer)) {
-						^path;
+				// Wavetable class support
+				if(path.isKindOf(Wavetable)) {
+					if(this.all.at(name).isNil) {
+						// first set
+						var buf = Buffer.alloc(this.server, path.size, path.numChannels ? channels ? 2);
+						buf.loadCollection(path);
+						buf.key = name;
+						this.all.put(name, buf);
+						^this.all.at(name);
 					} {
-						path = this.relpath_to_abspath(path);
-						^this.getBufferForPath(path, channels, nil, multipath);
-						//^BufferPool.get_stereo_sample(client, path);
+						// already existing
+						if(path.size != this.all.at(name).numFrames) {
+							Log(\Param).error("WavetableDef %: wavetable already exists and is different size: current: %, new: %", name, this.all.at(name).numFrames, path.size);
+							^this.all.at(name);
+						} {
+							var buf = this.all.at(name);
+							buf.loadCollection(path);
+							^buf;
+						}
+
+					}
+				} {
+
+					//// file buffer
+					if(this.all.at(name).isNil) {
+						var inst;
+						// doesn't exists, define it
+						path = this.relpath_to_abspath(keypath.asString);
+						inst = this.getBufferForPath(path, channels, nil, multipath).key_(name).addHalo(\asCompileString, "WavetableDef(%)".format(name.asCompileString));
+						this.all.put(name, keypath.asString);
+						^inst;
+						//^BufferPool.get_stereo_sample(client, path).key_(name);
+					} {
+						// already defined
+						var path = this.all.at(name);
+						if(path.isKindOf(Buffer)) {
+							^path;
+						} {
+							path = this.relpath_to_abspath(path);
+							^this.getBufferForPath(path, channels, nil, multipath).addHalo(\asCompileString, "WavetableDef(%)".format(name.asCompileString));
+							//^BufferPool.get_stereo_sample(client, path);
+						}
 					}
 				}
 			}
@@ -545,16 +569,22 @@ WavetableDef : BufDef {
 	*readWavetableFromPath { arg path;
 		var buf, table, sf;
 		sf = SoundFile.openRead(path.asString);
-		table = FloatArray.newClear(sf.numFrames);
-		sf.readData(table);
-		sf.close; // close the file
-		table = table.as(Signal);
-		table = table.asWavetable;
-		if(log2(table.size) % 1 != 0) {
-			Log(\Param).warning("WavetableDef: Buffer size not power of 2: %".format(table.size, path));
-		};
-		buf = Buffer.loadCollection(this.server, table);
-		^buf;
+		if(sf.notNil) {
+			table = FloatArray.newClear(sf.numFrames);
+			sf.readData(table);
+			sf.close; // close the file
+			table = table.as(Signal);
+			table = table.asWavetable;
+			if(log2(table.size) % 1 != 0) {
+				Log(\Param).warning("WavetableDef: Buffer size not power of 2: %".format(table.size, path));
+			};
+			buf = Buffer.loadCollection(this.server, table);
+			^buf;
+		} {
+			Log(\Param).error("WavetableDef: File not found: %", path);
+			"WavetableDef: File not found: %".format(path).throw;
+			^nil
+		}
 	}
 
 }

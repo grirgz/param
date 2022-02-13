@@ -25,7 +25,12 @@ ParamGroup : List {
 
 	save { arg key=\default; 
 		presets[key] = super.array.collect { arg param;
-			param.get.copy; // need to copy to avoid reference sharing with array
+			var val = param.get;
+			if(val.isKindOf(Buffer)) {
+				val; // should not copy buffer else WavetableDef and BufDef.asCompileString does not work
+			} {
+				val.copy;// need to copy to avoid reference sharing with array
+			};
 		};
 		this.changed(\presets);
 	}
@@ -114,9 +119,9 @@ ParamGroup : List {
 		^"%\n".format(
 			this.collect({ arg p; 
 				if(p.target.class == Message) {
-					"%.% = %;".format(targetCompileString ?? { p.target.receiver.asCompileString }, p.property, p.get.asCompileString)
+					"%.% = %;".format(targetCompileString ?? { p.target.receiver.asCompileString }, p.property, p.getRaw.asCompileString)
 				} {
-					"%.set(%, %);".format(targetCompileString ?? { p.target.asCompileString }, p.property.asCompileString, p.get.asCompileString)
+					"%.set(%, %);".format(targetCompileString ?? { p.target.asCompileString }, p.property.asCompileString, p.getRaw.asCompileString)
 				};
 			}).join("\n")
 		)
@@ -138,12 +143,20 @@ ParamGroup : List {
 	presetCompileString {
 		var ret;
 		var params, presets;
+		var dictAsCompileString = { arg dict; // not used
+			"IdentityDictionary[ % ]".format(dict.keys.collect { arg key, idx;
+				"(% -> %)".format(key.asCompileString, ~d[key].asCompileString)
+			}.join(", "));
+		};
+		var arrayAsCompileString = { arg array; // should call .asCompileString for WavetableDef and BufDef
+			"[ % ]".format(array.collect(_.asCompileString).join(", "))
+		};
 		this.save(\current);
 		params = this.collect({ arg param;
 			"\t" ++ param.asCompileString
 		}).join(",\n");
 		presets = this.presets.keys.as(Array).collect({ arg pkey;
-			"\t% -> %".format(pkey.asCompileString, this.presets[pkey].asCompileString)
+			"\t% -> %".format(pkey.asCompileString, arrayAsCompileString.(this.presets[pkey]))
 		}).join(",\n");
 		ret = "ParamGroup([\n%\n]).presets_(IdentityDictionary[\n%\n]);\n".format(params, presets);
 		^ret;
