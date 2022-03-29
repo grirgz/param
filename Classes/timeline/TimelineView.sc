@@ -113,7 +113,7 @@ TimelineView : SCViewHolder {
 		//		Rect(10, 250, bounds.left + bounds.width + 40, bounds.top + bounds.height+30));
 		//	win.front;
 		//});
-		Log(\Param).debug("initParaSpace:%", paraNodes);
+		Log(\Param).debug("initParaSpace: this:% %", this, this.hash);
 
 		this.makeUpdater;
 		action = {
@@ -128,6 +128,7 @@ TimelineView : SCViewHolder {
 		userView = UserView.new;
 		selectionView = UserView.new;
 		this.view = userView;
+		this.view.onClose = this.view.onClose.addFunc({ this.free });
 		this.view.addUniqueMethod(\timeline, { this });
  		selectionView.bounds = userView.bounds; 
  		
@@ -1820,6 +1821,7 @@ TimelineView : SCViewHolder {
 	}
 
 	free {
+		Log(\Param).debug("TimelineView: free % %", this, this.hash);
 		paraNodes.reverse.do { arg node;
 			node.free;
 		};
@@ -2134,6 +2136,7 @@ TimelineViewNodeBase {
 	var <>deletable = true;
 	var <>visible = true;
 	var <>enablePreview = true;
+	var <>preview;
 	*new {
 		^super.new
 	}
@@ -2290,6 +2293,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 
 	free {
 		if(controller.notNil) {controller.remove};
+		if(preview.notNil) { preview.free };
 	}
 
 	decorateCopy {} // to set name when copied
@@ -2302,7 +2306,6 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	// that is player and pattern event types
 	// if timeline, can display content of timeline
 	var <>label;
-	var <>preview;
 	var <>labelheight = 20;
 	//*new { arg parent, nodeidx, event;
 	//	^super.new.init(parent, nodeidx, event);
@@ -2314,19 +2317,26 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 	initPreview {
 		if(this.enablePreview == true) {
-			if(model[\eventlist].notNil) {
-				preview.mapEventList(model.eventlist);
-			};
+			if(preview.isNil) {
+				preview = this.timelinePreviewClass.new;
+				preview.areasize.x = parent.areasize.x;
+				preview.parentTimeline = parent;
+				if(model[\eventlist].notNil) {
+					preview.mapEventList(model.eventlist);
+				};
 
-			if(model.timeline.notNil) {
-				preview.mapModel(model)
-			};
+				if(model.timeline.notNil) {
+					preview.mapModel(model)
+				};
+			}
 		}
 
 	}
 
 	refreshPreview {
-		preview.refresh;
+		if(preview.notNil) {
+			preview.refresh;
+		}
 	}
 
 	init { arg xparent, nodeidx, event;
@@ -2334,10 +2344,6 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		spritenum = nodeidx;
 		model = event;
 
-		preview = this.timelinePreviewClass.new;
-		preview.areasize.x = parent.areasize.x;
-		preview.parentTimeline = parent;
-		this.initPreview;
 
 		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
@@ -2412,8 +2418,17 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		var labelrect;
 		//var preview_background = Color.new255(101, 166, 62);
 		//var label_background = Color.new255(130, 173, 105);
-		var preview_background = ParamViewToolBox.color_ligth;
-		var label_background = ParamViewToolBox.color_pale;
+		var preview_background = ParamViewToolBox.color_pale;
+		var label_background = ParamViewToolBox.color_ligth;
+		var font = Font.default.copy;
+
+		if(parent.parentTimeline.notNil) {
+			// we are drawing a node preview inside a node preview
+			labelheight = parent.gridRectToPixelRect(this.rect).height;
+			label_background = Color.white.lighten(ParamViewToolBox.color_pale, 0.2);
+			font.size = 9;
+			this.enablePreview = false;
+		};
 
 		pos = this.origin;
 
@@ -2430,9 +2445,9 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 		//[spritenum, rect].debug("draw");
 
-		Pen.color = preview_background;
-		Pen.fillRect(rect);
 		Pen.color = label_background;
+		Pen.fillRect(rect);
+		Pen.color = preview_background;
 		Pen.fillRect(previewrect);
 
 		//Pen.color = Color.red;
@@ -2481,11 +2496,12 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 		// label
 		Pen.color = Color.black;
-		Pen.stringLeftJustIn(" "++label, labelrect);
+		Pen.stringLeftJustIn(" "++label, labelrect, font);
 
 		// preview
 
 		if(this.enablePreview) {
+			this.initPreview;
 			this.drawPreview(previewrect);
 		}
 		//Pen.stroke;
@@ -2543,7 +2559,8 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		preview.viewport = preview.viewport; // trigger update
 
 		Pen.use {
-			Pen.addRect(previewrect);
+			//Pen.addRect(previewrect);
+			Pen.addRect(visiblebounds);
 			Pen.clip;
 			Log(\Param).debug("preview");
 			preview.drawFunc;
@@ -2552,7 +2569,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	}
 
 	enablePreview {
-		^this.parent.enablePreview;
+		^enablePreview && this.parent.enablePreview;
 	}
 
 	makeUpdater {

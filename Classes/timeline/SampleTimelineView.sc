@@ -13,9 +13,11 @@ SampleTimelineView : TimelineView {
 	classvar <>mydraw;
 
 	mapData { arg model;
-		this.view.onChange(model, \data, { 
+		// model is SampleTimeline, not this.model which is TimelineEventList
+		this.view.getHalo(\followChangeController) !? { arg x; x.remove };
+		this.view.followChange(model, \data, { 
 			{
-				Log(\Param).debug("SampleTimelineView: data change detected");
+				Log(\Param).debug("SampleTimelineView: data change detected: % %", model.label, this.hash);
 				if(
 					model.enableWaveformView == true 
 					and: {model.bufferInfo.notNil 
@@ -52,6 +54,17 @@ SampleTimelineView : TimelineView {
 		});
 		model.changed(\data);
 	}
+
+	free {
+		Log(\Param).debug("SampleTimelineView: free: %", this.hash);
+		paraNodes.reverse.do { arg node;
+			node.free;
+		};
+		controller.remove;
+		this.view.getHalo(\followChangeController) !? { arg x; x.remove };
+		this.view.remove;
+	}
+
 
 	resampledData {
 		^resampledData
