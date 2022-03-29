@@ -11,7 +11,7 @@ TimelineEnvView : TimelineView {
 	}
 
 	gridPointToNormPoint { arg point;
-		if(param.notNil) {
+		if(param.notNil and: { useSpecInConversions != false }) {
 			var ypos;
 			ypos = param.spec.unmap(point.y);
 			//^Point(point.x / areasize.x, 1-ypos);
@@ -22,7 +22,7 @@ TimelineEnvView : TimelineView {
 	}
 
 	normPointToGridPoint { arg point;
-		if(param.notNil) {
+		if(param.notNil and: { useSpecInConversions != false  }) {
 			var ypos;
 			//ypos = param.spec.map(1-point.y);
 			ypos = param.spec.map(point.y);
@@ -88,6 +88,10 @@ TimelineEnvView : TimelineView {
 	}
 
 	drawCurve {
+		this.drawCurveFill;
+	}
+
+	drawCurveStroke {
 		var first = true;
 		var nodes = paraNodes.copy.sort({ arg a, b; a.nodeloc.x < b.nodeloc.x });
 		var prevNode;
@@ -115,10 +119,56 @@ TimelineEnvView : TimelineView {
 		//debug(";;;;;;;;;;;;;;;;;; stop drawing nodes");
 		Pen.stroke;		
 	}
+
+	drawCurveFill {
+		var first = true;
+		var nodes = paraNodes.copy.sort({ arg a, b; a.nodeloc.x < b.nodeloc.x });
+		var prevNode;
+		var firstVisibleNode;
+		//debug("<<<<<<<<<<<< start drawing nodes");
+		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
+
+		firstVisibleNode = nodes.detect { arg node; node.visible == true and: {node.class != TimelineViewLocatorLineNode} };
+		//[this.viewport, this.bounds, this.virtualBounds, this.areasize].debug("drawNodes:bounds");
+		//Pen.moveTo(this.gridPointToPixelPoint(Point(0, 0)));
+		//Log(\Param).debug("firstVisibleNode %", firstVisibleNode);
+		if(firstVisibleNode.notNil) {
+			Pen.moveTo(this.gridPointToPixelPoint(Point(firstVisibleNode.origin.x, 0)));
+		} {
+
+		};
+		nodes.do({arg node;
+			//[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
+			//[node.rect, this.gridRectToNormRect(node.rect), this.gridRectToPixelRect(node.rect)].debug("drawNodes:rect, norm, pixel");
+
+			// is Set.contains quick enough with big selection ?
+			if(node.visible) {
+				if(node.class != TimelineViewLocatorLineNode) {
+					//if(first) { // for env timelines
+						//Pen.moveTo(this.gridPointToPixelPoint(node.origin));
+						//first = false;
+					//};
+					node.drawCurve(prevNode);
+					prevNode = node;
+				}
+			}
+		});
+		if(prevNode.notNil) {
+			Pen.lineTo(this.gridPointToPixelPoint(Point(prevNode.origin.x, 0)));
+			Pen.lineTo(this.gridPointToPixelPoint(Point(firstVisibleNode.origin.x, 0)));
+			Pen.color = ParamViewToolBox.color_dark;
+			//Pen.stroke;
+			Pen.fillColor = ParamViewToolBox.color_ligth.copy.alpha_(0.5);
+			Pen.fillStroke;
+		}
+
+		//debug(";;;;;;;;;;;;;;;;;; stop drawing nodes");
+		//Pen.stroke;		
+	}
 }
 
 TimelineEnvViewNode : TimelineViewEventNode {
-	var <>radius = 3;
+	var <>radius = 4;
 	var <>curve = 0;
 
 	*new { arg parent, nodeidx, event;
@@ -193,13 +243,28 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		//Pen.stroke;
 
 		Pen.color = this.outlineColor;
-		Pen.addArc(point, radius, 0, 2*pi);
+		if(this.model[\releaseNode] == true or: { this.model[\loopNode] == true }) {
+			Pen.addRect(Rect.fromPoints(point-( radius ), point+( radius )))
+		} {
+			Pen.addArc(point, radius, 0, 2*pi);
+		};
 		//Pen.strokeRect(this.pixelRect);
 		Pen.fill;
 
 		//Pen.color = Color(0.8,0.8,0.8);
 		Pen.color = ParamViewToolBox.color_ligth;
-		Pen.addArc(point, radius-1, 0, 2*pi);
+		case(
+			{ this.model[\releaseNode] == true }, {
+				Pen.color = Color.blue;
+				Pen.addRect(Rect.fromPoints(point-( radius-1 ), point+( radius-1 )))
+			},
+			{ this.model[\loopNode] == true }, {
+				Pen.color = Color.green;
+				Pen.addRect(Rect.fromPoints(point-( radius-1 ), point+( radius-1 )))
+			}, {
+				Pen.addArc(point, radius-1, 0, 2*pi);
+			}
+		);
 		//Pen.strokeRect(this.pixelRect);
 		Pen.fill;
 
@@ -220,20 +285,31 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		if(prevNode.notNil) {
 			var env;
 			var pointCount;
-			Log(\Param).debug("draw curve from % to %: %", prevNode.origin, this.origin, this.model);
+			var samplePeriod = 5; // in pixels
+			// the algo sample the curve and get curve coordinate from an Env
+			//Log(\Param).debug("draw curve from % to %: %", prevNode.origin, this.origin, this.model);
 			prevPoint = parent.gridPointToPixelPoint(prevNode.origin);
-			pointCount = ( (point.x - prevPoint.x)/10 ).asInteger;
+			pointCount = ( (point.x - prevPoint.x)/samplePeriod ).asInteger;
 			//Pen.quadCurveTo(point, prevPoint + point / 2 + Point(0,( this.curve*200 ? 0 ).debug("curve").clip2(100)));
 			env = Env.xyc([ [prevPoint.x, prevPoint.y, prevNode.curve], [point.x,point.y] ]);
+			//Log(\Param).debug("pointcount %", pointCount);
 			( pointCount+1 ).do { arg idx;
-				var posx = idx/pointCount * (point.x - prevPoint.x) + prevPoint.x;
+				var posx;
+				if(pointCount == 0) {
+					// point are less than samplePeriod pixel apart, no need to sample the curve
+					posx = (point.x - prevPoint.x) + prevPoint.x;
+				} {
+					posx = idx/pointCount * (point.x - prevPoint.x) + prevPoint.x;
+				};
+				//Log(\Param).debug("lineTo %", Point(posx, env.at(posx)));
 				Pen.lineTo(Point(posx, env.at(posx)));
 			};
 		} {
-			Log(\Param).debug("draw line to %: %", this.origin, this.model);
+			//Log(\Param).debug("draw line to %: %", this.origin, this.model);
 			Pen.lineTo(point);
 		};
-		Pen.stroke;
+		//Pen.stroke;
+		//Pen.fill;
 
 		//Pen.color = this.outlineColor;
 		//Pen.addArc(point, radius, 0, 2*pi);
@@ -246,7 +322,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		//Pen.fill;
 
 		Pen.color = this.color;
-		Pen.moveTo(point);
+		//Pen.moveTo(point);
 
 	}
 

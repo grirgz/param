@@ -463,6 +463,11 @@ XDoneActionSpec : ParamDoneActionSpec {}
 
 ParamWavetableSpec : ParamBufferSpec {
 
+	tagSpec { arg self;
+		^tagSpec ?? { 
+			TagSpecDef(\WavetableDef_object)
+		}
+	}
 }
 XWavetableSpec : ParamWavetableSpec {}
 

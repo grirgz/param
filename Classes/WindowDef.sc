@@ -31,6 +31,7 @@ WindowDef {
 	var <>startRenderingTime;
 	var <>border = true;
 	var <>parentDef; // deprecated
+	var <>currentProto;
 
 
 	// FIXME: window is not restored at the exact same position but is shifted downward, maybe a ubuntu unity bug
@@ -74,9 +75,13 @@ WindowDef {
 			source = val.source;
 			proto = val.proto;
 		} {
-			if(val.class == Event) {
+			if(val.isKindOf(Event)) {
 				proto = ProtoClass(val);
-				source = { arg def ...args; ProtoClass((parent:def.proto)).asView(def, *args) };
+				source = { arg def ...args;
+					var cur = ProtoClass((parent:def.proto));
+					def.currentProto = cur;
+				   	cur.asView(def, *args);
+				};
 			} {
 				source = val;
 			};

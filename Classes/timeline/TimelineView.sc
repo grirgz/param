@@ -17,25 +17,27 @@ TimelineView : SCViewHolder {
 	var <>deleteNodeHook;
 	var <>paraNodes, connections; 
 	var <chosennode; 
+	var clickedNextNode; // used to change curve in mouse handlers
 	var <>isClickOnSelection; 
 	var <>selectionRefloc; 
 	var <>quant;
 	var <>enableQuant = true;
 	var win;
-	var >virtualBounds;
+	var >virtualBounds, <>virtualBoundsOffset = 5;
 	var downAction, upAction, trackAction, keyDownAction, rightDownAction, overAction, connAction;
 	var <>mouseDownAction;
 	var <>mouseUpAction;
 	var <>mouseMoveAction;
 	var <>deleteSelectedNodesHook;
 	var backgrDrawFunc;
+	var <>customDrawFunc;
 	var background, fillcolor;
 	var nodeCount, shape;
-	var startSelPoint, endSelPoint, refPoint, refWidth;
+	var startSelPoint, endSelPoint;
 	var rawStartSelPoint, rawEndSelPoint;
 	var nilSelectionPoint;
 
-	var refPoint; // grid_clicked_point
+	var refPoint, refWidth; // grid_clicked_point
 	var chosennode_old_origin; // in grid units
 
 	var <>lastPixelPos;
@@ -67,11 +69,13 @@ TimelineView : SCViewHolder {
 
 	var >eventFactory;
 
-	var <>selectionCursor;
+	var <>selectionCursor; // a CursorTimeline externally set
 	var <>selectionCursorController;
 	var <>previousNormSelRect;
 
 	var <>changeCurveMode = false;
+
+	var useSpecInConversions = true;
 
 	//// keys
 
@@ -83,6 +87,9 @@ TimelineView : SCViewHolder {
 	var <>stayingSelection = true;
 	var <>quantizedSelection = true;
 	var <>enablePreview = true;
+
+
+	var <>parentTimeline; // used by PreviewTimeline for drawing
 
 	*new { arg posyKey; 
 		^super.new.initParaSpace(posyKey);
@@ -122,8 +129,7 @@ TimelineView : SCViewHolder {
 		selectionView = UserView.new;
 		this.view = userView;
 		this.view.addUniqueMethod(\timeline, { this });
- 		//bounds = mouseTracker.bounds; // thanks ron!
- 		selectionView.bounds = userView.bounds; // thanks ron!
+ 		selectionView.bounds = userView.bounds; 
  		
 		background = Color.white;
 		this.view.background = Color.white(0.9);
@@ -389,7 +395,19 @@ TimelineView : SCViewHolder {
 				refWidth = chosennode.width;
 			};
 			if(this.changeCurveMode) {
-				chosennode = this.findPreviousNode(gpos.x);
+				var pair;
+				pair = this.findPreviousAndNextNode(gpos.x, { arg node;
+					[ node, node.visible == true and: { node.class != TimelineViewLocatorLineNode } ].debug("merde");
+					node.visible == true and: { node.class != TimelineViewLocatorLineNode }
+				});
+				Log(\Param).debug("changeCurveMode: pair found %", pair);
+				if(pair.notNil) {
+					chosennode = pair.first;
+					clickedNextNode = pair.last;
+				} {
+					chosennode = nil;
+					clickedNextNode = nil;
+				};
 				refWidth = chosennode.curve;
 				refPoint = gpos;
 			};
@@ -422,8 +440,9 @@ TimelineView : SCViewHolder {
 					this.deselectAllNodes(chosennode);
 				};
 				this.selectNode(chosennode);
-
 				downAction.value(chosennode);
+
+				this.refresh;
 			}, { 
 				Log(\Param).debug("mouseDownAction: start % end % sel", this.startSelPoint, this.endSelPoint);
 				if(isClickOnSelection == true) {
@@ -444,7 +463,7 @@ TimelineView : SCViewHolder {
 						this.endSelPoint = npos;
 					};
 					Log(\Param).debug("sel:% %", this.startSelPoint, this.endSelPoint);
-					this.refreshSelectionView;
+					this.refresh;
 				};
 			});
 		};
@@ -457,7 +476,9 @@ TimelineView : SCViewHolder {
 		mouseUpAction.(me, x, y, mod);
 		//selNodes.debug("-------------- mouseUpAction: selNodes");
 		//chosennode.debug("mouseUpAction: chosennode");
+		Log(\Param).debug("------------- mouseUpAction: chosennode %", chosennode);
 		if(chosennode != nil, { // a node is selected
+			Log(\Param).debug("mouseUpAction: a node is selected %", chosennode);
 			createNodeDeferedAction.value; // function defined when a new node is created
 			createNodeDeferedAction = nil;
 			upAction.value(chosennode);
@@ -471,6 +492,7 @@ TimelineView : SCViewHolder {
 			var wasSelected = false;
 			var ppos = Point(x,y);
 			var gpos = this.pixelPointToGridPoint(ppos);
+			Log(\Param).debug("mouseUpAction: no node is selected");
 			//Log(\Param).debug("mouseUpAction st %, en %", this.startSelPoint, this.endSelPoint);
 			if(this.startSelPoint.notNil and: {this.endSelPoint.notNil}) {
 
@@ -483,7 +505,8 @@ TimelineView : SCViewHolder {
 				} {
 					rect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint)).insetAll(0,0,0.1,0.1);
 					wasSelected = selNodes.size > 0;
-					selNodes = IdentitySet.new;
+					//selNodes = IdentitySet.new;
+					this.deselectAllNodes;
 					this.selectNodes(this.findNodes(rect));
 					if(stayingSelection.not) {
 						this.startSelPoint = nilSelectionPoint;
@@ -492,9 +515,13 @@ TimelineView : SCViewHolder {
 					};
 				}
 			} {
+				// click on blank and no selection: unselect
 				// FIXME: refresh is buggy, need to think again algo
+				//		in fact, deselecting is done on mouse down, that's why this does nothing
 				wasSelected = selNodes.size > 0;
-				selNodes = IdentitySet.new;
+				this.deselectAllNodes;
+				//selNodes = IdentitySet.new;
+				//this.changed(\selectedNodes); //does nothing
 			};
 			if(wasSelected or:{ selNodes.size > 0 }) {
 				this.refresh;
@@ -564,13 +591,19 @@ TimelineView : SCViewHolder {
 			};
 
 			if( this.changeCurveMode == true ) {
-				// TODO
 				var newcurve;
 				var node = chosennode;
 				if(node.notNil) {
-					newcurve = refWidth + ( refPoint.y - gpos.y * 40 );
+					var direction = 1;
+					direction = if(clickedNextNode.notNil and: {clickedNextNode.origin.x < chosennode.origin.x} ) {
+						-1
+					} {
+						1;
+					};
+					newcurve = refWidth + ( refPoint.y - gpos.y / this.pixelExtentToGridExtent(Point(1,1)).y / 10 * direction );
 					Log(\Param).debug("newcurve %, gpos %, ref %", newcurve, gpos, refPoint);
 					node.model.curve = newcurve;
+					model.changed(\redraw);
 					node.refresh;
 					this.refresh;
 				} {
@@ -617,10 +650,12 @@ TimelineView : SCViewHolder {
 						node.setLoc(node.refloc + grid_diff)
 					};
 
+					useSpecInConversions = false;
 					norm_diff = this.gridPointToNormPoint(grid_diff);
 
 					this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
 					this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
+					useSpecInConversions = true;
 
 					// ----------debug algo
 					//pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
@@ -644,16 +679,19 @@ TimelineView : SCViewHolder {
 						var norm_diff;
 						// move whole selection, quantize on selection left edges
 						grid_diff = (gpos - refPoint).trunc(this.quant.value);
-						norm_diff = this.gridPointToNormPoint(grid_diff);
 
 						selNodes.do { arg node;
 							node.setLoc(node.refloc + grid_diff)
 						};
 
+						useSpecInConversions = false; // FIXME: this doesn't work with exponential spec 
+						norm_diff = this.gridPointToNormPoint(grid_diff); // TimelineEnvView use spec so can't go below zero, pass the flag to avoid this
 
 						this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
 						this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
-						//Log(\Param).debug("sel %, prevsel %, normdif % gdiff %", this.startSelPoint, this.previousNormSelRect, norm_diff, grid_diff);
+						useSpecInConversions = true;
+
+						Log(\Param).debug("sel %, prevsel %, normdif % gdiff %", this.startSelPoint, this.previousNormSelRect, norm_diff, grid_diff);
 						this.changed(\nodeMoved);
 						this.refresh;
 
@@ -912,7 +950,7 @@ TimelineView : SCViewHolder {
 		};
 		y_lines_factor = areasize.y / y_lines_count;
 
-		y_lines_count.do { arg py;
+		( y_lines_count.asInteger + 1 ).do { arg py;
 			py = py * y_lines_factor;
 			Pen.line(this.gridPointToPixelPoint(Point(0,py)),this.gridPointToPixelPoint(Point(areasize.x, py)));
 		};
@@ -951,7 +989,7 @@ TimelineView : SCViewHolder {
 						}
 					};
 
-					Pen.line(Point(x,0), Point(x,this.virtualBounds.height));
+					Pen.line(Point(x,this.virtualBounds.origin.y), Point(x,this.virtualBounds.origin.y + this.virtualBounds.height));
 					Pen.stroke;
 				}
 			});
@@ -986,15 +1024,25 @@ TimelineView : SCViewHolder {
 		var bounds = this.virtualBounds;
 
 
+
+		/////////////// background
+
 		pen.width = 1;
 		pen.color = background; // background color
 		pen.fillRect(bounds); // background fill
 		backgrDrawFunc.value; // background draw function
 
+
 		/////////////// grid
 
 		this.drawGridX;
 		this.drawGridY;
+
+		/////////////// background frame
+		// after grid to erase black grid frame to be pretty
+
+		pen.color = Color.white;
+		pen.strokeRect(bounds); 
 		
 		/////////////// the lines
 
@@ -1008,6 +1056,10 @@ TimelineView : SCViewHolder {
 
 		this.drawEndLine;
 		
+		/////////////// the optional curve
+
+		this.drawCurve;
+		
 		/////////////// the nodes or circles
 
 		this.drawNodes;
@@ -1016,19 +1068,14 @@ TimelineView : SCViewHolder {
 
 		this.drawWaveform;
 
-		/////////////// the optional curve
-
-		this.drawCurve;
-		
 		/////////////// the selection node
 
 		//this.drawSelection; // on its own layer now
 
 
-		/////////////// background frame
+		//////////////// custom draw func
 
-		pen.color = Color.black;
-		pen.strokeRect(bounds); 
+		this.customDrawFunc.();
 
 	}
 
@@ -1120,6 +1167,7 @@ TimelineView : SCViewHolder {
 	}
 
 	drawEndLine {
+		// not used anymore, endEvent is nil, end event have its own draw function
 		if(endEvent.notNil) {
 			Pen.line(
 				this.gridPointToPixelPoint(Point(endEvent[\absTime], areasize.y)),
@@ -1142,8 +1190,12 @@ TimelineView : SCViewHolder {
 	}
 
 	virtualBounds {
+		var offset = virtualBoundsOffset;
+		//var offset = 15;
 		// virtualBounds use screen coordinates
-		^(virtualBounds ? Rect(0,0,this.bounds.width, this.bounds.height));
+		//^(virtualBounds ? Rect(0,0,this.bounds.width, this.bounds.height));
+		// offset is multiplied by two because length is reduced by both left offset and right offset
+		^(virtualBounds ?? { Rect(offset,offset,this.bounds.width-( offset*2 ), this.bounds.height-( offset*2 )) });
 	}
 
 	makeUpdater {
@@ -1482,7 +1534,8 @@ TimelineView : SCViewHolder {
 
 	pixelExtentToGridExtent { arg point;
 		// not used by TimelineViewLocatorNode
-		^(point / this.bounds.extent * areasize * viewport.extent);
+		//^(point / this.bounds.extent * areasize * viewport.extent);
+		^(point / this.virtualBounds.extent * areasize * viewport.extent);
 	}
 
 	//// seconds
@@ -1572,7 +1625,8 @@ TimelineView : SCViewHolder {
 			node.deselectNode;
 		};
 		selNodes.removeAll(nodes);
-		this.changed(\selectedNodes)
+		this.changed(\selectedNodes);
+		//this.refresh;
 	}
 
 	deselectAllNodes { arg chosennode;
@@ -1737,6 +1791,20 @@ TimelineView : SCViewHolder {
 			Log(\Param).debug("findPreviousNode gposx %, origin %, %", gposx, node.origin, node.origin.x >= gposx);
 			node.origin.x <= gposx
 		};
+	}
+
+	findPreviousAndNextNode { arg gposx, includeFilter;
+		var idx;
+		var revnodes = paraNodes.reverse;
+		idx = revnodes.detectIndex { arg node;
+			Log(\Param).debug("findPreviousAndNextNode gposx %, origin %, %", gposx, node.origin, node.origin.x >= gposx);
+			( includeFilter.isNil or: { includeFilter.value(node) == true } ) and: {node.origin.x <= gposx }
+		};
+		if(idx.notNil) {
+			^[revnodes[idx], revnodes[idx-1]]
+		} {
+			^nil
+		}
 	}
 
 	findContainedNodes { arg rect, nodes;
@@ -2268,6 +2336,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 		preview = this.timelinePreviewClass.new;
 		preview.areasize.x = parent.areasize.x;
+		preview.parentTimeline = parent;
 		this.initPreview;
 
 		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
@@ -2345,7 +2414,6 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		//var label_background = Color.new255(130, 173, 105);
 		var preview_background = ParamViewToolBox.color_ligth;
 		var label_background = ParamViewToolBox.color_pale;
-		var virtualBounds_rect;
 
 		pos = this.origin;
 
@@ -2418,23 +2486,69 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		// preview
 
 		if(this.enablePreview) {
-
-			// we use wide virtualBounds_rect as a workaround for a size bug to be found
-			virtualBounds_rect = Rect(previewrect.leftTop.x, previewrect.leftTop.y, this.parent.virtualBounds.width, previewrect.height);
-			//virtualBounds_rect = previewrect;
-
-			preview.virtualBounds = virtualBounds_rect;
-			preview.areasize = preview.areasize.x_(this.parent.areasize.x);
-			preview.viewport = preview.viewport.width_(this.parent.viewport.width);
-
-			Pen.use {
-				Pen.addRect(previewrect);
-				Pen.clip;
-				Log(\Param).debug("preview");
-				preview.drawFunc;
-			};
+			this.drawPreview(previewrect);
 		}
 		//Pen.stroke;
+	}
+
+	//drawPreview_orig { arg previewrect;
+		//var virtualBounds_rect;
+		//var visiblebounds;
+		//// FIXME: we use wide virtualBounds_rect as a workaround for a size bug to be found
+		//virtualBounds_rect = Rect(previewrect.leftTop.x, previewrect.leftTop.y, this.parent.virtualBounds.width, previewrect.height);
+		//virtualBounds_rect = previewrect;
+		////virtualBounds_rect = previewrect;
+
+		////preview.virtualBounds = virtualBounds_rect;
+		//preview.virtualBounds = parent.virtualBounds.sect(virtualBounds_rect);
+		////preview.areasize = preview.areasize.x_(this.parent.areasize.x);
+		//preview.areasize = preview.areasize.x_(this.extent.x); // areasize should be clip width in beats, so extent.x
+		////preview.viewport.width_(this.parent.viewport.width);
+		//preview.viewport.width = parent.virtualBounds.sect(previewrect).width / previewrect.width;
+		//preview.viewport.left = parent.virtualBounds.sect(previewrect).left - previewrect.left / previewrect.width;
+		//preview.viewport.height = parent.virtualBounds.sect(previewrect).height / previewrect.height;
+		//preview.viewport.top = (previewrect.bottom - visiblebounds.bottom) / previewrect.height;
+		////preview.viewport.bottom = parent.virtualBounds.sect(previewrect).bottom - previewrect.bottom / previewrect.height;
+		////preview.viewport.width_(1); // debug
+		////preview.viewport.origin = this.parent.viewport.origin;
+		//preview.viewport = preview.viewport; // trigger update
+
+		//Pen.use {
+			//Pen.addRect(previewrect);
+			//Pen.clip;
+			//Log(\Param).debug("preview");
+			//preview.drawFunc;
+		//};
+		
+	//}
+
+	drawPreview { arg previewrect;
+		var visiblebounds;
+		var cutOffset = this.startOffset ? 0;
+		var cutNormOffset;
+
+		visiblebounds = parent.virtualBounds.sect(previewrect);
+		preview.virtualBounds = visiblebounds;
+
+
+		preview.areasize = preview.areasize.x_(this.extent.x);
+		preview.viewport.width = visiblebounds.width / previewrect.width;
+		preview.viewport.left = visiblebounds.left - previewrect.left / previewrect.width;
+		preview.viewport.height = visiblebounds.height / previewrect.height;
+		preview.viewport.top = (previewrect.bottom - visiblebounds.bottom) / previewrect.height;
+
+		cutNormOffset = cutOffset / preview.areasize.x;
+		preview.viewport.left = preview.viewport.left + cutNormOffset;
+
+		preview.viewport = preview.viewport; // trigger update
+
+		Pen.use {
+			Pen.addRect(previewrect);
+			Pen.clip;
+			Log(\Param).debug("preview");
+			preview.drawFunc;
+		};
+		
 	}
 
 	enablePreview {
@@ -2465,6 +2579,44 @@ TimelineViewEventEnvNode : TimelineViewEventListNode {
 }
 
 TimelineViewEventSampleNode : TimelineViewEventListNode {
+	// NOTE: drawPreview is now factored inside TimelineViewEventListNode
+	//drawPreview { arg previewrect;
+		//// NOTE: had to fork drawPreview from TimelineViewEventListNode because need to find how to factor them
+		//var virtualBounds_rect;
+		//var visiblebounds;
+		//// FIXME: we use wide virtualBounds_rect as a workaround for a size bug to be found
+		////virtualBounds_rect = Rect(previewrect.leftTop.x, previewrect.leftTop.y, this.parent.virtualBounds.width, previewrect.height);
+		////virtualBounds_rect = previewrect;
+		////virtualBounds_rect = previewrect;
+
+		////preview.virtualBounds = virtualBounds_rect;
+		//visiblebounds = parent.virtualBounds.sect(previewrect);
+		//preview.virtualBounds = visiblebounds;
+
+		//// using visible bounds (intersection of parent bounds and previewrect) as PreviewTimeline.bounds work well with NoteTimeline, but not with SampleTimeline because in SampleTimeline.drawImageWaveform i only draw inside the visible bounds but in NoteTimeline i draw all the clip preview
+		////preview.virtualBounds = parent.virtualBounds.sect(virtualBounds_rect);
+
+
+		////preview.areasize = preview.areasize.x_(this.parent.areasize.x);
+		//preview.areasize = preview.areasize.x_(this.extent.x);
+		//preview.viewport.width_(this.parent.viewport.width);
+		//preview.viewport.width = visiblebounds.width / previewrect.width;
+		//preview.viewport.left = visiblebounds.left - previewrect.left / previewrect.width;
+		//preview.viewport.height = visiblebounds.height / previewrect.height;
+		//preview.viewport.top = (previewrect.bottom - visiblebounds.bottom) / previewrect.height;
+		////preview.viewport.width_(1); // debug
+		////preview.viewport.origin = this.parent.viewport.origin;
+		//preview.viewport = preview.viewport; // trigger update
+
+		//Pen.use {
+			//Pen.addRect(previewrect);
+			//Pen.clip;
+			//Log(\Param).debug("preview");
+			//preview.drawFunc;
+		//};
+		
+	//}
+
 	timelinePreviewClass {
 		^TimelinePreview_Sample
 	}

@@ -1,0 +1,227 @@
+TITLE:: TimelineEventList
+summary:: Data model for timelines
+categories:: Timeline
+related:: Classes/Param, Classes/NoteTimeline
+
+DESCRIPTION::
+Timeline data is stored as a list of event.
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create a new TimelineEventList
+
+METHOD:: newFrom
+Create a new TimelineEventList from a pattern or a list of event
+
+ARGUMENT:: pat
+An link::Classes/EventPattern:: or a list of link::Classes/Event::
+
+ARGUMENT:: size
+Max size for the pattern, to avoid infinite loop when the pattern is infinite
+
+ARGUMENT:: inval
+the event passed as input to the pattern (default: code::Event.default::)
+
+returns:: a TimelineEventList
+
+
+INSTANCEMETHODS::
+
+METHOD:: double
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: calcRelDurs
+When you add events, call this method to compute code::relDur::, code::playDur:: and code::dur:: keys automatically for you
+
+returns:: this
+
+METHOD:: restoreDurs
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: splitEvent
+(describe method here)
+
+ARGUMENT:: event
+(describe argument here)
+
+ARGUMENT:: durFromEventStart
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: embedInStream
+(describe method here)
+
+ARGUMENT:: in
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: addEvent
+(describe method here)
+
+ARGUMENT:: ev
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: endTime
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: setRelDurInPrev
+(describe method here)
+
+ARGUMENT:: newEvent
+(describe argument here)
+
+ARGUMENT:: newIndex
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: setPlayDursToRelDur
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: quantizeDurs
+(describe method here)
+
+ARGUMENT:: quant
+(describe argument here)
+
+ARGUMENT:: fullDur
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: relStartTime
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: asPattern
+(describe method here)
+
+ARGUMENT:: in
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: reorder
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: removeEvent
+(describe method here)
+
+ARGUMENT:: event
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: finish
+(describe method here)
+
+ARGUMENT:: absTime
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: playingDur
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: setEndPosition
+(describe method here)
+
+ARGUMENT:: time
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: clone
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: start
+Create the start event. This allow to start playing in the middle of the timeline
+
+ARGUMENT:: absTime
+optional time (default: 0)
+
+returns:: this
+
+METHOD:: presetCompileString
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: firstTime
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: totalDur
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: print
+(describe method here)
+
+ARGUMENT:: keys
+(describe argument here)
+
+ARGUMENT:: postRest
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: startTime
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: setPlayDurs
+(describe method here)
+
+ARGUMENT:: func
+(describe argument here)
+
+returns:: (describe returnvalue here)
+
+METHOD:: extraData
+(describe method here)
+
+returns:: (describe returnvalue here)
+
+
+EXAMPLES::
+
+code::
+// create a timeline with one midinote at time 2 then display it
+~el = TimelineEventList.new
+~el.start; // always need a start event
+~el.add((absTime:2, midinote:100)); // only absTime is required
+~el.finish(4); // finish at beat 4
+NoteTimeline(\help).eventList = ~el;
+NoteTimeline(\help).edit;
+
+// you can create it like a List
+~el = TimelineEventList[ (absTime:2, midinote:100) ];
+~el.start(1);
+~el.finish(4); // this reorder the events and compute missing keys
+::
+

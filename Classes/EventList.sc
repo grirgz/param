@@ -151,6 +151,15 @@ TimelineEventList : List {
 		this.last.put(\relDur, 0).put(\dur, 0);
 	}
 
+	calcAbsTimes {
+		var absTime = 0;
+		this.do { arg ev, idx;
+			var newAbsTime = ( ev[\dur] ?? ev[\relDur] ?? ev[\playDur] );
+			ev[\absTime] = absTime;
+			absTime = absTime + newAbsTime;
+		};
+	}
+
 	finish { |absTime|
 		this.addEvent((absTime: absTime, type: \end, relDur: 0));
 		//totalDur = absTime - this.first[\absTime]; // set in .reorder

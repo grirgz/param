@@ -607,17 +607,24 @@ ProtoTemplateDef(\TimelinePanelView, (
 		};
 		({ arg me, key, modifiers, unicode, keycode;
 			//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction copypaste");
+			var quant = self.quant_ref.value.copy;
+			if(quant.x == 0) { // can't move when quant is zero, use pixel instead
+				quant.x = self.timeline.pixelExtentToGridExtent(Point(1,1)).x;
+			};
+			if(quant.y == 0) { // can't move when quant is zero, use pixel instead
+				quant.y = self.timeline.pixelExtentToGridExtent(Point(1,1)).y;
+			};
 			if(modifiers.isCtrl) {
 				handleMove.(
 					Point(
-						self.quant_ref.value.x * self.node_move_multiplier_x,
-						self.quant_ref.value.y * self.node_move_multiplier_y,
+						quant.x * self.node_move_multiplier_x,
+						quant.y * self.node_move_multiplier_y,
 					),
 					keycode,
 				)
 			} {
 				// no modifier
-				handleMove.(self.quant_ref.value, keycode)
+				handleMove.(quant, keycode)
 			}
 		});
 
@@ -1434,9 +1441,10 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 			};
 		});
 		self.set_yquant(self.param.spec.step);
-		self.timeline.mouseUpAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
-			self.timeline.refreshEventList;
-		};
+		// dopn
+		//self.timeline.mouseUpAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
+			//self.timeline.refreshEventList;
+		//};
 		self.timeline.view.onChange(self.eventloop, \list, { 
 			self.refresh;
 		});

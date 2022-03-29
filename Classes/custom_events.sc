@@ -238,6 +238,8 @@ PatternEvent : Event {
 
 
 Pembed : Pattern {
+	// A pattern return events, but some events are PatternEvent, they point to a pattern
+	// Pembed is used to process a pattern and replace PatternEvent by its events
 	classvar <>startOffsetKey = \event_dropdur;
 	classvar <>sustainKey = \sustain;
 	*new { arg ...args;

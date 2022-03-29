@@ -505,6 +505,7 @@ WindowDef(\RenameDialog, { arg me, question, defaultValue="", savefun, cancelfun
 
 (
 WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue;
+	var lay;
 	var listview = ListView.new;
 	var textfield = TextField.new;
 	var selectAction = { arg view, x, y, modifiers, buttonNumber, clickCount;
@@ -527,7 +528,7 @@ WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue;
 		listview.value = listitems.detectIndex { arg x; x == defaultValue };
 		selectAction.(listview);
 	};
-	VLayout (
+	lay = VLayout (
 		textfield,
 		listview.selectionAction_(selectAction),
 		HLayout (
@@ -552,7 +553,9 @@ WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue;
 				def.closeWindow;
 			}),
 		)
-	)
+	);
+	textfield.focus(true);
+	lay;
 });
 
 WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue;
@@ -598,7 +601,7 @@ WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue;
 				listview.items = listitems.collect(_.key);
 			};
 			selectAction.(listview);
-		}),
+		}).focus(true),
 		listview.selectionAction_(selectAction),
 		HLayout (
 			BasicButton.new.string_("Ok").action_({

@@ -2,6 +2,7 @@
 //////////////////////////////// preview
 
 TimelinePreview : TimelineView {
+
 	drawFunc {
 		Log(\Param).debug("preview drawFunc");
 		this.drawNodes;

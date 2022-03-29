@@ -2046,6 +2046,7 @@ ProtoClassDef(\LoopMaster, (
 
 	cutPattern: { arg self, pat, firstEventOffset, dur;
 		// do not embedInStream to allow composing it
+		// timeline.cutPatternFunction is responsible for calling .embedInStream
 		if(firstEventOffset < 0) {
 			Pfindur(dur, 
 				Pseq([
@@ -2073,7 +2074,7 @@ ProtoClassDef(\LoopMaster, (
 	},
 
 	getClipLoopPattern: { arg self, cutFunction, customStartEventOffset, customTotalDur, customRepeatCount;
-		//"hello 2".debug;
+		// customTotalDur is not the duration of the final pattern. totalDur = endEvent - startEvent. A customTotalDur is just like changing the endEvent position. Then customStartEventOffset is applied
 		// repeat pattern when outside clip loop
 		// we want to give time since start event
 		// cutFunction is rather a SliceGenerator that take offset and dur and return a slice of the pattern
@@ -2082,6 +2083,7 @@ ProtoClassDef(\LoopMaster, (
 		//		for example this allow to start inside a sample without having to fast forward events manually
 		Prout({
 			var sloop = self;
+			var ret;
 			var repeatCount = customRepeatCount ? sloop.repeatCount;
 			repeatCount.do { arg count;
 				var firstEventOffset;
@@ -2097,8 +2099,10 @@ ProtoClassDef(\LoopMaster, (
 				dur = totalDur - startEventOffset;
 				firstEventOffset = startEventOffset + sloop.startEventAbsTime - sloop.firstEventAbsTime;
 				//self.cutAndEmbedPattern(pat, firstEventOffset, dur);
-				self.embedPattern(cutFunction, firstEventOffset, dur)
+				ret = self.embedPattern(cutFunction, firstEventOffset, dur)
 			};
+			// Prout return value is important, if we do not return ret, repeatCount is returned and this cause bug when using Pseq([ thisPat, Event.silent(1) ]); 
+			ret; 
 
 		})
 	},
@@ -2109,6 +2113,7 @@ ProtoClassDef(\LoopMaster, (
 		// read outside notes when outside clip loop
 		Prout({
 			var sloop = self;
+			var ret;
 			var repeatCount = customRepeatCount ? sloop.repeatCount;
 			repeatCount.do { arg count;
 				var previewStartAbsTime;
@@ -2138,8 +2143,9 @@ ProtoClassDef(\LoopMaster, (
 				firstEventOffset = finalStartAbsTime - sloop.firstEventAbsTime;
 				dur = previewEndAbsTime - finalStartAbsTime;
 				//self.cutAndEmbedPattern(pat, firstEventOffset, dur);
-				self.embedPattern(cutFunction, firstEventOffset, dur);
+				ret = self.embedPattern(cutFunction, firstEventOffset, dur);
 			};
+			ret;
 
 		})
 		

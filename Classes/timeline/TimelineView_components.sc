@@ -141,7 +141,7 @@ TimelineRulerView : TimelineView {
 		// on prend la largeur visible en beats (area*viewport) qu'on multiplie par le factor
 		// par exemple s'il y a moyen de caser 5 graduations dans un beat, le factor est de 5
 		// donc si 3 beats sont visibles a l'ecran, alors il y aura 3*5=15 graduations
-		lineCount = (factor * areasize.x * viewport.width + 1).asInteger;
+		lineCount = (factor * areasize.x * viewport.width + 0).asInteger;
 		lineCount.do { arg idx;
 			var oidx, x;
 			//var orx;
@@ -677,7 +677,7 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 			};
 			Pen.alpha = alpha;
 			point = parent.gridPointToPixelPoint(this.origin);
-			// now in screen coordinates
+			// point is now in screen coordinates
 			Pen.line(Point(point.x, this.parent.virtualBounds.origin.y), Point(point.x, parent.virtualBounds.bottom));
 			Pen.stroke;
 			Pen.alpha = 1;
@@ -1215,7 +1215,7 @@ TimelineDrawer {
 							Pen.color = Color.gray(alpha:0.3);
 						}
 					};
-					Pen.line(Point(0,y),Point(me.virtualBounds.width, y));
+					Pen.line(Point(me.virtualBounds.origin.x,y),Point(me.virtualBounds.origin.x + me.virtualBounds.width, y));
 					Pen.stroke;
 				});
 			}
