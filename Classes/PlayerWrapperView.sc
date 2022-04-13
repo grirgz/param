@@ -249,24 +249,26 @@ RecordButton {
 		var lay = HLayout(
 			button = Button.new.action_({ arg view;
 				// value first increment then action is called
-				switch(view.value,
-					0+1, {
-						Log(\Param).debug("was stopped: start record %", [view.value, model]);
-						model.isRecording = true;
-					},
-					1+1, {
-						Log(\Param).debug("cancel user played: stop record %", [view.value, model]);
-						model.isRecording = false;
-					},
-					2+1, {
-						Log(\Param).debug("was playing: stop %", [view.value, model]);
-						model.isRecording = false;
-					},
-					0, {
-						Log(\Param).debug("cancel user stopped: play %", [view.value, model]);
-						model.isRecording = true;
-					}
-				);
+				if(model.notNil) {
+					switch(view.value,
+						0+1, {
+							Log(\Param).debug("was stopped: start record %", [view.value, model]);
+							model.isRecording = true;
+						},
+						1+1, {
+							Log(\Param).debug("cancel user played: stop record %", [view.value, model]);
+							model.isRecording = false;
+						},
+						2+1, {
+							Log(\Param).debug("was playing: stop %", [view.value, model]);
+							model.isRecording = false;
+						},
+						0, {
+							Log(\Param).debug("cancel user stopped: play %", [view.value, model]);
+							model.isRecording = true;
+						}
+					);
+				}
 			})
 		);
 		lay = button; // backward compat
@@ -298,12 +300,13 @@ RecordButton {
 	makeDependentListener {
 		var target = model;
 		// support for ProtoClass
-		if(model.isKindOf(PlayerWrapper)) {
-			target = model.target;
-		}; 
-		target.removeDependant(follower);
-		follower = { arg obj, changed, status;
-			//[obj, changed, status].debug("follower: args");
+		if(model.notNil) {
+			if(model.isKindOf(PlayerWrapper)) {
+				target = model.target;
+			}; 
+			target.removeDependant(follower);
+			follower = { arg obj, changed, status;
+				//[obj, changed, status].debug("follower: args");
 				defer {
 					var butval = button.value;
 					button.states = this.getStates(label ?? { model.label });
@@ -319,9 +322,10 @@ RecordButton {
 						{ 0 },
 					);
 				}
-		};
-		target.addDependant(follower);
-		button.onClose({target.removeDependant(follower)});
+			};
+			target.addDependant(follower);
+			button.onClose({target.removeDependant(follower)});
+		}
 		
 	}
 
@@ -331,6 +335,7 @@ RecordButton {
 			model = val;
 		} {
 			skipjack.stop;
+			model = nil;
 		};
 		if(button.notNil) { // else fail when model is set before the layout in init
 			button.states = this.getStates(label ?? { model.label });
@@ -363,15 +368,19 @@ RecordButton {
 			// there is no way to know if recording is pending or really started
 			// this override the waiting state, to avoid this problem, we only update when not
 			// in a waiting state
-			if([0,2].includes(button.value)) {
-				xlabel = label ?? {model.label};
-				button.states = this.getStates(xlabel);
-				playing = model.isRecording;
-				if(playing.notNil and: {playing} ) {
-					button.value = 2
-				} {
-					button.value = 0
-				};
+			if(model.notNil) {
+				if([0,2].includes(button.value)) {
+					xlabel = label ?? {model.label};
+					button.states = this.getStates(xlabel);
+					playing = model.isRecording;
+					if(playing.notNil and: {playing} ) {
+						button.value = 2
+					} {
+						button.value = 0
+					};
+				}
+			} {
+				button.value = 0;
 			}
 		}
 	}

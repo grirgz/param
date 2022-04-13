@@ -932,6 +932,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.timeline.mapEventList(self.eventloop.list);
 		self.cursor_timeline.mapEventList(self.eventloop.list);
 		self.locatorbar.mapEventList(self.eventloop.list);
+		self.ruler_x_beat.mapEventList(self.eventloop.list);
 		if(self.velocityTimeline.notNil) {
 			self.velocityTimeline.mapEventList(self.eventloop.list);
 		}
@@ -2442,7 +2443,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 				"no name".debug;
 			}
 		});
-		model.gatherClips;
+		//model.gatherClips; // now in menu
 	});
 	newButton = BasicButton.new.string_("New").action_({ arg view;
 		WindowDef(\ClipList_NewClip).front({}, { arg idef, libId, label;
@@ -2491,7 +2492,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 		}).mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			//[x, y, modifiers, buttonNumber, clickCount].debug("xyyyyy");
 			if(buttonNumber == 1) { // right click
-				WindowDef(\ClipList_OverlayMenu).front(model, view, x, y, model.clipList[view.value]);
+				WindowDef(\ClipList_OverlayMenu).front(model, view, x, y, model.clipList[view.value ? 0]);
 			};
 		}),
 		HLayout (
@@ -2561,6 +2562,7 @@ WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 WindowDef(\ClipList_OverlayMenu, { arg def, model, view, x=600, y=600, selected;
 	var inview, layout;
 	Log(\Param).debug("xy: %, %", x, y);
+	Log(\Param).debug("selected: %", selected);
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
 		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
@@ -2570,19 +2572,28 @@ WindowDef(\ClipList_OverlayMenu, { arg def, model, view, x=600, y=600, selected;
 
 
 	layout = VLayout (
-		BasicButton.new.string_("Clear list").action_({ 
-			model.clearClipList;
-			def.closeWindow;
-		}),
-		BasicButton.new.string_("Remove " ++ selected.last.key).action_({ 
-			model.clipList.remove(selected);
-			model.changed(\clipList);
-			def.closeWindow;
-		}),
-		BasicButton.new.string_("Edit").action_({ 
-			PlayerWrapper(selected.last.value).edit;
-		}),
-		nil
+		* [
+			BasicButton.new.string_("Gather clips from timeline").action_({ 
+				model.gatherClips;
+			}),
+			BasicButton.new.string_("Clear list").action_({ 
+				model.clearClipList;
+				def.closeWindow;
+			}),
+		] ++
+		if(selected.notNil) {
+			[
+				BasicButton.new.string_("Remove " ++ selected.last.key).action_({ 
+					model.clipList.remove(selected);
+					model.changed(\clipList);
+					def.closeWindow;
+				}),
+				BasicButton.new.string_("Edit").action_({ 
+					PlayerWrapper(selected.last.value).edit;
+				}),
+			]
+		} 
+		++ [nil]
 	);
 	//def.windowDo { arg win;
 		//win.setInnerExtent(view.bounds.extent.min(20));

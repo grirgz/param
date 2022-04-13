@@ -333,7 +333,10 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	presetCompileString: { arg self;
-		"%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString)
+		var str = List.new;
+		str = str.add("%.param = %;".format(self.refCompileString(self.key.asCompileString), self.param.asCompileString));
+		str = str.add("%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString));
+		str.join($\n);
 	},
 
 	eventList_presetCompileString: { arg self, eventList;
@@ -849,7 +852,8 @@ ProtoClassDef(\NoteTimeline, (
 			self = self.all[name];
 			if(param.notNil) { self.param = param };
 		} {
-			self = self.deepCopy;
+			//self = self.deepCopy;
+			self = NoteTimeline.newFromProto(self.deepCopy);
 			self.prAdd(name).init(param);
 		};
 	
@@ -1884,6 +1888,20 @@ ProtoClassDef(\ClipTimelineClipList, (
 		//"gat".debug;
 		self.timeline.eventList.do { arg clip;
 			self.addToClipList(clip)
+		};
+		self.gatherClipsFromTrackList;
+	},
+
+	gatherClipsFromTrackList: { arg self;
+		if(self.timeline.mainTrack.notNil) {
+			self.timeline.mainTrack.existingChildren.collect { arg track, idx;
+				if(track.notNil and: { track.isEmpty.not }) {
+					track.existingChildren.collect { arg child, idx;
+						var clipId = self.lib.targetToLibId(child);
+						self.addClipIdToClipList(clipId);
+					};
+				}
+			};
 		}
 	},
 	

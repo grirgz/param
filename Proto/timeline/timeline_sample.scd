@@ -251,13 +251,15 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 				self.bufferInfo = ProtoClass(());
 				self.bufferInfo.buffer = buffer;
 				self.bufferInfo.fileName = buffer.path;
-				{
-					try {
-						self.eventList.setEndPosition(buffer.duration * self.tempoClock.tempo);
-					} { arg error;
-						Log(\Param).debug("Warning: Can't get duration of buffer %", buffer);
-					};
-				}.defer(1);
+				// NOTE: setting end position when setting buffer break previously set position
+				//		like when loading a saved SampleTimeline
+				//{
+					//try {
+						//self.eventList.setEndPosition(buffer.duration * self.tempoClock.tempo);
+					//} { arg error;
+						//Log(\Param).debug("Warning: Can't get duration of buffer %", buffer);
+					//};
+				//}.defer(1);
 				if(self.buffer.notNil) {
 					// do not refresh at setting because when no gui, no need to compute the data
 					// data should be computed when gui ask for it
@@ -268,6 +270,66 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 			}
 		} {
 			self.bufferInfo = ProtoClass(());
+		}
+	},
+
+	setDurationToBufferDuration: { arg self;
+		try {
+			self.eventList.setStartPosition(0);
+			self.eventList.setEndPosition(self.buffer.duration * self.tempoClock.tempo);
+		} { arg error;
+			Log(\Param).debug("Warning: Can't get duration of buffer %, error: %", self.buffer, error);
+		};
+	},
+
+	resizeBufferInFrames: { arg self, newsize;
+		if(self.bufferInfo.notNil) {
+			if(self.buffer.numFrames != newsize) {
+				var newbuf;
+				newbuf = Buffer.alloc(Server.default, newsize, self.buffer.numChannels);
+				self.buffer.debug("now getting slice");
+				self.buffer.loadToFloatArray(0, newsize, { arg col;
+					col.size.debug("got colsize");
+					newbuf.debug("now loading in newbuf");
+					newbuf.loadCollection(col, action: { arg xbuf;
+						newbuf.debug("newbuf loaded slice");
+						xbuf.debug("xbuf loaded slice");
+						{
+							newbuf.debug("newbuf loaded slice2");
+							xbuf.debug("xbuf loaded slice2");
+							~newbuf = newbuf;
+							self.bufferInfo.bufferHistory = self.bufferInfo.bufferHistory.add(self.buffer);
+							self.buffer = newbuf;
+							self.changed(\bufferNumFrames);
+						}.defer
+					})
+				});
+			}
+		}
+	},
+
+	bufferNumFrames_: { arg self, val;
+		self.resizeBufferInFrames(val);
+	},
+
+	bufferNumFrames: { arg self;
+		if(self.buffer.notNil) {
+			self.buffer.numFrames;
+		}
+	},
+
+	bufferNumBeats: { arg self;
+		if(self.buffer.notNil) {
+			self.buffer.numFrames / self.buffer.sampleRate * TempoClock.default.tempo;
+		}
+	},
+
+	bufferNumBeats_: { arg self, val;
+		if(self.buffer.notNil) {
+			self.resizeBufferInFrames(
+				val / TempoClock.default.tempo * self.buffer.sampleRate;
+			);
+			self.changed(\bufferNumBeats);
 		}
 	},
 
@@ -774,6 +836,10 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 			})
 		}),
 		Param(Message(model), \enableWaveformView, ParamBoolSpec()).asButton("Display waveform"),
+		HLayout (
+			StaticText.new.string_("Size in beats:"),
+			Param(Message(model), \bufferNumBeats, ControlSpec(1/8,512,\lin)).asTextField,
+		),
 		BasicButton.new.string_("Clipboard refString").action_({ 
 			model.refCompileString.pbcopy;
 		}),
@@ -781,10 +847,19 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 			WindowDef(\BufferEditor).front(model.bufferInfo.buffer);
 		}),
 		BasicButton.new.string_("Edit with audacity").action_({ 
-			"audacity %".format(model.bufferInfo.fileName).unixCmd { arg res, pid;
-				BufDef.reload(model.bufferInfo.fileName);
-				Log(\Param).info("edit done");
-			};
+			{
+				var tmpname = "/tmp/SampleTimeline_audacity.wav";
+				Log(\Param).debug("Writing tmp file %...", tmpname);
+				model.buffer.write(tmpname);
+				1.wait;
+				Log(\Param).debug("Launching audacity...");
+				"audacity %".format(tmpname).unixCmd { arg res, pid;
+					Buffer.read(Server.default, tmpname, action: { arg buf;
+						model.buffer = buf;
+					});
+					Log(\Param).info("edit done");
+				};
+			}.fork;
 		}),
 		BasicButton.new.string_("Export selection to buffer").action_({ 
 			viewmodel.exportSelectionToBufferEditor;

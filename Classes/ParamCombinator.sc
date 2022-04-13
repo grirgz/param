@@ -17,9 +17,8 @@ ParamCombinator : Pattern {
 	var <>size;
 
 	*new { arg param, size=3;
-		// FIXME: if use new without *kr, there is no rate
 		var halokey = \ParamCombinator_+++param.property;
-		Class.initClassTree(ParamGroupLayout);
+		Class.initClassTree(ParamGroupLayout); // FIXME: why ?
 		//if(param.getRaw.isKindOf(ParamCombinator).not) {
 		if(param.target.getHalo(halokey).isNil) {
 			var inst = super.new.init(param, size);
@@ -45,17 +44,20 @@ ParamCombinator : Pattern {
 	}
 
 	// not a ugen, is this a good idea ?
+	// use Ndef with control rate busses
 	*kr { arg  param, size=3;
 		var inst = this.new(param, size);
 		if(inst.busMode.not) {
 			inst.rate = \kr;
-			inst.setBusMode(true);
+			inst.setBusMode(true); 
 		} {
 			inst.proxy.wakeUp; // when CmdPeriod, proxy is freed, need to wake up to work again
 		};
 		^inst;
 	}
 
+	// use Ndef with audio rate busses
+	// i don't really know if its useful
 	*ar { arg  param, size=3;
 		var inst = this.new(param, size);
 		if(inst.busMode.not) {
@@ -351,6 +353,78 @@ ParamCombinator : Pattern {
 	set { arg val;
 		this.baseParam.set(val);
 	}
+}
+
+ParamCustomCombinator : ParamCombinator {
+	var computeFunction, inputParamList;
+
+	*new { arg param, computefun, inputlist;
+		var halokey = \ParamCombinator_+++param.property;
+		if(param.target.getHalo(halokey).isNil) {
+			var inst = super.new(param).initParamCustomCombinator(computefun, inputlist);
+			param.target.addHalo(halokey, inst);
+			param.target.changed(\combinator, param.property);
+			^inst;
+		} {
+			^param.target.getHalo(halokey)
+		}
+	}
+
+	init { arg param, xsize=3;
+		halokey = ( \ParamCombinator_++param.property ).asSymbol;
+		key = ( \ParamCombinator_++1000000.rand ).asSymbol;
+		busMode = false;
+
+		targetParam = param;
+
+		///// value is stored in targetParam because we can't .set a Pattern
+		///// value is stored in resultParam when targetParam contains the combinator
+
+		base = ParamValue(targetParam.spec); 
+		baseParam = base.asParam;
+		resultParam = targetParam; // for compat when targetParam is a Combinator
+
+		baseParam.set(targetParam.get); // if already redirected, return baseParam.get
+
+		baseParam.label = targetParam.asLabel; 
+		baseParam.shortLabel = targetParam.shortLabel;
+		baseParam.property = targetParam.property;
+		baseParam.combinator = this;
+
+		controllers = [
+			SimpleController(base).put(\set, {
+				this.computeAndSetTargetValue;
+			}),
+		];
+
+		TagSpecDef(\ParamCustomCombinator).add(this);
+
+	}
+
+	initParamCustomCombinator { arg computefun, inputlist;
+		inputParamList = inputlist ?? { [] };
+		computeFunction = computefun ?? { {0} };
+
+		inputlist.do { arg inputparam, idx;
+			controllers = controllers.add(
+				SimpleController(inputparam).put(\set, { // FIXME: does param signal \set itself ?
+					this.computeAndSetTargetValue;
+				}),
+			);
+		};
+	}
+
+	computeTargetValue { arg fval, inputlist;
+		^computeFunction.(fval, inputlist)
+	}
+
+	computeAndSetTargetValue {
+		var fval;
+		fval = baseParam.normGet;
+		fval = this.computeTargetValue(fval, inputParamList);
+		resultParam.normSet(fval);
+	}
+
 }
 
 //ParamCombinator_halo {

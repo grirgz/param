@@ -51,6 +51,13 @@ ParamGroup : List {
 		^ParamGroup(this.reject({ arg x; keylist.includes(x.propertyRoot) }))
 	}
 
+	selectByKey { arg keylist;
+		if(keylist.isSequenceableCollection.not) {
+			keylist = [keylist]
+		};
+		^ParamGroup(this.select({ arg x; keylist.includes(x.propertyRoot) }))
+	}
+
 	rejectSystemParams {
 		^this.rejectByKey([ \gate, \doneAction, \trig ])
 	}

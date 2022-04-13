@@ -202,7 +202,7 @@
 	}
 
 	presetCompileString {
-		^this.asParamGroup.getSetCompileString;
+		^this.asParamGroup.selectByKey(( this.envir ?? { () } ).keys.asArray).getSetCompileString;
 	}
 
 	asPatternCompileString {

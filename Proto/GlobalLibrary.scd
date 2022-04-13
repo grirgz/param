@@ -120,13 +120,30 @@ ProtoDef(\GlobalLibrary, (
 						TrackDef, {
 							'trackdef'
 						},
+						ProtoClass, {
+							obj.eventType
+						},
 						{
 							//model.debug("event_to_clipFactory_key: player: unknown");
+							nil
 						}
 					);
 				};
 				var clipkey = branch.(model[\receiver].value);
-				libId = self.clipFactories[clipkey].eventToLibId(model);
+				var fac;
+				if(clipkey.notNil) {
+					fac = self.clipFactories[clipkey];
+					if(fac.notNil) {
+						Log(\Param).debug("GlobalLibrary.eventToLibId: found fac: fackey: %, ev:%, fac:%", clipkey, model, fac);
+						Log(\Param).debug("fac.eventToLibId %: %", fac.key, fac[\eventToLibId].asCompileString);
+						libId = fac.eventToLibId(model);
+						Log(\Param).debug("GlobalLibrary.eventToLibId: found libId: %", libId);
+					} {
+						Log(\Param).debug("GlobalLibrary.eventToLibId: no factory for %, key:%", model, clipkey);
+					}
+				} {
+					Log(\Param).debug("GlobalLibrary.eventToLibId: no clipkey found for % (%)", model, model.class);
+				}
 			},
 			{
 				//model.debug("event_to_clipFactory_key: unknown");
@@ -166,8 +183,11 @@ ProtoDef(\GlobalLibrary, (
 			},
 
 			eventToLibId: { arg self, ev;
-				var tar = self.getEventTarget(ev);
-				[self.libIdKey, tar.key -> tar]
+				var tar;
+				Log(\Param).debug("clipFactories.%.eventToLibId: getEventTarget: %", self.key, self[\getEventTarget].asCompileString);
+				tar = self.getEventTarget(ev);
+				Log(\Param).debug("clipFactories.%.eventToLibId: target: %", self.key, tar);
+				self.targetToLibId(tar)
 			},
 
 			getEvent: { arg self;
@@ -485,7 +505,7 @@ ProtoDef(\GlobalLibrary, (
 					if(tar.isKindOf(Pdef)) {
 						tar;
 					} {
-						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
+						Log(\Param).error("clipFactories.patkitdef: ERROR: getEventTarget: don't know what type!!!");
 						nil;
 					}; 
 				}
@@ -574,7 +594,7 @@ ProtoDef(\GlobalLibrary, (
 					if(tar.isKindOf(Pdef)) {
 						tar;
 					} {
-						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
+						Log(\Param).error("clipFactories.instrumenttrack: ERROR: getEventTarget: don't know what type!!!");
 						nil;
 					}; 
 				}
@@ -672,14 +692,14 @@ ProtoDef(\GlobalLibrary, (
 				} {
 					// player type
 					var tar = ev.receiver.value;
-					tar.key; // PlayerWrapper has key wrapper
+					Log(\Param).debug("clipFactories.instrumenttrackpart.getEventTarget %, %, key:", ev, ev.receiver.value, ev.receiver.value.key);
 					if(tar.isKindOf(PlayerWrapper)) {
 						tar = tar.target;
 					};
-					if(tar.isKindOf(Pdef)) {
+					if(tar.notNil) {
 						tar;
 					} {
-						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
+						Log(\Param).error("clipFactories.instrumenttrackpart: ERROR: getEventTarget: don't know what type!!!");
 						nil;
 					}; 
 				}
@@ -767,7 +787,7 @@ ProtoDef(\GlobalLibrary, (
 					if(tar.isKindOf(Pdef)) {
 						tar;
 					} {
-						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
+						Log(\Param).error("clipFactories.bufdef: ERROR: getEventTarget: don't know what type!!!");
 						nil;
 					}; 
 				}
@@ -860,7 +880,7 @@ ProtoDef(\GlobalLibrary, (
 					if(tar.isKindOf(Pdef)) {
 						tar;
 					} {
-						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
+						Log(\Param).error("clipFactories.trackinstrument: ERROR: getEventTarget: don't know what type!!!");
 						nil;
 					}; 
 				}
@@ -1124,6 +1144,7 @@ TagSpecDef(\GlobalLibraryType, [
 	\TrackListPart,
 	\InstrumentTrackPart,
 	\TrackInstrument,
+	\ProtoPlayer,
 ]);
 
 // TODO: add GlobalLibrary.tag which should be the list of tags displayed by browser
@@ -1182,6 +1203,7 @@ TagSpecDef('GlobalLibrary.type.Clip', [
 	\SampleTimeline,
 	\ClipTimeline,
 	\ParamTimeline,
+	\ProtoPlayer,
 ]);
 
 TagSpecDef('GlobalLibrary.type.Timeline', [

@@ -23,7 +23,7 @@ TimelineView : SCViewHolder {
 	var <>quant;
 	var <>enableQuant = true;
 	var win;
-	var >virtualBounds, <>virtualBoundsOffset = 5;
+	var >virtualBounds, <>virtualBoundsOffsetX = 5, <>virtualBoundsOffsetY = 5;
 	var downAction, upAction, trackAction, keyDownAction, rightDownAction, overAction, connAction;
 	var <>mouseDownAction;
 	var <>mouseUpAction;
@@ -39,6 +39,8 @@ TimelineView : SCViewHolder {
 
 	var refPoint, refWidth; // grid_clicked_point
 	var chosennode_old_origin; // in grid units
+
+	var gridRulerOffset = 5; // put the 0 mark at start event time
 
 	var <>lastPixelPos;
 	var <>lastGridPos;
@@ -972,6 +974,7 @@ TimelineView : SCViewHolder {
 		} {
 			TimelineRulerView.vertical_grid_do(this, { arg factor, x, oidx, idx;
 				Pen.use{
+					//x = x + this.gridPointToPixelPoint(gridRulerOffset,0).x;
 					//~mygridx.(factor, x, oidx, idx);
 					Pen.lineDash = FloatArray[1];
 					Pen.color = Color.black;
@@ -993,7 +996,7 @@ TimelineView : SCViewHolder {
 					Pen.line(Point(x,this.virtualBounds.origin.y), Point(x,this.virtualBounds.origin.y + this.virtualBounds.height));
 					Pen.stroke;
 				}
-			});
+			}, gridRulerOffset);
 
 		};
 		Pen.alpha = 1;
@@ -1184,6 +1187,12 @@ TimelineView : SCViewHolder {
 		this.efresh;
 	}
 
+	defineZeroMarkAtStartTime { arg time;
+		// TODO: does not work, should find how to add this offset to grid drawing
+		time = time ? this.model.startTime;
+		gridRulerOffset = time;
+	}
+
 	/////////////////////////////////////////////////////////
 
 	bounds { 
@@ -1191,12 +1200,13 @@ TimelineView : SCViewHolder {
 	}
 
 	virtualBounds {
-		var offset = virtualBoundsOffset;
+		var offsetx = virtualBoundsOffsetX;
+		var offsety = virtualBoundsOffsetY;
 		//var offset = 15;
 		// virtualBounds use screen coordinates
 		//^(virtualBounds ? Rect(0,0,this.bounds.width, this.bounds.height));
 		// offset is multiplied by two because length is reduced by both left offset and right offset
-		^(virtualBounds ?? { Rect(offset,offset,this.bounds.width-( offset*2 ), this.bounds.height-( offset*2 )) });
+		^(virtualBounds ?? { Rect(offsetx,offsety,this.bounds.width-( offsetx*2 ), this.bounds.height-( offsety*2 )) });
 	}
 
 	makeUpdater {
@@ -1748,6 +1758,7 @@ TimelineView : SCViewHolder {
 	findNode {arg x, y;
 		// findNode take x and y in grid coordinates, because TimelineNode.rect is in grid coordinates
 		var point = Point.new(x,y);
+		Log(\Param).debug("::: findNode: %", point);
 		if(chosennode.notNil and: {chosennode.rect.containsPoint(point)}) {
 			// priority to the already selected node
 			^chosennode;
@@ -1755,11 +1766,14 @@ TimelineView : SCViewHolder {
 		paraNodes.reverse.do({arg node;  // reverse because topmost is last
 			//node.spritenum.debug("spritnum");
 			//[node.rect, point].debug("findNode");
+			Log(\Param).debug("findNode: test node % node.selectable % node.rect %", node, node.selectable, node.rect);
 			if(node.selectable and: {node.rect.containsPoint(point)}, {
 				//[node.rect, point].debug("findNode: found!!");
+				Log(\Param).debug("findNode: found node %", node);
 				^node;
 			});
 		});
+		Log(\Param).debug("findNode: not found");
 		^nil;
 	}
 

@@ -37,6 +37,7 @@ TimelineRulerView : TimelineView {
 		this.view.mouseMoveAction = nil;
 		this.view.mouseUpAction = nil;
 		this.view.drawFunc = { this.drawFunc };
+		this.virtualBoundsOffsetY = 0;
 	}
 
 	drawCursor {
@@ -93,6 +94,9 @@ TimelineRulerView : TimelineView {
 		// oidx is the index of the bar to alternate bold bars
 		// idx is not used
 		var yoffset;
+		var prec = 4;
+		//x = x + this.gridPointToPixelPoint(gridRulerOffset,0).x;
+
 		if( oidx % 4 == 0 ) { 
 			yoffset = 0;
 			Pen.color = Color.black;
@@ -108,24 +112,24 @@ TimelineRulerView : TimelineView {
 			if(oidx % 16 == 0) {
 				if(oidx % 32 == 0) {
 					fontsize = 10;
-					Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,-2), Font.new.size_(fontsize).bold_(true));
+					Pen.stringAtPoint(" " ++ ( oidx/factor ).asStringPrec(prec), Point(x,-2), Font.new.size_(fontsize).bold_(true));
 				} {
 					fontsize = 10;
-					Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,-2), Font.new.size_(fontsize));
+					Pen.stringAtPoint(" " ++ ( oidx/factor ).asStringPrec(prec), Point(x,-2), Font.new.size_(fontsize));
 				}
 			} {
-				Pen.stringAtPoint(" " ++ ( oidx/factor ).asString, Point(x,0), Font.new.size_(fontsize));
+				Pen.stringAtPoint(" " ++ ( oidx/factor ).asStringPrec(prec), Point(x,0), Font.new.size_(fontsize));
 			};
 		};
 		Pen.stroke;
 	}
 
-	*vertical_grid_do { arg view, fun;
+	*vertical_grid_do { arg view, fun, gridRulerOffset=0;
 		// dynamic time grid generation
 		var unitRect = view.gridRectToPixelRect(Rect(0,0,1,1));
 
 		var minsize = 20;
-		var bounds = view.bounds;
+		var bounds = view.virtualBounds;
 		var areasize = view.areasize;
 		var viewport = view.viewport;
 		var xlen = unitRect.width; // number of pixel for one beat
@@ -141,12 +145,19 @@ TimelineRulerView : TimelineView {
 		// on prend la largeur visible en beats (area*viewport) qu'on multiplie par le factor
 		// par exemple s'il y a moyen de caser 5 graduations dans un beat, le factor est de 5
 		// donc si 3 beats sont visibles a l'ecran, alors il y aura 3*5=15 graduations
-		lineCount = (factor * areasize.x * viewport.width + 0).asInteger;
+
+		//lineCount = (factor * (areasize.x * viewport.width + gridRulerOffset) + 0).asInteger;
+		lineCount = (factor * (areasize.x * viewport.width) + 0).asInteger;
 		lineCount.do { arg idx;
 			var oidx, x;
 			//var orx;
-			oidx = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1);
+
+			//oidx = (idx + (factor * (areasize.x * viewport.origin.x - gridRulerOffset)).asInteger + 1);
+			//x = oidx * xlen / factor + offset + (gridRulerOffset/areasize.x * bounds.width);
+
+			oidx = (idx + (factor * (areasize.x * viewport.origin.x)).asInteger + 1);
 			x = oidx * xlen / factor + offset;
+
 			//orx = (idx) * xlen / factor + offset;
 			//x = (idx + (areasize.x * viewport.origin.x * factor).asInteger + 1) * xlen / factor + offset;
 			//[idx, x, xlen, bounds.height, bounds, offset, factor].debug("grid drawer: x");
@@ -190,9 +201,9 @@ TimelineRulerView : TimelineView {
 		} {
 			this.class.vertical_grid_do(this, { arg ... args;
 				this.perform(\drawGraduations, *args)
-			});
+			}, gridRulerOffset);
 		};
-		this.drawCursor;
+		//this.drawCursor; // now drawn by CursorTimelineView
 
 		// current pos
 		if(this.lastGridPos.notNil) {
@@ -392,6 +403,7 @@ TimelineLocatorBarView : TimelineView {
 			this.deselectAllNodes;
 			this.refresh;
 		};
+		this.virtualBoundsOffsetY = 0;
 	}
 
 	nodeClass {
@@ -448,11 +460,29 @@ TimelineLocatorBarView : TimelineView {
 		var bounds = this.virtualBounds;
 		var pstartSelPoint, pendSelPoint;
 		var grid;
+		var nstart, nend;
 
 		pen.width = 1;
 		pen.color = background; // background color
 		backgrDrawFunc.value; // background draw function
 
+
+		// darken outside of playing region
+		paraNodes.do { arg item, idx;
+			if(item.model.type == \start) {
+				nstart = this.gridPointToPixelPoint(item.origin).x;
+				Pen.addRect(Rect(bounds.left,bounds.origin.y, nstart - bounds.left, bounds.height ));
+				Pen.color = Color.black.alpha_(0.2);
+				Pen.fill;
+			};
+			if(item.model.type == \end) {
+				nend = this.gridPointToPixelPoint(item.origin).x;
+				Pen.addRect(Rect(nend,bounds.origin.y, bounds.right - nstart, bounds.height ));
+				Pen.color = Color.black.alpha_(0.2);
+				Pen.fill;
+			};
+			
+		};
 
 		this.drawNodes;
 		
@@ -492,7 +522,8 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 			label = model[labelKey] ? (model[\type] ? "unnamed");
 			//"TimelineViewLocatorLineNode: refresh: 4".debug;
 			//[parent.viewport, parent.areasize, Point(width,height)].debug("parent vi, are, size");
-			extent = parent.pixelPointToGridPoint(Point(width,height)); //FIXME: why /2 ???
+			extent = parent.pixelExtentToGridExtent(Point(width,height)); //FIXME: why /2 ???
+			Log(\Param).debug("TimelineViewLocatorNode refresh: extent: %, width %", extent, Point(width,height));
 			//"TimelineViewLocatorLineNode: refresh: 5".debug;
 			//extent.debug("---------extent");
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
@@ -530,7 +561,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		};
 
 		// FIXME: this lines are here because I need to freeze size and ypos
-		extent = parent.pixelPointToGridPoint(Point(width,height)); 
+		extent = parent.pixelExtentToGridExtent(Point(width,height)); 
 		origin = Point(model[timeKey], 0);
 
 		pos = this.origin;
@@ -563,8 +594,9 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		var rect;
 		var point = this.origin;
 		//extent = parent.pixelExtentToGridExtent(Point(width,height));  // not used because should not be influenced by viewport
-		extent = parent.pixelPointToGridPoint(Point(width,height)); 
+		extent = parent.pixelExtentToGridExtent(Point(width,height)); 
 		rect = Rect(point.x-(extent.x/2), 0, extent.x, extent.y*4);
+		Log(\Param).debug("TimelineViewLocatorNode rect: extent: %, width %, rect %", extent, Point(width,height), rect);
 		^rect;
 	}
 
@@ -622,8 +654,7 @@ TimelineLocatorPropertiesView {
 }
 
 
-// TODO: replace hardcoded line with this class
-// because start and end events are part of the timeline so should be drawed as others events
+// nodes that draw start and end events vertical lines
 TimelineViewLocatorLineNode : TimelineViewEventNode {
 	var <>alpha = 0.5;
 
@@ -811,10 +842,11 @@ CursorTimelineView : TimelineView {
 	var <>cursorController;
 	var <>isPlaying = false;
 	var <>refreshRate = 16;
+	var <>bandWidth = 5;
 
 	drawFunc {
 		var cpos;
-		var spos;
+		var spos, espos;
 		Pen.color = Color.red;
 		cpos = this.gridPointToPixelPoint(Point(cursorPos, 0)).x;
 		Pen.line(Point(cpos,0), Point(cpos, this.virtualBounds.height));
@@ -833,12 +865,25 @@ CursorTimelineView : TimelineView {
 			if(cursor.endPosition.notNil) {
 				Pen.color = Color.blue;
 				Pen.width = 2;
-				spos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
+				espos = this.gridPointToPixelPoint(Point(cursor.endPosition, 0)).x;
 				//[cursor.endPosition, spos].debug("CursorTimelineView: end, spos");
-				Pen.line(Point(spos,0), Point(spos, this.virtualBounds.height));
+				Pen.line(Point(espos,0), Point(espos, this.virtualBounds.height));
 				Pen.stroke;
 
 			};
+
+			if(cursor.startPosition.notNil and: cursor.endPosition.notNil) {
+				Pen.color = Color.blue.alpha_(0.2);
+				Pen.width = 2;
+				Pen.fillRect(Rect(
+					spos, 
+					0,
+					espos - spos, 
+					bandWidth,
+				));
+				Pen.stroke;
+				
+			}
 		} {
 			//"cursorisnil:::!!!!".debug;
 		};
@@ -864,6 +909,7 @@ CursorTimelineView : TimelineView {
 	specialInit {
 		this.view.background = Color.clear;
 		this.view.acceptsMouse_(false);
+		this.virtualBoundsOffsetY = 0;
 	}
 
 	makeUpdater {
