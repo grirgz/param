@@ -202,6 +202,7 @@
 	}
 
 	presetCompileString {
+		// FIXME: need to test if Pbindef.presetCompileString is not broken
 		^this.asParamGroup.selectByKey(( this.envir ?? { () } ).keys.asArray).getSetCompileString;
 	}
 
@@ -586,6 +587,7 @@
 	}
 
 	followChange { arg model, key, fun, init=true;
+		// user should free followChangeController before calling it again
 		var con;
 		//[model, key, fun, init].debug("model, key, fun, init");
 	   	con = SimpleController.new(model).put(key, { arg ...args;

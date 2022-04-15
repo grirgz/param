@@ -367,27 +367,30 @@ TimelineView : SCViewHolder {
 
 			//"mouseDownAction: 1".debug;
 			newevent = this.eventFactory(newpos);
-			Log(\Param).debug("new event!!!!!!!!! %", newevent);
-			chosennode = this.addEvent(newevent);
-			//newevent.debug("mouseDownAction: 2");
-			Log(\Param).debug("new event after add!!!!!!!!! %", newevent);
+			if(newevent.notNil) {
 
-			createNodeDeferedAction = {
-				//debug("mouseDownAction: 3");
-				model.addEvent(newevent);
-				Log(\Param).debug("new event after add to model!!!!!!!!! %", newevent);
-				//debug("mouseDownAction: 4");
-				model.reorder; // reorder lose node selection
-				//debug("mouseDownAction: 5");
-				//model.changed(\refresh); // commented because refresh is already called in mouseUp
-				//debug("mouseDownAction: 6");
-				chosennode = nil; // chosennode was set to know which node to resize with mouseMove, but is not really selected
-			};
+				Log(\Param).debug("new event!!!!!!!!! %", newevent);
+				chosennode = this.addEvent(newevent);
+				//newevent.debug("mouseDownAction: 2");
+				Log(\Param).debug("new event after add!!!!!!!!! %", newevent);
 
-			//[chosennode.posyKey, chosennode.model, chosennode.origin].debug("posy, model, origin");
-			//[chosennode.width].debug("pppp");
-			refPoint = newpos; // var used here for reference in trackfunc
-			refWidth = chosennode.width;
+				createNodeDeferedAction = {
+					//debug("mouseDownAction: 3");
+					model.addEvent(newevent);
+					Log(\Param).debug("new event after add to model!!!!!!!!! %", newevent);
+					//debug("mouseDownAction: 4");
+					model.reorder; // reorder lose node selection
+					//debug("mouseDownAction: 5");
+					//model.changed(\refresh); // commented because refresh is already called in mouseUp
+					//debug("mouseDownAction: 6");
+					chosennode = nil; // chosennode was set to know which node to resize with mouseMove, but is not really selected
+				};
+
+				//[chosennode.posyKey, chosennode.model, chosennode.origin].debug("posy, model, origin");
+				//[chosennode.width].debug("pppp");
+				refPoint = newpos; // var used here for reference in trackfunc
+				refWidth = chosennode.width;
+			}
 
 			//chosennode.debug("mouseDownAction: chosennode!");
 		}

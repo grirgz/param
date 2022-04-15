@@ -11,6 +11,7 @@ PlayerWrapperView {
 	var <model, >view;
 	var follower;
 	var <rightClickEditorEnabled = false;
+
 	*new { arg model;
 		^super.new.init(model);
 	}
@@ -120,9 +121,10 @@ PlayerWrapperView {
 		if(model.isKindOf(PlayerWrapper)) {
 			target = model.target;
 		}; 
-		target.removeDependant(follower);
-		follower = { arg obj, changed, status;
-			//[obj, changed, status].debug("follower: args");
+
+		button.getHalo(\followChangeController).remove;
+		button.followChange(target, \PlayerWrapper, { arg view, obj, changed, status;
+			[obj, changed, status].debug("follower: args");
 			if(changed == \PlayerWrapper) {
 				defer {
 					var butval = button.value;
@@ -142,9 +144,33 @@ PlayerWrapperView {
 					);
 				}
 			};
-		};
-		target.addDependant(follower);
-		button.onClose({target.removeDependant(follower)});
+		}, false);
+
+		//target.removeDependant(follower);
+		//follower = { arg obj, changed, status;
+			////[obj, changed, status].debug("follower: args");
+			//if(changed == \PlayerWrapper) {
+				//defer {
+					//var butval = button.value;
+					//button.states = this.getStates(model.label);
+					//button.value = switch(status,
+						//\stopped, { 0 },
+						//\playing, { 2 },
+						//\userPlayed, { 
+							//// if was already playing, stay at 2, else go in state prepare_to_play
+							//if(butval == 2) { 2 } { 1 }
+						//},
+						//\userStopped, { 
+							//// if was already stopped, stay at 0, else go in state prepare_to_stop
+							//if(butval == 0) { 0 } { 3 }
+						//},
+						//{ 0 },
+					//);
+				//}
+			//};
+		//};
+		//target.addDependant(follower);
+		//button.onClose({target.removeDependant(follower)});
 		
 	}
 
@@ -388,12 +414,6 @@ RecordButton {
 }
 
 PlayerWrapperGridCellView : PlayerWrapperView {
-	var <>states;
-	var player;
-	var <>button;
-	var skipjack;
-	var pollRate = 1;
-	var <>label;
 	var <>labelView;
 	var <>selectAction; // hook to outer selector system which organize deselection of siblings
 	var selected;

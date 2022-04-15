@@ -289,6 +289,11 @@ ProtoClassDef(\TrackMixerDef, (
 		self.inbus
 	},
 
+	presetCompileString: { arg self;
+		self.asParamGroup.getSetCompileString(self.refCompileString)
+		++
+		"%.outBus = %;".format(self.refCompileString, self.outbus.asCompileString);
+	},
 	//enableInsertFx: { arg self, idx, val = true, offset;
 		//if(offset.isNil) {
 			//offset = self.stages.postfx;

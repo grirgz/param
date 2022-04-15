@@ -27,7 +27,7 @@ ProtoClassDef(\EventTimeline, (
 		self.cursor = CursorTimeline.new;
 		self.loopMaster = ProtoClassDef(\LoopMaster).new(self);
 		self.cursor.loopMaster = self.loopMaster;
-		self.cursor.startPosition = self.eventList.startTime;
+		self.cursor.startPosition = nil; // no preview loop cursor
 		self.postChain = EventPatternProxy.new.source_(Pbind());
 		self.selection_cursor = CursorTimeline.new;
 

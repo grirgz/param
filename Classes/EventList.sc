@@ -376,6 +376,19 @@ TimelineEventList : List {
 		this.reorder;
 	}
 
+	setStartPosition { arg time;
+		block { arg break;
+			this.do { arg ev;
+				if(ev[\type] == \start) {
+					ev[\absTime] = time;
+					break.value;
+				}
+			}
+		};
+		// FIXME: changed signal ?
+		this.reorder;
+	}
+
 	presetCompileString {
 		var ret;
 		ret = this.collect({ arg ev;

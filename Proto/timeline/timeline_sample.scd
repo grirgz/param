@@ -154,7 +154,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 				};
 			}),
 			\out, Pfunc({ parentEvent !? _.outBus ? self.outBus ? 0 }), // since \out is never nil in an event because default to 0, i must use another key
-		).trace;
+		);
 	},
 
 	cutPatternFunction: { arg self, parentEvent, parentTimeline;
@@ -512,7 +512,8 @@ ProtoTemplateDef(\SampleTimelineView, (
 
 
 	make_header: { arg self;
-		self.counterView = StaticText.new;
+		self.counterView = StaticText.new.fixedWidth_(50).font_(Font.default.copy.size_(9));
+		//self.counterView = StaticText.new;
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
@@ -646,22 +647,29 @@ ProtoTemplateDef(\SampleTimelineView, (
 		self.timeline.mapData(self.timeline_model);
 		self.timeline_model.changed(\data);
 		//"clipTimelinePanelView.makeLayout: end init".debug;
+		self.timeline.eventFactory = { nil }; // disable event creation
 		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
 		self.timeline.mouseMoveAction = {|me, px, py, mod|
 			var scursor = self.timeline_model.selection_cursor;
 			var cursor = self.timeline_model.cursor;
-			var slen, lenbeat, lensec;
+			var lenbeat = 0, lensec;
+			var prec = 3;
 			var str;
-			lenbeat = scursor.endPosition - scursor.startPosition;
-			if(slen == 0) {
-				if(cursor.endPosition.isNil) {
-					lenbeat = 0;
-				} {
-					lenbeat = cursor.endPosition - cursor.startPosition;
-				}
+
+			if(scursor.endPosition.notNil) {
+				lenbeat = scursor.endPosition - (scursor.startPosition ? 0 );
 			};
+
+			// NOTE: make no sense to use cursor in mouseMoveAction
+			//if(lenbeat == 0) {
+				//if(cursor.endPosition.isNil) {
+					//lenbeat = 0;
+				//} {
+					//lenbeat = ( cursor.endPosition ? 0 ) - ( cursor.startPosition ? 0 );
+				//}
+			//};
 			lensec = lenbeat/self.timeline_model.tempoClock.tempo;
-		   	str = "%b %:%s".format(lenbeat.round(0.01), ( lensec / 60 ).asInteger, ( lensec % 60 ).round(0.01));
+		   	str = "%b\n%:%s".format(lenbeat.asStringPrec(prec), ( lensec / 60 ).asInteger, ( lensec % 60 ).asStringPrec(prec));
 			self.counterView.string_(str)
 		};
 		self.layout;
