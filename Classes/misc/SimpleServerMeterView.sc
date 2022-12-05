@@ -20,7 +20,7 @@ SimpleServerMeterView : SCViewHolder {
 	bus_ { arg val;
 		bus = val;
 		this.stop;
-		this.setSynthFunc(inmeters, outmeters);
+		//this.setSynthFunc(inmeters, outmeters);
 		this.start;
 	}
 
@@ -69,6 +69,7 @@ SimpleServerMeterView : SCViewHolder {
 		numOuts = anumOuts ?? { server.options.numOutputBusChannels };
 
 		this.makeLayout;
+		this.view.onClose = { this.stop }; // cleanup
 
 		this.setSynthFunc(inmeters, outmeters);
 		startResponderFunc = {this.startResponders};

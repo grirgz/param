@@ -13,6 +13,8 @@ FileSystemProject : TrackDef {
 		^PresetDictionary.new(\FileSystemProject);
 	}
 
+	*defaultTemplateDictionary { ^\FileSystemProjectTemplate }
+
 	*initClass {
 		loadingFiles = List.new;
 		defaultProject = (
@@ -21,6 +23,7 @@ FileSystemProject : TrackDef {
 			},
 
 			open: { arg self;
+				// not used, seems deprecated, use loadProject instead
 				if(self.isOpening != true) {
 					self.server.waitForBoot {
 						self.isOpening = true;
@@ -35,6 +38,7 @@ FileSystemProject : TrackDef {
 			loadProject: { arg self, path;
 				var projectfile;
 				var proj;
+				path = path ?? { self.path; };
 				if(path.endsWith("data/project.scd")) {
 					projectfile = path;
 				} {
@@ -96,8 +100,13 @@ FileSystemProject : TrackDef {
 	*new { arg key, val;
 		var rkey = this.resolve(key.asString);
 		if(rkey.notNil) {
-			if(this.all[rkey].isNil) {
-				^super.new(rkey.fullPath.asSymbol, val ? this.defaultProject);
+			if(this.all[rkey.fullPath.asSymbol].isNil) {
+				// here we need to use (parent:) construction because
+				// this.defaultProject is not a template class so it is
+				// directly copied into FileSystemProject instance and
+				// replacing the parent after does not work well because there
+				// are already defined method in child like .loadProject
+				^super.new(rkey.fullPath.asSymbol, val ? (parent:this.defaultProject));
 			} {
 				^super.new(rkey.fullPath.asSymbol, val);
 			}
@@ -287,6 +296,15 @@ FileSystemProject : TrackDef {
 		this.changed(\project, val);
 	}
 
+}
+
+FileSystemProjectTemplate : ProtoTemplateDef {
+
+	*defaultTemplateDictionary { ^\FileSystemProjectTemplate }
+	
+	*all {
+		^PresetDictionary.new(\FileSystemProjectTemplate);
+	}
 }
 
 FSProject {

@@ -743,8 +743,10 @@ ParamGroupLayout {
 	*knobView { arg param, showValue=false;
 		var pa = param;
 		var lay;
+		var label = pa.asStaticTextLabel;
+		ParamViewToolBox.attachContextMenu(pa, label);
 		lay = VLayout (
-			[pa.asStaticTextLabel, align:\center],
+			[label, align:\center],
 			pa.asKnob.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 				if(buttonNumber == 2) {

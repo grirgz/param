@@ -314,7 +314,9 @@ BufDef {
 	}
 
 	*free { arg name, channels;
-		var buf = this.all[name];
+		var buf;
+		name = name.asSymbol;
+		buf = this.all[name];
 		if(buf.isKindOf(Buffer)) {
 			buf.free;
 			this.all[name] = nil;
@@ -341,7 +343,9 @@ BufDef {
 	}
 
 	*reload { arg name, channels;
-		var buf = this.all[name];
+		var buf;
+		name = name.asSymbol;
+		buf = this.all[name];
 		if(buf.isKindOf(Buffer)) {
 			var numFrames = buf.numFrames, numChannels = buf.numChannels;
 			buf.free;

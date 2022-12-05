@@ -1,6 +1,9 @@
 
 TrackDef : ProtoDef {
 	// just another placeholder to manage players and mixers
+
+	*defaultTemplateDictionary { ^\TrackTemplateDef }
+
 	*all {
 		^PresetDictionary.new(\TrackDef);
 	}

@@ -1,5 +1,26 @@
 
 (
+	WindowDef(\GenericEditor, { arg me, model;
+		case(
+			{ model.isKindOf(Ndef) }, {
+				WindowDef(\NdefEditor).asView(model);
+			},
+			{ model.isKindOf(Pdef) }, {
+				WindowDef(\PdefEditor).asView(model);
+			}, 
+			{ model.isKindOf(EventPatternProxy) }, {
+				WindowDef(\PdefEditor).asView(model);
+			}, {
+				BasicButton.new("Edit").action_({
+					model.edit
+				})
+			}
+		)
+
+	});
+);
+
+(
 WindowDef(\EventPatternProxyEditor, { arg me, target;
 	VLayout(
 		PlayerWrapper(target).asView,
@@ -18,9 +39,39 @@ WindowDef(\PdefEditor, { arg me, key=\default;
 	VLayout(
 		HLayout (
 			PlayerWrapper(target).asView,
-			BasicButton.new.string_("Special edit").action_({
-				target.getHalo(\edit).value(target);
-			})
+
+			BasicButton.new.string_("...").maxWidth_(20).action_({ arg view;
+				WindowDef(\PdefEditorOverlayMenu, { arg def, model, view, x=0, y=0;
+					var inview, layout;
+					def.windowDo { arg win;
+						var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
+						win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
+						win.endFrontAction = { win.close };
+					};
+					inview = View.new;
+
+
+					layout = VLayout (
+						* [
+							if(target.getHalo(\edit).notNil) {
+								BasicButton.new.string_("Halo edit").action_({
+									target.getHalo(\edit).value(target);
+								})
+							},
+							if(WindowDef(\PbindefEditor).notNil) {
+								BasicButton.new.string_("Convert to Pbindef").action_({
+									target.convertToPbindef;
+									WindowDef(\PbindefEditor).front(target);
+									me.closeWindow;
+								})
+							},
+						].reject(_.isNil) ++
+						[ nil ]
+					);
+					inview.layout_(layout);
+
+				}).border_(false).front(target, view);
+			}),
 		),
 		ParamGroupLayout.two_panes(target.asParamGroup),
 	);
@@ -169,6 +220,22 @@ WindowDef(\ParamSpecEditor, { arg def, param;
 		{ spec.isKindOf(ControlSpec) }, {
 			VLayout (
 				ParamGroupLayout.formEntry( param),
+				HLayout (
+					StaticText.new.string_("Load from spec: "),
+					PopUpMenu.new.items_(Spec.specs.keys.as(Array)).action_({
+						arg view;
+						var key = view.item.asSymbol;
+						var newspec = Spec.specs[key];
+						if(newspec.notNil) {
+							spec.minval = newspec.minval;
+							spec.maxval = newspec.maxval;
+							spec.default = newspec.default;
+							spec.step = newspec.step;
+							spec.warp = newspec.warp;
+						};
+						Log(\Param).debug("done setting spec %", newspec);
+					})
+				),
 				ParamGroupLayout.formEntry( Param(Message(spec), \minval, \widefreq)),
 				ParamGroupLayout.formEntry( Param(Message(spec), \maxval, \widefreq)),
 				ParamGroupLayout.formEntry( Param(Message(spec), \default, \widefreq)),
@@ -180,12 +247,14 @@ WindowDef(\ParamSpecEditor, { arg def, param;
 					]
 				))),
 				BasicButton.new.string_("Save in Spec library").action_({
-					Spec.add(param.property, spec.copy);
+					Spec.add(param.propertyRoot, spec.copy);
 				}),
 				nil
 			)
 		}, {
-			StaticText.new.string_(spec.asCompileString)
+			TextField.new.string_(spec.asCompileString).action_({ arg view;
+				param.spec = view.string.interpret;
+			})
 		}
 	);
 	
@@ -324,3 +393,5 @@ WindowDef(\ServerVolumeEditor, { arg def, server;
 	
 });
 );
+
+

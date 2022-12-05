@@ -2476,7 +2476,11 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 			view.items_(model.clipList.collect({ arg clipId;
 				Log(\Param).debug("clipList: add to listview: %", clipId);
 				model.clipIdLabel(clipId)
-			}))
+			}));
+			// since selected item is deleted, need to reselect
+			if(view.items.size > 0) {
+				model.setBrushToClipId(model.clipList[view.value]);
+			};
 		}).followChange(model, \brushClipId, { arg view;
 			view.value = model.clipList.detectIndex({ arg clipId;
 				Log(\Param).debug("clipList: change brushClipId %", model.brushClipId);

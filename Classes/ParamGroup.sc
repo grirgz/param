@@ -128,7 +128,7 @@ ParamGroup : List {
 				if(p.target.class == Message) {
 					"%.% = %;".format(targetCompileString ?? { p.target.receiver.asCompileString }, p.property, p.getRaw.asCompileString)
 				} {
-					"%.set(%, %);".format(targetCompileString ?? { p.target.asCompileString }, p.property.asCompileString, p.getRaw.asCompileString)
+					"%.setVal(%, %);".format(targetCompileString ?? { p.target.asCompileString }, p.property.asCompileString, p.get.asCompileString)
 				};
 			}).join("\n")
 		)

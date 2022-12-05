@@ -220,15 +220,21 @@ ProtoClass : Event {
 
 ProtoDef : ProtoClass {
 	classvar <>instanceClasses = #[\ProtoDef, \TrackDef, \FileSystemProject];
-	classvar <>templateClasses = #[\ProtoTemplateDef, \TrackTemplateDef];
+	classvar <>templateClasses = #[\ProtoTemplateDef, \TrackTemplateDef, \FileSystemProjectTemplate];
 	//var <>key;
 
 	*all {
 		^PresetDictionary.new(\ProtoDef);
 	}
 
+	*defaultTemplateDictionary { ^\ProtoTemplateDef }
+
 	*new { arg key, val;
 		var inst;
+		if(val.isKindOf(Symbol)) {
+			// Note: parent not existing is not a problem because it can be defined after
+			val = this.defaultTemplateDictionary.asClass.new(val)
+		};
 		if(this.all[key].isNil) {
 			if(val.notNil) {
 				// if value is a template class

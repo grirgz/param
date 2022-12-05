@@ -1682,7 +1682,11 @@ Param {
 			//}
 		//};
 		//^rval;
-		^SynthDesc(defname).allSpecs[argName]
+		if(SynthDesc(defname).notNil) {
+			^SynthDesc(defname).allSpecs[argName]
+		} {
+			^nil
+		}
 	}
 
 	*toSynthDefSpec { arg spec, argName, defname=nil, default_spec=\widefreq;

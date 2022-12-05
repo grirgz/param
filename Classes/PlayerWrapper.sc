@@ -3,11 +3,14 @@
 
 
 PlayerWrapper  {
+	classvar <>capturePlayerHook;
+
 	var <>wrapper;
 	var >label;
 	var init_args;
 	var <>recordedEvent; // playerGroupRecorder need this placeholder to store current event being recorded
 	var <>playerEventWrapper;
+	var <>recorderMode = false; // in recorderMode, .play call .isRecording_(true)
 	
 
 	*new { arg target;
@@ -61,6 +64,10 @@ PlayerWrapper  {
 			}
 		;
 		
+	}
+
+	*capturePlayer { arg player;
+		^capturePlayerHook.(player)
 	}
 
 	*doWithQuant { arg quant, fun;
@@ -182,7 +189,11 @@ PlayerWrapper  {
 	}
 
 	asView {
-		^PlayerWrapperView.new(this).view;
+		if(this.recorderMode != true) {
+			^PlayerWrapperView.new(this).view;
+		} {
+			^RecordButton.new(this.target, this.label).view;
+		}
 	}
 
 	asPlayerEvent {
@@ -645,10 +656,14 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 	}
 
 	play {
-		target.play;
-		target.changed(\PlayerWrapper, \userPlayed);
-		this.doWithQuant {
-			target.changed(\PlayerWrapper, \playing);
+		if(parent.recorderMode != true) {
+			target.play;
+			target.changed(\PlayerWrapper, \userPlayed);
+			this.doWithQuant {
+				target.changed(\PlayerWrapper, \playing);
+			}
+		} {
+			target.isRecording_(true)
 		}
 	}
 
@@ -667,7 +682,11 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 	}
 
 	isPlaying {
-		^target.isPlaying
+		if(parent.recorderMode != true) {
+			^target.isPlaying
+		} {
+			^target.isRecording
+		}
 	}
 
 	isActive {
@@ -687,12 +706,16 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 	}
 
 	stop {
-		// if protoclass already have a quant, the wrapper sould not add it again
-		// the protoclass is responsible to add a quant
-		target.stop;
-		target.changed(\PlayerWrapper, \userStopped);
-		this.doWithQuant {
-			target.changed(\PlayerWrapper, \stopped);
+		if(parent.recorderMode != true) {
+			// if protoclass already have a quant, the wrapper sould not add it again
+			// the protoclass is responsible to add a quant
+			target.stop;
+			target.changed(\PlayerWrapper, \userStopped);
+			this.doWithQuant {
+				target.changed(\PlayerWrapper, \stopped);
+			}
+		} {
+			target.isRecording_(false);
 		}
 	}
 

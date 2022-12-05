@@ -306,6 +306,15 @@ WindowDef {
 		}
 	}
 
+	printOn { arg stream;
+		this.storeOn(stream)
+	}
+
+	storeOn { arg stream;
+		stream << "WindowDef(%)".format(this.key.asCompileString);
+	}
+
+
 }
 
 

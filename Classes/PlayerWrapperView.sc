@@ -11,6 +11,7 @@ PlayerWrapperView {
 	var <model, >view;
 	var follower;
 	var <rightClickEditorEnabled = false;
+	var <rightClickCapturerEnabled = false;
 
 	*new { arg model;
 		^super.new.init(model);
@@ -79,8 +80,9 @@ PlayerWrapperView {
 		};
 		lay.addUniqueMethod(\rightClickEditorEnabled_, { arg self, val=true;
 			this.rightClickEditorEnabled = val;
-			self;
+			lay;
 		});
+		this.rightClickCapturerEnabled = true; // capture mode by default
 		this.makeUpdater;
 		this.update;
 		//view = lay;
@@ -96,7 +98,36 @@ PlayerWrapperView {
 				button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 					//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 					if(buttonNumber == 1) {
-						this.model.edit;
+						if(modifiers.isShift) {
+							if(this.rightClickCapturerEnabled == true) {
+								PlayerWrapper.capturePlayer(this.model);
+							}
+						} {
+							this.model.edit;
+						}
+					} 
+				})
+			} {
+				button.mouseDownAction_({})
+			};
+		}
+	}
+
+	rightClickCapturerEnabled_ { arg val;
+		//Log(\Param).debug("rightClickEditorEnabled %", val);
+		rightClickCapturerEnabled = val;
+		if(button.notNil) {
+			if(val == true) {
+				button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+					//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+					if(buttonNumber == 1) {
+						if(modifiers.isShift) {
+							PlayerWrapper.capturePlayer(this.model);
+						} {
+							if(this.rightClickEditorEnabled == true) {
+								this.model.edit;
+							}
+						}
 					} 
 				})
 			} {
@@ -243,6 +274,9 @@ RecordButton {
 	var <>label;
 	var <model, >view;
 	var follower;
+	var <rightClickCapturerEnabled = false;
+	var <>rightClickEditorEnabled = false; // not implemented, here for having same interface than PlayerWrapperView
+
 	*new { arg model, label="";
 		^super.new.init(model, label);
 	}
@@ -305,8 +339,17 @@ RecordButton {
 		});
 		lay.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
 		lay.addUniqueMethod(\parentView, { this }); 
+		if(rightClickEditorEnabled == true) {
+			// init state
+			this.rightClickEditorEnabled = true;
+		};
+		lay.addUniqueMethod(\rightClickEditorEnabled_, { arg self, val=true;
+			this.rightClickEditorEnabled = val;
+			lay;
+		});
 		this.makeUpdater;
 		this.update;
+		this.rightClickCapturerEnabled = true;
 		//view = lay;
 		view = button;
 		^view;
@@ -411,6 +454,24 @@ RecordButton {
 		}
 	}
 
+	rightClickCapturerEnabled_ { arg val;
+		//Log(\Param).debug("rightClickEditorEnabled %", val);
+		rightClickCapturerEnabled = val;
+		if(button.notNil) {
+			if(val == true) {
+				button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+					//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+					if(buttonNumber == 1) {
+						if(modifiers.isShift) {
+							PlayerWrapper.capturePlayer(PlayerWrapper(this.model).recorderMode_(true));
+						}
+					} 
+				})
+			} {
+				button.mouseDownAction_({})
+			};
+		}
+	}
 }
 
 PlayerWrapperGridCellView : PlayerWrapperView {
@@ -670,6 +731,10 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 		view.addUniqueMethod(\selected, { arg me, x; this.selected });
 		view.addUniqueMethod(\selected_, { arg me, x; this.selected = x });
 		view.addUniqueMethod(\parentView, { this });
+		view.addUniqueMethod(\rightClickEditorEnabled_, { arg self, val=true;
+			this.rightClickEditorEnabled = val;
+			view
+		});
 		this.makeUpdater;
 		this.update;
 		^view;

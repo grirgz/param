@@ -263,9 +263,21 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		self.filenameview.string = "[%] %".format(node.typeLabel, node.fullPath.asString);
 		if(alsoPlay == true) {
 			if(self.disable_play != true) {
-				node.play;
+				proto.playNode(node);
 			};
 		}
+	};
+
+	proto.playNode = { arg self, node;
+		Buffer.read(Server.default, node.fullPath, action: { arg buf;
+			self.player.stop;
+			self.player.source = Pmono( \playersec,
+				\bufnum, buf,
+				\dur, 1/8,
+			);
+			self.player.play;
+		})
+		
 	};
 
 	//proto.play_file = { arg self, file, node;
@@ -333,6 +345,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	proto.init;
 
 	preview.layout = HLayout (
+		Param(proto.player, \gain).asKnob,
 		proto.playerwrapper.asView,
 		Param(Message(proto), \auto_mode, XBoolSpec()).asButton("Auto"),
 		[proto.filenameview, stretch:4],

@@ -1072,6 +1072,10 @@ TagSpecDef(\WavetableDef_object, {
 	WavetableDef.all.keys.as(Array).sort.collect({ arg k; k -> WavetableDef(k) }) 
 });
 
+TagSpecDef(\Spec, {
+	Spec.specs
+});
+
 ///////////////////
 
 //TagSpecDef(\TrackList, { }); // updated by TrackTemplateDef(\TrackList) when adding a track
@@ -1163,6 +1167,7 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\Clip,
 	\Timeline,
 	\Editable,
+	\Players,
 	\AudioBuffer,
 	\SynthDef,
 ]);
@@ -1230,6 +1235,7 @@ TagSpecDef('GlobalLibrary.type.Editable', [
 TagSpecDef('GlobalLibrary.type.TrackGrid', [
 	\playergrid,
 	\TrackList,
+	\CustomTrackList,
 ]);
 
 TagSpecDef('GlobalLibrary.type.LineTrack', [
@@ -1258,6 +1264,29 @@ TagSpecDef('GlobalLibrary.type.AllTracks', {
 		TagSpecDef("GlobalLibrary.type.%".format(item).asSymbol).list
 	}.flat;
 });
+
+TagSpecDef('GlobalLibrary.type.Players', {
+	[
+		\Pdef,
+		\Ndef,
+		\NoteTimeline,
+		\TrackTimeline,
+		\KitTimeline,
+		\SampleTimeline,
+		\ClipTimeline,
+		\ParamTimeline,
+		\CustomTrackList,
+		\ProtoPlayer,
+	] ++
+	[\TrackGrid, \LineTrack, \TrackPart, \Track].collect { arg item, idx;
+		TagSpecDef("GlobalLibrary.type.%".format(item).asSymbol).list
+	}.flat;
+});
+
+/////////////////////////////////////////////////////////////////
+///////// Browser GUI
+////////////////////////////////////////////////////////////////
+
 
 // this is the library browser or select dialog
 WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, defaultValue;

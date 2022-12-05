@@ -367,6 +367,67 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		//var size = buf.numFrames/1200@800; // waveform resolution
 		var size = Point(( buf.numFrames/Server.default.sampleRate*300 ).asInteger, buf.numChannels * 100);
 		buf.loadToFloatArray(0,-1,{ arg data;
+			Task({
+				if(data.size > 0) {
+					var img = Image.new(size);
+					var yzoom = 1;
+					var chanspacefactor = 2;
+					var chunksize = 16;
+					var lastpoint;
+					var drawChannel = { arg chandata, frameOffset, yoffset;
+						var dsize = chandata.size;
+						var totalFrames = buf.numFrames;
+						var chanysize = size.y/buf.numChannels;
+						//[chandata.size, frameOffset, yoffset].debug("chandata");
+						Pen.moveTo(Point(( frameOffset )/totalFrames * size.x, (yoffset + 1) *chanysize  /2  ));
+						chandata.do { arg item, idx;
+							var point;
+							//[idx, frameOffset, totalFrames, size.x, ( idx+frameOffset ),( idx+frameOffset )/totalFrames, ( idx+frameOffset )/totalFrames * size.x ].debug("chandata point");
+							point = Point(( idx+frameOffset )/totalFrames * size.x, (item * yzoom + yoffset + 1) *chanysize  /2);
+							Pen.lineTo(point);
+						};
+						Pen.stroke;
+					};
+					Log(\Param).debug("SampleTimelineView: computeWaveformImage: start drawing waveform for %", buf);
+					//[buf.numFrames, buf.numFrames/chunksize].debug("numFrames");
+					( buf.numFrames/chunksize ).asInteger.do { arg chunkidx;
+						// draw the image by chunks of 16 values
+						// chunkdata has 32 values for a 2 channels buffer with chunksize 16
+						var chunkdata = data[chunkidx*chunksize*buf.numChannels..( chunkidx+1 )*chunksize*buf.numChannels -1];
+						//[chunkdata.size, chunkdata ].debug("chunkdata");
+
+						img.draw({
+							chunkdata.clump(buf.numChannels).flop.do { arg chandata, idx;
+								drawChannel.(chandata, chunkidx*chunksize, idx * chanspacefactor)
+							};
+						});
+						0.0000000001.wait;
+
+					};
+					if(self.bufferInfo.waveformImage.notNil) {
+						self.bufferInfo.waveformImage.free;
+					};
+					self.bufferInfo.waveformImage = img;
+					self.bufferInfo.bufferData = data; 
+					self.bufferInfo.numChannels = buf.numChannels;
+					self.areasize = Point(self.areasize.x, self.bufferInfo.numChannels ? 2);
+					self.changed(\areasize);
+					self.changed(\data)
+				} {
+					// FIXME: buffer seems to be loaded two times and the second time it is empty
+					// this is why i check size
+					Log(\Param).debug("Error: buffer is empty %", buf);
+				};
+			}).play(AppClock)
+		})
+		
+	},
+
+	computeWaveformImage_old: { arg self;
+		var buf = self.buffer;
+		//var size = buf.numFrames/1200@800; // waveform resolution
+		var size = Point(( buf.numFrames/Server.default.sampleRate*300 ).asInteger, buf.numChannels * 100);
+		buf.loadToFloatArray(0,-1,{ arg data;
 			{
 				var img;
 				if(data.size > 0) {
@@ -410,6 +471,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	},
 
 	computeResampledData: { arg self;
+		// not used anymore, computeWaveformImage use raw data
 		self.buffer.loadToFloatArray(0, -1, {|data| 
 			var buffer = self.buffer;
 			var sampleRate = buffer.sampleRate;

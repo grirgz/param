@@ -542,62 +542,6 @@ WindowDef(\help, { arg def, pg;
 
 subsection:: Defining macro parameter to control several parameters
 
-subsection:: Creating an overlay menu
-
-Context menus have been added relatively recently to Supercollider, but even
-with them, you might want to use a borderless window instead. The benefit is
-you can put any GUI component on it and make it as large as you want. I call
-this kind of contextual borderless windows: Overlay menus.
-
-code::
-(
-// first define the overlay menu window
-WindowDef(\MyOverlayMenu, { arg def, model, view, x=0, y=0;
-	var inview, layout;
-	def.windowDo { arg win;
-		// move window at the position of the click
-		// x and y are relative to view top left corner
-		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
-		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
-		win.endFrontAction = { win.close };
-	};
-	inview = View.new;
-
-
-	layout = VLayout (
-		BasicButton.new.string_("hello").action_({
-			// typically will act on model
-			def.closeWindow; // handy to close window if we click a button
-		}), 
-		BasicButton.new.string_("hello2"),
-		nil
-	);
-	inview.layout_(layout);
-	
-}).border_(false);
-)
-
-(
-// then we can call it from any GUI
-WindowDef(\help, { arg def;
-	VLayout (
-		BasicButton.new.string_("...").action_({ arg view;
-			// we do not have x and y, it will use view top left corner
-			// there is no model in this example so first argument is nil
-			WindowDef(\MyOverlayMenu).front(nil, view)
-		}),
-		// show the overlay menu when right clicking on a view
-		PlayerWrapper(Pdef(\help)).asView.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			if(buttonNumber == 1) { // if right click
-				WindowDef(\MyOverlayMenu).front(nil, view, x, y)
-			} 
-			
-		}),
-		nil,
-	)
-}).front;
-)
-::
 
 subsection:: Choose the instrument in a PopUpMenu
 
@@ -747,6 +691,62 @@ subsection:: Write a GUI that can modify SynthDefs
 
 section:: GUI Dialogs
 
+subsection:: Creating an overlay menu
+
+Context menus have been added relatively recently to Supercollider, but even
+with them, you might want to use a borderless window instead. The benefit is
+you can put any GUI component on it and make it as large as you want. I call
+this kind of contextual borderless windows: Overlay menus.
+
+code::
+(
+// first define the overlay menu window
+WindowDef(\MyOverlayMenu, { arg def, model, view, x=0, y=0;
+	var inview, layout;
+	def.windowDo { arg win;
+		// move window at the position of the click
+		// x and y are relative to view top left corner
+		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
+		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
+		win.endFrontAction = { win.close };
+	};
+	inview = View.new;
+
+
+	layout = VLayout (
+		BasicButton.new.string_("hello").action_({
+			// typically will act on model
+			def.closeWindow; // handy to close window if we click a button
+		}), 
+		BasicButton.new.string_("hello2"),
+		nil
+	);
+	inview.layout_(layout);
+	
+}).border_(false);
+)
+
+(
+// then we can call it from any GUI
+WindowDef(\help, { arg def;
+	VLayout (
+		BasicButton.new.string_("...").action_({ arg view;
+			// we do not have x and y, it will use view top left corner
+			// there is no model in this example so first argument is nil
+			WindowDef(\MyOverlayMenu).front(nil, view)
+		}),
+		// show the overlay menu when right clicking on a view
+		PlayerWrapper(Pdef(\help)).asView.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			if(buttonNumber == 1) { // if right click
+				WindowDef(\MyOverlayMenu).front(nil, view, x, y)
+			} 
+			
+		}),
+		nil,
+	)
+}).front;
+)
+::
 
 subsection:: Choose a file
 
@@ -792,6 +792,13 @@ subsection:: Choose a waveform sample
 
 subsection:: Choose a SynthDef, Pdef, Timeline, etc (GlobalLibrary dialog)
 
+
+
+This will open a browser window and when you click on an item, the callback is executed
+First argument is default value, second is callback, third is list of tags to filter the browser list
+the format of selected entry is code::[Class symbol, name -> object ]:: so you can get the object 
+with code::val.last.value::
+
 code::
 (
 WindowDef(\GlobalLibrary).front(nil, { arg val; val.debug("selected") }, [
@@ -800,9 +807,22 @@ WindowDef(\GlobalLibrary).front(nil, { arg val; val.debug("selected") }, [
 )
 ::
 
+You may prefer to have OK/Cancel button:
+
 code::
 (
-WindowDef(\GlobalLibrary_open, { arg def, defaultValue, okHook, categories;
+WindowDef(\GlobalLibrary_select).front(nil, { arg val; val.debug("selected") }, [
+	\Clip, \AllTracks, \Timeline,
+]);
+)
+::
+
+
+Here is how GlobalLibrary_select is implemented:
+
+code::
+(
+WindowDef(\GlobalLibrary_select_helper, { arg def, defaultValue, okHook, categories;
 	var selected;
 	VLayout (
 		WindowDef(\GlobalLibrary).asView(nil, { arg val; 

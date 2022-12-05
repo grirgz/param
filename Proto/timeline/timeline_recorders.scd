@@ -215,7 +215,6 @@ ProtoTemplateDef(\ParamRecorder, (
 // used in SampleTimeline
 ProtoTemplateDef(\SampleTimelineRecorder, (
 	isRecording: false,
-	latencyScale: 0.14/0.2, // i don't understand why it require 0.14 latency
 	new: { arg self, timeline;
 		self = self.deepCopy;
 	
@@ -307,10 +306,12 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 			self.recordedClip.fileName = self.filename;
 			self.recorder.prepareForRecord(path:self.filename, numChannels:numChannels);
 			//self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant)-( s.latency*~t ), {
-			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo * self.latencyScale), {
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant), {
+				Server.default.bind {
+					self.recorder.record(path:self.filename, bus:self.recBus, numChannels:numChannels);
+				};
 				Log(\Param).debug("Start recording: %: bus:%, chan:%, file:%, beats:%, quant:%, tempo:%", name, self.recBus, numChannels, self.filename, self.tempoClock.beats, self.quant, self.tempoClock.tempo);
 				self.startRecordingTime = self.tempoClock.beats; // NOTE: doesnt account for latency but is used to compute duration so not a problem for the moment
-				self.recorder.record(path:self.filename, bus:self.recBus, numChannels:numChannels);
 				self.changed(\isRecording);
 				self.changed(\startedRecording);
 			});
@@ -323,13 +324,15 @@ ProtoTemplateDef(\SampleTimelineRecorder, (
 		if(self.isRecording == true) {
 			Log(\Param).debug("prepare Stop recording %", self.filename);
 			self.changed(\userStoppedRecording);
-			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo * self.latencyScale), {
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant), {
+				Server.default.bind {
+					self.recorder.stopRecording;
+				};
 				Log(\Param).debug("Stop recording %", self.filename);
 				self[\isRecording] = false;
 				self.changed(\isRecording);
 				self.changed(\stoppedRecording);
 
-				self.recorder.stopRecording;
 				self.recordedDuration = self.tempoClock.beats - self.startRecordingTime;
 
 				if(self.recordOnClipTimelineEnabled == true) {
@@ -449,11 +452,13 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 			if(tl.bindPlayWithRecord == true) {
 				tl.play;
 			};
-			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo), {
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant), {
+				Server.default.bind {
+					self.recorder.record(path:self.filename, bus:self.recBus, numChannels:numChannels);
+				};
 				self.changed(\isRecording);
 				Log(\Param).debug("Start recording: %: bus:%, chan:%, file:%, beats:%, quant:%, tempo:%", name, self.recBus, numChannels, self.filename, self.tempoClock.beats, self.quant, self.tempoClock.tempo);
 				self.startRecordingTime = self.tempoClock.beats; // NOTE: doesnt account for latency but is used to compute duration so not a problem for the moment
-				self.recorder.record(path:self.filename, bus:self.recBus, numChannels:numChannels);
 			});
 		} {
 			"Already recording".debug;
@@ -463,13 +468,15 @@ ProtoTemplateDef(\SampleClipTimelineTrackRecorder, (
 	stopRecording: { arg self;
 		if(self.isRecording == true) {
 			"prepare Stop recording".debug(self.filename);
-			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant, Server.default.latency * self.tempoClock.tempo), {
+			self.tempoClock.schedAbs(self.tempoClock.nextTimeOnGrid(self.quant), {
+				Server.default.bind {
+					self.recorder.stopRecording;
+				};
 				"Stop recording".debug(self.filename);
 				self[\isRecording] = false;
 				self.changed(\isRecording);
 
 
-				self.recorder.stopRecording;
 				self.recordedDuration = self.tempoClock.beats - self.startRecordingTime;
 
 				if(self.recordOnClipTimelineEnabled == true) {

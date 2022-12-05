@@ -198,6 +198,20 @@ ProtoClassDef(\TrackMixerDef, (
 		self.asParam(key).get;
 	},
 
+	setVal: { arg self, key, val; 
+		// compatibility method for getSetCompileString
+		// if the target val is a bus, should set the value of the bus
+		// but in this case, the proxy is a Ndef so no bus mode needed
+		self.set(key, val)
+	},
+
+	getVal: { arg self, key; 
+		// compatibility method for getSetCompileString
+		// if the target val is a bus, should get the value of the bus
+		// but in this case, the proxy is a Ndef so no bus mode needed
+		self.get(key)
+	},
+
 	asParamGroup: { arg self;
 		self.proxy.asParamGroup
 	},
@@ -796,7 +810,7 @@ WindowDef(\TrackMixerDef_advanced, (
 				}
 			};
 		});
-		if(self.showPlay) {
+		if(self.showDelay) {
 			delayview = TextField.new;
 			self.delayView = delayview;
 			if(mixer.proxy.notNil) {

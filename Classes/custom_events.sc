@@ -29,9 +29,12 @@ PlayerEvent : Event {
 				if(method == \playNow or: { method == \play }) {
 					TempoClock.default.sched(~sustain.value(currentEnvironment), {
 						receiver.perform(stopmethod, *args);
+						nil;
 					}.inEnvir);
 				};
+				nil;
 			}.inEnvir);
+			//~miam = (haha: "bla" );
 		};
 
 		Event.addEventType(\player, playfun);
