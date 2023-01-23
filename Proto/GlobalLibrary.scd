@@ -1283,6 +1283,25 @@ TagSpecDef('GlobalLibrary.type.Players', {
 	}.flat;
 });
 
+///////// Synthdef Tags
+// WIP
+
+
+//TagSpecDef(\SynthDefTags).addUnique(\default -> [\nice]);
+////TagSpecDef(\SynthDefTags).list
+
+//TagSpecDef(\SynthDefTags_inversed, {
+	//var res = IdentityDictionary.new;
+	//TagSpecDef(\SynthDefTags).list.do { arg asso;
+		//asso.value.collect({ arg tag;
+			//res[tag] = res[tag] ?? { IdentitySet() };
+			//res[tag] = res[tag].add(asso.key);
+		//})
+	//};
+	//res.asAssociations
+//});
+//TagSpecDef(\SynthDefTags_inversed).list
+
 /////////////////////////////////////////////////////////////////
 ///////// Browser GUI
 ////////////////////////////////////////////////////////////////

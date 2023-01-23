@@ -47,6 +47,9 @@ PlayerWrapper  {
 			{ target.isKindOf(EventPatternProxy) } {
 				PlayerWrapper_EventPatternProxy(target, this)
 			}
+			{ target.isKindOf(TaskProxy) } {
+				PlayerWrapper_TaskProxy(target, this)
+			}
 			{ target.isKindOf(Node) } {
 				PlayerWrapper_Node(target, this)
 			}
@@ -607,6 +610,28 @@ PlayerWrapper_EventPatternProxy : PlayerWrapper_Base {
 
 	edit {
 		^WindowDef(\PdefEditor).front(this.target);
+	}
+}
+
+PlayerWrapper_TaskProxy : PlayerWrapper_Base {
+	playNow {
+		target.play(quant:0);
+	}
+
+	label {
+		if(target.isKindOf(Tdef)) {
+			^target.key
+		} {
+			^target.getHalo(\label) ? ""
+		}
+	}
+
+	isEmpty { 
+		^this.target.source.isNil
+	}
+
+	edit {
+		^WindowDef(\TdefEditor).front(this.target);
 	}
 }
 
