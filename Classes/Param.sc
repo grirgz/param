@@ -873,7 +873,11 @@ Param {
 				var val;
 				//"start executing".debug;
 				try {
-					val = param.normGet;
+					if(param.get.isKindOf(Number)) {
+						val = param.normGet;
+					} {
+						val = nil
+					}
 				} { arg error;
 					"In: %.mapSlider:updateAction".format(param).error;
 					error.reportError;
@@ -2419,6 +2423,7 @@ ParamAccessor {
 				};
 				res = res.at(selector);
 				//if(val.isKindOf(SequenceableCollection) or: { val.isKindOf(Env) } ) {
+                //Log(\Param).debug("shoud be nested % : %", val, self.obj.shouldBeNested(val));
 				if(self.obj.shouldBeNested(val)) {
 					val = Pdef.nestOn(val);
 				};
@@ -3192,6 +3197,7 @@ PdefParam : BaseAccessorParam {
 	*toSpec { arg xspec, xtarget, xproperty;
 		var instr;
 		var sp;
+        //Log(\Param).debug("PdefParam.toSpec: %, %, %", xspec, xtarget, xproperty);
 		sp =
 			// Param arg
 			xspec ?? {

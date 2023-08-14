@@ -44,6 +44,7 @@ ARGUMENT:: property
 The parameter name to control. eg: \freq.
 If the parameter is an array, you can specify the slot index to control using code::\freqarray -> index::
 If the parameter is an envelope, you can specify the level or time index to control using code::\freqenv -> \levels -> index:: and code::\freqenv -> \times -> index::
+You can also specify the envelope segment by name: code::\attack \decay \sustain \release \peak:: 
 
 ARGUMENT:: spec
 An optional spec used to map the value from MIDI or GUI to the range of the parameter. If ommited, the spec is retrieved from the controlled object

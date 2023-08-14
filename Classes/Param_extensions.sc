@@ -3,8 +3,9 @@
 +EventPatternProxy {
 	*nestOn { arg val;
 		// see also .bubble and .unbubble
-		if(val.isSequenceableCollection) {
-			if(val[0].isSequenceableCollection) {
+		if(val.isSequenceableCollection or: { val.isKindOf(Env) }) {
+            // in Pdef, envs are arrays, but in Pbindef they are Env
+			if(val[0].isSequenceableCollection or: { val[0].isKindOf(Env) }) {
 				// NOOP
 			} {
 				val = [val]
@@ -15,7 +16,7 @@
 
 	*nestOff { arg val;
 		if(val.isSequenceableCollection) {
-			if(val[0].isSequenceableCollection) {
+			if(val[0].isSequenceableCollection or: { val[0].isKindOf(Env) }) {
 				val = val[0];
 			} {
 				// NOOP

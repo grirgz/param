@@ -76,7 +76,7 @@ Ndef(\ndef_array, { arg pan=0, amp=0.1;
 
 ~p.get;
 ~p.get == ( 100!3 );
-~p.set([120,150,780]); // must reload the ndef to take effect :( ndef bug
+~p.set([120,150,780]); // must reload the ndef to take effect :/ ndef bug
 ~p.get == [120,150,780];
 ~p.normGet;
 ~p.normSet([0.5,0.2,0.4]);
@@ -139,7 +139,7 @@ Ndef(\ndef_env, { arg pan=0, amp=0.1;
 ~p.get.asCompileString;
 ~p.get.asEnv.asCompileString;
 ~p.get == Env([150,550,250,1000],[0.1,0.8,0.3]); // give false, but it's true (float precision error ?)
-~p.set( Env([1000,200,501,3200],[0.2,0.4,0.6]) ); // must reload the ndef to take effect :( ndef bug
+~p.set( Env([1000,200,501,3200],[0.2,0.4,0.6]) ); // must reload the ndef to take effect :/ ndef bug
 ~p.get == Env([1000,200,501,3200],[0.2,0.4,0.6]);
 ~p.normGet;
 ~p.normGet.asCompileString

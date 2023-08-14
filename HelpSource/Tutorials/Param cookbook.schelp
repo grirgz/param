@@ -201,7 +201,10 @@ Param let you target a specific segment of an envelope or array to easily assign
 
 code::
 Param(Pdef(\help), \adsr -> \attack); // this point to the attack time value of the adsr Env
+Param(Pdef(\help), \adsr -> \levels -> 1); // this point to the level of the second node of the envelope
 ::
+
+See link::Classes/Param:: code::property:: argument of code::new:: method for the list
 
 
 
