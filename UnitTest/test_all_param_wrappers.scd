@@ -145,7 +145,10 @@ Param.trace = true;
 
 	Param(Pbindef(\target_pbindef), \lpfr -> \stepseq),
 	Param(Pbindef(\target_pbindef), \scalar_param -> \stepseq),
+	Param(Pbindef(\target_pbindef), \array_param -> \source),
+	Param(Pbindef(\target_pbindef), \env_param -> \source),
 	Param(Pbindef(\target_pbindef), \rq),
+	Param(Pbindef(\target_pbindef), \rq -> \source).label_("rq source"),
 	Param(Pbindef(\target_pbindef).source.at(\rq)).label_("rq proxy"),
 
 	Param(Pdef(\target_object), \scalar_bus_param).setBusMode, // bus mode for Pdef

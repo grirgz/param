@@ -361,6 +361,7 @@ ParamGroupLayout {
 			lay = if(param.isNil) {
 				nil;
 			} {
+              var control; 
 				HLayout(
 					if(label_mode == \full) {
 						var st = param.asStaticTextLabel(\full);
@@ -371,9 +372,9 @@ ParamGroupLayout {
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					}.fixedWidth_(minWidth_label),
-					param.asSlider.orientation_(\horizontal).minWidth_(minWidth_main),
+					control = param.asSlider.orientation_(\horizontal).minWidth_(minWidth_main),
 					param.asTextField(6).fixedWidth_(minWidth_right),
-				)
+				).addUniqueMethod(\slider, { control })
 			};
 			lay;
 		};

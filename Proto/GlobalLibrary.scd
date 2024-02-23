@@ -1378,8 +1378,14 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 		tagList = Set.new;
 		itemIds = itemIds.collect({ arg id;
+			//// build models and collect tags
 			var tags = Halo.at(id.last.value, \tag) !? _.keys ?? {[]};
+			var moretags;
 			//var tags = [];
+			moretags = TagSpecDef(\SynthDefTags).asDict[id.last.key];
+			if(moretags.notNil) {
+				tags = tags ++ moretags;
+			};
 			tagList.addAll(tags);
 			(
 				strings: lib.libIdToStrings(id) ++ [tags.asArray.join(", ")],
@@ -1388,6 +1394,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 				libId: id,
 			);
 		}).select({ arg obj;
+			//// searchbox filtering
 			//Log(\Param).debug("search strings to add %", obj.strings);
 			if(searchBox.string.trim != "") {
 				obj.strings.join(" ").toLower.contains(searchBox.string.toLower)
@@ -1395,10 +1402,22 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 				true
 			}
 		}).select({ arg obj;
-	   
-			( tagView.selection.size ) == 0 or: {tagView.selection.any({ arg idx;
-				obj.tags.includes(tagView.items[idx])
-			})}
+			//// tag filtering
+			if(
+				obj.tags.includes(\system) and: { 
+					tagView.selection.any({ arg idx; tagView.items[idx] == \system }).not }
+			) {
+				// hide system objects
+				false
+			} {
+				if( tagView.selection.size == 0 ) {
+					true
+				} {
+					tagView.selection.any({ arg idx;
+						obj.tags.includes(tagView.items[idx])
+					})
+				}
+			}
 		});
 		
 		itemIds.do { arg obj;
