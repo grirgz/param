@@ -383,7 +383,22 @@
 			};
 		}
 	}
+}
 
++NodeProxy {
+	asParamGroup { arg exclude;
+		// TODO: add method argument (find a better name) for adding volume
+		exclude = exclude ?? {[]};
+		^ParamGroup(
+			this.controlNames.reject({ arg con; 
+				con.name == '?' or: {
+					exclude.includes(con.name)
+				}
+			}).collect{ arg con;
+				Param(this, con.name)
+			}
+		)
+	}
 }
 
 +String {

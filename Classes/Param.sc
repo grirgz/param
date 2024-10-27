@@ -155,6 +155,30 @@ Param {
 					}
 				);
 			},
+			NodeProxy: {
+				switch(property.class,
+					Association, {
+						//"Ndef: an asso".debug;
+						//property_dispatcher.(property, NdefParamSlot, NdefParamEnvSlot);
+						wrapper = NodeProxyParam(*args);
+					},
+					Symbol, { // a simple param : \freq
+						//"Param.newWrapper: Ndef: a symbol".debug;
+						wrapper = NodeProxyParam(*args);
+					},
+					String, { // volume of the Ndef (Ndef(\x).vol)
+						//"Param.newWrapper: Ndef: a string".debug;
+						if(property == "vol" or: { property == "volume" }) {
+							//wrapper = NodeProxyVolParam(*args);
+                            "notimplemented".throw;
+						} {
+							Log(\Param).critical("Error: don't know what to do with string property (%) of Ndef, did you mean to use a symbol ?"
+								.format(property));
+							^nil
+						}
+					}
+				);
+			},
 
 			Pdef: {
 				wrapper = PdefParam(*args);
@@ -288,6 +312,7 @@ Param {
 		} {
 			// ParamValue goes here
 			// FIXME: this is error prone when target is not recognized
+			Log(\Param).debug("WARNING: target class not supported, using it as the wrapper");
 			Log(\Param).debug("FIXME: should not create Param with a wrapper as arg %, %", target.class, target);
 			wrapper = target;
 		}
@@ -3742,6 +3767,93 @@ NdefParam : BaseAccessorParam {
 	}
 }
 
+NodeProxyParam : BaseAccessorParam {
+	var <multiParam = false;
+
+	*new { arg obj, meth, sp;
+		^this.prNew(obj, meth, sp);
+	}
+
+	//*newWithAccessor { arg obj, meth, sp, acc;
+		//^super.new.init(obj, meth, sp, acc)
+	//}
+	
+	typeLabel {
+		^"N"
+	}
+
+	unset { 
+		target.unset(property);
+	}
+
+	targetLabel {
+		^target.index.asString;
+	}
+
+	toSpec { arg sp;
+		//sp.debug("sp2");
+		sp = 
+			// param arg
+			sp ?? {
+				// halo
+				target.getSpec(property) ?? {
+					// arg name in Spec
+					property.asSpec ?? {
+						// default value
+						var defval = target.get(property);
+						if(defval.notNil) {
+							Param.valueToSpec(defval, Param.defaultSpec)
+						} {
+							// default spec
+							Param.defaultSpec
+						}
+					};
+				};
+			};
+		^sp.asSpec;
+	}
+
+	setBusMode { arg enable=true, free=true;
+		target.setBusMode(property, enable, free);
+		this.changed(\inBusMode);
+	}
+
+	inBusMode {
+		^target.inBusMode(property)
+	}
+
+	inBusMode_ { arg val;
+		if(val == true) {
+			this.setBusMode(true)
+		} {
+			this.setBusMode(false)
+		}
+	}
+
+	getVal {
+		var val;
+		val = target.get(property) ?? { 
+			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+			this.default
+		};
+		if(spec.isKindOf(ParamEnvSpec)) {
+			val = val.asEnv;
+		};
+		//this.dumpBackTrace;
+		//Log(\Param).debug("get:final Val %", val);
+		^val;
+	}
+
+	setVal { arg val;
+		if(Param.trace == true) {
+			"%: setVal: %".format(this, val.asCompileString).postln;
+		};
+		target.set(property, val);
+		//Log(\Param).debug("set:final Val %, prop %", val, property);
+		//target.changed(\set, property, val); // Ndef already send a set message
+	}
+}
+
 /// Ndef vol
 
 NdefVolParam : NdefParam {
@@ -3796,6 +3908,7 @@ NdefVolParam : NdefParam {
 }
 
 ////////////////// Node
+// to control Synth (and Group ? to test)
 
 NodeParam : BaseAccessorParam {
 	var <multiParam = false; // deprecated
