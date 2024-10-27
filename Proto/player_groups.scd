@@ -236,6 +236,10 @@ ProtoTemplateDef(\ParPlayerGroup, (
 		self.targets;
 	},
 
+	convert: { arg self, val;
+		val
+	},
+
 	targets_: { arg self, val;
 		self[\targets] = val.as(SparseArray);
 		self.children.do({ arg x; x.reboot });
@@ -459,6 +463,30 @@ ProtoClassDef(\PatKitDef, (
 		self;
 	},
 
+	convert: { arg self, val, oldval;
+		if(val.isKindOf(Pbind) or: { val.isKindOf(EventPatternProxy) }) {
+			var ret = ProtoInst(\PchainProxy, val);
+			if(oldval.notNil and: { oldval.isKindOf(ProtoClass) } and: { oldval.protoClass == \PchainProxy }) {
+				ret.proxy = oldval.proxy;
+			};
+			ret;
+		} {
+			val
+		}
+	},
+
+	targets_: { arg self, val;
+		self[\targets] = val.collect({ arg x, idx; self.convert(x, self.targets !? {self.targets[idx]}) }).as(SparseArray);
+		self.children.do({ arg x; x.reboot });
+	},
+
+	setTarget: { arg self, idx, val;
+		if(self[\targets].size <= idx) {
+			self[\targets].tryPerform(\extend, idx+1)
+		};
+		self[\targets][idx] = self.convert(val, self.targets[idx]);
+	},
+
 	clear: { arg self;
 		self.all[self.key] = nil;
 		nil;
@@ -490,3 +518,48 @@ ProtoClassDef(\PatKitDef, (
 ));
 ~patKitDef = ProtoClassDef(\PatKitDef);
 
+
+
+
+(
+ProtoClassDef(\PchainProxy, (
+	protoClass: \PchainProxy,
+	new: { arg self, pattern;
+		self = self.deepCopy;
+	
+		pattern.debug("hoo");
+		
+		self[\proxy] = EventPatternProxy.new.source_(Pbind());
+		self[\source] = pattern;
+		self.pattern = self.proxy <> self.source;
+	
+		self;
+	},
+
+	proxy_: { arg self, val;
+		self[\proxy] = val;
+		self.pattern = self.proxy <> self.source;
+	},
+
+	source_: { arg self, val;
+		self[\source] = val;
+		self.pattern = self.proxy <> self.source;
+	},
+
+	asPattern: { arg self;
+		self.pattern;
+	},
+
+	asStream: { arg self;
+		self.asPattern.asStream
+	},
+
+	embedInStream: { arg self, ev;
+		self.asPattern.embedInStream(ev)
+	},
+	
+	asParamGroup: { arg self, instrument;
+		self.proxy.asParamGroup( instrument ?? { BaseParam.getInstrumentFromPbind( self.source ) } )
+	},
+))
+)

@@ -4,7 +4,7 @@
 BufDef {
 	// FIXME: need to decide if file path is stored as absolute or relative
 	//		need to make clear where it is symbol and where it is string
-	classvar <>root;
+	classvar <>root; // deprecated
 	classvar <>paths;
 
 	*all {

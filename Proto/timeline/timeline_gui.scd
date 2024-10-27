@@ -215,6 +215,10 @@ ProtoTemplateDef(\TimelinePanelView, (
 				timeline.areasize.y = maxy + 1;
 			};
 
+			// add margin top and bottom
+			miny = miny - 1;
+			maxy = maxy + 1;
+
 			//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
 			//[timeline.areasize].debug("areasize");
 			range = (maxy-miny+1)/timeline.areasize.y;
@@ -226,6 +230,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 			//timeline.viewport.height = ((54-42)/128);
 
 			//timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
+
 
 			timeline.changed(\viewport);
 			timeline.refresh;
