@@ -105,18 +105,6 @@ ProtoTemplateDef(\ViewSelector, (
 
 ));
 
-~view_selector = ProtoTemplateDef(\ViewSelector); // new backwarp compat
-~selector = ~view_selector; // backward compat, i needed a less common name
-
-~selectorGroup_set = { arg view, group;
-	// deprecated, use addChildAndAction
-	var idx;
-	idx = group.addChild(view);
-	view.selectAction = {
-		group.selectChild(idx)
-	};
-	view;
-};
 ProtoTemplateDef(\SelectorGroup, (
 	new: { arg self;
 		self = self.deepCopy;
@@ -151,4 +139,21 @@ ProtoTemplateDef(\SelectorGroup, (
 		view;
 	}
 ));
-~selectorGroup = ProtoTemplateDef(\SelectorGroup);
+
+
+if(currentEnvironment.isKindOf(ProxySpace).not) {
+
+	~view_selector = ProtoTemplateDef(\ViewSelector); // new backwarp compat
+	~selector = ~view_selector; // backward compat, i needed a less common name
+
+	~selectorGroup_set = { arg view, group;
+		// deprecated, use addChildAndAction
+		var idx;
+		idx = group.addChild(view);
+		view.selectAction = {
+			group.selectChild(idx)
+		};
+		view;
+	};
+	~selectorGroup = ProtoTemplateDef(\SelectorGroup);
+}

@@ -9,7 +9,7 @@
 		"misc/pdemul.scd",
 		"misc/selector.scd",
 		"misc/overlayMenu.scd",
-		"experimental/eventFactory.scd",
+		//"experimental/eventFactory.scd", // deprecated by player_group
 		"player_groups.scd",
 		"GlobalLibrary.scd",
 		"editors.scd",
@@ -24,11 +24,11 @@
 		"experimental/StepEventView.scd",
 		"misc/PresetSelectorView.scd",
 		"experimental/PresetSelectorView_compat.scd",
-		"experimental/steptimeline.scd",
-		//"experimental/old_track.scd", // deprecated
+		//"experimental/steptimeline.scd", // fail with ProxySpace
+		////"experimental/old_track.scd", // deprecated
 		"TrackMixerDef.scd",
 
-		//"experimental/drumrack_synth.scd",
+		//"experimental/drumrack_synth.scd", // wip and maybe deprecated
 	].do({ arg file;
 		var path = (ParamProto.base_path +/+ file);
 		("loading " ++ path).debug;

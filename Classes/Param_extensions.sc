@@ -365,6 +365,7 @@
 
 	setVal { arg key, val;
 		if(val.isKindOf(Env)) {
+			// if value is an Env, can't be set on a bus
 			this.set(key, val)
 		} {
 			if(this.inBusMode(key)) {
@@ -386,6 +387,21 @@
 }
 
 +NodeProxy {
+	inBusMode { arg key;
+		var val = this.get(key);
+		if(val.isSequenceableCollection) {
+			// multichannel
+			if(val[0].isSequenceableCollection) {
+				// nested
+				^(val[0][0].class == Symbol)
+			} {
+				^(val[0].class == Symbol)
+			}
+		} {
+			^(val.class == Symbol or: { val.isKindOf(ParamCombinator) })
+		}
+	}
+
 	asParamGroup { arg exclude;
 		// TODO: add method argument (find a better name) for adding volume
 		exclude = exclude ?? {[]};

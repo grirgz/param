@@ -440,7 +440,6 @@ ProtoClassDef(\EventTimeline, (
 		self.eventLoop.pushList;
 	},
 ));
-~eventTimeline = ProtoClassDef(\EventTimeline);
 
 //if(~clipTimeline_all.isNil) {
 //	~clipTimeline_all = IdentityDictionary.new;
@@ -701,7 +700,6 @@ ProtoClassDef(\ClipTimeline, (
 		str;
 	},
 ));
-~clipTimeline = ProtoClassDef(\ClipTimeline);
 //~clipTimeline = ClipTimeline.proto;
 
 ProtoClassDef(\TrackTimeline, (
@@ -827,7 +825,6 @@ ProtoClassDef(\TrackTimeline, (
 		"TrackTimeline(%)".format(name)
 	},
 ));
-~trackTimeline = ProtoClassDef(\TrackTimeline);
 
 
 //if(~noteTimeline_all.isNil) {
@@ -1037,7 +1034,6 @@ ProtoClassDef(\NoteTimeline, (
 		"NoteTimeline(%)".format(name)
 	},
 ));
-~noteTimeline = ProtoClassDef(\NoteTimeline);
 
 ProtoClassDef(\ParamTimeline, (
 	parent: ProtoClassDef(\EventTimeline),
@@ -1554,7 +1550,6 @@ ProtoClassDef(\ParamTimeline, (
 
 	},
 ));
-~envTimeline = ProtoClassDef(\ParamTimeline);
 
 ProtoClassDef(\KitTimeline, (
 	parent: ProtoClassDef(\EventTimeline),
@@ -1790,12 +1785,11 @@ ProtoClassDef(\KitTimeline, (
 		"KitTimeline(%)".format(name)
 	},
 ));
-~kitTimeline = ProtoClassDef(\KitTimeline);
 
 //////////////////////////////////////////// loading archived data
-~noteTimeline.all.loadIfNotInitialized;
-~envTimeline.all.loadIfNotInitialized;
-~clipTimeline.all.loadIfNotInitialized;
+ProtoClassDef(\NoteTimeline).all.loadIfNotInitialized;
+ProtoClassDef(\ParamTimeline).all.loadIfNotInitialized;
+ProtoClassDef(\ClipTimeline).all.loadIfNotInitialized;
 
 /////////////////////// cliplist side panel
 
@@ -2288,3 +2282,12 @@ ProtoClassDef(\LoopMaster, (
 
 ));
 
+if(currentEnvironment.isKindOf(ProxySpace).not) {
+~kitTimeline = ProtoClassDef(\KitTimeline);
+~envTimeline = ProtoClassDef(\ParamTimeline);
+~noteTimeline = ProtoClassDef(\NoteTimeline);
+~trackTimeline = ProtoClassDef(\TrackTimeline);
+~clipTimeline = ProtoClassDef(\ClipTimeline);
+~eventTimeline = ProtoClassDef(\EventTimeline);
+
+};

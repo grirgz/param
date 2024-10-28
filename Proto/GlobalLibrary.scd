@@ -397,7 +397,8 @@ ProtoDef(\GlobalLibrary, (
 			},
 
 			classObject: {
-				~noteTimeline
+				ProtoClassDef(\NoteTimeline)
+				//~noteTimeline
 			},
 
 			getEventTarget: { arg self, ev;

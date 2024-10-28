@@ -477,7 +477,7 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 		if(target.isKindOf(Ndef)) {
 			^target.key
 		} {
-			^""
+			^( "NodeProxy<%>".format(target.index) )
 		}
 	}
 
@@ -586,7 +586,12 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 	}
 
 	edit {
-		^WindowDef(\NdefEditor).front(this.target);
+		ParamProto.init;
+		if(this.target.isKindOf(Ndef)) {
+			^WindowDef(\NdefEditor).front(this.target);
+		} {
+			^WindowDef(\NodeProxyEditor).front(this.target);
+		}
 	}
 
 }

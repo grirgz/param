@@ -3814,8 +3814,9 @@ NodeProxyParam : BaseAccessorParam {
 	}
 
 	setBusMode { arg enable=true, free=true;
-		target.setBusMode(property, enable, free);
-		this.changed(\inBusMode);
+		Log(\Param).warning("setBusMode not implemented for NodeProxy");
+		//target.setBusMode(property, enable, free);
+		//this.changed(\inBusMode);
 	}
 
 	inBusMode {

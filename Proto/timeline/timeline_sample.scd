@@ -524,7 +524,6 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 
 	},
 ));
-~sampleTimeline = SampleTimeline.proto;
 BufDef.addPath(SampleTimeline.proto.recordFolder);
 
 
@@ -942,3 +941,10 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 	inview.layout_(layout);
 	
 }).border_(false);
+
+
+
+if(currentEnvironment.isKindOf(ProxySpace).not) {
+
+	~sampleTimeline = SampleTimeline.proto;
+}

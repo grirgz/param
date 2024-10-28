@@ -159,7 +159,6 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 		ret;
 	},
 ));
-~playerGroupRecorder = ProtoTemplateDef(\PlayerGroupRecorder);
 
 // can record Param
 ProtoTemplateDef(\ParamRecorder, (
@@ -210,7 +209,6 @@ ProtoTemplateDef(\ParamRecorder, (
 	},
 
 ));
-~paramRecorder = ProtoTemplateDef(\ParamRecorder);
 
 // used in SampleTimeline
 ProtoTemplateDef(\SampleTimelineRecorder, (
@@ -571,3 +569,9 @@ ProtoTemplateDef(\SampleClipTimelineRecorder, (
 	parent: ProtoTemplateDef(\SampleTimelineRecorder),
 	recordOnClipTimelineEnabled: true,
 ));
+
+if(currentEnvironment.isKindOf(ProxySpace).not) {
+
+	~playerGroupRecorder = ProtoTemplateDef(\PlayerGroupRecorder);
+	~paramRecorder = ProtoTemplateDef(\ParamRecorder);
+}

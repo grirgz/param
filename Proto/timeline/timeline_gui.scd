@@ -975,7 +975,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 		//tl.timeline_model.getHalo(\gridquant) ?? { arg x; self.quant_ref.value = x; };
 	},
 ));
-~timelinePanelView = ProtoTemplateDef(\TimelinePanelView);
 
 /////// derivatives
 
@@ -1218,7 +1217,6 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		;
 	};
 ));
-~clipTimelinePanelView = ProtoTemplateDef(\ClipTimelinePanelView);
 
 ProtoTemplateDef(\TrackTimelinePanelView, (
 	parent: ProtoTemplateDef(\ClipTimelinePanelView),
@@ -1325,7 +1323,6 @@ ProtoTemplateDef(\TrackTimelinePanelView, (
 		//"trackTimelinePanelView.update_track_header: part 4".debug;
 	},
 ));
-~trackTimelinePanelView = ProtoTemplateDef(\TrackTimelinePanelView);
 
 ProtoTemplateDef(\ParamTimelinePanelView, (
 	parent: ~timelinePanelView,
@@ -1460,7 +1457,6 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		self.layout;
 	},
 ));
-~envTimelinePanelView = ProtoTemplateDef(\ParamTimelinePanelView);
 ProtoTemplateDef(\EnvTimelinePanelView, ProtoTemplateDef(\ParamTimelinePanelView));
 
 
@@ -1586,7 +1582,6 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 		self.layout;
 	},
 ));
-~noteTimelinePanelView = ProtoTemplateDef(\NoteTimelinePanelView);
 
 ProtoTemplateDef(\KitTimelinePanelView, (
 	parent: ~timelinePanelView,
@@ -1749,7 +1744,6 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 		self.layout;
 	},
 ));
-~kitTimelinePanelView = ProtoTemplateDef(\KitTimelinePanelView);
 
 
 ////////////////// clip editor (really: clip chooser/selector)
@@ -2282,9 +2276,8 @@ ProtoTemplateDef(\ClipEditor, (
 		self.model.changed(\refresh);
 	},
 ));
-~clipEditor = ProtoTemplateDef(\ClipEditor);
 
-~trackEditor = ProtoTemplateDef(\TrackEditor, (
+ProtoTemplateDef(\TrackEditor, (
 	new: { arg self, model, parent, trackgroup;
 		self = self.deepCopy;
 	
@@ -2420,7 +2413,6 @@ ProtoTemplateDef(\ClipEditor, (
 		self.makeLayout;
 	},
 ));
-~trackEditor = ProtoTemplateDef(\TrackEditor);
 
 /////////////////////// cliplist side panel
 
@@ -2878,3 +2870,15 @@ WindowDef(\ClipTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 	inview.layout_(layout);
 	
 }).border_(false);
+
+if(currentEnvironment.isKindOf(ProxySpace).not) {
+
+	~timelinePanelView = ProtoTemplateDef(\TimelinePanelView);
+	~clipTimelinePanelView = ProtoTemplateDef(\ClipTimelinePanelView);
+	~trackTimelinePanelView = ProtoTemplateDef(\TrackTimelinePanelView);
+	~envTimelinePanelView = ProtoTemplateDef(\ParamTimelinePanelView);
+	~noteTimelinePanelView = ProtoTemplateDef(\NoteTimelinePanelView);
+	~kitTimelinePanelView = ProtoTemplateDef(\KitTimelinePanelView);
+	~clipEditor = ProtoTemplateDef(\ClipEditor);
+	~trackEditor = ProtoTemplateDef(\TrackEditor);
+}

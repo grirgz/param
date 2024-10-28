@@ -331,7 +331,6 @@ ProtoTemplateDef(\TimelineEmbeder, (
 		}
 	},
 ));
-~pembed = ProtoTemplateDef(\TimelineEmbeder);
 
 
 /////////////////////////////////////// /////////////////////////////////////// timeline utilities
@@ -342,64 +341,67 @@ ProtoTemplateDef(\TimelineEmbeder, (
 
 // archive system deprecated
 
+if(currentEnvironment.isKindOf(ProxySpace).not) {
+	~pembed = ProtoTemplateDef(\TimelineEmbeder);
 
-~eventlist_asArchiveData = { arg eventlist;
-	var el = eventlist.collect({ arg ev;
-		if(ev[\asArchiveData].notNil) {
-			ev = ev.asArchiveData;
-		} {
-			ev = ev.copy;
-			if(ev.use({ev.type}) == \timeline) {
-				var tl = ev.use({ev.timeline});
-				ev[\timeline]  = tl.asRefArchiveData;
+	~eventlist_asArchiveData = { arg eventlist;
+		var el = eventlist.collect({ arg ev;
+			if(ev[\asArchiveData].notNil) {
+				ev = ev.asArchiveData;
+			} {
+				ev = ev.copy;
+				if(ev.use({ev.type}) == \timeline) {
+					var tl = ev.use({ev.timeline});
+					ev[\timeline]  = tl.asRefArchiveData;
+				};
 			};
-		};
-		ev;
-	});
-	(
-		eventlist: el,
-		load: { arg self;
-			~eventlist_loadArchiveData.(self)
-		},
-	);
-};
-
-~eventlist_loadArchiveData = { arg eventlist_data;
-	var el = eventlist_data[\eventlist].collect({ arg ev;
-		if(ev[\load].notNil) {
-			ev = ev.load;
-		} {
-			ev = ev.copy;
-			if(ev.use({ev.type}) == \timeline) {
-				var tl = ev.use({ev.timeline});
-				ev[\timeline]  = tl.load;
-			};
-		};
-		ev;
-	});
-	XEventList.newFrom(el);
-};
-
-~eventloop_asArchiveData = { arg eventloop;
-	(list: ~eventlist_asArchiveData.(eventloop.list), key: eventloop.key)
-};
-
-~eventloop_loadArchiveData = { arg eventloop_data;
-	var loop;
-	var list;
-	//"eventloop_loadArchiveData".debug;
-	loop = XEventLoop.newInstance;
-	//"eventloop_loadArchiveData y".debug;
-
-	loop.list = if(eventloop_data.notNil) { // FIXME: don't know why could be nil
-		~eventlist_loadArchiveData.(eventloop_data.list)
-	} {
-		XEventList.new.start.finish(1);
+			ev;
+		});
+		(
+			eventlist: el,
+			load: { arg self;
+				~eventlist_loadArchiveData.(self)
+			},
+		);
 	};
-	//loop.addList(list);
-	//"eventloop_loadArchiveData x".debug;
-	//loop.setList(0);
-	//"eventloop_loadArchiveData END".debug;
-	loop;
-};
 
+	~eventlist_loadArchiveData = { arg eventlist_data;
+		var el = eventlist_data[\eventlist].collect({ arg ev;
+			if(ev[\load].notNil) {
+				ev = ev.load;
+			} {
+				ev = ev.copy;
+				if(ev.use({ev.type}) == \timeline) {
+					var tl = ev.use({ev.timeline});
+					ev[\timeline]  = tl.load;
+				};
+			};
+			ev;
+		});
+		XEventList.newFrom(el);
+	};
+
+	~eventloop_asArchiveData = { arg eventloop;
+		(list: ~eventlist_asArchiveData.(eventloop.list), key: eventloop.key)
+	};
+
+	~eventloop_loadArchiveData = { arg eventloop_data;
+		var loop;
+		var list;
+		//"eventloop_loadArchiveData".debug;
+		loop = XEventLoop.newInstance;
+		//"eventloop_loadArchiveData y".debug;
+
+		loop.list = if(eventloop_data.notNil) { // FIXME: don't know why could be nil
+			~eventlist_loadArchiveData.(eventloop_data.list)
+		} {
+			XEventList.new.start.finish(1);
+		};
+		//loop.addList(list);
+		//"eventloop_loadArchiveData x".debug;
+		//loop.setList(0);
+		//"eventloop_loadArchiveData END".debug;
+		loop;
+	};
+
+}

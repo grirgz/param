@@ -81,6 +81,18 @@ WindowDef(\PdefEditor, { arg me, key=\default;
 
 
 
+WindowDef(\NodeProxyEditor, { arg me, target;
+	var pg;
+	pg = target.asParamGroup;
+	VLayout(
+		HLayout(
+			PlayerWrapper(target).asView,
+			//EventClass.presetSelectorView.(pg), // can't save without name so is useless
+			Param(Message(target), \quant, ParamNonFloatSpec() ).asTextField.maxWidth_(80),
+		),
+		ParamGroupLayout.two_panes(target.asParamGroup)
+	);
+});
 
 WindowDef(\NdefEditor, { arg me, key=\default;
 	var target;
@@ -95,7 +107,7 @@ WindowDef(\NdefEditor, { arg me, key=\default;
 		HLayout(
 			PlayerWrapper(target).asView,
 			EventClass.presetSelectorView.(pg),
-			Param(Message(target), \quant).asTextField.maxWidth_(80),
+			Param(Message(target), \quant, ParamNonFloatSpec()).asTextField.maxWidth_(80),
 		),
 		ParamGroupLayout.two_panes(target.asParamGroup)
 	);

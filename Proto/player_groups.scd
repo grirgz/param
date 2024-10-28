@@ -105,7 +105,6 @@ ProtoTemplateDef(\StreamPlayer, (
 		self.cur_ev = nil;
 	},
 ));
-~streamPlayer = ProtoTemplateDef(\StreamPlayer); // backward compat
 
 // follow a pattern but note is given by the caller
 ProtoTemplateDef(\NotePlayer, (
@@ -200,7 +199,6 @@ ProtoTemplateDef(\NotePlayer, (
 	},
 
 ));
-~notePlayer = ProtoTemplateDef(\NotePlayer);
 
 
 ////////// collectives
@@ -325,7 +323,6 @@ ProtoTemplateDef(\ParPlayerGroup, (
 	},
 
 ));
-~parPlayerGroup = ProtoTemplateDef(\ParPlayerGroup);
 
 
 
@@ -419,7 +416,6 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 	},
 
 ));
-~seqPlayerGroup = ProtoTemplateDef(\SeqPlayerGroup);
 
 
 
@@ -516,7 +512,6 @@ ProtoClassDef(\PatKitDef, (
 		}
 	},
 ));
-~patKitDef = ProtoClassDef(\PatKitDef);
 
 
 
@@ -562,4 +557,14 @@ ProtoClassDef(\PchainProxy, (
 		self.proxy.asParamGroup( instrument ?? { BaseParam.getInstrumentFromPbind( self.source ) } )
 	},
 ))
-)
+);
+
+if(currentEnvironment.isKindOf(ProxySpace).not) {
+
+	// backward compat
+	~streamPlayer = ProtoTemplateDef(\StreamPlayer); 
+	~patKitDef = ProtoClassDef(\PatKitDef);
+	~seqPlayerGroup = ProtoTemplateDef(\SeqPlayerGroup);
+	~parPlayerGroup = ProtoTemplateDef(\ParPlayerGroup);
+	~notePlayer = ProtoTemplateDef(\NotePlayer);
+}
