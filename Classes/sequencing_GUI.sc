@@ -66,7 +66,7 @@ StepListView : SCViewHolder {
 							myview.value = val;
 						} {
 							var color = view.color;
-							var newcolor = ParamViewToolBox.color_ligth;
+							var newcolor = ParamViewToolBox.color_light;
 							if(color.isSequenceableCollection) {
 								color[0] = newcolor;
 							} {

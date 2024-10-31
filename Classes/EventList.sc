@@ -437,6 +437,8 @@ TimelineEventLoop {
 
 	var <lists, <currIndex = 0, <numLists = 0;
 
+	var <>inHistoryMode = false, <>historyList, <>historyBackup, <>historyIndex = -1;
+
 	*initClass { allEls = () }
 
 	*all { ^allEls }
@@ -474,6 +476,7 @@ TimelineEventLoop {
 	init { |argFunc|
 		func = argFunc ?? { this.defaultFunc };
 		lists = List.new; // ggz: should not be XEventList
+		historyList = List.new;
 
 		this.initTask;
 		this.prepRec;
@@ -696,6 +699,7 @@ TimelineEventLoop {
 
 	prepRec {
 		this.addList;
+		this.historyAddSnapshot;
 		this.list_(TimelineEventList[]);
 		then = recStartTime = nil;
 		this.resetLoop;
@@ -816,6 +820,58 @@ TimelineEventLoop {
 		}
 	
 	}
+
+	/// undo system
+	
+	historyAddSnapshot {
+		~debug = this;
+		if(list.notNil) {
+			if(inHistoryMode == true) {
+				inHistoryMode = false;
+				historyIndex = -1;
+			};
+			historyList.addFirst(list.clone);
+			this.changed(\inHistoryMode); // signal undo button can be enabled
+		};
+	}
+
+	historyUndo {
+		~debug = this;
+		if(this.historyCanUndo) {
+			if(inHistoryMode == false) {
+				inHistoryMode = true;
+				historyBackup = list;
+			};
+			historyIndex = historyIndex + 1;
+			this.list = historyList[historyIndex].clone;
+		}; 
+		this.changed(\inHistoryMode); // signal undo button can be enabled
+	}
+
+	historyRedo {
+		~debug = this;
+		if(this.historyCanRedo) {
+			historyIndex = historyIndex - 1;
+			if(historyIndex == -1) {
+				inHistoryMode = false;
+				this.list = historyBackup;
+			} {
+				this.list = historyList[historyIndex].clone;
+			};
+		}; 
+		this.changed(\inHistoryMode); // signal undo button can be enabled
+	}
+
+	historyCanUndo {
+		~debug = this;
+		^historyIndex < ( historyList.size-1 )
+	}
+
+	historyCanRedo {
+		~debug = this;
+		^historyIndex > -1
+	}
+
 }
 
 XEventLoop : TimelineEventLoop {}

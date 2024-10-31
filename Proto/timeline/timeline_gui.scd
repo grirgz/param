@@ -402,6 +402,30 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.track_header;
 
 	},
+	
+	make_undo_system_buttons: { arg self;
+		var el = self.timeline_model.eventLoop;
+		var undobut, redobut;
+
+		redobut = BasicButton.new.string_("<-").action_({ arg but;
+			el.historyRedo;
+		}).enabled_(el.historyCanRedo).fixedWidth_(30).toolTip_("Redo");
+
+		undobut = BasicButton.new.string_("->").action_({
+			el.historyUndo;
+		}).enabled_(el.historyCanUndo).fixedWidth_(30).toolTip_("Undo");
+
+		redobut.followChange(el, \inHistoryMode, {
+			redobut.enabled_(el.historyCanRedo);
+			undobut.enabled_(el.historyCanUndo);
+		});
+
+		HLayout (
+			redobut,
+			undobut,
+		)
+
+	},
 
 	makeTimelineView: { arg self;
 		self.timelineClass.new
@@ -492,10 +516,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 	deleteSelectedNodesHook: { arg self;
 		{ arg tl;
-			self.timeline_model.eventLoop.cloneAndPushList;
+			self.timeline_model.addHistorySnapshot;
+			//self.timeline_model.eventLoop.cloneAndPushList;
 			//Log(\Param).debug("hook qui foire");
 			self.timeline.deleteSelectedNodes;
-			self.timeline_model.eventLoop.pushList;
+			//self.timeline_model.eventLoop.pushList;
 		}
 	},
 
@@ -509,20 +534,21 @@ ProtoTemplateDef(\TimelinePanelView, (
 				if(keycode == $n.ascii) { // ^n
 					"new!".debug;
 					self.eventLoop.pushList;
+					self.timeline_model.addHistorySnapshot;
 					self.eventList = self.timeline_model.makeDefaultEventList;
 					self.eventLoop.pushList;
 				};
 				if(keycode == $k.ascii) { // ^k
 					"clone!".debug;
 					self.eventLoop.pushList;
+					self.timeline_model.addHistorySnapshot;
 					self.eventList = self.eventLoop.lists.first.clone;
 					self.eventLoop.pushList;
 				};
 				if(keycode == $d.ascii) { // ^d
 					"double!".debug;
-					self.eventLoop.pushList;
+					self.timeline_model.addHistorySnapshot;
 					self.eventList = self.eventLoop.lists.first.clone.double;
-					self.eventLoop.pushList;
 				};
 				if(keycode == $c.ascii) { // ^c
 					"copy!".debug;
@@ -534,6 +560,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 				};
 				if(keycode == $s.ascii) { // ^s
 					"split!".debug;
+					self.timeline_model.addHistorySnapshot;
 					self.splitAction;
 				};
 				if(keycode == $ .ascii) { // ^s
@@ -554,6 +581,39 @@ ProtoTemplateDef(\TimelinePanelView, (
 						Log(\Param).debug("no selection cursor");
 					};
 					self.timeline_model.playNow(1);
+				};
+				// quantize
+
+				if(key == $q) {
+					var selNodes;
+					var snapshot;
+					// TODO: should be implemented by adding a new property to the event, understood by XEventList
+					//			to be able to undo it
+					//quant.value.debug("quantize!!");
+					//"quantize ouais c'est ici".debug;
+					//snapshot = self.timeline_model.eventList.clone;
+					//self.timeline_model.pushList;
+
+
+					self.timeline_model.addHistorySnapshot;
+					selNodes = self.timeline.selNodes;
+					selNodes.do { arg node;
+						//node.nodeloc.debug("before");
+						node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
+						//node.nodeloc.debug("after");
+					};
+
+
+					////// this works
+					//snapshot = self.timeline_model.eventList.clone;
+					//selNodes = self.timeline.selNodes;
+					//selNodes.do { arg node;
+						////node.nodeloc.debug("before");
+						//node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
+						////node.nodeloc.debug("after");
+					//};
+					//self.timeline_model.eventLoop.cloneAndPushList(snapshot);
+					//self.timeline_model.eventLoop.addList;
 				};
 				if(keycode == 65481) { // F12
 					"Panic!".debug;
@@ -1046,7 +1106,8 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			}),
 			//mute_button, // useless with "M" button
 			self.make_quant_popup,
-			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			self.make_undo_system_buttons,
+			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			//Param(Message(self.timeline_model), \isRecording, XBoolSpec()).asButton("Rec"),
 			RecordButton(self.timeline_model.recorder, "Rec"),
 			Param(Message(self.timeline_model), \bindPlayWithRecord, XBoolSpec()).asButton("PlayRec"),
@@ -1061,6 +1122,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		
 		self.header_layout;
 	},
+
 
 	timelineClass: { arg self;
 		ClipTimelineView
@@ -1398,7 +1460,8 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
-			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			self.make_undo_system_buttons,
+			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			RecordButton(self.timeline_model.recorder, "Rec"),
 			BasicButton.new.string_("Select param").action_({
 				WindowDef(\ParamSelectDialog).front(nil, { arg param;
@@ -1511,7 +1574,8 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
-			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			self.make_undo_system_buttons,
+			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			RecordButton( self.timeline_model.recorder, "Rec" ),
 			//Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
 				//["Rec", Color.black, Color.white],
@@ -1638,7 +1702,8 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
 			self.make_quant_popup,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
-			NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
+			self.make_undo_system_buttons,
+			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			RecordButton(self.timeline_model.recorder, "Rec"),
 			//Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
 				//["Rec", Color.black, Color.white],

@@ -266,6 +266,10 @@ TimelineView : SCViewHolder {
 		};
 	}
 
+	addEventListSnapshot {
+		model.addList;
+	}
+
 	//////////////////////////
 
 	startSelPoint_ { arg npoint; // in norm units
@@ -788,18 +792,6 @@ TimelineView : SCViewHolder {
 			}
 		});
 
-		// quantize
-
-		if(key == $q) {
-			// TODO: should be implemented by adding a new property to the event, understood by XEventList
-			//			to be able to undo it
-			//quant.value.debug("quantize!!");
-			selNodes.do { arg node;
-				//node.nodeloc.debug("before");
-				node.nodeloc = node.nodeloc.round(quant.value);
-				//node.nodeloc.debug("after");
-			}
-		};
 
 		// connecting
 

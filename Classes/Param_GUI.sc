@@ -18,6 +18,8 @@ ParamViewToolBox {
 	classvar <>color_userStoppedRecording;
 	classvar <>color_stoppedRecording;
 
+	classvar <>clipboard;
+
 	*initClass {
 		//color_ligth = Color.newHex("63AFD0");
 		//color_dark = Color.newHex("0772A1");
@@ -38,7 +40,10 @@ ParamViewToolBox {
 
 		//color_ligth = Color.newHex("5CCCCC");
 		//color_dark = Color.newHex("009999");
+
+		clipboard = ();
 	}
+
 
 	*color_ligth{ ^color_light } // backward compat for wrong spelling :/
 

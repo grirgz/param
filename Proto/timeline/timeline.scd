@@ -435,9 +435,7 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	addHistorySnapshot: { arg self;
-		self.eventLoop.pushList;
-		self.eventList = self.eventList.clone;
-		self.eventLoop.pushList;
+		self.eventLoop.historyAddSnapshot;
 	},
 ));
 
