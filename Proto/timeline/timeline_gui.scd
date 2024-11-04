@@ -407,22 +407,22 @@ ProtoTemplateDef(\TimelinePanelView, (
 		var el = self.timeline_model.eventLoop;
 		var undobut, redobut;
 
-		redobut = BasicButton.new.string_("<-").action_({ arg but;
+		undobut = BasicButton.new.string_("<Undo").action_({
+			el.historyUndo;
+		}).enabled_(el.historyCanUndo).fixedWidth_(50).toolTip_("Undo");
+
+		redobut = BasicButton.new.string_("->").action_({ arg but;
 			el.historyRedo;
 		}).enabled_(el.historyCanRedo).fixedWidth_(30).toolTip_("Redo");
 
-		undobut = BasicButton.new.string_("->").action_({
-			el.historyUndo;
-		}).enabled_(el.historyCanUndo).fixedWidth_(30).toolTip_("Undo");
-
 		redobut.followChange(el, \inHistoryMode, {
-			redobut.enabled_(el.historyCanRedo);
 			undobut.enabled_(el.historyCanUndo);
+			redobut.enabled_(el.historyCanRedo);
 		});
 
 		HLayout (
-			redobut,
 			undobut,
+			redobut,
 		)
 
 	},
