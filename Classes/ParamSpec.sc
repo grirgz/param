@@ -580,6 +580,30 @@ ParamBoolSpec : ParamNonFloatSpec {
 }
 XBoolSpec : ParamBoolSpec {}
 
+ParamStringSpec : ParamNonFloatSpec {
+	// only used by TextField views to not display quotes
+  
+	*new { 
+		^super.new.default_("");
+	}
+
+	range {
+		^1
+	}
+
+	step {
+		^1
+	}
+
+	map { arg val;
+		^val
+	}
+
+	unmap { arg val;
+		^val
+	}
+}
+
 ///////////////////////////// Menu
 
 TagSpec : ParamNonFloatSpec {

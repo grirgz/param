@@ -943,13 +943,17 @@ Param {
 			{ arg view, param;
 				var val = "";
 				//Log(\Param).debug("mapTextField start: " ++ this.fullLabel);
-				try {
-					//[param, param.stringGet(precision)].debug("Param.mapTextField:get");
-					val = param.stringGet(precision);
-					//val = param.get.asCompileString;
-				} { arg error;
-					//Log(\Param).debug("param.get %", param.get);
-					val = param.get.asCompileString;
+                if(param.spec.isKindOf(ParamStringSpec)) {
+					val = param.get;
+				} {
+					try {
+						//[param, param.stringGet(precision)].debug("Param.mapTextField:get");
+						val = param.stringGet(precision);
+						//val = param.get.asCompileString;
+					} { arg error;
+						//Log(\Param).debug("param.get %", param.get);
+						val = param.get.asCompileString;
+					};
 				};
 				//Log(\Param).debug("mapTextField: val: %", val);
 				// refresh action
@@ -971,7 +975,11 @@ Param {
 		};
 		this.makeSimpleController(view, 
 			action: { arg view, param;
-				param.set(view.value.interpret);
+				if(param.spec.isKindOf(ParamStringSpec)) { 
+					param.set(view.value)
+				} {
+					param.set(view.value.interpret);
+				};
 				//"done".debug;
 			}, 
 			updateAction: updateAction.value(false),
