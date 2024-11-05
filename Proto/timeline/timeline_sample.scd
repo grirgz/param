@@ -113,9 +113,13 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	},
 
 	postPatternPreset: { arg self;
-		self.postProxy.envir.keys.asList.collect({ arg key;
-			key -> self.postProxy.getVal(key)
-		}).asEvent
+		if(self.postProxy.envir.notNil) {
+			self.postProxy.envir.keys.asList.collect({ arg key;
+				key -> self.postProxy.getVal(key)
+			}).asEvent
+		} {
+			()
+		}
 	},
 
 	postPatternPreset_: { arg self, ev;
@@ -222,10 +226,18 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	},
 
 	presetCompileString: { arg self;
+		var str;
 
-		"%.eventList = %\n".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString)
+		str = "%.eventList = %\n".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString)
 		++
-		"%.buffer = %;".format(self.refCompileString(self.key.asCompileString), self.buffer.asCompileString) 
+		"%.buffer = %;\n".format(self.refCompileString(self.key.asCompileString), BufDef.bufferCompileString(self.buffer)) 
+		++
+		"%.postPatternPreset = %;\n".format(self.refCompileString(self.key.asCompileString), self.postPatternPreset.asCompileString);
+		if(self.fadeOut.notNil) {
+			str = str ++
+			"%.fadeOut = %;\n".format(self.refCompileString(self.key.asCompileString), self.fadeOut.asCompileString) 
+		};
+		str;
 	},
 
 	bufferInfo: { arg self;
@@ -933,6 +945,13 @@ WindowDef(\SampleTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 		BasicButton.new.string_("Export selection to buffer").action_({ 
 			viewmodel.exportSelectionToBufferEditor;
 		}),
+		StaticText.new.string_(
+			if(model.buffer.notNil) {
+				"Path: %".format(model.buffer.path)
+			} {
+				"No buffer"
+			};
+		),
 		nil
 	);
 	//def.windowDo { arg win;

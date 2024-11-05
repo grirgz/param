@@ -387,6 +387,19 @@ BufDef {
 		};
 	}
 
+    *bufferCompileString { arg buffer;
+		if(buffer.key.notNil) {
+			^"BufDef(%)".format(buffer.key.asCompileString)
+		} {
+			if(buffer.path.notNil) {
+				^"BufDef(%)".format(buffer.path.asCompileString)
+			} {
+				Log(\Param).warning("WARNING: BufDef.bufferCompileString: Can't get compile string of buffer %".format(buffer));
+				^buffer.asCompileString;
+			};
+		}
+    }
+
 }
 
 WavetableDef : BufDef {
