@@ -503,11 +503,11 @@
 		}.defer;
 	}
 
-	mapParam { arg param, precision;
+	mapParam { arg param, precision, action;
 		if(param.isNil) {
 			this.unmapParam
 		} {
-			param.mapTextField(this, precision);
+			param.mapTextField(this, precision, action);
 		}
 	}
 }
@@ -606,6 +606,21 @@
 			this.unmapParam;
 		} {
 			param.mapIndexPopUpMenu(this, keys)
+		}
+	}
+}
+
++MenuAction {
+	unmapParam {
+		Param.unmapView(this);
+		this.value = 0;
+	}
+
+	mapParam { arg param, label, action;
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapMenuAction(this, label, action);
 		}
 	}
 }

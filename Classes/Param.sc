@@ -1469,6 +1469,20 @@ Param {
 		}, update, nil, action)
 	}
 
+	mapMenuAction { arg view, label, action;
+		// support only boolean for the moment
+		// no need for update, menus are temporary (and there is no .onClose method)
+		if(label.notNil) {
+			view.string = label;
+		};
+		view.checkable = true;
+		view.checked = this.get;
+		view.action = { arg view;
+			this.set(view.checked);
+			action.();
+		};
+	}
+
 	*freeUpdater { arg view;
 		var controller;
 		var skipjack;
@@ -1535,8 +1549,8 @@ Param {
 		^StaticText.new.mapParamLabel(this, labelmode);
 	}
 
-	asTextField { arg precision=6;
-		^TextField.new.mapParam(this, precision);
+	asTextField { arg precision=6, action;
+		^TextField.new.mapParam(this, precision, action);
 	}
 
 	asNumberBox {
@@ -1588,6 +1602,14 @@ Param {
 				//[label, Color.black, ParamViewToolBox.color_ligth],
 			//]);
 		but.mapParam(this);
+		^but;
+	}
+
+	asMenuAction { arg label, action;
+		var but;
+		label = label ?? { this.propertyLabel ?? { "" }};
+		but = MenuAction.new;
+		but.mapParam(this, label, action);
 		^but;
 	}
 
@@ -3344,6 +3366,17 @@ PdefParam : BaseAccessorParam {
 			^accessor.unset
 		} {
 			^target.unset(property);
+		}
+	}
+
+	isSet {
+		// FIXME: should test with accessors
+		// should implement it everywhere
+		var envir = this.target.envir;
+		if(envir.isNil) {
+			^false
+		} {
+			^envir.keys.includes(this.propertyRoot)
 		}
 	}
 

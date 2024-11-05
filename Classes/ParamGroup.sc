@@ -122,15 +122,46 @@ ParamGroup : List {
 		)
 	}
 
+	getBufferCompileString { arg param;
+		// if val is a buffer, try to build BufDef compile string, else return val.asCompileString
+		var val = param.get;
+		case(
+			{ param.spec.isKindOf(ParamBufferSpec) }, {
+				var path = TagSpecDef(\BufDef).unmapKey(val);
+				if(path.notNil) {
+					val = "BufDef(%)".format(path.asCompileString)
+				} {
+					val.asCompileString;
+				}
+				
+			},
+			{ val.isKindOf(Buffer) }, {
+				if(val.path.notNil) {
+					val = "BufDef(%)".format(val.path.asCompileString)
+				} {
+					val.asCompileString;
+				}
+			}, {
+				val = val.asCompileString;
+			}
+		);
+		^val
+	}
+
 	getSetCompileString { arg targetCompileString;
+		// return only params that are set in the envir
 		^"%\n".format(
 			this.collect({ arg p; 
 				if(p.target.class == Message) {
 					"%.% = %;".format(targetCompileString ?? { p.target.receiver.asCompileString }, p.property, p.getRaw.asCompileString)
 				} {
-					"%.setVal(%, %);".format(targetCompileString ?? { p.target.asCompileString }, p.property.asCompileString, p.get.asCompileString)
+					if(p.isSet) {
+						"%.setVal(%, %);".format(targetCompileString ?? { p.target.asCompileString }, p.property.asCompileString, this.getBufferCompileString(p))
+					} {
+						nil
+					};
 				};
-			}).join("\n")
+			}).reject(_.isNil).join("\n")
 		)
 	}
 
