@@ -2083,6 +2083,10 @@ BaseParam {
 	setRaw { arg val;
 		^target.set(property, val)
 	}
+
+	isSet {
+		^true
+	}
 }
 
 ParamAccessor {
@@ -3738,6 +3742,17 @@ NdefParam : BaseAccessorParam {
 
 	unset { 
 		target.unset(property);
+	}
+
+	isSet {
+		// FIXME: should test with accessors
+		// should implement it everywhere
+		var envir = this.target.nodeMap;
+		if(envir.isNil) {
+			^false
+		} {
+			^envir.keys.includes(this.propertyRoot)
+		}
 	}
 
 	targetLabel {
