@@ -1,5 +1,5 @@
 
-// PDef was replaced by EventPatternProxy as a hope to generalize it easily
+// Pdef was replaced by EventPatternProxy as a hope to generalize it easily
 +EventPatternProxy {
 	*nestOn { arg val;
 		// see also .bubble and .unbubble
@@ -134,9 +134,11 @@
 		if(val.isKindOf(Env)) {
 			this.set(key, this.class.nestOn(val))
 		} {
-			if(val.isKindOf(Symbol)) { 
-				// if the val is a bus, replace the bus
-				// used to map modulator bus to parameters
+			if(val.isKindOf(Symbol) or: { val.isKindOf(SequenceableCollection) and: { val[0].isKindOf(Symbol) } }) { 
+				// If the val is a mapped bus, replace the mapped bus
+				// Used to map modulator bus to parameters
+                // This should be handled in another layer, we can do it here because we see the value to set is a symbol,
+                // but it is not possible in getVal
 				this.set(key, val)
 			} {
 				if(this.inBusMode(key)) {

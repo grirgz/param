@@ -128,7 +128,7 @@ Optional: The number of channels of the buffer
 
 METHOD:: getBufferForPath
 return the buffer loaded for a given path, or load it if doesn't exists yet.
-This method is lower level than ::#*new::: it doesn't assign a name to the buffer.
+This method is lower level than link::#*new:: it doesn't assign a name to the buffer.
 
 ARGUMENT:: path
 The path of the buffer must be absolute.

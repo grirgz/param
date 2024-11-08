@@ -128,7 +128,6 @@ ParamArraySpec : ParamBaseSpec {
 	}
 }
 
-XArraySpec : ParamArraySpec {}
 
 StepListSpec : ParamArraySpec {
 	default {
@@ -372,11 +371,9 @@ ParamEnvSpec : ParamBaseSpec {
 	}
 	
 }
-XEnvSpec : ParamEnvSpec {}
 
 ParamAudioSpec : ParamBaseSpec {
 }
-XAudioSpec : ParamAudioSpec {}
 
 
 ParamNonFloatSpec : ParamBaseSpec { // maybe a parent for all others special spec to exclude them when making a gui ?
@@ -391,7 +388,6 @@ ParamNonFloatSpec : ParamBaseSpec { // maybe a parent for all others special spe
 		^val;
 	}
 }
-XNonFloatSpec : ParamNonFloatSpec {}
 
 ParamGateSpec : ParamNonFloatSpec {
 	var <default;
@@ -403,7 +399,6 @@ ParamGateSpec : ParamNonFloatSpec {
 		default = val;
 	}
 }
-XGateSpec : ParamGateSpec {}
 
 ParamTrigSpec : ParamNonFloatSpec {
 	var <default;
@@ -415,7 +410,6 @@ ParamTrigSpec : ParamNonFloatSpec {
 		default = val;
 	}
 }
-XTrigSpec : ParamTrigSpec {}
 
 ParamBufferSpec : ParamNonFloatSpec {
 	// arg: channel count
@@ -443,7 +437,6 @@ ParamBufferSpec : ParamNonFloatSpec {
 	default { ^0 } // maybe return an empty buffer
 
 }
-XBufferSpec : ParamBufferSpec {}
 
 ParamAudioBufferSpec : ParamBufferSpec {
 	// WIP
@@ -454,12 +447,10 @@ ParamAudioBufferSpec : ParamBufferSpec {
 	}
 }
 ParamSampleSpec : ParamAudioBufferSpec {} // compat
-XSampleSpec : ParamAudioBufferSpec {} // compat
 
 ParamDoneActionSpec : ParamNonFloatSpec {
 
 }
-XDoneActionSpec : ParamDoneActionSpec {}
 
 ParamWavetableSpec : ParamBufferSpec {
 
@@ -469,66 +460,54 @@ ParamWavetableSpec : ParamBufferSpec {
 		}
 	}
 }
-XWavetableSpec : ParamWavetableSpec {}
 
 ParamBusSpec : ParamNonFloatSpec {
-	// arg: channel count
 	var <>numChannels;
 	var >tagSpec;
-	new { arg spec;
+	*new { arg spec, numChannels;
 		var inst = super.new;
 		if(spec.notNil) {
 			inst.tagSpec = spec;
 		};
+		if(numChannels.notNil) {
+			inst.numChannels = numChannels;
+		};
 		^inst;
 	}
 
-	tagSpec { arg self;
+	tagSpec {
 		^tagSpec ?? { TagSpecDef(\BusDef) }
 	}
 
 }
-XBusSpec : ParamBusSpec {}
 
 ParamAudioBusSpec : ParamBusSpec {
-	// arg: channel count
-	var >tagSpec;
-	tagSpec { arg self;
-		^tagSpec ?? { TagSpecDef(\BusDef) }
+	tagSpec { 
+		^tagSpec ?? { TagSpecDef(\BusDef_audio) }
 	}
 }
-XAudioBusSpec : ParamAudioBusSpec {}
 
 ParamControlBusSpec : ParamBusSpec {
-	// arg: channel count
-	var >tagSpec;
-	tagSpec { arg self;
-		^tagSpec ?? { TagSpecDef(\BusDef) }
+	tagSpec { 
+		^tagSpec ?? { TagSpecDef(\BusDef_control) }
 	}
 }
-XControlBusSpec : ParamControlBusSpec {}
 
 ParamMappedBusSpec : ParamBusSpec {
-	// arg: channel count
-	var >tagSpec;
-	tagSpec { arg self;
+	tagSpec {
 		^tagSpec ?? { TagSpecDef(\BusDef_asMap) }
 	}
 }
 
 
 ParamMappedControlBusSpec : ParamMappedBusSpec {
-	// arg: channel count
-	var >tagSpec;
-	tagSpec { arg self;
+	tagSpec { 
 		^tagSpec ?? { TagSpecDef(\BusDef_control_asMap) }
 	}
 }
 
 ParamMappedAudioBusSpec : ParamMappedBusSpec {
-	// arg: channel count
-	var >tagSpec;
-	tagSpec { arg self;
+	tagSpec { 
 		^tagSpec ?? { TagSpecDef(\BusDef_control_asMap) }
 	}
 }
@@ -536,12 +515,10 @@ ParamMappedAudioBusSpec : ParamMappedBusSpec {
 ParamInBusSpec : ParamBusSpec {
 
 }
-XInBusSpec : ParamInBusSpec {}
 
 ParamOutBusSpec : ParamBusSpec {
 
 }
-XOutBusSpec : ParamOutBusSpec {}
 
 ParamBoolSpec : ParamNonFloatSpec {
 	var <>reverse = false;
@@ -578,7 +555,6 @@ ParamBoolSpec : ParamNonFloatSpec {
 	}
 
 }
-XBoolSpec : ParamBoolSpec {}
 
 ParamStringSpec : ParamNonFloatSpec {
 	// only used by TextField views to not display quotes
@@ -626,7 +602,7 @@ TagSpec : ParamNonFloatSpec {
 		if(dlist.isKindOf(Association)) {
 			dynamicLists.add(dlist);
 		} {
-			"MenuSpec: dynamic list should be an association: %".format(dlist).error
+			"TagSpec: dynamic list should be an association: %".format(dlist).error
 		};
 		this.changed(\list);
 		//dirty = true;
@@ -682,7 +658,7 @@ TagSpec : ParamNonFloatSpec {
 					}
 				}
 			} { arg err;
-				"In MenuSpec: dynamic list: %".format(dlist).error;
+				"In TagSpec: dynamic list: %".format(dlist).error;
 				err.reportError;
 			}
 		});
@@ -840,15 +816,19 @@ TagSpecDef : TagSpec {
 		};
 		^nil
 	}
+
+    printOn { arg stream;
+      this.storeOn(stream); 
+    }
+
+	storeOn { arg stream;
+        stream << "TagSpecDef(%)".format(this.key.asCompileString);
+	}
 }
 
-MenuSpec : TagSpec { } // compat
-MenuSpecDef : TagSpecDef { } // compat
-
-MenuSpecFuncDef : TagSpecDef { } // deprecated
 
 
-ListIndexSpec : XNonFloatSpec {
+ListIndexSpec : ParamNonFloatSpec {
 	var <>fun;
 	*new { arg fun;
 		^super.new.fun_(fun);
@@ -875,3 +855,25 @@ ListIndexSpec : XNonFloatSpec {
 }
 
 
+//////////////////////////// Deprecated
+XBoolSpec : ParamBoolSpec {}
+XOutBusSpec : ParamOutBusSpec {}
+XInBusSpec : ParamInBusSpec {}
+XControlBusSpec : ParamControlBusSpec {}
+XAudioBusSpec : ParamAudioBusSpec {}
+XWavetableSpec : ParamWavetableSpec {}
+XSampleSpec : ParamAudioBufferSpec {} // compat
+XTrigSpec : ParamTrigSpec {}
+XGateSpec : ParamGateSpec {}
+XAudioSpec : ParamAudioSpec {}
+XArraySpec : ParamArraySpec {}
+XNonFloatSpec : ParamNonFloatSpec {}
+XDoneActionSpec : ParamDoneActionSpec {}
+XBusSpec : ParamBusSpec {}
+XEnvSpec : ParamEnvSpec {}
+XBufferSpec : ParamBufferSpec {}
+
+MenuSpec : TagSpec { } // compat
+MenuSpecDef : TagSpecDef { } // compat
+
+MenuSpecFuncDef : TagSpecDef { } // deprecated

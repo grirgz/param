@@ -322,11 +322,17 @@ PlayerWrapper_Base {
 	}
 
 	outBus_ { arg val;
-		Param(this.target, \out, ParamBusSpec()).set(val);
+		if(this.target.notNil) {
+			Param(this.target, \out, ParamBusSpec()).set(val);
+		}
 	}
 
 	outBus { arg val;
-		^Param(this.target, \out, ParamBusSpec()).get;
+		if(this.target.notNil) {
+			^Param(this.target, \out, ParamBusSpec()).get;
+		} {
+			^nil
+		};
 	}
 
 	quant {

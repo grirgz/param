@@ -8,13 +8,13 @@ ParamValue : BaseParam {
 	}
 
 	initParamValue { arg xspec;
-		Log(\Param).debug("initParamValue %", xspec);
+		//Log(\Param).debug("initParamValue %", xspec);
 		target = this;
 		property = \value;
 		label = "ParamValue";
 		spec = xspec.asSpec ? Param.defaultSpec;
-		Log(\Param).debug("initParamValue2 %", xspec);
-		Log(\Param).debug("initParamValue2 %", spec);
+		//Log(\Param).debug("initParamValue2 %", xspec);
+		//Log(\Param).debug("initParamValue2 %", spec);
 	}
 
 	property_ { arg val;

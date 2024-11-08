@@ -6,6 +6,14 @@ ParamCombinator : Pattern {
 	// because each ParamCombinator instance has a different Ndef name
 	// ndef is used only in bus mode
 	// FIXME: maybe use NodeProxy instead, but I don't know if Param support NodeProxy yet
+    
+
+    // baseParam: when combined, control the base value, the original uncombined param should be replaced by it in the gui
+    // targetParam: this point to the param to be combinated, first argument of ParamCombinator
+    // resultParam: point to the value resulting from combination
+    //
+    // rangeParam: an array of param controlling the range of the modulation
+    // inputParam: the input value array to be combined. In bus mode, a mapped bus array of modulators
 	var <ranges, <inputs, <base, <result;
 	var <baseParam, <rangeParam, <inputParam, <targetParam, <resultParam;
 	var <controllers; 
@@ -151,7 +159,7 @@ ParamCombinator : Pattern {
 				var inputtab, rangetab;
 				var fval;
 				var sig;
-				Log(\Param).debug("ParamCombinator: rate %", rate);
+				//Log(\Param).debug("ParamCombinator: rate %", rate);
 				fval = \base.perform(rate, 0);
 				fval = targetParam.spec.unmap(fval);
 				inputtab = \inputs.perform(rate,0!rangeSize);
@@ -300,15 +308,15 @@ ParamCombinator : Pattern {
 	}
 
 	asPattern { 
-		Log(\Param).debug("asPattern");
+		//Log(\Param).debug("asPattern");
 		^if(this.inBusMode) {
-			Log(\Param).debug("asPattern busmode");
+			//Log(\Param).debug("asPattern busmode");
 			Pfunc({
 				this.playAll;
 				proxy.asMap.asSymbol
 			});
 		} {
-			Log(\Param).debug("asPattern value");
+			//Log(\Param).debug("asPattern value");
 			Pfunc({ 
 				this.playAll;
 				this.resultParam.get 
@@ -326,7 +334,7 @@ ParamCombinator : Pattern {
 			//[val.asCompileString, idx, param, proxy].debug("playAll: val");
 			if(val.isKindOf(Symbol) or: { val.isKindOf(String) }) {
 				var nkey = TagSpecDef(\ParamCombinatorInput_asMap).unmapKey(val);
-				Log(\Param).debug("ParamCombinator.playAll: nkey %", nkey);
+				//Log(\Param).debug("ParamCombinator.playAll: nkey %", nkey);
 				if(nkey.notNil) {
 					Ndef(nkey).wakeUp;
 				} {

@@ -967,17 +967,18 @@ ProtoDef(\GlobalLibrary, (
 // Each category is defined in the tag GlobalLibrary.type.CATEGORYNAME with the list of raw tags
 
 TagSpecDef(\SynthDef_all, {
-	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat;
+	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat.sort;
 });
 
 TagSpecDef(\SynthDef_keys, {
-	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.keys.as(Array) }).flat;
+	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.keys.as(Array) }).flat.reject({ arg item;
+		item.asString.beginsWith("system_")
+	}).sort;
 });
 
 TagSpecDef(\SynthDef, {
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat.reject({ arg item;
 		item.key.asString.beginsWith("system_")
-   
 	});
 });
 
@@ -1018,20 +1019,10 @@ TagSpecDef(\PatKitDef, {
 	PatKitDef.all.asAssociations;
 });
 
+///// BusDef
+
 TagSpecDef(\BusDef, {
 	TagSpecDef(\BusDef_object).list
-});
-
-TagSpecDef(\BusDef_asMap, {
-	[\nil->nil] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k).asMap }) 
-});
-
-TagSpecDef(\BusDef_control_asMap, {
-	[\nil->nil] ++ BusDef.all.keys.as(Array).sort.select { arg k;
-		BusDef(k).rate == \control
-	}.collect({ arg k; 
-		k -> BusDef(k).asMap 
-	}) 
 });
 
 TagSpecDef(\BusDef_index, {
@@ -1042,6 +1033,60 @@ TagSpecDef(\BusDef_index, {
 TagSpecDef(\BusDef_object, {
 	[\0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) 
 });
+
+TagSpecDef(\BusDef_asMap, {
+	[\nil->nil] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k).asMap }) 
+});
+
+[\audio, \control].do { arg rate;
+
+	TagSpecDef(( \BusDef_++rate ).asSymbol, {
+		[\nil -> nil] ++ TagSpecDef(\BusDef_object).list.select { arg asso, idx;
+			if(asso.value.isKindOf(Bus)) {
+				asso.value.rate == rate
+			} {
+				true
+			}
+		};
+	});
+	
+	TagSpecDef(( \BusDef_++rate++\_asMap ).asSymbol, {
+		TagSpecDef(( \BusDef_++rate ).asSymbol).list.collect { arg asso, idx;
+			if(asso.value.isKindOf(Bus)) {
+				asso.key -> asso.value.asMap 
+			} {
+				asso
+			}
+		};
+	});
+
+	[\mono, \stereo].do { arg chantype, numchan;
+		numchan = numchan + 1;
+
+		TagSpecDef(( \BusDef_++rate++\_++chantype ).asSymbol, {
+			[\nil -> nil] ++ TagSpecDef(\BusDef_object).list.select { arg asso, idx;
+				if(asso.value.isKindOf(Bus)) {
+					asso.value.rate == rate and: { asso.value.numChannels == numchan }
+				} {
+					true
+				}
+			}
+		});
+
+		TagSpecDef(( \BusDef_++rate++\_++chantype++\_asMap ).asSymbol, {
+			TagSpecDef(( \BusDef_++rate++\_++chantype ).asSymbol).list.collect { arg asso, idx;
+				if(asso.value.isKindOf(Bus)) {
+					asso.key -> asso.value.asMap 
+				} {
+					asso
+				}
+			};
+		});
+	};
+};
+
+
+///// BufDef
 
 TagSpecDef(\BufDef, {
 	[\0->0] ++ BufDef.all.keys.as(Array).sort.collect({ arg k; k -> BufDef(k).bufnum }) 

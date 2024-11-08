@@ -312,6 +312,7 @@ Param {
 		} {
 			// ParamValue goes here
 			// FIXME: this is error prone when target is not recognized
+            this.dumpBackTrace;
 			Log(\Param).debug("WARNING: target class not supported, using it as the wrapper");
 			Log(\Param).debug("FIXME: should not create Param with a wrapper as arg %, %", target.class, target);
 			wrapper = target;
@@ -1047,7 +1048,7 @@ Param {
 	}
 
 	mapPopUpMenuHelper { arg view, keys, set, get, unmap, map, refreshChangeAction, action, onChange;
-		// TODO: for refactoring menu method
+		// TODO: for refactoring menu method, not used for the moment
 		var pm = view;
 		//debug("mapValuePopUpMenu:1");
 
@@ -1091,7 +1092,7 @@ Param {
 				spec = keys;
 			} {
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
-					if(this.spec.isKindOf(ParamMappedControlBusSpec)) {
+					if(this.spec.isKindOf(ParamMappedBusSpec)) {
 						isMapped = true
 					};
 					spec = this.spec.tagSpec;
@@ -1118,7 +1119,7 @@ Param {
 			//view.value.debug("mapValuePopUpMenu:7 (onchange)");
 		});
 		keys = keys ?? {this.spec};
-		if( keys.isKindOf(TagSpecDef)) {
+		if( keys.isKindOf(TagSpec)) {
 			view.followChange(keys, \list, onChange ? { arg aview, model, message, arg1;
 				//var idx = view.value;
 				view.items = keys.labelList.asArray;
@@ -1183,7 +1184,7 @@ Param {
 			////view.value.debug("mapValuePopUpMenu:7 (onchange)");
 		//});
 		mykeys = keys ?? {this.spec};
-		if( mykeys.isKindOf(TagSpecDef)) {
+		if( mykeys.isKindOf(TagSpec)) {
 			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
 				if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
 					arg1.includes(this.propertyRoot)
@@ -1214,12 +1215,14 @@ Param {
 			//var isMapped = false;
 			//[ this.spec.labelList.asArray, this.get, this.spec.unmapIndex(this.get)].debug("spec, get, unmap");
 			//Log(\Param).debug("refreshChangeAction %", this);
+			//Log(\Param).debug("mapBusPopUpMenu:refreshChangeAction:1 spec %, keys %", this.spec, keys);
 			if(keys.notNil) {
 				vspec = keys;
 				val = this.get;
 			} {
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
-					if(this.spec.isKindOf(ParamMappedControlBusSpec)) {
+					//if(this.spec.isKindOf(ParamMappedBusSpec)) {
+					if(false) {
 						val = this.getBus;
 					} {
 						val = this.get;
@@ -1256,7 +1259,7 @@ Param {
 				spec = keys;
 			} {
 				if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
-					if(this.spec.isKindOf(ParamMappedControlBusSpec)) {
+					if(this.spec.isKindOf(ParamMappedBusSpec)) {
 						isMapped = true
 					};
 					spec = this.spec.tagSpec;
@@ -1310,7 +1313,7 @@ Param {
 			////view.value.debug("mapValuePopUpMenu:7 (onchange)");
 		//});
 		mykeys = keys ?? {this.spec};
-		if( mykeys.isKindOf(TagSpecDef)) {
+		if( mykeys.isKindOf(TagSpec)) {
 			view.followChange(mykeys, \list, { arg aview, model, message, arg1;
 				aview.refreshChange;
 			});
@@ -1358,6 +1361,7 @@ Param {
 			{
 				try {
 					if(xspec.labelList.notNil) {
+						//Log(\Param).debug("PopUpMenu.refreshChangeAction: %", xspec.labelList.asArray);
 						view.items = xspec.labelList.asArray;
 					};
 					view.value = xspec.unmapIndex(this.getBus);
@@ -1436,7 +1440,7 @@ Param {
 			}.defer;
 		});
 		mykeys = keys ?? {this.spec};
-		if( mykeys.isKindOf(TagSpecDef)) {
+		if( mykeys.isKindOf(TagSpec)) {
 			view.onChange(mykeys, \list, { arg aview, model, message, arg1;
 				if(arg1 == this.propertyRoot or: { arg1.isKindOf(SequenceableCollection) and: {
 					arg1.includes(this.propertyRoot)
@@ -1801,6 +1805,23 @@ Param {
 		^val;
 	}
 
+	/////////////
+	
+	*isSynthDefParameter { arg argName, defname;
+		var desc;
+		var val;
+		desc = SynthDescLib.global.synthDescs[defname];
+		if(desc.notNil) {
+			var con = desc.controlDict[argName];
+			^con.notNil
+		};
+		^false; // no synthdesc found
+	}
+	
+	isSynthDefParameter {
+		^this.class.isSynthDefParameter(wrapper.propertyRoot, wrapper.instrument)
+	}
+
 	//////////////////////
 
     doesNotUnderstand { arg selector...args;
@@ -2105,12 +2126,21 @@ ParamAccessor {
 
 			setbus: { arg self, val;
 				// set the bus (or map) and not its value
+                if(val.isKindOf(SequenceableCollection)) {
+					// multichannel mapped bus for arrayed synthdef parameters should be nested
+					val = Pdef.nestOn(val)
+                };
 				self.obj.setRaw(val);
 			},
 
 
 			getbus: { arg self;
-				self.obj.getRaw;
+				var val = self.obj.getRaw;
+                if(val.isKindOf(SequenceableCollection)) {
+					// multichannel mapped bus for arrayed synthdef parameters should be nested
+					val = Pdef.nestOff(val)
+                };
+				val;
 			},
 
 			toSpec: { arg self, sp;
@@ -3432,19 +3462,24 @@ PdefParam : BaseAccessorParam {
 		var val;
 
 		// no need to check for TagSpec anymore, Pdef.inBusMode check the bus format
-		//val = if(this.spec.isKindOf(TagSpec)) {
-			//target.get(property)
-		//} {
-			//target.getVal(property)
-		//} ?? { 
+        // this allow popupmenu with TagSpec to set a scalar param in BusMode
+        // but need to check for ParamMappedBusSpec
+        val = if(this.spec.isKindOf(ParamMappedBusSpec)) {
+            Pdef.nestOff(target.get(property))
+        } {
+            target.getVal(property)
+        };
+
+		val = val ?? { 
+            //this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
+            this.default
+        };
+
+		//val = target.getVal(property) ?? { 
 			////this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
 			//this.default
 		//};
-
-		val = target.getVal(property) ?? { 
-			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
-			this.default
-		};
+        
 		if(target.getHalo(\nestMode) != false) { // FIXME: what about more granularity ?
 			val = Pdef.nestOff(val); 
 			//Log(\Param).debug("Val unNested! %", val);
@@ -3459,7 +3494,13 @@ PdefParam : BaseAccessorParam {
 			val = Pdef.nestOn(val); 
 			//Log(\Param).debug("Val Nested! %", val);
 		};
-		target.setVal(property, val);
+        if(this.spec.isKindOf(ParamMappedBusSpec)) {
+          Log(\Param).debug("param.setVal nest on %", Pdef.nestOn(val));
+			target.set(property, Pdef.nestOn(val));
+		} {
+			target.setVal(property, val);
+		};
+
 		//Log(\Param).debug("set:final Val %", val);
 		if(Param.trace == true) {
 			"%: setVal: %".format(this, val).postln;

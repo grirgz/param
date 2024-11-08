@@ -2,6 +2,8 @@
 // test all wrappers
 //	- Ndef
 //	- Pdef
+//	- EventPatternProxy
+//	- NodeProxy
 //	- StepEvent
 //	- StepList
 //	- ProtoClass
@@ -18,8 +20,9 @@
 //	- menu
 //	- bus
 //	- buffer
-//	- busmap // TODO
+//	- busmap // TODO (both mapBusPopUpMenu and mapValuePopUpMenu)
 //	- busarraymap // TODO
+//  - stepseq // TODO
 // test all gui
 //	- button
 //	- knob

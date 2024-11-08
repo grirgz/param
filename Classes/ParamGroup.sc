@@ -70,6 +70,10 @@ ParamGroup : List {
 		^this.rejectByKey([ \out, \gate, \doneAction, \amp, \out, \freq, \trig ])
 	}
 
+	selectSynthDefParams {
+		^ParamGroup(this.select({ arg x; x.isSynthDefParameter }))
+	}
+
 	valueList {
 		^this.collect { arg param;
 			param.get;
