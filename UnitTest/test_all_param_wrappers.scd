@@ -44,7 +44,7 @@ s.boot;
 Ndef(\target_object, { arg freq=200, pan=0, amp=0.1;
 	var sig;
 	var fm;
-	fm = \mapped_audio_bus.ar * \modfreq_scale.kr(1) + 1;
+	fm = \mapped_audio_bus.ar * \modfreq_scale.kr(1) + InFeedback.ar(\audio_bus.kr, 1) + 1;
 	sig = SinOsc.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5) * fm).mean;
 	sig = sig * EnvGen.kr(\env_param.kr(Env([0,1,0.5,0],[0.1,0.8,0.1])), Impulse.kr(1/2));
 	sig = Pan2.ar(sig, pan, amp);
@@ -52,17 +52,19 @@ Ndef(\target_object, { arg freq=200, pan=0, amp=0.1;
 
 Ndef(\target_object).addSpec(\env_param, ParamEnvSpec(\unipolar ! 4));
 Ndef(\target_object).addSpec(\mapped_audio_bus, ParamMappedBusSpec());
+Ndef(\target_object).addSpec(\audio_bus, ParamBusSpec());
 
 SynthDef(\target_synthdef, { arg freq=200, pan=0, amp=0.1;
 	var sig;
 	var fm;
-	fm = \mapped_audio_bus.ar * \modfreq_scale.kr(1) + 1;
+	fm = \mapped_audio_bus.ar * \modfreq_scale.kr(1) + InFeedback.ar(\audio_bus.kr, 1) + 1;
 	sig = LFSaw.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5) * fm).mean;
 	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq , \rq.kr(0.5));
 	sig = sig * EnvGen.kr(\env_param.kr(Env([0,1,0.5,0],[0.1,0.8,0.1])), \gate.kr(1), doneAction:2);
 	sig = Pan2.ar(sig, pan, amp);
 	Out.ar(\out.kr(0), sig);
 }, metadata:(specs:(
+	audio_bus: ParamBusSpec(),
 	mapped_audio_bus: ParamMappedBusSpec(),
 	env_param: ParamEnvSpec(\unipolar ! 4),
 	lpfr: ControlSpec(0.1,6,\lin),
@@ -158,37 +160,27 @@ Param.trace = true;
 //Param.trace = false;
 
 ~all_targets = [
-	//// Ndef
-	//~three.(Ndef(\target_object)),
-	//~env_individual_params.(Ndef(\target_object)),
-	//~array_individual_params.(Ndef(\target_object)),
-	//Param(Ndef(\target_object), "vol"), // no gui update
-	//Param(Ndef(\target_object), \inexistant),
+	// Ndef
+	~three.(Ndef(\target_object)),
+	~env_individual_params.(Ndef(\target_object)),
+	~array_individual_params.(Ndef(\target_object)),
+	Param(Ndef(\target_object), "vol"), // no gui update
+	Param(Ndef(\target_object), \inexistant),
 	Param(Ndef(\target_object), \mapped_audio_bus),
-
-	//// Pdef
-	//~three.(Pdef(\target_object)),
-	//~env_individual_params.(Pdef(\target_object)),
-	//~array_individual_params.(Pdef(\target_object)),
-	//Param(Pdef(\target_object), \scalar_bus_param).setBusMode, // bus mode for Pdef
-	Param(Pdef(\target_object), \mapped_audio_bus),
-	Param(Pdef(\target_object), \inexistant),
-
-	// EventPatternProxy
-	Param(~eventPatternProxy, \mapped_audio_bus),
+	Param(Ndef(\target_object), \audio_bus),
 
 	// NodeProxy
 	Param(~nodeProxy, \mapped_audio_bus),
+	Param(~nodeProxy, \audio_bus),
 
-	// StepEventDef
-	~three.(StepEventDef(\target_object)),
-
-	// IdentityDictionary
-	~three.(~dict),
-
-	// Pdefn
-	Param(Pdefn(\lpfr_pdefn), \stepseq),
-	Param(Pdefn(\rq_pdefn)),
+	// Pdef
+	~three.(Pdef(\target_object)),
+	~env_individual_params.(Pdef(\target_object)),
+	~array_individual_params.(Pdef(\target_object)),
+	Param(Pdef(\target_object), \scalar_bus_param).setBusMode, // bus mode for Pdef
+	Param(Pdef(\target_object), \mapped_audio_bus),
+	Param(Pdef(\target_object), \inexistant),
+	Param(Pdef(\target_object), \audio_bus),
 
 	// Pbindef
 	Param(Pbindef(\target_pbindef), \lpfr -> \stepseq),
@@ -198,6 +190,21 @@ Param.trace = true;
 	Param(Pbindef(\target_pbindef), \rq),
 	Param(Pbindef(\target_pbindef), \rq -> \source).label_("rq source"),
 	Param(Pbindef(\target_pbindef).source.at(\rq)).label_("rq proxy"),
+
+	// EventPatternProxy
+	Param(~eventPatternProxy, \mapped_audio_bus),
+	Param(~eventPatternProxy, \audio_bus),
+
+	// Pdefn
+	Param(Pdefn(\lpfr_pdefn), \stepseq),
+	Param(Pdefn(\rq_pdefn)),
+
+
+	// StepEventDef
+	~three.(StepEventDef(\target_object)),
+
+	// IdentityDictionary
+	~three.(~dict),
 
 	// StepList
 	Param(~steplist, \list), // this bug preset
@@ -275,7 +282,8 @@ WindowDef(\testgui, {
 				},
 				\other, {
 					HLayout(*
-						if(param.spec.isKindOf(ParamMappedBusSpec) or: {param.spec.isKindOf(TagSpec)}) {
+						[ param.asStaticTextLabel ] ++
+						if(param.spec.isKindOf(ParamBusSpec) or: {param.spec.isKindOf(TagSpec)}) {
 							[\asPopUpMenu, \asBusPopUpMenu, \asValuePopUpMenu].collect({ arg method;
 								param.perform(method);
 							})
@@ -463,3 +471,5 @@ bus
 	Param(~eventPatternProxy, \mapped_audio_bus).inBusMode
 
 	Param(Ndef(\target_object), \mapped_audio_bus).spec
+	Param(Ndef(\target_object), \audio_bus).spec
+	Param(Ndef(\target_object), \audio_bus).type
