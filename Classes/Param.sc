@@ -2126,20 +2126,16 @@ ParamAccessor {
 
 			setbus: { arg self, val;
 				// set the bus (or map) and not its value
-                if(val.isKindOf(SequenceableCollection)) {
-					// multichannel mapped bus for arrayed synthdef parameters should be nested
-					val = Pdef.nestOn(val)
-                };
+                // multichannel mapped bus for arrayed synthdef parameters should be nested
+                val = Pdef.nestOn(val);
 				self.obj.setRaw(val);
 			},
 
 
 			getbus: { arg self;
 				var val = self.obj.getRaw;
-                if(val.isKindOf(SequenceableCollection)) {
-					// multichannel mapped bus for arrayed synthdef parameters should be nested
-					val = Pdef.nestOff(val)
-                };
+                // multichannel mapped bus for arrayed synthdef parameters should be nested
+                val = Pdef.nestOff(val);
 				val;
 			},
 
@@ -3495,7 +3491,7 @@ PdefParam : BaseAccessorParam {
 			//Log(\Param).debug("Val Nested! %", val);
 		};
         if(this.spec.isKindOf(ParamMappedBusSpec)) {
-          Log(\Param).debug("param.setVal nest on %", Pdef.nestOn(val));
+          //Log(\Param).debug("param.setVal nest on %", Pdef.nestOn(val));
 			target.set(property, Pdef.nestOn(val));
 		} {
 			target.setVal(property, val);
@@ -3842,7 +3838,12 @@ NdefParam : BaseAccessorParam {
 
 	getVal {
 		var val;
-		val = target.getVal(property) ?? { 
+        val = if(spec.isKindOf(ParamMappedBusSpec)) {
+			target.get(property)
+		} {
+			target.getVal(property)
+		};
+		val = val ?? { 
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
 			this.default
 		};
@@ -3858,7 +3859,11 @@ NdefParam : BaseAccessorParam {
 		if(Param.trace == true) {
 			"%: setVal: %".format(this, val.asCompileString).postln;
 		};
-		target.setVal(property, val);
+        if(spec.isKindOf(ParamMappedBusSpec)) {
+			target.set(property, val);
+		} {
+			target.setVal(property, val);
+		};
 		//Log(\Param).debug("set:final Val %, prop %", val, property);
 		//target.changed(\set, property, val); // Ndef already send a set message
 	}
@@ -3930,6 +3935,8 @@ NodeProxyParam : BaseAccessorParam {
 
 	getVal {
 		var val;
+        // FIXME: this do not use getVal and setVal, so no bus mode
+        //    this make ParamMappedBusSpec works by default
 		val = target.get(property) ?? { 
 			//this.default.debug("dddefault: %, %, %;".format(this.target, this.property, this.spec));
 			this.default

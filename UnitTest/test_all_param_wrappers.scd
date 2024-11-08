@@ -43,24 +43,30 @@ s.boot;
 
 Ndef(\target_object, { arg freq=200, pan=0, amp=0.1;
 	var sig;
-	sig = SinOsc.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5)).mean;
+	var fm;
+	fm = \mapped_audio_bus.ar * \modfreq_scale.kr(1) + 1;
+	sig = SinOsc.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5) * fm).mean;
 	sig = sig * EnvGen.kr(\env_param.kr(Env([0,1,0.5,0],[0.1,0.8,0.1])), Impulse.kr(1/2));
 	sig = Pan2.ar(sig, pan, amp);
 });
 
 Ndef(\target_object).addSpec(\env_param, ParamEnvSpec(\unipolar ! 4));
+Ndef(\target_object).addSpec(\mapped_audio_bus, ParamMappedBusSpec());
 
 SynthDef(\target_synthdef, { arg freq=200, pan=0, amp=0.1;
 	var sig;
-	sig = LFSaw.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5)).mean;
-	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	var fm;
+	fm = \mapped_audio_bus.ar * \modfreq_scale.kr(1) + 1;
+	sig = LFSaw.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5) * fm).mean;
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq , \rq.kr(0.5));
 	sig = sig * EnvGen.kr(\env_param.kr(Env([0,1,0.5,0],[0.1,0.8,0.1])), \gate.kr(1), doneAction:2);
 	sig = Pan2.ar(sig, pan, amp);
 	Out.ar(\out.kr(0), sig);
 }, metadata:(specs:(
-		env_param: ParamEnvSpec(\unipolar ! 4),
-		lpfr: ControlSpec(0.1,6,\lin),
-		//array_param: ParamArraySpec(), // FIXME: this should be commented, Param should detect spec from default value, but bug in 3.11
+	mapped_audio_bus: ParamMappedBusSpec(),
+	env_param: ParamEnvSpec(\unipolar ! 4),
+	lpfr: ControlSpec(0.1,6,\lin),
+	//array_param: ParamArraySpec(), // FIXME: this should be commented, Param should detect spec from default value, but bug in 3.11
 ))).add;
 
 ~envspec = ParamEnvSpec(\unipolar ! 4);
@@ -79,6 +85,24 @@ Pbindef(\target_pbindef,
 	\lpfr, PstepSeq([1,0,3,6],inf),
 	\scalar_param, Pseq([0,100,200,0],inf),
 	\rq, 0.1,
+);
+
+~eventPatternProxy = EventPatternProxy.new.source_(
+	Pbind(
+		\instrument, \target_synthdef,
+		\dur, 1,
+		\amp, 0.1,
+	),
+);
+
+~nodeProxy = NodeProxy.new.source_(Ndef(\target_object).source);
+~nodeProxy.addSpec(\mapped_audio_bus, ParamMappedBusSpec());
+
+(
+Ndef(\modulator, { arg freq=200, pan=0, amp=0.1;
+	var sig;
+	sig = SinOsc.ar(2);
+}).play(BusDef(\modbus_audio_mono, \audio, 1));
 );
 
 StepEventDef(\target_object);
@@ -134,18 +158,39 @@ Param.trace = true;
 //Param.trace = false;
 
 ~all_targets = [
-	~three.(Ndef(\target_object)),
-	~env_individual_params.(Ndef(\target_object)),
-	~array_individual_params.(Ndef(\target_object)),
-	~three.(Pdef(\target_object)),
-	~env_individual_params.(Pdef(\target_object)),
-	~array_individual_params.(Pdef(\target_object)),
+	//// Ndef
+	//~three.(Ndef(\target_object)),
+	//~env_individual_params.(Ndef(\target_object)),
+	//~array_individual_params.(Ndef(\target_object)),
+	//Param(Ndef(\target_object), "vol"), // no gui update
+	//Param(Ndef(\target_object), \inexistant),
+	Param(Ndef(\target_object), \mapped_audio_bus),
+
+	//// Pdef
+	//~three.(Pdef(\target_object)),
+	//~env_individual_params.(Pdef(\target_object)),
+	//~array_individual_params.(Pdef(\target_object)),
+	//Param(Pdef(\target_object), \scalar_bus_param).setBusMode, // bus mode for Pdef
+	Param(Pdef(\target_object), \mapped_audio_bus),
+	Param(Pdef(\target_object), \inexistant),
+
+	// EventPatternProxy
+	Param(~eventPatternProxy, \mapped_audio_bus),
+
+	// NodeProxy
+	Param(~nodeProxy, \mapped_audio_bus),
+
+	// StepEventDef
 	~three.(StepEventDef(\target_object)),
+
+	// IdentityDictionary
 	~three.(~dict),
 
+	// Pdefn
 	Param(Pdefn(\lpfr_pdefn), \stepseq),
 	Param(Pdefn(\rq_pdefn)),
 
+	// Pbindef
 	Param(Pbindef(\target_pbindef), \lpfr -> \stepseq),
 	Param(Pbindef(\target_pbindef), \scalar_param -> \stepseq),
 	Param(Pbindef(\target_pbindef), \array_param -> \source),
@@ -154,29 +199,36 @@ Param.trace = true;
 	Param(Pbindef(\target_pbindef), \rq -> \source).label_("rq source"),
 	Param(Pbindef(\target_pbindef).source.at(\rq)).label_("rq proxy"),
 
-	Param(Pdef(\target_object), \scalar_bus_param).setBusMode, // bus mode for Pdef
+	// StepList
 	Param(~steplist, \list), // this bug preset
+	Param(Message(StepList[1,2,3]), \stepCount),
+
+	// List
 	Param(~list, \list), // this bug preset
+
+	// TempoClock
 	Param(TempoClock.default, \tempo),
-	Param(Ndef(\target_object), "vol"), // no gui update
+
+	// BusDef / Bus
 	//Param(~bus, \value), // this is not working yet
 
 
-	Param(Message(StepList[1,2,3]), \stepCount),
+	// Event
 	Param(Message((arr:[3,2,1,2])), \arr),
 	Param(Message((arr:[3,2,1,2])), \arr -> 1),
-	Param(Builder(\target_object), \scalar_param),
-	//// TODO: add test for each spec !
-
-	Param({ ~variable }, { arg x; ~variable = x }), // no gui update
-	Param(s.volume, \volume),
-
-	/// test for nil values
-	Param(Pdef(\target_object), \inexistant),
-	Param(Ndef(\target_object), \inexistant),
 	Param(Message(()), \inexistant, ControlSpec(0,1,\lin)),
 	Param(Message(()), \inexistant, XBoolSpec()),
 	Param(Message(()), \inexistant),
+
+	// Builder
+	// 	TODO: add test for each spec !
+	Param(Builder(\target_object), \scalar_param),
+
+	// get/set
+	Param({ ~variable }, { arg x; ~variable = x }), // no gui update
+
+	// Volume
+	Param(s.volume, \volume),
 
 ].flatten;
 
@@ -223,9 +275,15 @@ WindowDef(\testgui, {
 				},
 				\other, {
 					HLayout(*
-						[\asButton].collect({ arg method;
-							param.perform(method);
-						})
+						if(param.spec.isKindOf(ParamMappedBusSpec) or: {param.spec.isKindOf(TagSpec)}) {
+							[\asPopUpMenu, \asBusPopUpMenu, \asValuePopUpMenu].collect({ arg method;
+								param.perform(method);
+							})
+						} {
+							[\asButton].collect({ arg method;
+								param.perform(method);
+							})
+						};
 					)
 
 				},
@@ -299,8 +357,10 @@ WindowDef(\testgui, {
 			//}),
 		//),
 		HLayout (
-			PlayerWrapper(Ndef(\target_object)).asView,
-			PlayerWrapper(Pdef(\target_object)).asView,
+			StaticText.new.string_("Ndef"), PlayerWrapper(Ndef(\target_object)).asView,
+			StaticText.new.string_("Pdef"), PlayerWrapper(Pdef(\target_object)).asView,
+			StaticText.new.string_("EventPat"), PlayerWrapper(~eventPatternProxy).asView,
+			StaticText.new.string_("NodeProxy"), PlayerWrapper(~nodeProxy).asView,
 			PlayerWrapper(Pdef(\target_pbindef)).asView,
 			EventClass.presetSelectorView.(ParamGroupDef(\all_targets)),
 			EventClass.presetSelectorView.(~pg),
@@ -390,3 +450,16 @@ bus
 	Param(Message(()), \inexistant, XBoolSpec()).type
 
 	Param()~three.(Pdef(\target_object)),
+
+	Param(Pdef(\target_object), \mapped_audio_bus).edit
+	Param(Pdef(\target_object), \mapped_audio_bus).setBusMode = false
+	Param(Pdef(\target_object), \mapped_audio_bus).wrapper
+	Param(Pdef(\target_object), \mapped_audio_bus).accessor
+	Param(Pdef(\target_object), \mapped_audio_bus).accessor.getval
+	Param(Pdef(\target_object), \mapped_audio_bus).get
+	Param(Pdef(\target_object), \mapped_audio_bus).spec.tagSpec
+	Param(~eventPatternProxy, \mapped_audio_bus).get
+	Param(~eventPatternProxy, \mapped_audio_bus).wrapper
+	Param(~eventPatternProxy, \mapped_audio_bus).inBusMode
+
+	Param(Ndef(\target_object), \mapped_audio_bus).spec
