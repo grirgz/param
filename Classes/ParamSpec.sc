@@ -412,7 +412,6 @@ ParamTrigSpec : ParamNonFloatSpec {
 }
 
 ParamBufferSpec : ParamNonFloatSpec {
-	// arg: channel count
 	var >tagSpec;
 	var <>numChannels;
 

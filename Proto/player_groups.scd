@@ -197,7 +197,6 @@ ProtoTemplateDef(\NotePlayer, (
 		self.cur_ev.release;
 		self.cur_ev = nil;
 	},
-
 ));
 
 
@@ -321,7 +320,6 @@ ProtoTemplateDef(\ParPlayerGroup, (
 		var pat = PdrumStep(self.targets, score, 1, key:\kitIndex);
 		pat
 	},
-
 ));
 
 
@@ -414,7 +412,6 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 	stop: { arg self;
 		self.children.do(_.stop)
 	},
-
 ));
 
 
@@ -424,7 +421,7 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 // used by KitTimeline through PatKitDef
 ProtoClassDef(\PatKitDef, (
 	protoClass: \PatKitDef,
-	parent: ~parPlayerGroup,
+	parent: ProtoTemplateDef(\ParPlayerGroup),
 	all: { PresetDictionary.new(\patKitDef) },
 	new: { arg self, key, instrs;
 
@@ -476,6 +473,24 @@ ProtoClassDef(\PatKitDef, (
 		self.children.do({ arg x; x.reboot });
 	},
 
+	targetsData_: { arg self, data;
+		self[\targetsData] = data;
+		self.targets.do { arg target, idx;
+			var data;
+			if(target.isKindOf(StepEvent)) {
+				// no data for StepEvent
+			} {
+				data = self.targetsData[idx];
+				if(data.notNil) {
+					data.keys.do { arg key;
+						target.proxy.set(key, data[key])
+					};
+				};
+			};
+			
+		};
+	},
+
 	setTarget: { arg self, idx, val;
 		if(self[\targets].size <= idx) {
 			self[\targets].tryPerform(\extend, idx+1)
@@ -525,8 +540,7 @@ ProtoClassDef(\PchainProxy, (
 		pattern.debug("hoo");
 		
 		self[\proxy] = EventPatternProxy.new.source_(Pbind());
-		self[\source] = pattern;
-		self.pattern = self.proxy <> self.source;
+		self.source = pattern;
 	
 		self;
 	},
@@ -538,6 +552,8 @@ ProtoClassDef(\PchainProxy, (
 
 	source_: { arg self, val;
 		self[\source] = val;
+		self.instrument = BaseParam.getInstrumentFromPbind( self.source );
+		self.proxy.set(\instrument, self.instrument);
 		self.pattern = self.proxy <> self.source;
 	},
 
@@ -554,7 +570,13 @@ ProtoClassDef(\PchainProxy, (
 	},
 	
 	asParamGroup: { arg self, instrument;
-		self.proxy.asParamGroup( instrument ?? { BaseParam.getInstrumentFromPbind( self.source ) } )
+		self.proxy.asParamGroup;
+		//self.proxy.asParamGroup( instrument ?? { BaseParam.getInstrumentFromPbind( self.source ) } )
+	},
+
+	presetCompileString: { arg self;
+		self.proxy.asParamGroup.getEventCompileString
+		
 	},
 ))
 );

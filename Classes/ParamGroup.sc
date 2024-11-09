@@ -182,6 +182,16 @@ ParamGroup : List {
 		
 	}
 
+    getEventCompileString { arg onlySet=true;
+		var ev = ();
+		this.do { arg p, idx;
+			if(p.isSet != false) {
+				ev[p.property] = p.get
+			} 
+		};
+		^"%\n".format(ev.asCompileString)
+    }
+
 	presetCompileString {
 		var ret;
 		var params, presets;

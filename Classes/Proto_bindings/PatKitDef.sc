@@ -4,11 +4,11 @@
 PatKitDef {
 	*new { arg name, val;
 		ParamProto.init;
-		^~patKitDef.new(name, val);
+		^ProtoClassDef(\PatKitDef).new(name, val);
 	}
 
 	*all {
 		ParamProto.init;
-		^~patKitDef.all;
+		^ProtoClassDef(\PatKitDef).all;
 	}
 }

@@ -1092,6 +1092,10 @@ TagSpecDef(\BufDef, {
 	[\0->0] ++ BufDef.all.keys.as(Array).sort.collect({ arg k; k -> BufDef(k).bufnum }) 
 });
 
+TagSpecDef(\BufDef_nozero, {
+	BufDef.all.keys.as(Array).sort.collect({ arg k; k -> BufDef(k).bufnum }) 
+});
+
 TagSpecDef(\BufDef_mono, {
 	[\0->0] ++ BufDef.all.keys.as(Array).sort
 		.collect({ arg k; k -> BufDef(k) })

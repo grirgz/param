@@ -589,11 +589,14 @@ ParamGroupLayout {
 				[
 					statictext,
 
-					if(param.spec.isKindOf(TagSpec) ) {
-						param.asValuePopUpMenu;
-					} {
-						param.asBusPopUpMenu;
-					},
+                    //param.asPopupView;
+                    // FIXME: why special for TagSpec ? 
+                    // maybe i broke everything by commenting this code
+                    if(param.spec.isKindOf(TagSpec) or: param.spec.isKindOf(ParamBufferSpec) ) {
+                        param.asValuePopUpMenu;
+                    } {
+                        param.asBusPopUpMenu;
+                    },
 					//param.asTextField,
 				]
 			}) ++
