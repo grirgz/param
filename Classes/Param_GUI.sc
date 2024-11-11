@@ -136,13 +136,14 @@ ParamViewToolBox {
 
 	*attachContextMenu { arg param, view;
 		view.mouseDownAction = {  arg vie, x, y, modifiers, buttonNumber, clickCount;
-			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+            //[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
 			if(buttonNumber == 1) {
 				if(WindowDef(\ParamGenericOverlayMenu).notNil) {
 					WindowDef(\ParamGenericOverlayMenu).front(vie, x, y, param)
 				}
 			}
 		};
+        ^view;
 	}
 }
 

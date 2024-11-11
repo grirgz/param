@@ -457,10 +457,13 @@ ProtoClassDef(\PatKitDef, (
 	},
 
 	convert: { arg self, val, oldval;
-		if(val.isKindOf(Pbind) or: { val.isKindOf(EventPatternProxy) }) {
-			var ret = ProtoInst(\PchainProxy, val);
+		if(val.isKindOf(Pbind) or: { val.isKindOf(EventPatternProxy) } or: { val.isKindOf(Pdef) }) {
+			var ret;
 			if(oldval.notNil and: { oldval.isKindOf(ProtoClass) } and: { oldval.protoClass == \PchainProxy }) {
-				ret.proxy = oldval.proxy;
+				ret = oldval;
+				ret.source = val;
+			} {
+				ret = ProtoInst(\PchainProxy, val);
 			};
 			ret;
 		} {
@@ -540,6 +543,7 @@ ProtoClassDef(\PchainProxy, (
 		pattern.debug("hoo");
 		
 		self[\proxy] = EventPatternProxy.new.source_(Pbind());
+		self[\pattern] = EventPatternProxy.new.source_(Pbind());
 		self.source = pattern;
 	
 		self;
@@ -547,14 +551,14 @@ ProtoClassDef(\PchainProxy, (
 
 	proxy_: { arg self, val;
 		self[\proxy] = val;
-		self.pattern = self.proxy <> self.source;
+		self.pattern.source = self.proxy <> self.source;
 	},
 
 	source_: { arg self, val;
 		self[\source] = val;
 		self.instrument = BaseParam.getInstrumentFromPbind( self.source );
 		self.proxy.set(\instrument, self.instrument);
-		self.pattern = self.proxy <> self.source;
+		self.pattern.source = self.proxy <> self.source;
 	},
 
 	asPattern: { arg self;

@@ -1209,6 +1209,7 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\Effect,
 	\Score,
 	\Preset,
+	\Kit,
 	\TrackPart,
 	\TrackGrid,
 	\LineTrack,
@@ -1268,6 +1269,10 @@ TagSpecDef('GlobalLibrary.type.Timeline', [
 	\SampleTimeline,
 	\ClipTimeline,
 	\ParamTimeline,
+]);
+
+TagSpecDef('GlobalLibrary.type.Kit', [
+	\PatKitDef,
 ]);
 
 TagSpecDef('GlobalLibrary.type.Editable', [
@@ -1368,7 +1373,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 	var tagView;
 	var lay;
 	var itemIds = List.new;
-	var updateItems;
+	var updateItems, updateTypes;
 	var treeViewItemToLibId;
 	var tagList;
 
@@ -1395,29 +1400,23 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		var model = def;
 
 		var superitem;
-		var selectedTypes = typeView.selection.collect({ arg idx; typeView.items[idx] });
-		var selectedCategories = categoryView.selection.collect({ arg idx; categoryView.items[idx] });
+		var selectedTypes;
+		var selectedCategories;
 		var filteredTypes;
+
+		Log(\Param).debug("updateItems");
+
+		//// type filtering
+		selectedTypes = typeView.selection.collect({ arg idx; typeView.items[idx] });
+
 		if(selectedTypes.size == 0) {
-			selectedTypes = MenuSpecDef(\GlobalLibraryType).keyList;
+			selectedTypes = typeView.items;
 		};
-		if(selectedCategories.size == 0) {
-			selectedCategories = categoryView.items;
-		};
-		filteredTypes = selectedTypes;
-		if(selectedCategories.size > 0) {
-			Log(\Param).debug("selected categories: %", selectedCategories);
-			filteredTypes = selectedTypes.asSet.sect(
-				selectedCategories.collect({ arg superkey;
-					MenuSpecDef("GlobalLibrary.type.%".format(superkey).asSymbol).keyList;
-				}).flat.asSet
-			).asList;
-		};
+
 		view.clear;
-		//filteredTypes = [\Sample];
 
 		//[model, view, msg, selectedTypes, selectedCategories, filteredTypes].debug("category change");
-		itemIds = filteredTypes.collect({ arg typeitem;
+		itemIds = selectedTypes.collect({ arg typeitem;
 			//Log(\Param).debug("typeitem %", typeitem);
 			TagSpecDef(typeitem.value).list.collect ({ arg item;
 				//Log(\Param).debug("item %", item);
@@ -1482,28 +1481,44 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 	};
 
-	typeView = ListView.new
-		.items_(
-			TagSpecDef(\GlobalLibraryType).list.collect ({ arg superitem;
-				//Log(\Param).debug("superitem %", superitem);
-				//TagSpecDef(superitem.value).list.collect { arg item;
-				//Log(\Param).debug("item %", item);
-				superitem.key;
-				//}
+	updateTypes = {
+		var selectedTypes;
+		var selectedCategories;
+		var filteredTypes;
+		var allTypes;
+		var tmpAction;
+		Log(\Param).debug("updateTypes");
 
-			}).flat.asArray
-		)
-		.selection_([])
-		.action_({ arg view;
-			//view.selection.debug("cat action");
-			def.changed(\results);
-		})
+		selectedTypes = typeView.selection.collect({ arg idx; typeView.items[idx] });
+		selectedCategories = categoryView.selection.collect({ arg idx; categoryView.items[idx] });
+
+		if(selectedCategories.size == 0) {
+			selectedCategories = categoryView.items;
+		};
+		filteredTypes = selectedCategories.collect({ arg superkey;
+			TagSpecDef("GlobalLibrary.type.%".format(superkey).asSymbol).keyList;
+		}).flat.asSet.asArray;
+
+		tmpAction = typeView.selectionAction; // avoid calling typeView.selectionAction
+		typeView.selectionAction = nil;
+		typeView.items = filteredTypes; // call selectionAction_
+		typeView.selection = []; // call selectionAction_
+		typeView.selectionAction = tmpAction;
+
+		updateItems.();
+		
+		
+	};
+
+	typeView = ListView.new
 		.selectionMode_(\multi)
-		.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-			//view.selection.debug("cat mouse up");
-			def.changed(\results);
-			
+		.selection_([])
+		.selectionAction_({
+			// can use selectionAction because updateTypes skip selectionAction calls
+			// content set by categoryView via updateTypes
+			//["typeView selected"].debug;
+			updateItems.();
+			//def.changed(\results);
 		})
 	;
 
@@ -1519,31 +1534,27 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 				};
 			}).flat.asArray
 		)
-		.selection_([])
-		.action_({ arg view;
-			//view.selection.debug("cat action");
-			def.changed(\results);
-		})
 		.selectionMode_(\multi)
-		.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-			//view.selection.debug("cat mouse up");
-			def.changed(\results);
-			
+		.selection_([])
+		.selectionAction_({ arg view;
+			// can use selectionAction because its content is static
+			//view.selection.debug("cat action");
+			updateTypes.();
 		})
 	;
 
 	tagView = ListView.new
 		.selection_([])
-		.action_({ arg view;
-			//view.selection.debug("cat action");
-			def.changed(\results);
+		.selectionAction_({
+			// if set, this will be fired inside updateItems function
+			//updateItems.();
 		})
 		.selectionMode_(\multi)
 		.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			//view.selection.debug("cat mouse up");
-			def.changed(\results);
+			//def.changed(\results);
+			updateItems.();
 			
 		})
 	;
@@ -1568,9 +1579,10 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		.canSort_(true) // imply to find item by its strings, ugly but works (treeViewItemToLibId)
 	;
 
-	resultView.followChange(def, \results, { arg view, model, msg, arg1;
-		updateItems.();
-	});
+	updateTypes.();
+	//resultView.followChange(def, \results, { arg view, model, msg, arg1;
+		//updateItems.();
+	//}, false);
 	resultView.currentItem_(
 		if(defaultValue.notNil) {
 			var libIds;
@@ -1609,6 +1621,9 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 WindowDef(\GlobalLibrary_select, { arg def, defaultValue, okHook, categories;
 	var selected;
 	//categories = [ \AudioBuffer ];
+	if(categories.isKindOf(Symbol)) {
+		categories = [categories]
+	};
 	VLayout (
 		WindowDef(\GlobalLibrary).asView(nil, { arg val; 
 			selected = val;
