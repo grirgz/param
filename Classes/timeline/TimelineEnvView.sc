@@ -32,6 +32,19 @@ TimelineEnvView : TimelineView {
 		}
 	}
 
+	clipGridPoint { arg point;
+		// FIXME: this prevent negative y values
+		var x, y;
+		if(param.notNil and: { useSpecInConversions != false }) {
+			x = point.x.clip(0,this.areasize.x-quant.value.x); // FIXME: not sure if -1 should be scaled to something
+			y = point.y.clip(param.spec.clipLo,param.spec.clipHi-quant.value.y);
+		} {
+			x = point.x.clip(0,this.areasize.x-quant.value.x); // FIXME: not sure if -1 should be scaled to something
+			y = point.y.clip(0,this.areasize.y-quant.value.y);
+		};
+		^Point(x,y);
+	}
+
 	nodeClass {
 		^TimelineEnvViewNode
 	}
