@@ -1019,6 +1019,30 @@ TagSpecDef(\PatKitDef, {
 	PatKitDef.all.asAssociations;
 });
 
+TagSpecDef(\TrackMixerDef, {
+	ProtoClassDef(\TrackMixerDef).all
+});
+
+TagSpecDef(\TrackMixerDef_insertFx, {
+	TagSpecDef(\TrackMixerDef).valueList.collect { arg mixer, idx;
+		mixer.insertFxList.select { arg fx, idx;
+			fx.notNil and: {  fx.isEmpty == false }
+		}.collect { arg fx, idx;
+			"%_insertFx%".format(mixer.key, fx.relIndex).asSymbol -> fx
+		};
+	}.flatten;
+});
+
+
+/////
+
+TagSpecDef(\Modulators, {
+	TagSpecDef(\ParamCombinatorInput).list 
+	++ TrackDef(\ModulatorRack).existingChildren.collect({ arg child, idx;
+		child.trackKey -> child
+	})
+});
+
 ///// BusDef
 
 TagSpecDef(\BusDef, {
@@ -1332,6 +1356,8 @@ TagSpecDef('GlobalLibrary.type.Players', {
 		\ParamTimeline,
 		\CustomTrackList,
 		\ProtoPlayer,
+		\TrackMixerDef,
+		\TrackMixerDef_insertFx,
 	] ++
 	[\TrackGrid, \LineTrack, \TrackPart, \Track].collect { arg item, idx;
 		TagSpecDef("GlobalLibrary.type.%".format(item).asSymbol).list
@@ -1501,7 +1527,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 		tmpAction = typeView.selectionAction; // avoid calling typeView.selectionAction
 		typeView.selectionAction = nil;
-		typeView.items = filteredTypes; // call selectionAction_
+		typeView.items = filteredTypes.sort; // call selectionAction_
 		typeView.selection = []; // call selectionAction_
 		typeView.selectionAction = tmpAction;
 

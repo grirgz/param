@@ -115,6 +115,214 @@ WindowDef(\NdefEditor, { arg me, key=\default;
 );
 
 (
+WindowDef(\ParamGenericContextMenu, { arg def, param;
+	Menu(*
+		WindowDef(\ParamGenericContextMenuEntries).sourceValue(param)
+	)
+});
+
+WindowDef(\ParamGenericContextMenuEntries, { arg def, param;
+	[
+		MenuAction(param.fullLabel).enabled_(false),
+		MenuAction.separator,
+		Param(Message(param), \inBusMode, ParamBoolSpec()).asMenuAction("Bus mode"),
+		MenuAction("Override pattern", {
+			if(param.target.isKindOf(EventPatternProxy)) {
+				Pbindef(param.target.key, param.propertyRoot, Pkey(param.propertyRoot));
+			} {
+				Log(\Param).info("Can't override, not an EventPatternProxy");
+			}
+		}),
+		MenuAction("Set default", {
+			param.set(param.default)
+		}),
+		MenuAction("Unset", {
+			param.unset;
+		}),
+		Menu(
+			CustomViewAction(
+				param.asTextField.minWidth_(500);
+			)
+		).title_("Edit text"),
+		MenuAction.separator,
+
+		MenuAction("MIDI CC learn and map", {
+			var midi = param.target.getHalo(\MIDIFunc, param.property);
+			if(midi.notNil) {
+				midi.free;
+				param.target.addHalo(\MIDIFunc, param.property, nil);
+			};
+			midi = MIDIFunc.cc({ arg ... args;
+				//args.debug("MENU MIDI Func");
+				param.normSet(args[0]/127)
+			}).fix.learn;
+			param.target.addHalo(\MIDIFunc, param.property, midi);
+		}),
+		MenuAction(
+			if(param.target.getHalo(\MIDIFunc, param.property).notNil) {
+				"Clear MIDI (%)".format(param.target.getHalo(\MIDIFunc, param.property).msgNum);
+			} {
+				"Clear MIDI (not set)";
+			},
+		   	{
+				var midi = param.target.getHalo(\MIDIFunc, param.property);
+				if(midi.notNil) {
+					midi.free;
+					param.target.addHalo(\MIDIFunc, param.property, nil);
+				};
+			}
+		),
+
+		MenuAction.separator,
+		//if(param.hasCombinator) {
+		if(TagSpecDef(\Modulators).list.size > 0) {
+			var checkedfun = false; // checked if modulator already added
+			if(param.hasCombinator) {
+				var combi = param.getCombinator;
+				checkedfun = { arg x; combi.inputObjects.includes(x) }
+			};
+			Menu(*
+				TagSpecDef(\Modulators).list.collect { arg asso, idx;
+					var child = asso.value;
+					MenuAction(asso.key, {
+						var combi;
+						var pa = param;
+						var nextidx;
+						if(checkedfun.(child)) { // if already added
+							var idx;
+							combi = param.getCombinator;
+							idx = combi.inputObjects.indexOf(child);
+							combi.inputParam.at(idx).set(0);
+							combi.inputObjects[idx] = nil;
+							param.target.changed(\keyForm, param); // for PbindefEditor
+						} {
+							if(param.hasCombinator.not) {
+								if(param.property.value == \source) {
+									pa = param.parent;
+								};
+								ParamCombinator(pa).setBusMode(true);
+							};
+							combi = param.getCombinator;
+							nextidx = combi.nextFreeInput;
+							if(nextidx.notNil) {
+								combi.inputParam.at(nextidx).setBus(PlayerWrapper(child).outBus.asMap);
+								combi.inputObjects[nextidx] = child;
+								//pa.at(\source).set(combi);
+								child.play;
+								param.target.changed(\keyForm, param); // for PbindefEditor
+							} {
+								Log(\Param).error("No free input for param % combi %".format(param, combi));
+							};
+						};
+					}).checked_(checkedfun.(child))
+				} ++ [
+					Menu(*
+						TagSpecDef(\BusDef).list.collect { arg asso, idx;
+							var child = asso.value;
+							MenuAction(asso.key, {
+								var combi;
+								var pa = param;
+								var nextidx;
+								if(checkedfun.(child)) { // if already added
+									var idx;
+									combi = param.getCombinator;
+									idx = combi.inputObjects.indexOf(child);
+									combi.inputParam.at(idx).set(0);
+									combi.inputObjects[idx] = nil;
+									param.target.changed(\keyForm, param); // for PbindefEditor
+								} {
+									if(param.hasCombinator.not) {
+										if(param.property.value == \source) {
+											pa = param.parent;
+										};
+										ParamCombinator(pa).setBusMode(true);
+									};
+									combi = param.getCombinator;
+									nextidx = combi.nextFreeInput;
+									if(nextidx.notNil) {
+										combi.inputParam.at(nextidx).setBus(child.asMap);
+										combi.inputObjects[nextidx] = child;
+										param.target.changed(\keyForm, param); // for PbindefEditor
+									} {
+										Log(\Param).error("No free input for param % combi %".format(param, combi));
+									};
+								};
+							})
+						};
+					).title_("Modulate by bus")
+				];
+			).title_("Add modulator")
+		} {
+			MenuAction("Add modulator", {
+				var combi;
+				var pa = param;
+				if(param.property.value == \source) {
+					pa = param.parent;
+				};
+				combi = ParamCombinator(pa).setBusMode(true);
+				if(TrackDef(\ModulatorRack).parent.notNil) { // if ModulatorRack is loaded
+					// automatically create and connect a modulator
+					var mod;
+
+					if( TrackDef(\ModulatorRack).existingChildren.size == 0) {
+						TrackDef(\ModulatorRack).addModulator;
+					};
+					mod = TrackDef(\ModulatorRack).existingChildren.first;
+					combi.inputParam.at(0).setBus(mod.outBus.asMap);
+					combi.inputObjects[0] = mod;
+					//pa.at(\source).set(combi);
+					mod.play;
+					param.target.changed(\keyForm, param); // for PbindefEditor
+				} {
+					WindowDef(\ParamCombinatorModulatorEditor).front(pa)
+
+				};
+			})
+		},
+		if(param.hasCombinator) {
+			Menu(
+				CustomViewAction(
+					View.new.layout_(WindowDef(\ParamCombinatorModulatorEditor).asView(param))
+				)
+			).title_("Modulator panel")
+		},
+		MenuAction("Combinator editor", {
+			var combi;
+			var pa = param;
+			if(param.property.value == \source) {
+				pa = param.parent;
+			};
+			combi = ParamCombinator(pa).setBusMode(true);
+			WindowDef(( \ParamCombinator_++pa.fullLabel ).asSymbol, WindowDef(\ParamCombinatorEditor)).front(combi);
+			//param.set(param.default)
+		}),
+
+		MenuAction.separator,
+		MenuAction("Param Debug View", { WindowDef(\ParamDebugView).front(param) }),
+
+
+		MenuAction.separator,
+		MenuAction("Edit target", {
+			PlayerWrapper(param.target).edit;
+		}),
+		if(param.spec.isKindOf(ParamBusSpec)) {
+			MenuAction("Scope bus", {
+				var bus = param.get;
+				if(bus.notNil) {
+					WindowDef(\ScopeView).front(bus);
+				} {
+					Log(\Param).debug("bus is nil");
+				}
+			})
+		},
+
+		MenuAction.separator,
+		MenuAction("Spec editor", {
+			WindowDef(\ParamSpecEditor).front(param)
+		})
+	].select(_.notNil)
+});
+
 WindowDef(\ParamEditor, { arg def, param;
 	var midiClearButton;
 	VLayout (
@@ -226,26 +434,48 @@ WindowDef(\ParamEditorSimple, { arg def, param;
 });
 
 WindowDef(\ParamSpecEditor, { arg def, param;
+	var setspec;
+	var speclist;
 	var spec = param.spec.copy; // copy to avoid modifying standard specs
 	param.spec = spec;
+	setspec = { arg key;
+		var newspec;
+		newspec = Spec.specs[key];
+		Log(\Param).debug("setspec newspec %", newspec);
+		if(newspec.notNil) {
+			spec.minval = newspec.minval;
+			spec.maxval = newspec.maxval;
+			spec.default = newspec.default;
+			spec.step = newspec.step;
+			spec.warp = newspec.warp;
+			spec.changed(\set, \minval);
+			spec.changed(\set, \maxval);
+			spec.changed(\set, \default);
+			spec.changed(\set, \step);
+			spec.changed(\set, \warp);
+		};
+		Log(\Param).debug("done setting spec %", newspec);
+	};
+	speclist = Spec.specs.select({ arg spec; spec.isKindOf(ControlSpec) }).keys.as(Array).sort;
 	case(
 		{ spec.isKindOf(ControlSpec) }, {
 			VLayout (
 				ParamGroupLayout.formEntry( param),
 				HLayout (
 					StaticText.new.string_("Load from spec: "),
-					PopUpMenu.new.items_(Spec.specs.keys.as(Array)).action_({
-						arg view;
-						var key = view.item.asSymbol;
-						var newspec = Spec.specs[key];
-						if(newspec.notNil) {
-							spec.minval = newspec.minval;
-							spec.maxval = newspec.maxval;
-							spec.default = newspec.default;
-							spec.step = newspec.step;
-							spec.warp = newspec.warp;
+					~mp = PopUpMenu.new.items_(speclist).action_({ arg view;
+						setspec.(view.item.asSymbol);
+					}).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+						//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+						if(buttonNumber == 1) {
+							WindowDef(\ListSelectDialog).front(speclist, { arg selected, asso;
+								[view, selected, asso].debug("ListSelectDialog");
+								defer {
+									setspec.(asso.value);
+								};
+								//view.valueAction = 1;
+							}, view.item)
 						};
-						Log(\Param).debug("done setting spec %", newspec);
 					})
 				),
 				ParamGroupLayout.formEntry( Param(Message(spec), \minval, \widefreq)),
@@ -311,10 +541,12 @@ WindowDef(\ParamCombinatorInputPlayerButton, { arg def, combi, idx, tagspecplaye
 					nil
 				}
 			);
-			button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
-				pwrapper.edit;
-			});
+			defer {
+				button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+					//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+					pwrapper.edit;
+				});
+			};
 		} {
 			pwrapper.mapPlayer(nil)
 		}
@@ -335,32 +567,37 @@ WindowDef(\ParamCombinatorEditor, { arg def, combi;
 			VLayout(
 				*combi.inputParam.collect( { arg input, idx;
 					var pwrapper = PlayerWrapper();
-					var tagspec_map = TagSpecDef(\ParamCombinatorInput_asMap);
-					var tagspec_player = TagSpecDef(\ParamCombinatorInput);
+					//var tagspec_map = TagSpecDef(\ParamCombinatorInput_asMap);
+					//var tagspec_player = TagSpecDef(\ParamCombinatorInput);
 					//TagSpec(
 						//["-"->0] ++ [\lfo1,\lfo2,\lfo3].collect({ arg x; x -> Ndef(x).asMap })
 					//);
-					var menu = input.asBusPopUpMenu(tagspec_map);
-					menu.followChange(combi.inputParam.target, \set, {
-						//"combi input change!".debug;
-						Log(\Param).debug("input.get %", input.getBus);
-						if(input.getBus != 0) {
-							pwrapper.mapPlayer(
-								tagspec_map.unmapKey(input.getBus) !? { arg key;
-									Log(\Param).debug("combi editor: key: %, ts%", key, tagspec_player.asDict[ key ]);
-									tagspec_player.asDict[ key ]
-								} ?? {
-									nil
-								}
-							)
-						} {
-							pwrapper.mapPlayer(nil)
-						}
-					});
+					//var menu = input.asBusPopUpMenu(tagspec_map);
+					var menu;
+					//menu.followChange(combi.inputParam.target, \set, {
+						////"combi input change!".debug;
+						//Log(\Param).debug("input.get %", input.getBus);
+						//if(input.getBus != 0) {
+							//pwrapper.mapPlayer(
+								//tagspec_map.unmapKey(input.getBus) !? { arg key;
+									//Log(\Param).debug("combi editor: key: %, ts%", key, tagspec_player.asDict[ key ]);
+									//tagspec_player.asDict[ key ]
+								//} ?? {
+									//nil
+								//}
+							//)
+						//} {
+							//pwrapper.mapPlayer(nil)
+						//}
+					//});
+					#menu, pwrapper = WindowDef(\ParamCombinatorInputPlayerButton).asView(combi, idx);
 					HLayout (
 						//menu,
 						//pwrapper.asView,
-						HLayout(*WindowDef(\ParamCombinatorInputPlayerButton).asView(combi, idx).collect(_.asView)),
+						HLayout(
+							menu, 
+							pwrapper
+						),
 						Button.new.string_("Edit").action_({
 							if(pwrapper.target.notNil) {
 								pwrapper.edit;
@@ -376,6 +613,55 @@ WindowDef(\ParamCombinatorEditor, { arg def, combi;
 		nil
 		//Param(Pdef(\param), \xlpfr).asPopUpMenu([\bla,\rah]),
 	)
+});
+);
+
+
+(
+WindowDef(\ParamCombinatorModulatorEditor, { arg def, param;
+	if(param.hasCombinator) {
+		var combi = param.getCombinator;
+		VLayout (*
+			[
+				HLayout (
+					param.asView,
+					BasicButton.new.string_("Modulator Rack").action_({
+						TrackDef(\ModulatorRack).edit;
+					}),
+					PlayerWrapper(combi.proxy),
+				)
+			] ++
+			combi.inputObjects.collect { arg obj, idx;
+				var player = PlayerWrapper(obj);
+				var inputp = Param(Message(combi), \inputObjects -> idx, TagSpecDef(\Modulators));
+				HLayout(
+					player.asView,
+					inputp.asPopUpMenu.addAction({
+						obj = combi.inputObjects[idx];
+						[ obj].debug("obj");
+						[ PlayerWrapper(obj).outBus.asMap ].debug("bus");
+						player.mapPlayer(obj);
+						combi.inputParam.at(idx).setBus(PlayerWrapper(obj).outBus.asMap);
+						param.target.changed(\keyForm, param); // for PbindefEditor
+					}),
+					combi.inputParam.at(idx).copy.spec_(ParamMappedBusSpec()).asPopUpMenu,
+					combi.rangeParam.at(idx).asSlider.orientation_(\horizontal).fixedWidth_(200),
+					BasicButton.new.string_("Edit").maxWidth_(30).action_({
+						player.edit;
+					}),
+				)
+			
+			
+			} ++ [ nil ];
+		)
+	} {
+		BasicButton.new.string_("Add Combinator").action_({
+			var combi = ParamCombinator(param).setBusMode(true);
+			"add it now!".debug;
+			def.front(param);
+		})
+	}
+	
 });
 );
 
@@ -407,3 +693,100 @@ WindowDef(\ServerVolumeEditor, { arg def, server;
 );
 
 
+(
+WindowDef(\ParamDebugView, { arg def, param;
+	var makeDebugView;
+	var lay;
+	makeDebugView = { arg param;
+		GridLayout.rows(
+			[
+				StaticText.new.string_("fullLabel"),
+				TextField.new.string_(param.fullLabel),
+			],
+			[
+				StaticText.new.string_("target"),
+				TextField.new.string_(param.target.asCompileString),
+			],
+			[
+				StaticText.new.string_("property"),
+				TextField.new.string_(param.property.asCompileString),
+			],
+			[
+				StaticText.new.string_("spec"),
+				TextField.new.string_(param.spec.asCompileString),
+			],
+			[
+				StaticText.new.string_("wrapper"),
+				TextField.new.string_(param.wrapper.asCompileString),
+			],
+			[
+				StaticText.new.string_("accessor"),
+				TextField.new.string_(param.accessor.key),
+			],
+			[
+				StaticText.new.string_("get"),
+				TextField.new.string_(param.get.asCompileString),
+			],
+			[
+				StaticText.new.string_("getBus"),
+				TextField.new.string_(param.getBus.asCompileString),
+			],
+			[
+				StaticText.new.string_("getRaw"),
+				TextField.new.string_(param.getRaw.asCompileString),
+			],
+			[
+				StaticText.new.string_("getVal"),
+				TextField.new.string_(param.getVal.asCompileString),
+			],
+			[
+				StaticText.new.string_("hasCombinator"),
+				TextField.new.string_(param.hasCombinator),
+			],
+			[
+				StaticText.new.string_("inBusMode"),
+				TextField.new.string_(param.inBusMode.asCompileString),
+			],
+			[
+				StaticText.new.string_("isSet"),
+				TextField.new.string_(param.isSet),
+			],
+			[
+				StaticText.new.string_("source"),
+				if(param.target.isKindOf(Pbindef)) {
+					TextField.new.string_(param.target.source.at(param.propertyRoot).source)
+				} 
+			],
+			[
+				nil
+			],
+		)
+	};
+	if(param.isNil) {
+		Button.new.string_("param is nil")
+	} {
+
+		lay = if(param.parent.notNil) {
+			HLayout (
+				makeDebugView.(param),
+				makeDebugView.(param.parent),
+			)
+		} {
+			makeDebugView.(param)
+		};
+		VLayout (
+			HLayout (
+				BasicButton.new.string_("copy param in ~param").action_({
+					~param = param;
+				}),
+				BasicButton.new.string_("refresh").action_({
+					def.front(param);
+				}),
+			),
+			lay,
+		)
+	};
+
+	
+});
+);

@@ -55,6 +55,10 @@ PstepSeq : ListPattern {
 		this.changed(\cursor, nil, 0); // turn off all cells
 		this.list.changed(\cursor, nil, 0); // turn off all cells
 	}
+
+    asParam { 
+		^Param(Message(this), \list)
+    }
 	//storeArgs { ^[ list, repeats, offset ] }
 }
 

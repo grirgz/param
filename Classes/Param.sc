@@ -44,20 +44,22 @@ Param {
 	init { arg args;
 		//"init xxxxxxxxxxx".debug;
 		// FIXME: why this test on size ? if ommit parameters, this break! like Param(s.volume)
-		if (args.size > 1) {
-			this.newWrapper(args)
-		} {
-			// TODO: test without this code to see if something break
-			if(args[0].isSequenceableCollection) {
-				// This is for support Param([Ndef(\plop), \freq, \freq])
-				// this support is stupid, why not Param(*[Ndef(\plop), \freq, \freq]) ???
-				this.newWrapper(args[0])
-			} {
-				// This is for support Param(ParamValue.new)
-				// This break API for why ? to not use an extra wrapper
-				this.newWrapper(args)
-			}
-		};
+		this.newWrapper(args);
+		//if (args.size > 1) {
+			//this.newWrapper(args)
+		//} {
+			//// TODO: test without this code to see if something break
+			//if(args[0].isSequenceableCollection) {
+				//// This is for support Param([Ndef(\plop), \freq, \freq])
+				//// this support is stupid, why not Param(*[Ndef(\plop), \freq, \freq]) ???
+				//this.newWrapper(args[0])
+			//} {
+				//// This is for support Param(ParamValue.new)
+				//// This break API for why ? to not use an extra wrapper
+				//// should be removed because there is enough wrapper to access data anywhere
+				//this.newWrapper(args)
+			//}
+		//};
 	}
 
 	newWrapper { arg args;
@@ -395,6 +397,10 @@ Param {
 		^wrapper.propertyRoot;
 	}
 
+    propertyArray {
+		^BaseAccessorParam.associationToArray(this.property)
+    }
+
 	spec {
 		^wrapper.spec;
 	}
@@ -402,6 +408,9 @@ Param {
 	spec_ { arg val; // not sure if safe
 		wrapper.spec = val;
 	}
+
+	///// combinator
+    // need refactoring
 
 	combinator {
 		^wrapper.combinator;
@@ -424,9 +433,17 @@ Param {
 		^this.class.new(this.target, this.property).combinatorEnabled_(false);
 	}
 
-	clone {
-		^this.class.new(this.target, this.property);
+    // halo combinator getter
+
+	hasCombinator {
+		^wrapper.hasCombinator
 	}
+
+	getCombinator {
+		^wrapper.getCombinator
+	}
+
+    //
 
 	//inCombinatorMode_ { arg val;
 		//if(val == true) {
@@ -447,6 +464,13 @@ Param {
 		//}
 	//}
 
+
+	//////
+
+	clone {
+		^this.class.new(this.target, this.property);
+	}
+
 	///////// list behavior
 
 	size { 
@@ -459,7 +483,11 @@ Param {
 	}
 
 	parent { 
-		^Param.fromWrapper(wrapper.parent);
+		if(wrapper.parent.notNil) {
+			^Param.fromWrapper(wrapper.parent);
+		} {
+			^nil
+		};
 	}
 
 	asParamList {
@@ -472,6 +500,12 @@ Param {
 
 	collect { arg fun;
 		^wrapper.collect(fun);
+	}
+
+	/////////// sub param behavior
+	
+	subIndex {
+		^wrapper.subIndex;
 	}
 
 	///////////
@@ -838,9 +872,9 @@ Param {
 		slider.step_(this.spec.step/this.spec.range);
 		if(trackCursor) {
 			cursorAction = { arg self, index;
-				defer {
+				{
 					self.index = index;
-				}
+				}.defer(Server.default.latency)
 			};
 			slider.showIndex = true;
 		};
@@ -897,6 +931,7 @@ Param {
 		this.makeSimpleController(slider, 
 			updateAction: { arg self, param;
 				var val;
+				var color;
 				//"start executing".debug;
 				try {
 					if(param.get.isKindOf(Number)) {
@@ -912,9 +947,51 @@ Param {
 					};
 					//error.throw;
 				};
+                color = if(param.isSet) {
+					Color.black;
+                } {
+					Color.grey(0.7);
+                };
 				if(val.isKindOf(Number)) {
 					{
 						self.value = val;
+						self.knobColor = color;
+					}.defer;
+				}
+			},
+			customAction:action
+		);
+	}
+
+	mapKnob { arg slider, action;
+		this.makeSimpleController(slider, 
+			updateAction: { arg self, param;
+				var val;
+				var color;
+				//"start executing".debug;
+				try {
+					if(param.get.isKindOf(Number)) {
+						val = param.normGet;
+					} {
+						val = nil
+					}
+				} { arg error;
+					"In: %.mapKnob:updateAction".format(param).error;
+					error.reportError;
+					if(error.errorString.contains("Message 'round'")) {
+						"ERROR: Param spec (%) expected a number but received %".format(this.spec, try{ this.getRaw.asCompileString }{ arg error; error.errorString }).postln;
+					};
+					//error.throw;
+				};
+                color = if(param.isSet) {
+					Color.white; // default color
+                } {
+					Color.clear;
+                };
+				if(val.isKindOf(Number)) {
+					{
+						self.value = val;
+						self.background = color;
 					}.defer;
 				}
 			},
@@ -1459,18 +1536,40 @@ Param {
 	}
 
 	mapButton { arg view, action;
+		var cursorAction;
 		var update = { arg view, param;
 			var size;
 			{
+				var val;
 				size = view.states.size;
-				view.value = param.normGet.linlin(0,1,0,size-1);
+				// FIXME: not sure why default is not used (in stepseqitem)
+				// setting it in GUI for the moment
+				if(param.get.isNil) {
+					val = 0;
+				} {
+					val = param.normGet;
+				};
+				view.value = val.linlin(0,1,0,size-1);
 			}.defer
+		};
+		if(this.subIndex.notNil) {
+			cursorAction = { arg vie, idx, val;
+				if(idx.notNil) {
+					{
+						if(idx == this.subIndex) {
+							vie.label = "O"
+						} {
+							vie.label = " "
+						}
+					}.defer(Server.default.latency)
+				}
+			};
 		};
 		this.makeSimpleController(view, { arg view, param;
 			var size;
 			size = view.states.size;
 			param.normSet(view.value.linlin(0,size-1,0,1));
-		}, update, nil, action)
+		}, update, nil, action, cursorAction: cursorAction)
 	}
 
 	mapMenuAction { arg view, label, action;
@@ -1550,7 +1649,9 @@ Param {
 	}
 
 	asStaticTextLabel { arg labelmode;
-		^StaticText.new.mapParamLabel(this, labelmode);
+		^StaticText.new.mapParamLabel(this, labelmode).addUniqueMethod(\attachContextMenu, { arg view;
+			ParamViewToolBox.attachContextMenu(this, view)
+        });
 	}
 
 	asTextField { arg precision=6, action;
@@ -1600,13 +1701,37 @@ Param {
 	asButton { arg label;
 		var but;
 		label = label ?? { this.propertyLabel ?? { "" }};
-		but = BoolButton.new.string_(label);
-			//.states_([
-				//[label, Color.black, Color.white],
-				//[label, Color.black, ParamViewToolBox.color_ligth],
-			//]);
+		but = BoolButton.new.string_(label).minWidth_(10);
 		but.mapParam(this);
 		^but;
+	}
+
+	asMenu { arg label, keys;
+		var but;
+		var xspec;
+		label = label ?? { this.propertyLabel ?? { "" }};
+		if(keys.notNil) {
+			xspec = keys.collect({ arg k; k -> k });
+		} {
+			if(this.spec.isKindOf(ParamBusSpec) or: { this.spec.isKindOf(ParamBufferSpec) }) {
+				xspec = this.spec.tagSpec.list;
+			} {
+				if(this.spec.isKindOf(TagSpec)) {
+					xspec = this.spec.list;
+				}
+			};
+		};
+		if(xspec.isKindOf(SequenceableCollection)) {
+			^Menu(*
+				xspec.collect { arg asso, idx;
+					MenuAction(asso.key, {
+						this.set(asso.value)
+					}).checked_(this.get == asso.value)
+				};
+			).title_(label);
+		} {
+			^Menu( MenuAction("Spec not implemented"), { this.spec.asCompileString.debug("spec") } )
+		};
 	}
 
 	asMenuAction { arg label, action;
@@ -1848,6 +1973,7 @@ BaseParam {
 	var <>labelmode;
 	var >default;
 	var >label; 
+	var <>subIndex;
 
 	/////// labels
 
@@ -1866,6 +1992,14 @@ BaseParam {
 		//} {
 			//combinator;
 		//}
+	}
+
+	hasCombinator {
+		^target.getHalo(( \ParamCombinator_++this.propertyRoot ).asSymbol).notNil
+	}
+
+	getCombinator {
+		^target.getHalo(( \ParamCombinator_++this.propertyRoot ).asSymbol)
 	}
 
 	propertyLabel {
@@ -2043,6 +2177,16 @@ BaseParam {
 		// do nothing, to be subclassed
 	}
 
+	inRawMode {
+		// WIP
+		// should not try to read or write bus, return the bus or set a new bus instead
+		var sp;
+		sp = this.spec;
+		^sp.isKindOf(ParamMappedBusSpec) or: {
+			sp.isKindOf(ParamArraySpec) and: { sp.array.any(_.isKindOf(ParamMappedBusSpec)) }
+		}
+	}
+
 	*getInstrumentFromPbind { arg inval;
 		^if(inval.notNil) {
 			case(
@@ -2172,6 +2316,13 @@ ParamAccessor {
 				self.obj.parent.set(oldval);
 			},
 
+			getval: { arg self;
+				var val;
+				//Log(\Param).debug("neutral.getval obj %", self.obj);
+				val = self.obj.parent.get;
+				val[idx]
+			},
+
 			setbus: { arg self, val;
 				// set the bus and not its value
 				var oldval;
@@ -2193,12 +2344,6 @@ ParamAccessor {
 				}
 			},
 
-			getval: { arg self;
-				var val;
-				//Log(\Param).debug("neutral.getval obj %", self.obj);
-				val = self.obj.parent.get;
-				val[idx]
-			},
 
 			toSpec: { arg self, sp;
 				if(sp.isKindOf(ParamArraySpec)) {
@@ -2206,6 +2351,10 @@ ParamAccessor {
 				} {
 					sp.asSpec;
 				}
+			},
+
+			subIndex: { arg self;
+				idx;
 			},
 
 			property: { arg self, prop;
@@ -2249,6 +2398,10 @@ ParamAccessor {
 				} {
 					sp.asSpec;
 				}
+			},
+			
+			subIndex: { arg self;
+				idx;
 			},
 
 			property: { arg self, prop;
@@ -2339,45 +2492,54 @@ ParamAccessor {
 		// build with Param( Pbindef(\bla), \rq -> \stepseq -> 0 )
 		^(
 			key: \stepseqitem,
-			setval: { arg self, val;
-				var res;
-				res = self.obj.target.source.at(selector);
-				res.source.list.put(index, val);
-				self.obj.target.changed(\set, self.obj.parent.property, index); // we don't call Pdef.set so no changed message
-			},
+			parent: this.array(index),
+			//setval: { arg self, val;
+				//var res;
+				//res = self.obj.target.source.at(selector);
+				//res.source.list.put(index, val);
+				//self.obj.target.changed(\set, self.obj.parent.property, index); // we don't call Pdef.set so no changed message
+			//},
 
-			getval: { arg self;
-				var res;
-				res = self.obj.target.source.at(selector);
-				res.source.list.at(index)
-			},
+			//getval: { arg self;
+				//var res;
+				//res = self.obj.target.source.at(selector);
+				//res.source.list.at(index)
+			//},
 
-			setbus: { arg self, val;
-				// TODO
-				// set the bus (or map) and not its value
-				self.obj.setRaw(val);
-			},
+			//setbus: { arg self, val;
+				//// TODO
+				//// set the bus (or map) and not its value
+				//self.obj.setRaw(val);
+			//},
 
 
-			getbus: { arg self;
-				// TODO
-				self.obj.getRaw;
-			},
+			//getbus: { arg self;
+				//// TODO
+				//self.obj.getRaw;
+			//},
 
-			toSpec: { arg self, sp;
-				sp.asSpec;
-			},
+			//toSpec: { arg self, sp;
+				//sp.asSpec;
+			//},
 
-			property: { arg self, prop;
-				prop
-			},
+			//subIndex: { arg self;
+				//index;
+			//},
 
-			propertyLabel: { arg self;
-				"% %".format(self.obj.parent.property, index)
-			},
+			//property: { arg self, prop;
+				//prop
+			//},
 
-			path: { arg self, prop;
-				prop
+			//propertyLabel: { arg self;
+				//"% %".format(self.obj.parent.property, index)
+			//},
+
+			//path: { arg self, prop;
+				//prop
+			//},
+
+			controllerTargetCursor: { arg self;
+				self.obj.target.source.at(selector).source
 			},
 		)
 	}
@@ -2475,6 +2637,10 @@ ParamAccessor {
 				}
 			},
 
+			subIndex: { arg self;
+				index;
+			},
+
 			property: { arg self, prop;
 				prop
 			},
@@ -2512,32 +2678,36 @@ ParamAccessor {
 				if(self.obj.shouldBeNested(val)) {
 					val = Pdef.nestOn(val);
 				};
-				if(res.isNil) {
-					self.obj.target.source.set(selector, val);
+				if(self.obj.hasCombinator) {
+					self.obj.getCombinator.set(val);
 				} {
-					if(self.inBusMode) {
-						var curval = res.source;
-						var bus;
-						curval = Pdef.nestOff(curval);
-						bus = curval.asCachedBus;
-						if(val.isKindOf(ParamCombinator)) {
-							// if the value we set is a ParamCombinator, set it as source
-							res.source = val;
-						} {
-							if(curval.isKindOf(ParamCombinator)) {
-								// if the param has a combinator, set its base param
-								curval.baseParam.set(val)
-							} {
-								if(curval.isSequenceableCollection) {
-									bus.setn(val);
-								} {
-									bus.set(val);
-								};
-							}
-						}
+					if(res.isNil) {
+						self.obj.target.source.set(selector, val);
 					} {
-						res.source = val;
-					}
+						if(self.obj.spec.isKindOf(ParamMappedBusSpec).not and:{ self.inBusMode }) {
+							var curval = res.source;
+							var bus;
+							curval = Pdef.nestOff(curval);
+							bus = curval.asCachedBus;
+							if(val.isKindOf(ParamCombinator)) {
+								// if the value we set is a ParamCombinator, set it as source
+								res.source = val;
+							} {
+								if(curval.isKindOf(ParamCombinator)) {
+									// if the param has a combinator, set its base param
+									curval.baseParam.set(val)
+								} {
+									if(curval.isSequenceableCollection) {
+										bus.setn(val);
+									} {
+										bus.set(val);
+									};
+								}
+							}
+						} {
+							res.source = val;
+						}
+					};
 				};
 				self.obj.target.changed(\set, self.obj.parent.property); // we don't call Pdef.set so no changed message
 			},
@@ -2548,11 +2718,15 @@ ParamAccessor {
 				res = self.obj.target.source;
 				if(res.notNil) {
 					res = res.at(selector);
-					res.source !? { arg x; 
-						if(self.inBusMode) {
-							x.asCachedBus.getCached;
-						} {
-							Pdef.nestOff(x) 
+					if(self.obj.hasCombinator) {
+						self.obj.getCombinator.get; // halo combinator
+					} {
+						res.source !? { arg x; 
+							if(self.obj.spec.isKindOf(ParamMappedBusSpec).not and: {self.inBusMode}) {
+								x.asCachedBus.getCached; // value ParamCombinator respond to .asCachedBus
+							} {
+								Pdef.nestOff(x) 
+							}
 						}
 					} ?? { self.obj.default }
 				} {
@@ -2828,16 +3002,24 @@ BaseAccessorParam : BaseParam {
 	at { arg idx, idx2;
 		var acc, slotparam;
 		var meth = property -> idx;
-		if(idx2.notNil) {
-			meth = meth -> idx2;
+		if(idx.isNil) {
+			^nil
+		} {
+			if(idx2.notNil) {
+				meth = meth -> idx2;
+			};
+			acc = this.class.propertyToAccessor(this.class.associationToArray(meth), this);
+			//Log(\Param).debug("now %", super);
+			//this.dumpBackTrace;
+			slotparam = this.class.rawNew.init(target, meth, nil, acc);
+			slotparam.spec = acc.toSpec(this.spec); // need rootspec -> slotspec
+			slotparam.parent = this;
+			^Param.fromWrapper(slotparam);
 		};
-		acc = this.class.propertyToAccessor([property, idx, idx2].select(_.notNil), this);
-		//Log(\Param).debug("now %", super);
-		//this.dumpBackTrace;
-		slotparam = this.class.rawNew.init(target, meth, nil, acc);
-		slotparam.spec = acc.toSpec(this.spec); // need rootspec -> slotspec
-		slotparam.parent = this;
-		^Param.fromWrapper(slotparam);
+	}
+
+	subIndex {
+		^accessor.subIndex;
 	}
 
 	//*newWithAccessor { arg obj, meth, sp, acc;
@@ -2874,7 +3056,7 @@ BaseAccessorParam : BaseParam {
 			3, {
 				if(propertyArray[1] == \stepseq) { 
 					// special property for Pbindef Pstepseq with index
-					//Log(\Param).debug("123");
+					//Log(\Param).debug("propertyToAccessor: stepseq");
 					ParamAccessor.stepseqitem(propertyArray[0], propertyArray[2]);
 				} {
 					ParamAccessor.envitem(propertyArray[1], propertyArray[2])
@@ -3402,11 +3584,18 @@ PdefParam : BaseAccessorParam {
 	isSet {
 		// FIXME: should test with accessors
 		// should implement it everywhere
-		var envir = this.target.envir;
-		if(envir.isNil) {
-			^false
+		var propertyArray = this.class.associationToArray(this.property);
+		if(propertyArray[1] == \source) {
+			// Pbindef
+			^this.target.source.at(this.propertyRoot).notNil
 		} {
-			^envir.keys.includes(this.propertyRoot)
+			// Pdef
+			var envir = this.target.envir;
+			if(envir.isNil) {
+				^false
+			} {
+				^envir.keys.includes(this.propertyRoot)
+			}
 		}
 	}
 
@@ -3505,7 +3694,7 @@ PdefParam : BaseAccessorParam {
 	}
 
 	controllerTargetCursor {
-		if(accessor.key == \stepseq) {
+		if(accessor.key == \stepseq or: { accessor.key == \stepseqitem}) {
 			^accessor.controllerTargetCursor
 		} {
 			^nil
@@ -3653,18 +3842,18 @@ PdefnParam : PdefParam {
 			};
 
 			// action
-			//if(args[2].notNil and: {
-				//args[2].asSequenceableCollection.any({ arg x; x == param.propertyRoot })
-			//}) {
+			if(args[2].notNil and: {
+				args[2].asSequenceableCollection.any({ arg x; x == param.propertyRoot })
+			}) {
 				if(Param.trace == true) {
 					"%: % received update message: matching property! do update: %".format(this, view, args).postln;
 				};
 				action.(view, param);
-			//};
+			};
 			//param.refreshUpdater(view, action);
 		};
 		controller.put(\source, { arg ...args; 
-			updateAction.();
+			updateAction.(*args);
 			if(view.isKindOf(MultiSliderView)) {
 				// we just want to listen to the new source for cursor message
 				// if we remap other views, StaticTextLabel become a value StaticText
@@ -3675,7 +3864,7 @@ PdefnParam : PdefParam {
 		controller.put(\set, { arg ...args; 
 			// this is called by accessor when changing the stepseq value
 			// avoid to unmap remap Param
-			updateAction.();
+			updateAction.(*args);
 		});
 		//controller.put(\target, { arg ...args;
 			//param.refreshUpdater(view, action)
@@ -3838,7 +4027,7 @@ NdefParam : BaseAccessorParam {
 
 	getVal {
 		var val;
-        val = if(spec.isKindOf(ParamMappedBusSpec)) {
+        val = if(this.inRawMode) {
 			target.get(property)
 		} {
 			target.getVal(property)
@@ -4407,7 +4596,6 @@ ListParam : BaseParam {
 	}
 
 	get {
-		var val;
 		^target;
 	}
 
@@ -4427,6 +4615,7 @@ ListParam : BaseParam {
 
 	putListener { arg param, view, controller, action;
 		controller.put(\set, { arg ...args; 
+			Log(\Param).debug("ListParam: putListener: set %".format(args));
 			action.(view, param);
 		});
 	}
@@ -4483,6 +4672,8 @@ ListParamSlot : BaseParam {
 
 	set { arg val;
 		target[property] = val;
+		//Log(\Param).debug("ParamListSlot");
+		//this.dumpBackTrace;
 		target.changed(\set, property);
 	}
 
@@ -4511,6 +4702,7 @@ ListParamSlot : BaseParam {
 	putListener { arg param, view, controller, action;
 		controller.put(\set, { arg ...args; 
 			// TODO: update only the slot changed ?
+			Log(\Param).debug("ListParamSlot: putListener: set %".format(args));
 			action.(view, param);
 		});
 	}
@@ -5188,9 +5380,49 @@ StepEventParam : BaseParam {
 	}
 
 	putListener { arg param, view, controller, action;
+		//Log(\Param).debug("BaseAccessorParam.putListener %", param);
 		controller.put(\set, { arg ...args; 
-			action.(view, param);
+			// args: object, \set, keyval_list
+			//args.debug("args");
+
+			// update only if concerned key is set
+			// do not update if no key is specified
+			// FIXME: may break if property is an association :(
+			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+
+			// debug variables
+			var property = param.property;
+			var target = param.target;
+			var spec = param.spec;
+
+			if(Param.trace == true) {
+				"%: % received update message: %".format(this, view, args).postln;
+			};
+
+			// action
+			if(args[2].notNil and: {
+				args[2].asSequenceableCollection.any({ arg x; x == param.propertyRoot })
+			}) {
+				if(Param.trace == true) {
+					"%: % received update message: matching property! do update: %".format(this, view, args).postln;
+				};
+				action.(view, param);
+			};
 		});
+		//controller.put(\target, { arg ...args;
+			//param.refreshUpdater(view, action)
+		//});
+		//controller.put(\combinator, { arg ...args;
+			//if(param.baseWrapper.isNil) {
+				//var target = param.target;
+				//param.wrapper = param.combinator.baseParam.wrapper;
+				//param.baseWrapper = param.wrapper;
+				//target.changed(\target);
+			//} {
+				////param.wrapper = param.combinator.baseParam.wrapper;
+
+			//}
+		//});
 	}
 }
 

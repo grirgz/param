@@ -8,12 +8,8 @@ ParamCombinator : Pattern {
 	// FIXME: maybe use NodeProxy instead, but I don't know if Param support NodeProxy yet
     
 
-    // baseParam: when combined, control the base value, the original uncombined param should be replaced by it in the gui
+    // resultParam = inputParam * rangeParam + baseParam
     // targetParam: this point to the param to be combinated, first argument of ParamCombinator
-    // resultParam: point to the value resulting from combination
-    //
-    // rangeParam: an array of param controlling the range of the modulation
-    // inputParam: the input value array to be combined. In bus mode, a mapped bus array of modulators
 	var <ranges, <inputs, <base, <result;
 	var <baseParam, <rangeParam, <inputParam, <targetParam, <resultParam;
 	var <controllers; 
@@ -23,6 +19,7 @@ ParamCombinator : Pattern {
 	var <halokey;
 	var <>busMode, <>rate = \kr;
 	var <>size;
+    var <>inputObjects; // to store pointers to modulators objects for editing and such
 
 	*new { arg param, size=3;
 		var halokey = \ParamCombinator_+++param.property;
@@ -39,6 +36,64 @@ ParamCombinator : Pattern {
 		}
 	}
 
+	init { arg param, xsize=3;
+		halokey = ( \ParamCombinator_++param.property ).asSymbol;
+		key = ( \ParamCombinator_++1000000.rand ).asSymbol;
+		busMode = false;
+		size = xsize;
+
+		rangeSize = size;
+		ranges = List.newFrom( 0!size );
+		inputs = List.newFrom( 0!size );
+		inputObjects = List.newFrom( nil!size );
+
+		targetParam = param;
+
+		///// value is stored in targetParam because we can't .set a Pattern
+		///// value is stored in resultParam when targetParam contains the combinator
+
+		base = ParamValue(targetParam.spec); 
+		baseParam = base.asParam;
+		result = ParamValue(targetParam.spec); 
+		resultParam = result.asParam; 
+		//resultParam = targetParam; // this make infinite loop when targetParam is a combinator
+
+		baseParam.set(targetParam.get); // if already redirected, return baseParam.get
+        if(param.target.isKindOf(Pdef) and: { param.target.source.isKindOf(PbindProxy) }) {
+			// can only redirect with Pbindef
+			// todo: test with Ndef
+			param.at(\source).set(this);
+		} {
+			param.set(this);
+		};
+
+		baseParam.label = targetParam.asLabel; 
+		baseParam.shortLabel = targetParam.shortLabel;
+		baseParam.property = targetParam.property;
+		baseParam.combinator = this;
+
+		rangeParam = Param(ranges, \list, \bipolar);
+		inputParam = Param(inputs, \list, \unipolar);
+
+		controllers = [
+			SimpleController(ranges).put(\set, {
+				this.computeAndSetTargetValue;
+			}),
+
+			SimpleController(inputs).put(\set, {
+				//Log(\Param).debug("ParamCombinator followChange set input");
+				this.computeAndSetTargetValue;
+			}),
+
+			SimpleController(base).put(\set, {
+				this.computeAndSetTargetValue;
+			}),
+
+		];
+
+		TagSpecDef(\ParamCombinator).add(this);
+
+	}
 	//*force { arg param, size=3;
 
 	//}
@@ -83,57 +138,6 @@ ParamCombinator : Pattern {
 		^nil;
 	}
 
-	init { arg param, xsize=3;
-		halokey = ( \ParamCombinator_++param.property ).asSymbol;
-		key = ( \ParamCombinator_++1000000.rand ).asSymbol;
-		busMode = false;
-		size = xsize;
-
-		rangeSize = size;
-		ranges = List.newFrom( 0!size );
-		inputs = List.newFrom( 0!size );
-
-		targetParam = param;
-
-		///// value is stored in targetParam because we can't .set a Pattern
-		///// value is stored in resultParam when targetParam contains the combinator
-
-		base = ParamValue(targetParam.spec); 
-		baseParam = base.asParam;
-		//result = ParamValue(targetParam.spec); 
-		//resultParam = result.asParam; 
-		resultParam = targetParam; // for compat when targetParam is a Combinator
-
-		baseParam.set(targetParam.get); // if already redirected, return baseParam.get
-		// can't redirect, Pdef.set does not accept 
-		//targetParam.setRaw(this); /// now targetParam is redirected to baseParam
-
-		baseParam.label = targetParam.asLabel; 
-		baseParam.shortLabel = targetParam.shortLabel;
-		baseParam.property = targetParam.property;
-		baseParam.combinator = this;
-
-		rangeParam = Param(ranges, \list, \bipolar);
-		inputParam = Param(inputs, \list, \unipolar);
-
-		controllers = [
-			SimpleController(ranges).put(\set, {
-				this.computeAndSetTargetValue;
-			}),
-
-			SimpleController(inputs).put(\set, {
-				this.computeAndSetTargetValue;
-			}),
-
-			SimpleController(base).put(\set, {
-				this.computeAndSetTargetValue;
-			}),
-
-		];
-
-		TagSpecDef(\ParamCombinator).add(this);
-
-	}
 
 	freeAllSimpleControllers {
 		controllers.do { arg x; x.remove; };
@@ -153,7 +157,7 @@ ParamCombinator : Pattern {
 			//[targetParam, targetParam.getRaw, targetParam.get].debug("MAIS QUOI");
 			val = targetParam.get;
 			ranges = rangeParam.get;
-			inputtab = inputParam.get; // contains mapped bus, should not assign to 'inputs'
+			inputtab = inputParam.getBus; // contains mapped bus, should not assign to 'inputs'
 			Ndef(name).clear;
 			Ndef(name, {
 				var inputtab, rangetab;
@@ -177,10 +181,10 @@ ParamCombinator : Pattern {
 			baseParam.shortLabel = targetParam.shortLabel;
 			//targetParam.target.set(targetParam.property, Ndef(name).asMap.asSymbol); // Ndef.asMap is String!!!
 			//targetParam.setRaw(this);   // already done in non bus mode
-			targetParam.setRaw(proxy.asMap.asSymbol); 
+			//targetParam.setRaw(proxy.asMap.asSymbol); 
 			rangeParam = Param(Ndef(name), \ranges, ParamArraySpec(\bipolar ! rangeSize));
 			rangeParam.set(ranges.asArray); // whyyyy list doesnt do anything ????
-			inputParam = Param(Ndef(name), \inputs, ParamArraySpec(\unipolar ! rangeSize));
+			inputParam = Param(Ndef(name), \inputs, ParamArraySpec(ParamMappedBusSpec() ! rangeSize));
 			inputParam.set(inputtab.asArray);
 
 
@@ -206,9 +210,13 @@ ParamCombinator : Pattern {
 
 	computeAndSetTargetValue {
 		var fval;
+		//Log(\Param).debug("computeAndSetTargetValue");
 		fval = baseParam.normGet;
+		//Log(\Param).debug("computeAndSetTargetValue1");
 		fval = this.computeTargetValue(fval, inputs, ranges);
+		//Log(\Param).debug("computeAndSetTargetValue2");
 		resultParam.normSet(fval);
+		//Log(\Param).debug("computeAndSetTargetValue end");
 	}
 
 	mapModKnob { arg modknob;
@@ -284,7 +292,9 @@ ParamCombinator : Pattern {
 	}
 
 	asControlInput {
-		proxy.asMap.asSymbol;
+		// called for example by Pdef when in envir
+		this.playAll; 
+		^proxy.asMap.asSymbol;
 	}
 
 	inBusMode {
@@ -326,6 +336,7 @@ ParamCombinator : Pattern {
 
 
 	playAll {
+		Log(\Param).debug("ParamCombinator: play all");
 		if(this.inBusMode) {
 			proxy.wakeUp;
 		};
@@ -342,7 +353,17 @@ ParamCombinator : Pattern {
 				}
 			}
 		};
+        this.inputObjects.do { arg obj, idx;
+			obj = PlayerWrapper(obj);
+			if(obj.notNil and: { obj.isPlaying != true }) {
+				obj.play;
+			}
+        };
 	}
+
+    nextFreeInput {
+		^this.inputParam.as(Array).detectIndex { arg p; p.getBus == 0 }
+    }
 
 	/// interface of CachedBus
 
@@ -359,6 +380,7 @@ ParamCombinator : Pattern {
 	}
 
 	set { arg val;
+		Log(\Param).debug("ParamCombinator set val %".format(val));
 		this.baseParam.set(val);
 	}
 }

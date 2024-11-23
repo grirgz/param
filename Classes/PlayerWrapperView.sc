@@ -46,19 +46,19 @@ PlayerWrapperView {
 				// value first increment then action is called
 				switch(view.value,
 					0+1, {
-						Log(\Param).debug("was stopped: play %", [view.value, model]);
+						//Log(\Param).debug("was stopped: play %", [view.value, model]);
 						model.play;
 					},
 					1+1, {
-						Log(\Param).debug("cancel scheduled playing %", [view.value, model]);
+						//Log(\Param).debug("cancel scheduled playing %", [view.value, model]);
 						model.stop;
 					},
 					2+1, {
-						Log(\Param).debug("was playing: stop %", [view.value, model]);
+						//Log(\Param).debug("was playing: stop %", [view.value, model]);
 						model.stop;
 					},
 					0, {
-						Log(\Param).debug("cancel scheduled stopping %", [view.value, model]);
+						//Log(\Param).debug("cancel scheduled stopping %", [view.value, model]);
 						model.play;
 					}
 				);
@@ -66,7 +66,7 @@ PlayerWrapperView {
 		);
 		lay = button; // backward compat
 		lay.addUniqueMethod(\maxWidth_, { arg v, x; 
-			Log(\Param).debug("maxWidth_ %",[v,x].asCompileString);
+			//Log(\Param).debug("maxWidth_ %",[v,x].asCompileString);
 			button.maxWidth_(x); 
 			v;
 		});
@@ -312,19 +312,19 @@ RecordButton {
 				if(model.notNil) {
 					switch(view.value,
 						0+1, {
-							Log(\Param).debug("was stopped: start record %", [view.value, model]);
+							//Log(\Param).debug("was stopped: start record %", [view.value, model]);
 							model.isRecording = true;
 						},
 						1+1, {
-							Log(\Param).debug("cancel user played: stop record %", [view.value, model]);
+							//Log(\Param).debug("cancel user played: stop record %", [view.value, model]);
 							model.isRecording = false;
 						},
 						2+1, {
-							Log(\Param).debug("was playing: stop %", [view.value, model]);
+							//Log(\Param).debug("was playing: stop %", [view.value, model]);
 							model.isRecording = false;
 						},
 						0, {
-							Log(\Param).debug("cancel user stopped: play %", [view.value, model]);
+							//Log(\Param).debug("cancel user stopped: play %", [view.value, model]);
 							model.isRecording = true;
 						}
 					);
@@ -333,7 +333,7 @@ RecordButton {
 		);
 		lay = button; // backward compat
 		lay.addUniqueMethod(\maxWidth_, { arg v, x; 
-			Log(\Param).debug("maxWidth_ %",[v,x].asCompileString);
+			//Log(\Param).debug("maxWidth_ %",[v,x].asCompileString);
 			button.maxWidth_(x); 
 			v;
 		});
@@ -513,19 +513,19 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 				// value first increment then action is called
 				switch(view.value,
 					0+1, {
-						Log(\Param).debug("was stopped: play %", [view.value, model]);
+						//Log(\Param).debug("was stopped: play %", [view.value, model]);
 						model.play;
 					},
 					1+1, {
-						Log(\Param).debug("user played: stop %", [view.value, model]);
+						//Log(\Param).debug("user played: stop %", [view.value, model]);
 						model.stop;
 					},
 					2+1, {
-						Log(\Param).debug("was playing: stop %", [view.value, model]);
+						//Log(\Param).debug("was playing: stop %", [view.value, model]);
 						model.stop;
 					},
 					0, {
-						Log(\Param).debug("user stopped: play %", [view.value, model]);
+						//Log(\Param).debug("user stopped: play %", [view.value, model]);
 						model.play;
 					}
 				);
@@ -534,7 +534,7 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 		);
 		view = View.new.layout_(lay.margins_(0)).background_(ParamViewToolBox.color_light).maxSize_(200@30).mouseDownAction_({ 
 			arg xview, x, y, modifiers, buttonNumber, clickCount;
-			Log(\Param).debug("mouseDownAction %", [xview, x, y, modifiers, buttonNumber, clickCount]);
+			//Log(\Param).debug("mouseDownAction %", [xview, x, y, modifiers, buttonNumber, clickCount]);
 			this.selectAction.(this, view);
 		});
 		view.addUniqueMethod(\button, { button });
@@ -562,7 +562,7 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 
 	selected_ { arg val;
 		selected = val;
-		Log(\Param).debug( "PlayerWrapperSelectorView.selected %", [selected, val]);
+		//Log(\Param).debug( "PlayerWrapperSelectorView.selected %", [selected, val]);
 		this.update;
 		//if(val == true) {
 			//this.view.debug("seltrue");
@@ -723,7 +723,7 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 		);
 		view = View.new.layout_(lay.margins_(0)).background_(ParamViewToolBox.color_light).maxSize_(200@30).mouseDownAction_({ 
 			arg xview, x, y, modifiers, buttonNumber, clickCount;
-			Log(\Param).debug("mouseDownAction %", [xview, x, y, modifiers, buttonNumber, clickCount]);
+			//Log(\Param).debug("mouseDownAction %", [xview, x, y, modifiers, buttonNumber, clickCount]);
 			this.selectAction.(this, view);
 		});
 		view.addUniqueMethod(\button, { button });
@@ -749,7 +749,7 @@ PlayerWrapperSelectorView : PlayerWrapperView {
 
 	selected_ { arg val;
 		selected = val;
-		Log(\Param).debug( "PlayerWrapperSelectorView.selected %", [selected, val]);
+		//Log(\Param).debug( "PlayerWrapperSelectorView.selected %", [selected, val]);
 		if(val == true) {
 			//this.view.debug("seltrue");
 			this.view.background_(color_selected);

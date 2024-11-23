@@ -44,7 +44,7 @@ s.boot;
 Ndef(\target_object, { arg freq=200, pan=0, amp=0.1;
 	var sig;
 	var fm;
-	fm = \mapped_audio_bus.ar * \modfreq_scale.kr(1) + InFeedback.ar(\audio_bus.kr, 1) + 1;
+	fm = \mapped_audio_bus.ar * \mapped_audio_bus_array.ar(0!3).mean * \modfreq_scale.kr(1) + InFeedback.ar(\audio_bus.kr, 1) + 1;
 	sig = SinOsc.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5) * fm).mean;
 	sig = sig * EnvGen.kr(\env_param.kr(Env([0,1,0.5,0],[0.1,0.8,0.1])), Impulse.kr(1/2));
 	sig = Pan2.ar(sig, pan, amp);
@@ -52,12 +52,13 @@ Ndef(\target_object, { arg freq=200, pan=0, amp=0.1;
 
 Ndef(\target_object).addSpec(\env_param, ParamEnvSpec(\unipolar ! 4));
 Ndef(\target_object).addSpec(\mapped_audio_bus, ParamMappedBusSpec());
+Ndef(\target_object).addSpec(\mapped_audio_bus_array, ParamArraySpec(ParamMappedBusSpec()));
 Ndef(\target_object).addSpec(\audio_bus, ParamBusSpec());
 
 SynthDef(\target_synthdef, { arg freq=200, pan=0, amp=0.1;
 	var sig;
 	var fm;
-	fm = \mapped_audio_bus.ar * \modfreq_scale.kr(1) + InFeedback.ar(\audio_bus.kr, 1) + 1;
+	fm = \mapped_audio_bus.ar * \mapped_audio_bus_array.ar(0!3).mean * \modfreq_scale.kr(1) + InFeedback.ar(\audio_bus.kr, 1) + 1;
 	sig = LFSaw.ar(\array_param.kr(400 ! 8) + \scalar_param.kr(5) + \scalar_bus_param.kr(5) * fm).mean;
 	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq , \rq.kr(0.5));
 	sig = sig * EnvGen.kr(\env_param.kr(Env([0,1,0.5,0],[0.1,0.8,0.1])), \gate.kr(1), doneAction:2);
@@ -66,6 +67,7 @@ SynthDef(\target_synthdef, { arg freq=200, pan=0, amp=0.1;
 }, metadata:(specs:(
 	audio_bus: ParamBusSpec(),
 	mapped_audio_bus: ParamMappedBusSpec(),
+	mapped_audio_bus_array: ParamArraySpec(ParamMappedBusSpec()),
 	env_param: ParamEnvSpec(\unipolar ! 4),
 	lpfr: ControlSpec(0.1,6,\lin),
 	//array_param: ParamArraySpec(), // FIXME: this should be commented, Param should detect spec from default value, but bug in 3.11
@@ -168,6 +170,7 @@ Param.trace = true;
 	Param(Ndef(\target_object), \inexistant),
 	Param(Ndef(\target_object), \mapped_audio_bus),
 	Param(Ndef(\target_object), \audio_bus),
+	Param(Ndef(\target_object), \mapped_audio_bus_array).at(0),
 
 	// NodeProxy
 	Param(~nodeProxy, \mapped_audio_bus),
@@ -189,14 +192,15 @@ Param.trace = true;
 	Param(Pbindef(\target_pbindef), \env_param -> \source),
 	Param(Pbindef(\target_pbindef), \rq),
 	Param(Pbindef(\target_pbindef), \rq -> \source).label_("rq source"),
-	Param(Pbindef(\target_pbindef).source.at(\rq)).label_("rq proxy"),
+	Param(Pbindef(\target_pbindef).source.at(\rq)).label_("rq proxy"), // no update
+	Param(Pbindef(\target_pbindef), \mapped_audio_bus -> \source),
 
 	// EventPatternProxy
 	Param(~eventPatternProxy, \mapped_audio_bus),
 	Param(~eventPatternProxy, \audio_bus),
 
 	// Pdefn
-	Param(Pdefn(\lpfr_pdefn), \stepseq),
+	Param(Pdefn(\lpfr_pdefn), \stepseq), // no update
 	Param(Pdefn(\rq_pdefn)),
 
 
@@ -212,6 +216,7 @@ Param.trace = true;
 
 	// List
 	Param(~list, \list), // this bug preset
+	//Param(~list, 0), // this don't work
 
 	// TempoClock
 	Param(TempoClock.default, \tempo),
@@ -473,3 +478,26 @@ bus
 	Param(Ndef(\target_object), \mapped_audio_bus).spec
 	Param(Ndef(\target_object), \audio_bus).spec
 	Param(Ndef(\target_object), \audio_bus).type
+
+
+
+Param(Ndef(\target_object), \mapped_audio_bus_array).at(0).accessor
+Param(Ndef(\target_object), \mapped_audio_bus_array).get
+Param(Ndef(\target_object), \mapped_audio_bus_array).inRawMode
+Param(Ndef(\target_object), \mapped_audio_bus_array).spec
+Param(Ndef(\target_object), \mapped_audio_bus_array).at(0).spec
+Param(Ndef(\target_object), \mapped_audio_bus_array).at(0).parent.get
+Param(Ndef(\target_object), \mapped_audio_bus_array).at(0).inRawMode
+
+(
+WindowDef(\win, { arg def;
+	
+Param(Ndef(\target_object), \mapped_audio_bus_array).at(0).asPopUpMenu
+}).front;
+);
+
+~list
+Param(~list).get
+Param(~list).set([1,2])
+Param(~list, 0, \lofreq).get
+Param(~list, 0, \lofreq).setBus(0)

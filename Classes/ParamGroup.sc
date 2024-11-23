@@ -44,18 +44,31 @@ ParamGroup : List {
 		^presets[key]
 	}
 
+	select { arg fun;
+		// FIXME: don't know why it loose the class
+		^ParamGroup(super.select(fun))
+	}
+
+	reject { arg fun;
+		^ParamGroup(super.reject(fun))
+	}
+
+    rejectUnsetParams {
+		this.reject({ arg p; p.isSet.not })
+    }
+
 	rejectByKey { arg keylist;
 		if(keylist.isSequenceableCollection.not) {
 			keylist = [keylist]
 		};
-		^ParamGroup(this.reject({ arg x; keylist.includes(x.propertyRoot) }))
+		^this.reject({ arg x; keylist.includes(x.propertyRoot) })
 	}
 
 	selectByKey { arg keylist;
 		if(keylist.isSequenceableCollection.not) {
 			keylist = [keylist]
 		};
-		^ParamGroup(this.select({ arg x; keylist.includes(x.propertyRoot) }))
+		^this.select({ arg x; keylist.includes(x.propertyRoot) })
 	}
 
 	rejectSystemParams {
@@ -75,7 +88,7 @@ ParamGroup : List {
 	}
 
 	selectSynthDefParams {
-		^ParamGroup(this.select({ arg x; x.isSynthDefParameter }))
+		^this.select({ arg x; x.isSynthDefParameter })
 	}
 
 	valueList {

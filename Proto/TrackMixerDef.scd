@@ -355,14 +355,23 @@ ProtoTemplateDef(\TrackMixer_InsertFx, (
 	offset: 0,
 	index: 100,
 	absIndex: { arg self;
+		// in current state, this is not used and self.index is already absolute
 		self.offset + self.index;
 	},
+	relIndex: { arg self;
+		self.index - TrackMixerDef(self.mixerKey).stages.postfx;
+	},
 
+	synthNameDefault: \ifx_default,
 	synthName: \ifx_default, // overriden by constructor
 	synthName_: { arg self, val;
 		self[\synthName] = val;
 		self.updateFx;
 		self.changed(\synthName);
+	},
+
+	isEmpty: { arg self;
+		self.proxy.isNil or: { self.synthName.isNil } or: { self.synthName == self.synthNameDefault }
 	},
 
 	updateFx: { arg self;
@@ -397,7 +406,9 @@ ProtoTemplateDef(\TrackMixer_InsertFx, (
 					// ("Skipped renaming" + cno.name + "in" + sdc).postln
 				}
 			};
-			sdc // return whole sd clone to be collect-ed
+			sdc.add; // to prevent Ndef bug
+			//sdc; // return whole sd clone to be collect-ed
+			sdc.name.asSymbol;
 		} {
 			Log(\Param).debug("InsertFx.cloneSynthDefWithIndexedArguments: no synthDef: %", self.synthName);
 			nil
@@ -410,7 +421,7 @@ TagSpecDef(\SynthDef_InsertFx).addUnique(\ifx_default);
 ProtoTemplateDef(\TrackMixer_InsertFx_SynthDef, (
 	// ndef style fx
 
-	excludedArgs: [\inbus, \in, \out, \gate],
+	excludedArgs: [\inbus, \in, \out, \gate, \fadeTime],
 	index: 100,
 
 	fxValue: { arg self;
@@ -452,6 +463,9 @@ ProtoTemplateDef(\TrackMixer_InsertFx_SynthDef, (
 
 
 	play: { arg self;
+		// Ndef bug: when setting the synthdef by using SynthDef object instead of symbol
+		//		if slot is nil, this work, if slot is already full, error synthdef not found
+		// solution: use .add to add the modified synthdef
 		self.proxy[self.index] = self.fxValue
 	},
 
@@ -577,7 +591,7 @@ ProtoTemplateDef(\TrackMixer_InsertFx_equi, (
 
 	asParamView: { arg self;
 		WindowDef(\InsertFx_Equi, { arg def, model, inbus, paramdict;
-			var equi, equiparams;
+			var equi, equiparams, equiparent;
 			var scope = FreqScopeView(nil, Rect(0,0,100,100))
 			.freqMode_(1)
 			.active_(true);
@@ -592,7 +606,8 @@ ProtoTemplateDef(\TrackMixer_InsertFx_equi, (
 				scope.kill;
 			};
 
-			equi = EQui(nil,nil,model.proxy,nil,model.prefix);
+			equiparent = View.new;
+			equi = EQui(equiparent,nil,model.proxy,nil,model.prefix);
 			equi.sync;
 			~equi = equi;
 			VLayout (
@@ -826,6 +841,8 @@ WindowDef(\TrackMixerDef_advanced, (
 						.minSize_(Point(10,18))
 						.font_(Font.default.copy.size_(9))
 					;
+					~playbut = playbut;
+					playbut;
 				},
 				mixerview = HLayout(*[
 					self.makeFader(mixer),
@@ -918,7 +935,7 @@ WindowDef(\TrackMixerDef_advanced, (
 			if(self.outMenu.notNil) {
 				self.outMenu.mapParam(Param(Message(mixer), \outbus,TagSpecDef(\BusDef))).addAction({ 
 					mixer.play;
-					Log(\Param).debug("mixer play from outbus menu: ", mixer);
+					//Log(\Param).debug("mixer play from outbus menu: ", mixer);
 				});
 			};
 
@@ -985,7 +1002,7 @@ WindowDef(\TrackMixerDef_advanced, (
 
 					if(buttonNumber == 1) {
 						//WindowDef(\SimpleMixerOverlayMenu).front(simpleMixer, boxview, x, y);
-						Log(\Param).debug("makeTinyFxView: model %", self.model);
+						//Log(\Param).debug("makeTinyFxView: model %", self.model);
 						if(self.model.notNil) {
 							WindowDef(\TrackMixerDef_advanced_fx_OverlayMenu).front(self, idx, view, x, y);
 						};
@@ -1028,9 +1045,9 @@ WindowDef(\TrackMixerDef_advanced, (
 	},
 
 	asView: { arg self, def, mixer, options;
-		Log(\Param).debug("TrackMixerDef_advanced.asView: mixer: %", mixer);
+		//Log(\Param).debug("TrackMixerDef_advanced.asView: mixer: %", mixer);
 		( options ?? { () } ).keysValuesDo { arg key, val;
-			Log(\Param).debug("set option % %", key, val);
+			//Log(\Param).debug("set option % %", key, val);
 			self[key] = val;
 		};
 		self.makePropertySetters;

@@ -1251,6 +1251,10 @@ ProtoClassDef(\ParamTimeline, (
 		})
 	},
 
+	asControlInput: { arg self;
+		self.outBus.asMap
+	},
+
 	asStream: { arg self;
 		if(self.inlineModeEnabled == true) {
 			self.asInlinePattern.asStream;

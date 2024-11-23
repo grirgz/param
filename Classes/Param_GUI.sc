@@ -138,8 +138,12 @@ ParamViewToolBox {
 		view.mouseDownAction = {  arg vie, x, y, modifiers, buttonNumber, clickCount;
             //[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
 			if(buttonNumber == 1) {
-				if(WindowDef(\ParamGenericOverlayMenu).notNil) {
-					WindowDef(\ParamGenericOverlayMenu).front(vie, x, y, param)
+				if(WindowDef(\ParamGenericContextMenu).notNil) {
+					WindowDef(\ParamGenericContextMenu).sourceValue(param).front;
+				} {
+					if(WindowDef(\ParamGenericOverlayMenu).notNil) {
+						WindowDef(\ParamGenericOverlayMenu).front(vie, x, y, param)
+					}
 				}
 			}
 		};
@@ -223,7 +227,7 @@ ListParamLayout {
 	}
 
 	*addCursor { arg x, view, param, on, off;
-		^view.onChange(param.target, \cursor, { arg view ...args;
+		^view.followChange(param.target, \cursor, { arg view ...args;
 			//[args[2], x].debug("bbb");
 			if(args[2] == x or: { args[2].isNil }) {
 				// AppClock doesnt have the same tempo of the pattern
@@ -391,9 +395,12 @@ ParamGroupLayout {
 			} {
 				VLayout(
 					if(label_mode == \full) {
-						param.asStaticTextLabel(\full);
+						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
-						StaticText.new.string_(param.propertyLabel)
+						var st;
+						st = StaticText.new.string_(param.propertyLabel);
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
 					},
 					param.asEnvelopeView.minHeight_(minHeight),
 					param.asTextField,
@@ -408,9 +415,12 @@ ParamGroupLayout {
 			} {
 				VLayout(
 					if(label_mode == \full) {
-						param.asStaticTextLabel(\full);
+						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
-						StaticText.new.string_(param.propertyLabel)
+						var st;
+						st = StaticText.new.string_(param.propertyLabel);
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
 					},
 					param.asMultiSlider.minHeight_(minHeight).attachContextMenu,
 					param.asTextField,
@@ -425,9 +435,12 @@ ParamGroupLayout {
 			} {
 				HLayout(
 					if(label_mode == \full) {
-						param.asStaticTextLabel(\full);
+						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
-						StaticText.new.string_(param.propertyLabel)
+						var st;
+						st = StaticText.new.string_(param.propertyLabel);
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
 					}.fixedWidth_(minWidth_label),
 					param.asPopUpMenu.minWidth_(minWidth_main),
 					//param.asTextField.minWidth_(70),
@@ -442,9 +455,12 @@ ParamGroupLayout {
 			} {
 				HLayout(
 					if(label_mode == \full) {
-						param.asStaticTextLabel(\full);
+						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
-						StaticText.new.string_(param.propertyLabel)
+						var st;
+						st = StaticText.new.string_(param.propertyLabel);
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
 					}.fixedWidth_(minWidth_label),
 					param.asPopUpMenu.minWidth_(minWidth_main).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 						//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
@@ -482,9 +498,12 @@ ParamGroupLayout {
 			} {
 				HLayout(
 					if(label_mode == \full) {
-						param.asStaticTextLabel(\full);
+						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
-						StaticText.new.string_(param.propertyLabel)
+						var st;
+						st = StaticText.new.string_(param.propertyLabel);
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
 					}.fixedWidth_(minWidth_label),
 					param.asBusPopUpMenu.minWidth_(minWidth_main),
 					//param.asTextField.minWidth_(70),
@@ -499,9 +518,12 @@ ParamGroupLayout {
 			} {
 				HLayout(
 					if(label_mode == \full) {
-						param.asStaticTextLabel(\full);
+						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
-						StaticText.new.string_(param.propertyLabel)
+						var st;
+						st = StaticText.new.string_(param.propertyLabel);
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
 					}.fixedWidth_(minWidth_label),
 					param.asStaticText.minWidth_(minWidth_main),
 					//param.asTextField.minWidth_(70),
@@ -543,7 +565,6 @@ ParamGroupLayout {
 				item.asView.rightClickEditorEnabled_(true)
 			}, {
 				PlayerWrapper(item).asView.rightClickEditorEnabled_(true)
-
 			}
 		)
 	}
@@ -582,7 +603,7 @@ ParamGroupLayout {
 			busbuflist.collect({ arg param;
 
 				var statictext = if(label_mode == \full) {
-				param.asStaticTextLabel;
+					param.asStaticTextLabel;
 				} {
 					StaticText.new.string_(param.property)
 				};
@@ -663,9 +684,12 @@ ParamGroupLayout {
 					} {
 						[
 							if(label_mode == \full) {
-								param.asStaticTextLabel;
+								param.asStaticTextLabel.attachContextMenu;
 							} {
-								StaticText.new.string_(param.property)
+								var st;
+								st = StaticText.new.string_(param.property);
+								ParamViewToolBox.attachContextMenu(param, st);
+								st;
 							},
 							param.asSlider.orientation_(\horizontal).minWidth_(150),
 							param.asTextField(6).minWidth_(70),
@@ -697,9 +721,12 @@ ParamGroupLayout {
 			scalarlist.collect({ arg param;
 				[
 					if(label_mode == \full) {
-						param.asStaticTextLabel;
+						param.asStaticTextLabel.attachContextMenu;
 					} {
-						StaticText.new.string_(param.property)
+						var st;
+						st = StaticText.new.string_(param.property);
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
 					},
 					param.asSlider.orientation_(\horizontal),
 					param.asTextField(6),
@@ -724,9 +751,12 @@ ParamGroupLayout {
 				[
 				View.new.layout_(VLayout(
 					if(label_mode == \full) {
-						param.asStaticTextLabel;
+						param.asStaticTextLabel.attachContextMenu;
 					} {
-						StaticText.new.string_(param.property).maxHeight_(10)
+						var st;
+						st = StaticText.new.string_(param.property).maxHeight_(10);
+						ParamViewToolBox.attachContextMenu(param, st);
+						st;
 					},
 					param.asView,
 					param.asTextField,

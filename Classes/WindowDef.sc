@@ -35,6 +35,7 @@ WindowDef {
 
 
 	// FIXME: window is not restored at the exact same position but is shifted downward, maybe a ubuntu unity bug
+	//			WindowViewRecall don't have the bug, need to study it
 	// FIXME: if maximized then restored, the bound is lost
 
 	*initClass {
@@ -110,6 +111,8 @@ WindowDef {
 	}
 
 	saveWindowProperties {
+
+		window.tryPerform(\autoRememberPosition, this.key); // WindowViewRecall support
 		[\alwaysOnTop].do { arg k;
 			windowProperties[k] = window.perform(k);
 		}
@@ -131,6 +134,7 @@ WindowDef {
 				window.perform(k.asSetter, windowProperties[k]);
 			}
 		};
+		window.tryPerform(\autoRememberPosition, this.key); // WindowViewRecall support
 	}
 	
 	isFullScreen {
@@ -185,6 +189,10 @@ WindowDef {
 			}
 		}
 	}
+
+	sourceValue { arg ... args;
+		^source.value(this, *args)
+    }
 
 	updateView { arg ... args;
 		var val, layout;

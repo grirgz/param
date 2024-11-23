@@ -36,7 +36,7 @@ PlayerWrapper  {
 				PlayerWrapper_ProtoClass(target, this)
 			}
 			{ target.isKindOf(StepEvent) } {
-				PlayerWrapper_ProtoClass(target, this)
+				PlayerWrapper_StepEvent(target, this)
 			}
 			{ target.isKindOf(Event) } {
 				PlayerWrapper_Event(target, this)
@@ -59,11 +59,14 @@ PlayerWrapper  {
 			{ target.isKindOf(Param) } {
 				PlayerWrapper_Param.new(target, this)
 			}
+			{ target.isKindOf(Bus) } {
+				PlayerWrapper_Bus(target, this)
+			}
 			{
 				// assume target respond to wrapper interface
 				// FIXME: errors are hard to find, deprecate this feature
-				Log(\Param).warning("ERROR: PlayerWrapper target class not recognized: %", target.class);
-				target
+				Log(\Param).error("ERROR: PlayerWrapper target class not recognized: %", target.class);
+				PlayerWrapper_Nil(nil, this)
 			}
 		;
 		
@@ -500,7 +503,11 @@ PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 	}
 
 	outBus { arg val;
-		^this.target.initMonitor.out ? 0;
+		if(this.target.rate == \control) {
+			^this.target.bus;
+		} {
+			^this.target.initMonitor.out ? 0;
+		};
 	}
 
 	play {
@@ -656,7 +663,7 @@ PlayerWrapper_Event : PlayerWrapper_Base {
 	}
 
 	label {
-		^target.label ?? {target.class}
+		^target.label ?? {target.key ?? { "-" }}
 	}
 
 	isPlaying {
@@ -810,6 +817,16 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 	edit {
 		^this.target.edit;
 	}
+}
+
+PlayerWrapper_StepEvent : PlayerWrapper_ProtoClass {
+	outBus { 
+		^this.out
+	}
+
+	outBus_ { arg bus;
+		this.out = bus;
+	}
 
 }
 
@@ -843,7 +860,6 @@ PlayerWrapper_PlayerWrapperGroup : PlayerWrapper_Base {
 PlayerWrapper_Builder : PlayerWrapper_Base {
 
 	outBus_ { arg val;
-		Log(\Param).debug("WTF %", this.target);
 		Param(this.target, \outBus, ParamBusSpec()).set(val);
 		^this.parent
 	}
@@ -880,6 +896,39 @@ PlayerWrapper_Node : PlayerWrapper_Base {
 	}
 
 	
+}
+
+////////////////////
+
+PlayerWrapper_Bus : PlayerWrapper_Base {
+
+	label {
+		^target.asCompileString
+	}
+
+	play {
+		// TODO: monitor if audio
+	}
+
+	stop {
+		// stop monitor
+	}
+
+	outBus {
+		^target
+	}
+
+	edit {
+		// TODO: make gui:
+		// - bus properties
+		// - slider to write to control bus
+		// - button to monitor audio bus
+		// - scope
+		// - level
+		// - record
+		WindowDef(\ScopeView).front(target)
+	}
+
 }
 
 ///////////////////////////////////////:

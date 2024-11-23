@@ -80,10 +80,12 @@ BoolButton : Button {
 	string { ^this.label }
 
 	updateStates {
+		var old = this.value;
 		this.states_([
 			[label, color ? Color.black, Color.white],
 			[label, color ? Color.black, background ? ParamViewToolBox.color_ligth],
 		]);
+		this.value = old;
 	}
 
 	unmapParam {

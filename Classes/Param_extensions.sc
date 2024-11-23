@@ -121,6 +121,7 @@
 			}
 		} {
 			if(curval.class == Function) {
+				// this use default value of event instead of using default value of param/spec
 				curval = this.envir.use({ curval.value });
 			};
 			^curval;
@@ -342,12 +343,13 @@
 		var val = this.get(key);
 		if(val.isSequenceableCollection) {
 			// multichannel
-			if(val[0].isSequenceableCollection) {
-				// nested
-				^(val[0][0].class == Symbol)
-			} {
-				^(val[0].class == Symbol)
-			}
+            ^(val[0].class == Symbol)
+			// no nested in Ndef, only in Pdef
+			//if(val[0].isSequenceableCollection) {
+				//^(val[0][0].class == Symbol)
+			//} {
+				//^(val[0].class == Symbol)
+			//}
 		} {
 			^(val.class == Symbol or: { val.isKindOf(ParamCombinator) })
 		}
@@ -453,7 +455,7 @@
 		if(param.isNil) {
 			this.unmapParam
 		} {
-			param.mapSlider(this);
+			param.mapKnob(this);
 		}
 	}
 }

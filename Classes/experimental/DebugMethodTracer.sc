@@ -1,8 +1,12 @@
 
-DebugMethodTracer : Event {
+DebugMethodTracer : ProtoClass {
 	classvar <>all;
 	*initClass {
 		all = IdentityDictionary.new;
+	}
+
+	asControlInput { arg ... args;
+		^this.doesNotUnderstand(\asControlInput, *args)
 	}
 
     *doesNotUnderstand { arg selector...args;

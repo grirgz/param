@@ -603,18 +603,21 @@ WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue;
 			StaticText.new.string_("Selected: "),
 			selectedView,
 		),
-		textfield = TextField.new.keyUpAction_({ arg me, key, modifiers, unicode, keycode;
-			[me, key.asCompileString, modifiers, unicode, keycode].debug("keyUpAction");
-			if(me.string.trim != "") {
-				filteredList = listitems.select({ arg item, idx;
-					item.key.asString.toLower.contains(me.string.toLower)
-				});
-				listview.items = filteredList.collect(_.key);
-			} {
-				listview.items = listitems.collect(_.key);
-			};
-			selectAction.(listview);
-		}).focus(true),
+		HLayout (
+			StaticText.new.string_("Search: "),
+			textfield = TextField.new.keyUpAction_({ arg me, key, modifiers, unicode, keycode;
+				[me, key.asCompileString, modifiers, unicode, keycode].debug("keyUpAction");
+				if(me.string.trim != "") {
+					filteredList = listitems.select({ arg item, idx;
+						item.key.asString.toLower.contains(me.string.toLower)
+					});
+					listview.items = filteredList.collect(_.key);
+				} {
+					listview.items = listitems.collect(_.key);
+				};
+				selectAction.(listview);
+			}).focus(true),
+		),
 		listview.selectionAction_(selectAction),
 		HLayout (
 			BasicButton.new.string_("Ok").action_({

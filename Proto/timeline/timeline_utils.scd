@@ -40,6 +40,18 @@ SynthDef(\env_segment, { arg out=0, level=0.1, time=0.1, curve=1;
 	Out.kr(out, sig);
 }).add;
 
+SynthDef(\ParamTimeline_segment, { arg out=0, level=0.1, time=0.1, curve=1, baseValue=0, scale=1, range=1;
+	// better name
+	// not used for the moment
+	// modulation system, not ideal because no spec or normalized value
+	var sig;
+	var in = In.kr(out);
+	sig = EnvGen.kr(Env([in,level], [time], curve),1,doneAction:2);
+	sig = sig * scale * range + baseValue;
+	//sig.poll(label:"env segment");
+	Out.kr(out, sig);
+}).add;
+
 
 ProtoTemplateDef(\TimelineEmbeder, (
 	// replace all following function by one class: Pembed, this is the prototype
