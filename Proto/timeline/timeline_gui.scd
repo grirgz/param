@@ -50,10 +50,8 @@ ProtoTemplateDef(\TimelinePanelView, (
 		}).maxWidth_(30);
 	},
 
-	make_quant_popup: { arg self;
-		var quant_popup;
-		var quant_spec;
-		quant_spec = MenuSpec([
+	make_quant_spec: { arg self;
+		TagSpec([
 			"0",
 			"1/32",
 			"1/16",
@@ -66,6 +64,12 @@ ProtoTemplateDef(\TimelinePanelView, (
 			"8",
 			"16",
 		].collect({ arg x; x -> x.interpret }));
+	},
+
+	make_quant_popup: { arg self;
+		var quant_popup;
+		var quant_spec;
+		quant_spec = self.make_quant_spec;
 
 		self.quant_param = Param({ self.get_xquant }, { arg val; self.set_xquant(val) }, quant_spec);
 		quant_popup = self.quant_param.asPopUpMenu;
@@ -73,48 +77,60 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.quant_popup;
 	}, 
 
+	hasSavePath: { arg self;
+		self.timeline_model.presetCompileStringSavePath.notNil
+	},
+
+	saveAction: { arg self, view;
+		var me = view ?? { () };
+		if(self.hasSavePath) {
+			var dialog;
+			if(PathName(self.timeline_model.presetCompileStringSavePath).isFolder) {
+				self.timeline_model.presetCompileStringSavePath = self.timeline_model.presetCompileStringSavePath +/+ self.timeline_model.key.asString ++ ".scd"
+			};
+			dialog = Window.new("Save").layout_(
+				VLayout(
+					StaticText.new.string_("Save this object to the file % ?".format(self.timeline_model.presetCompileStringSavePath.asCompileString)),
+					HLayout(
+						nil,
+						BasicButton.new.string_("OK").action_({ 
+							self.timeline_model.savePresetCompileString;
+							me.refreshChange;
+							dialog.close;
+						}),
+						BasicButton.new.string_("Choose").action_({ 
+							self.timeline_model.savePresetCompileString(nil, {
+								me.refreshChange;
+							}, true);
+							dialog.close;
+						}),
+						BasicButton.new.string_("Cancel").action_({
+							dialog.close;
+						}),
+					)
+				)
+			).setInnerExtent(600,140).front;
+		} {
+			self.saveAsAction(me);
+		};
+	},
+
+	saveAsAction: { arg self, view;
+		var me = view ?? { () };
+		self.timeline_model.savePresetCompileString(nil, {
+			me.refreshChange;
+		}, true)
+	},
+
 	make_saveas_button: { arg self;
 		BasicButton.new
 			.action_({ arg me;
-				if(self.timeline_model.presetCompileStringSavePath.notNil) {
-					var dialog;
-					if(PathName(self.timeline_model.presetCompileStringSavePath).isFolder) {
-						self.timeline_model.presetCompileStringSavePath = self.timeline_model.presetCompileStringSavePath +/+ self.timeline_model.key.asString ++ ".scd"
-					};
-					dialog = Window.new("Save").layout_(
-						VLayout(
-							StaticText.new.string_("Save this object to the file % ?".format(self.timeline_model.presetCompileStringSavePath.asCompileString)),
-							HLayout(
-								nil,
-								BasicButton.new.string_("OK").action_({ 
-									self.timeline_model.savePresetCompileString;
-									me.refreshChange;
-									dialog.close;
-								}),
-								BasicButton.new.string_("Choose").action_({ 
-									self.timeline_model.savePresetCompileString(nil, {
-										me.refreshChange;
-									}, true);
-									dialog.close;
-								}),
-								BasicButton.new.string_("Cancel").action_({
-									dialog.close;
-								}),
-							)
-						)
-					).setInnerExtent(600,140).front;
-				} {
-					self.timeline_model.savePresetCompileString(nil, {
-						me.refreshChange;
-					}, false);
-				};
+				self.saveAction(me)
 			})
 			.mouseUpAction_({ arg me, x, y, mod, but;
 				//[a,b,c,but].debug("but");
 				if(but == 1) { // right click
-					self.timeline_model.savePresetCompileString(nil, {
-						me.refreshChange;
-					}, true)
+					self.saveAsAction(me)
 				}
 			})
 			.refreshChangeAction_({ arg me;
@@ -187,7 +203,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.update_track_header;
 	},
 
-	zoom_fit: { arg self;
+	zoomFitAction: { arg self;
 		// TODO: use timeline.spec to get initial maxy and miny
 		var timeline = self.timeline;
 		var maxy=0, miny=127;
@@ -240,6 +256,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 		//[self.areasize, self.timeline.areasize].debug("2");
 		self.areasize = self.timeline.areasize;
 		//[self.areasize, self.timeline.areasize].debug("4");
+	},
+
+	zoom_fit: { arg self;
+		// deprecated name
+		self.zoomFitAction;
 	},
 
 	make_tracks_listeners: { arg self;
@@ -402,20 +423,33 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.track_header;
 
 	},
+
+	undoAction: { arg self;
+		var el = self.timeline_model.eventLoop;
+		el.historyUndo;
+		//self.timeline.refreshSelectionView;
+	},
+
+	redoAction: { arg self;
+		var el = self.timeline_model.eventLoop;
+		el.historyRedo;
+		//self.timeline.refreshSelectionView;
+	},
 	
 	make_undo_system_buttons: { arg self;
 		var el = self.timeline_model.eventLoop;
 		var undobut, redobut;
 
 		undobut = BasicButton.new.string_("<Undo").action_({
-			el.historyUndo;
+			self.undoAction;
 		}).enabled_(el.historyCanUndo).fixedWidth_(50).toolTip_("Undo");
 
 		redobut = BasicButton.new.string_("->").action_({ arg but;
-			el.historyRedo;
+			self.redoAction;
 		}).enabled_(el.historyCanRedo).fixedWidth_(30).toolTip_("Redo");
 
 		redobut.followChange(el, \inHistoryMode, {
+			var el = self.timeline_model.eventLoop;
 			undobut.enabled_(el.historyCanUndo);
 			redobut.enabled_(el.historyCanRedo);
 		});
@@ -423,7 +457,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		HLayout (
 			undobut,
 			redobut,
-		)
+		).spacing_(1)
 
 	},
 
@@ -449,7 +483,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self;
 	},
 
-	copyAction: { arg self;
+	copyAction_old: { arg self;
 		var selnodes;
 		var cursor = self.timeline_model.cursor;
 		var startpos, endpos;
@@ -466,16 +500,28 @@ ProtoTemplateDef(\TimelinePanelView, (
 			selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
 		};
 		if(selnodes.size > 0) {
-			~clipTimeline_clipboard = selnodes;
-			~clipTimeline_selection_rect = self.selection_cursor.rect;
+			self.clipboard = selnodes;
+			self.selection_rect = self.selection_cursor.rect;
+		};
+	},
+
+	copyAction: { arg self;
+		var selevents;
+		var cursor = self.timeline_model.cursor;
+		var startpos, endpos;
+		selevents = self.timeline.copyAtSelectionEdges;
+		Log(\Param).debug("clipTimeline.copyAction: selevents: %", selevents);
+		if(selevents.size > 0) {
+			self.clipboard = selevents;
+			self.selection_rect = self.selection_cursor.rect;
 		};
 	},
 
 	pasteAction: { arg self;
-		if(~clipTimeline_clipboard.notNil) {
+		if(self.clipboard.notNil) {
 			var delta;
 			var newnodes;
-			var first = ~clipTimeline_clipboard.as(Array).inject(nil, { arg a, b; 
+			var first = self.clipboard.as(Array).inject(nil, { arg a, b; 
 				if(a.isNil) {
 					b
 				} {
@@ -488,10 +534,10 @@ ProtoTemplateDef(\TimelinePanelView, (
 			});
 			//first.debug("first");
 			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
-			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - ~clipTimeline_selection_rect.origin;
-			//~clipTimeline_clipboard.debug("clipboard");
+			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - self.selection_rect.origin;
+			//self.clipboard.debug("clipboard");
 			self.timeline_model.addHistorySnapshot;
-			~clipTimeline_clipboard.do({ arg event;
+			self.clipboard.do({ arg event;
 				var new;
 				new = event.copy;
 				//[new, delta].debug("new, delta");
@@ -501,7 +547,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 			});
 			//self.timeline.model.changed(\refresh);
 
-			self.selection_cursor.rect = ~clipTimeline_selection_rect.moveBy(delta.x, delta.y);
+			self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
 			self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
 			self.timeline.deselectAllNodes;
 			//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
@@ -524,6 +570,48 @@ ProtoTemplateDef(\TimelinePanelView, (
 		}
 	},
 
+	quantizeAction: { arg self;
+		var selNodes;
+		var snapshot;
+		// TODO: should be implemented by adding a new property to the event, understood by XEventList
+		//			to be able to undo it
+		//quant.value.debug("quantize!!");
+		//"quantize ouais c'est ici".debug;
+		//snapshot = self.timeline_model.eventList.clone;
+		//self.timeline_model.pushList;
+
+
+		self.timeline_model.addHistorySnapshot;
+		selNodes = self.timeline.selNodes;
+		selNodes.do { arg node;
+			//node.nodeloc.debug("before");
+			node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
+			//node.nodeloc.debug("after");
+		};
+
+
+		////// this works
+		//snapshot = self.timeline_model.eventList.clone;
+		//selNodes = self.timeline.selNodes;
+		//selNodes.do { arg node;
+		////node.nodeloc.debug("before");
+		//node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
+		////node.nodeloc.debug("after");
+		//};
+		//self.timeline_model.eventLoop.cloneAndPushList(snapshot);
+		//self.timeline_model.eventLoop.addList;
+	},
+
+	setStartAction: { arg self;
+		self.timeline.setStartPosition(self.timeline.lastGridPos.x.trunc(self.quant_ref.value.x));
+		self.refresh;
+	},
+
+	setEndAction: { arg self;
+		self.timeline.setEndPosition(self.timeline.lastGridPos.x.trunc(self.quant_ref.value.x));
+		self.refresh;
+	},
+
 	getTimelineKeyDownAction: { arg self;
 		//Window.keyDownActionTest
 		({ arg me, key, modifiers, unicode, keycode;
@@ -533,22 +621,15 @@ ProtoTemplateDef(\TimelinePanelView, (
 				//if(key == $n) { // ^n // don't work anymore
 				if(keycode == $n.ascii) { // ^n
 					"new!".debug;
-					self.eventLoop.pushList;
-					self.timeline_model.addHistorySnapshot;
-					self.eventList = self.timeline_model.makeDefaultEventList;
-					self.eventLoop.pushList;
+					self.newScoreAction;
 				};
 				if(keycode == $k.ascii) { // ^k
 					"clone!".debug;
-					self.eventLoop.pushList;
-					self.timeline_model.addHistorySnapshot;
-					self.eventList = self.eventLoop.lists.first.clone;
-					self.eventLoop.pushList;
+					self.cloneScoreAction;
 				};
 				if(keycode == $d.ascii) { // ^d
 					"double!".debug;
-					self.timeline_model.addHistorySnapshot;
-					self.eventList = self.eventLoop.lists.first.clone.double;
+					self.doubleScoreAction;
 				};
 				if(keycode == $c.ascii) { // ^c
 					"copy!".debug;
@@ -560,7 +641,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 				};
 				if(keycode == $s.ascii) { // ^s
 					"split!".debug;
-					self.timeline_model.addHistorySnapshot;
 					self.splitAction;
 				};
 				if(keycode == $ .ascii) { // ^s
@@ -585,35 +665,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 				// quantize
 
 				if(key == $q) {
-					var selNodes;
-					var snapshot;
-					// TODO: should be implemented by adding a new property to the event, understood by XEventList
-					//			to be able to undo it
-					//quant.value.debug("quantize!!");
-					//"quantize ouais c'est ici".debug;
-					//snapshot = self.timeline_model.eventList.clone;
-					//self.timeline_model.pushList;
-
-
-					self.timeline_model.addHistorySnapshot;
-					selNodes = self.timeline.selNodes;
-					selNodes.do { arg node;
-						//node.nodeloc.debug("before");
-						node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
-						//node.nodeloc.debug("after");
-					};
-
-
-					////// this works
-					//snapshot = self.timeline_model.eventList.clone;
-					//selNodes = self.timeline.selNodes;
-					//selNodes.do { arg node;
-						////node.nodeloc.debug("before");
-						//node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
-						////node.nodeloc.debug("after");
-					//};
-					//self.timeline_model.eventLoop.cloneAndPushList(snapshot);
-					//self.timeline_model.eventLoop.addList;
+					self.quantizeAction;
 				};
 				if(keycode == 65481) { // F12
 					"Panic!".debug;
@@ -857,9 +909,16 @@ ProtoTemplateDef(\TimelinePanelView, (
 		timeline.mouseDownAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
 			if(clickCount == 2) {
 				if(chosennode.notNil) {
-					self.clipEditorNew(chosennode.model, self.eventloop.list)
+					self.showClipEditor(chosennode.model, self.eventloop.list)
 				};
-			}
+			};
+			if(buttonNumber == 1) {
+				self.showTimelineContextMenu(chosennode)
+				
+			};
+		};
+		timeline.preCreateNodeHook = {
+			self.timeline_model.addHistorySnapshot;
 		};
 
 		timeline.quant = self.quant_ref;
@@ -987,6 +1046,126 @@ ProtoTemplateDef(\TimelinePanelView, (
 		layout;
 	},
 
+	newScoreAction: { arg self;
+		self.eventLoop.pushList;
+		self.timeline_model.addHistorySnapshot;
+		self.eventList = self.timeline_model.makeDefaultEventList;
+		self.eventLoop.pushList;
+	},
+
+	cloneScoreAction: { arg self;
+		self.eventLoop.pushList;
+		self.timeline_model.addHistorySnapshot;
+		self.eventList = self.eventList.clone;
+		self.eventLoop.pushList;
+	},
+
+	doubleScoreAction: { arg self;
+		self.timeline_model.addHistorySnapshot;
+		self.eventList = self.eventList.clone.double;
+	},
+
+	deleteAction: { arg self;
+		self.deleteSelectedNodesHook.value;
+	},
+
+	createNodeAction: { arg self;
+		self.timeline.createNode
+	},
+
+	showTimelineContextMenu: { arg self, chosennode;
+		var selected;
+		selected = self.timeline.selectedNodes;
+		Menu(
+			* [
+				if(chosennode.notNil) {
+					[
+						MenuAction("Edit", {
+							self.showClipEditor(chosennode.model);
+						}),
+						MenuAction("Delete node", {
+							self.deleteAction;
+						}),
+						MenuAction("Copy", {
+							self.copyAction;
+						}),
+					]
+				} {
+					if(selected.notNil and: { selected.size > 0 }) {
+						[
+							MenuAction("Delete selected nodes", {
+								self.deleteAction;
+							}),
+							MenuAction("Copy selected nodes", {
+								self.copyAction;
+							}),
+						]
+					} {
+						[
+							MenuAction.separator,
+							MenuAction("Create node", {
+								self.createNodeAction;
+							}),
+						]
+					};
+				},
+				if(self.clipboard.notNil) {
+					MenuAction("Paste", {
+						self.pasteAction;
+					})
+				},
+				MenuAction("Split", {
+					self.splitAction;
+				}),
+
+				MenuAction.separator,
+				MenuAction("Set start", {
+					self.setStartAction;
+				}),
+				MenuAction("Set end", {
+					self.setEndAction;
+				}),
+
+				MenuAction.separator,
+				MenuAction("New score", {
+					self.newScoreAction
+				}),
+				MenuAction("Clone score", {
+					self.cloneScoreAction
+				}),
+				MenuAction("Duplicate score", {
+					self.doubleScoreAction
+				}),
+
+				MenuAction.separator,
+				MenuAction("Zoom fit", {
+					self.zoomFitAction;
+				}),
+
+				MenuAction("Zoom full", {
+					self.zoomFullAction;
+				}),
+				MenuAction.separator,
+				MenuAction("Undo", {
+					self.undoAction;
+				}).enabled_(self.timeline_model.eventLoop.historyCanUndo),
+				MenuAction("Redo", {
+					self.redoAction;
+				}).enabled_(self.timeline_model.eventLoop.historyCanRedo),
+
+				MenuAction.separator,
+				Param({ self.get_xquant }, { arg val; self.set_xquant(val) }, self.make_quant_spec).asMenu("Quant"),
+
+			].flat.select(_.notNil)
+		).front
+
+	},
+
+	zoomFullAction: { arg self;
+		self.timeline.viewport = Rect(0,0,1,1);
+		self.refresh;
+	},
+
 	asPattern: { arg self;
 		// TODO
 		Pfunc({})
@@ -1039,10 +1218,10 @@ ProtoTemplateDef(\TimelinePanelView, (
 /////// derivatives
 
 ProtoTemplateDef(\ClipTimelinePanelView, (
-	parent: ~timelinePanelView,
+	parent: ProtoTemplateDef(\TimelinePanelView),
 
 	new: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		self.timeline_model = { timeline };
 		self.areasize = self.timeline_model.areasize;
@@ -1054,7 +1233,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 	},
 
 	newView: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		self.timeline_model = {timeline};
 		self.areasize = self.timeline_model.areasize;
@@ -1082,26 +1261,26 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 
 
 	make_header: { arg self;
-		var mute_button = Button.new.states_([
-			[ "Mute", Color.black, Color.white ],
-			[ "Unmute", Color.black, ParamViewToolBox.color_ligth ],
-		]).onChange(self.track_selector, \selected_index, { arg view;
-			view.value = if(self.timeline_model.is_track_bypassed(self.track_selector.selected_index)) {
-				1
-			} {
-				0
-			}
-		}).action_({
-			self.timeline_model.toggle_bypass_track(self.track_selector.selected_index);
-			self.track_selector.viewInit.(self.track_selector.selected_view, self.track_selector.selected_index);
-		});
+		//var mute_button = Button.new.states_([
+			//[ "Mute", Color.black, Color.white ],
+			//[ "Unmute", Color.black, ParamViewToolBox.color_ligth ],
+		//]).onChange(self.track_selector, \selected_index, { arg view;
+			//view.value = if(self.timeline_model.is_track_bypassed(self.track_selector.selected_index)) {
+				//1
+			//} {
+				//0
+			//}
+		//}).action_({
+			//self.timeline_model.toggle_bypass_track(self.track_selector.selected_index);
+			//self.track_selector.viewInit.(self.track_selector.selected_view, self.track_selector.selected_index);
+		//});
 
 		Log(\Param).debug("recorder %", self.timeline_model.recorder);
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
-			self.make_saveas_button,
-			XSimpleButton.new.label_("Add track").action_({
+			//self.make_saveas_button,
+			BasicButton.new.label_("Add track").action_({
 				self.add_track;
 			}),
 			//mute_button, // useless with "M" button
@@ -1110,13 +1289,14 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			//Param(Message(self.timeline_model), \isRecording, XBoolSpec()).asButton("Rec"),
 			RecordButton(self.timeline_model.recorder, "Rec"),
-			Param(Message(self.timeline_model), \bindPlayWithRecord, XBoolSpec()).asButton("PlayRec"),
-			XSimpleButton.new.label_("Samples").action_({
-				WindowDef("%_SampleManager".format(self.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(self.timeline_model);
-			}),
+			//Param(Message(self.timeline_model), \bindPlayWithRecord, XBoolSpec()).asButton("PlayRec"),
+			//BasicButton.new.label_("Samples").action_({
+				//WindowDef("%_SampleManager".format(self.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(self.timeline_model);
+			//}),
 			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-				WindowDef(\ClipTimelineOverlayMenu).front(self, view, x, y)
+				//WindowDef(\ClipTimelineOverlayMenu).front(self, view, x, y)
+				WindowDef(\ClipTimelineContextMenu).sourceValue(self, view, x, y).front
 			}).maxWidth_(20),
 		);
 		
@@ -1129,20 +1309,22 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		//PdefTimelineView
 	},
 
-	clipEditorNew: { arg self, model;
-		~clipEditor.new(model ? self.model, self.timeline_model.eventList);
+	//clipEditorNew:
+	showClipEditor: { arg self, ev;
+		//ProtoTemplateDef(\ClipEditor).new(model ? self.model, self.timeline_model.eventList);
+		WindowDef(\ClipTimeline_ClipEditor).front(ev, self.timeline_model.eventList);
 	},
 
 	makeLayout: { arg self;
 		var clipEditor;
 		//"clipTimelinePanelView.makeLayout: start init".debug;
 
-		clipEditor = self.clipEditorNew;
-		self.clipEditor = { clipEditor };
+		//clipEditor = self.clipEditorNew;
+		//self.clipEditor = { clipEditor };
 		//"clipTimelinePanelView.makeLayout: part 0.1".debug;
-		self.clipEditorLayout = self.clipEditor.makeLayout;
+		//self.clipEditorLayout = self.clipEditor.makeLayout; // disabled bottom layout
 		//"clipTimelinePanelView.makeLayout: part 0.2".debug;
-		self.clipEditor.clearEditor;
+		//self.clipEditor.clearEditor;
 		//"clipTimelinePanelView.makeLayout: part 1".debug;
 		self[\makeVelocityView] = {}; // disable velocity view
 		self.layout = VLayout(
@@ -1154,14 +1336,14 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 				*[
 					self.makeLeftPaneLayout,
 					VLayout (
-						[~timelinePanelView[\makeLayout].(self), stretch:1],
-						HLayout (
-							*[
-								self.makeLeftPaneToggle,
-								self.clipEditorLayout,
-								self.makeRightPaneToggle,
-							].select(_.notNil)
-						)
+						[ProtoTemplateDef(\TimelinePanelView)[\makeLayout].(self), stretch:1],
+						//HLayout (
+							//*[
+								//self.makeLeftPaneToggle,
+								////self.clipEditorLayout,
+								//self.makeRightPaneToggle,
+							//].select(_.notNil)
+						//)
 					),
 					self.makeRightPaneLayout,
 				].select(_.notNil)
@@ -1176,17 +1358,21 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		self.timeline.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
 			if(clickCount == 2) {
 				if(chosennode.notNil) {
-					self.clipEditor.edit_selected(chosennode.model);
+					self.showClipEditor(chosennode.model);
 				}
 			} {
-				if(chosennode.notNil) {
-					self.clipEditor.model = chosennode.model;
-					self.clipEditor.makeUpdater;
-					chosennode.model.changed(\refresh);
+				if(buttonNumber == 1) {
+					self.showTimelineContextMenu(chosennode);
 				} {
-					self.clipEditor.model = nil;
-					self.clipEditor.clearEditor;
-				}
+					//if(chosennode.notNil) {
+						//self.clipEditor.model = chosennode.model;
+						//self.clipEditor.makeUpdater;
+						//chosennode.model.changed(\refresh);
+					//} {
+						//self.clipEditor.model = nil;
+						//self.clipEditor.clearEditor;
+					//}
+				};
 			}
 		};
 		//"clipTimelinePanelView.makeLayout: part 3".debug;
@@ -1209,16 +1395,33 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		selevents = self.timeline.copyAtSelectionEdges;
 		Log(\Param).debug("clipTimeline.copyAction: selevents: %", selevents);
 		if(selevents.size > 0) {
-			~clipTimeline_clipboard = selevents;
-			~clipTimeline_selection_rect = self.selection_cursor.rect;
+			self.clipboard = selevents;
+			self.selection_rect = self.selection_cursor.rect;
 		};
 	},
 
+	clipboard: { arg self;
+		ParamViewToolBox.clipboard.clipTimeline
+	},
+
+	clipboard_: { arg self, val;
+		ParamViewToolBox.clipboard.clipTimeline = val;
+	},
+
+	selection_rect: { arg self;
+		//ParamViewToolBox.clipboard.clipTimeline_selectionRect
+		ParamViewToolBox.clipboard.clipTimeline_selectionRect ?? { Rect(0,0,1,1) };
+	},
+
+	selection_rect_: { arg self, val;
+		ParamViewToolBox.clipboard.clipTimeline_selectionRect = val;
+	},
+
 	pasteAction: { arg self;
-		if(~clipTimeline_clipboard.notNil) {
+		if(self.clipboard.notNil) {
 			var delta;
 			var newnodes;
-			var first = ~clipTimeline_clipboard.as(Array).inject(nil, { arg a, b; 
+			var first = self.clipboard.as(Array).inject(nil, { arg a, b; 
 				if(a.isNil) {
 					b
 				} {
@@ -1231,10 +1434,10 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			});
 			//first.debug("first");
 			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
-			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - ~clipTimeline_selection_rect.origin;
+			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - self.selection_rect.origin;
 			//~clipTimeline_clipboard.debug("clipboard");
 			self.timeline_model.addHistorySnapshot;
-			~clipTimeline_clipboard.do({ arg event;
+			self.clipboard.do({ arg event;
 				var new;
 				new = event.copy;
 				//[new, delta].debug("new, delta");
@@ -1242,7 +1445,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 				new[self.timeline.valueKey] = new[self.timeline.valueKey] + delta.y;
 				self.timeline.model.addEvent(new);
 			});
-			self.selection_cursor.rect = ~clipTimeline_selection_rect.moveBy(delta.x, delta.y);
+			self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
 			self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
 			self.timeline.deselectAllNodes;
 			//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
@@ -1301,7 +1504,7 @@ ProtoTemplateDef(\TrackTimelinePanelView, (
 
 
 	newView: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		self.timeline_model = {timeline};
 		self.areasize = self.timeline_model.areasize;
@@ -1313,8 +1516,26 @@ ProtoTemplateDef(\TrackTimelinePanelView, (
 
 	clipEditorNew: { arg self, model;
 		//"clipEditorNew".debug;
-		~trackEditor.new(model ? self.model, self.timeline_model.eventList, self.timeline_model.tracks);
+		ProtoTemplateDef(\TrackEditor).new(model ? self.model, self.timeline_model.eventList, self.timeline_model.tracks);
 	},
+
+	clipboard: { arg self;
+		ParamViewToolBox.clipboard.trackTimeline
+	},
+
+	clipboard_: { arg self, val;
+		ParamViewToolBox.clipboard.trackTimeline = val;
+	},
+
+	selection_rect: { arg self;
+		//ParamViewToolBox.clipboard.trackTimeline_selectionRect
+		ParamViewToolBox.clipboard.trackTimeline_selectionRect ?? { Rect(0,0,1,1) };
+	},
+
+	selection_rect_: { arg self, val;
+		ParamViewToolBox.clipboard.trackTimeline_selectionRect = val;
+	},
+
 
 	update_track_header: { arg self;
 		var track_count;
@@ -1442,6 +1663,23 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		self.track_header;
 	},
 
+	clipboard: { arg self;
+		ParamViewToolBox.clipboard.paramTimeline
+	},
+
+	clipboard_: { arg self, val;
+		ParamViewToolBox.clipboard.paramTimeline = val;
+	},
+
+	selection_rect: { arg self;
+		//ParamViewToolBox.clipboard.paramTimeline_selectionRect
+		ParamViewToolBox.clipboard.paramTimeline_selectionRect ?? { Rect(0,0,1,1) };
+	},
+
+	selection_rect_: { arg self, val;
+		ParamViewToolBox.clipboard.paramTimeline_selectionRect = val;
+	},
+
 	make_header: { arg self;
 		self.paramKnob = Knob.new;
 		self.paramBusModeButton = BoolButton.new.string_("Bus mode");
@@ -1520,14 +1758,14 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		self.layout;
 	},
 ));
-ProtoTemplateDef(\EnvTimelinePanelView, ProtoTemplateDef(\ParamTimelinePanelView));
+ProtoTemplateDef(\EnvTimelinePanelView, ProtoTemplateDef(\ParamTimelinePanelView)); // compat
 
 
 ProtoTemplateDef(\NoteTimelinePanelView, (
-	parent: ~timelinePanelView,
+	parent: ProtoTemplateDef(\TimelinePanelView),
 
 	new: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		self.timeline_model = timeline;
 		self.areasize = self.timeline_model.areasize;
@@ -1538,7 +1776,7 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 	},
 
 	newView: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		self.timeline_model = timeline;
 		self.areasize = self.timeline_model.areasize;
@@ -1563,6 +1801,23 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 
 	param: { arg self;
 		self.timeline_model.param;
+	},
+
+	clipboard: { arg self;
+		ParamViewToolBox.clipboard.noteTimeline
+	},
+
+	clipboard_: { arg self, val;
+		ParamViewToolBox.clipboard.noteTimeline = val;
+	},
+
+	selection_rect: { arg self;
+		//ParamViewToolBox.clipboard.noteTimeline_selectionRect
+		ParamViewToolBox.clipboard.noteTimeline_selectionRect ?? { Rect(0,0,1,1) };
+	},
+
+	selection_rect_: { arg self, val;
+		ParamViewToolBox.clipboard.noteTimeline_selectionRect = val;
 	},
 
 
@@ -1694,6 +1949,23 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 		self.timelineClass.new(\kitIndex).viewport_(Rect(0,0,1,1/4))
 	},
 
+	clipboard: { arg self;
+		ParamViewToolBox.clipboard.kitTimeline
+	},
+
+	clipboard_: { arg self, val;
+		ParamViewToolBox.clipboard.kitTimeline = val;
+	},
+
+	selection_rect: { arg self;
+		//ParamViewToolBox.clipboard.kitTimeline_selectionRect
+		ParamViewToolBox.clipboard.kitTimeline_selectionRect ?? { Rect(0,0,1,1) };
+	},
+
+	selection_rect_: { arg self, val;
+		ParamViewToolBox.clipboard.kitTimeline_selectionRect = val;
+	},
+
 	make_header: { arg self;
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
@@ -1813,7 +2085,7 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 
 ////////////////// clip editor (really: clip chooser/selector)
 
-ProtoTemplateDef(\ClipEditor, (
+ProtoTemplateDef(\ClipEditor, ( // deprecated
 	new: { arg self, model, parent;
 		self = self.deepCopy;
 	
@@ -2342,7 +2614,59 @@ ProtoTemplateDef(\ClipEditor, (
 	},
 ));
 
-ProtoTemplateDef(\TrackEditor, (
+WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
+	var lib = ProtoDef(\GlobalLibrary);
+	var libid = lib.eventToLibId(clip);
+	var target = lib.libIdToTarget(libid);
+	var params;
+	var refresh;
+	params = [
+		Param(Message(clip), \label, ParamStringSpec()),
+		Param(clip, Pembed.startOffsetKey, ControlSpec(0,100,\lin)),
+		Param(clip, \gain, \gain.asSpec ?? { ControlSpec(0,1,\lin, 0,1)}),
+		Param(clip, \outBus, TagSpecDef(\BusDefDefault)),
+		Param(clip, \absTime),
+		Param(clip, Pembed.sustainKey),
+	];
+	refresh = {
+		debug("refresh from ClipTimeline_ClipEditor");
+		eventlist.changed(\refresh);
+	};
+	VLayout (
+		HLayout (
+			StaticText.new.string_("type:"),
+			TextField.new.string_(clip.type),
+		),
+		HLayout (
+			StaticText.new.string_("libid:"),
+			TextField.new.string_(libid.asCompileString),
+		),
+		HLayout (
+			StaticText.new.string_("Target:"),
+			TextField.new.string_(target.asCompileString),
+			//TextField.new.string_(PlayerWrapper(target).refCompileString),
+			BasicButton.new.string_("Select target"),
+		),
+		BasicButton.new.string_("Edit target").action_({
+			PlayerWrapper(target).edit
+		}),
+		* params.collect({ arg param;
+			//param.asView
+			HLayout(
+				StaticText.new.string_(param.property).minWidth_(110),
+				if(param.spec.isKindOf(TagSpec)) {
+					param.asPopUpMenu;
+				} {
+					TextField.new.mapParam(param).addAction({
+						refresh.();
+					});
+				},
+			);
+		}) ++ [nil]
+	)
+});
+
+ProtoTemplateDef(\TrackEditor, ( // to update
 	new: { arg self, model, parent, trackgroup;
 		self = self.deepCopy;
 	
@@ -2508,12 +2832,14 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 		//model.gatherClips; // now in menu
 	});
 	newButton = BasicButton.new.string_("New").action_({ arg view;
-		WindowDef(\ClipList_NewClip).front({}, { arg idef, libId, label;
-			Log(\Param).debug("OK! libid:%, label:%", libId, label);
+		WindowDef(\ClipList_NewClip).front({}, { arg idef, factory, label;
+			Log(\Param).debug("OK! fac:%, label:%", factory, label);
 
-			if(libId.notNil) {
-				var score = ProtoTemplateDef(\TrackInstrument).new(libId, label).makeIndependentScore;
-				var scorelibid = ProtoDef(\GlobalLibrary).targetToLibId(score);
+			if(factory.notNil) {
+				//var score = ProtoTemplateDef(\TrackInstrument).new(libId, label).makeIndependentScore;
+				//var scorelibid = ProtoDef(\GlobalLibrary).targetToLibId(score);
+				var score = factory.value.value(label);
+				var scorelibid = [factory.key, (label -> score)];
 				Log(\Param).debug("************** addClip id %", scorelibid);
 				model.addClipIdToClipList(scorelibid);
 				idef.closeWindow;
@@ -2558,7 +2884,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 		}).mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			//[x, y, modifiers, buttonNumber, clickCount].debug("xyyyyy");
 			if(buttonNumber == 1) { // right click
-				WindowDef(\ClipList_OverlayMenu).front(model, view, x, y, model.clipList[view.value ? 0]);
+				WindowDef(\ClipList_ContextMenu).sourceValue(model, view, model.clipList[view.value ? 0]).front;
 			};
 		}),
 		HLayout (
@@ -2569,13 +2895,13 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 				)
 			}),
 			BasicButton.new.string_("Edit").action_({
-				model.clipIdToTarget(model.brushClipId).edit;
+				PlayerWrapper(model.clipIdToTarget(model.brushClipId)).edit;
 			})
 		)
 	)
 });
 
-WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
+WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600; // deprecated
 	var inview, layout;
 	Log(\Param).debug("xy: %, %", x, y);
 	def.windowDo { arg win;
@@ -2622,10 +2948,40 @@ WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600;
 		//win.setInnerExtent(view.bounds.extent.min(20));
 	//};
 	inview.layout_(layout);
-	
 }).border_(false);
 
-WindowDef(\ClipList_OverlayMenu, { arg def, model, view, x=600, y=600, selected;
+WindowDef(\ClipList_ContextMenu, { arg def, model, view, selected;
+	Menu(
+		* 
+		if(selected.notNil) {
+			[
+				MenuAction("Edit", { 
+					PlayerWrapper(selected.last.value).edit;
+				}),
+				MenuAction("Remove " ++ selected.last.key, { 
+					model.clipList.remove(selected);
+					model.changed(\clipList);
+					def.closeWindow;
+				}),
+			]
+		} {
+			[]
+		} ++ 
+		[
+			MenuAction.separator,
+			MenuAction("Gather clips from timeline", { 
+				model.gatherClips;
+			}),
+			MenuAction("Clear list", { 
+				model.clearClipList;
+				def.closeWindow;
+			}),
+		] 
+	);
+});
+
+WindowDef(\ClipList_OverlayMenu, { arg def, model, view, x=600, y=600, selected; // deprecated
+	// deprecated for Menu
 	var inview, layout;
 	Log(\Param).debug("xy: %, %", x, y);
 	Log(\Param).debug("selected: %", selected);
@@ -2665,7 +3021,6 @@ WindowDef(\ClipList_OverlayMenu, { arg def, model, view, x=600, y=600, selected;
 		//win.setInnerExtent(view.bounds.extent.min(20));
 	//};
 	inview.layout_(layout);
-	
 }).border_(false);
 
 WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
@@ -2741,24 +3096,20 @@ WindowDef(\TimelinePianoKeyboard, { arg def, player;
 
 /////////////////////////////////
 
-WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook; // TODO: should create new clip
-	/////////////////////////
-	// TODO	 TODO TODO
-	//////////////////////:
+WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook, tagSpec;
 	var namefield = TextField.new;
 	var trackInstrumentLabel = StaticText.new;
 	var lib = ProtoDef(\GlobalLibrary);
-	var selectedLibId;
-	var selectedCallback = { arg libid, strings, clickCount;
-		Log(\Param).debug("selectedCallback itemId:%, str:%", libid, strings);
-		trackInstrumentLabel.string = strings.join("   ");
-		selectedLibId = libid;
-		selectedHook.(def, libid, strings.join("   "), clickCount);
+	var selectedFactory;
+	var selectedCallback = { arg item;
+		trackInstrumentLabel.string = item.key;
+		selectedFactory = item;
 	};
+	tagSpec = tagSpec ?? {TagSpecDef(\ClipTimeline_newPlayer)  };
 	VLayout(
 		View.new.layout_(
 			HLayout(
-				StaticText.new.string_("Clip name:"),
+				StaticText.new.string_("Clip key:"),
 				namefield,
 			),
 		).background_(Color.grey),
@@ -2767,13 +3118,15 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook; // TODO: should cr
 				StaticText.new.string_("Clip source:"),
 				trackInstrumentLabel,
 			),
-			WindowDef(\GlobalLibrary).asView(lib, selectedCallback, [
-				\TrackInstrument
-			]),
+			ListView.new.items_(
+				tagSpec.keyList
+			).action_({ arg view;
+				selectedCallback.(tagSpec.list[view.selection.first])
+			}).valueAction_(0),
+			//WindowDef(\GlobalLibrary).asView(lib, selectedCallback, [
+				//\TrackInstrument
+			//]),
 		),
-	/////////////////////////
-	// TODO	 TODO TODO
-	//////////////////////:
 		HLayout(
 			BasicButton.new.string_("Cancel").action_({
 				def.closeWindow;
@@ -2782,9 +3135,9 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook; // TODO: should cr
 				var label;
 				if(namefield.string.trim != "") {
 					def.closeWindow;
-					label = namefield.string;
-					Log(\Param).debug("okhook itemId:%, str:%", selectedLibId.asCompileString, label);
-					okHook.(def, selectedLibId, label);
+					label = namefield.string.asSymbol;
+					Log(\Param).debug("okhook fac:%, str:%", selectedFactory.asCompileString, label);
+					okHook.(def, selectedFactory, label);
 				} {
 					Log(\Param).error("Please provide a name");
 					WindowDef(\OkDialog).front("Please provide a name, it will be used a the key to store the object");
@@ -2909,8 +3262,39 @@ WindowDef(\ClipTimeline_SampleManager, { arg def, timeline;
 
 //////////////////////
 
+WindowDef(\ClipTimelineContextMenu, { arg def, viewmodel, view;
+	var model = viewmodel.timeline_model;
+	Menu(*
+		[
+			Param(Message(viewmodel.timeline), \enablePreview, ParamBoolSpec()).asMenuAction("Display preview"),
+			Param(Message(viewmodel.leftPaneView), \visible, ParamBoolSpec()).asMenuAction("Display right panel"),
+			Param(Message(viewmodel.timeline_model), \bindPlayWithRecord, ParamBoolSpec()).asMenuAction("Bind play with record button"),
+			MenuAction.separator,
+			MenuAction("Add track", {
+				viewmodel.add_track;
+			}),
+			MenuAction("Sample manager", {
+				WindowDef("%_SampleManager".format(viewmodel.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(viewmodel.timeline_model);
+			}),
+			MenuAction.separator,
+			if(viewmodel.hasSavePath) {
+				MenuAction("Save", {
+					viewmodel.saveAction;
+				})
+			},
+			MenuAction("Save as", {
+				viewmodel.saveAsAction;
+			}),
+			MenuAction("Clipboard refString", { 
+				viewmodel.timeline_model.refCompileString.pbcopy;
+			}),
+		].select(_.notNil)
+	)
+	
+});
 
 WindowDef(\ClipTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
+	// deprecated for Menu
 	var inview, layout;
 	var model = viewmodel.timeline_model;
 	//[x, y].debug("xy");

@@ -1,5 +1,7 @@
 
 (
+// libId structure:
+// [TypeSymbol, (NameSymbol -> Object)]
 ProtoDef(\GlobalLibrary, (
 	edit: { arg self;
 		WindowDef(\GlobalLibrary).front;
@@ -22,12 +24,14 @@ ProtoDef(\GlobalLibrary, (
 		var libId;
 		var fac;
 		if(target.isKindOf(ProtoClass)) {
-			if(target.eventType.notNil) {
+			var ttype;
+			ttype = target.eventType ?? { target.protoClass };
+			if(ttype.notNil) {
 				if(self.clipFactories.isNil) {
 					self.init_default_clip_factories;
 				};
-				if(self.clipFactories_keys.includes(target.eventType)) {
-					fac = self.clipFactories[target.eventType];
+				if(self.clipFactories_keys.includes(ttype)) {
+					fac = self.clipFactories[ttype];
 					Log(\Param).debug("fac.libIdKey: %", fac.libIdKey);
 					//libId = [fac.libIdKey, target.key -> target]
 					// TODO: find a way to address anonymous track children
@@ -121,11 +125,15 @@ ProtoDef(\GlobalLibrary, (
 							'trackdef'
 						},
 						ProtoClass, {
-							obj.eventType
+							obj.eventType ?? { obj.protoClass }
 						},
 						{
-							//model.debug("event_to_clipFactory_key: player: unknown");
-							nil
+							if(obj.isKindOf(ProtoClass)) {
+								obj.eventType ?? { obj.protoClass }
+							} {
+								//model.debug("event_to_clipFactory_key: player: unknown");
+								nil
+							};
 						}
 					);
 				};
@@ -182,6 +190,10 @@ ProtoDef(\GlobalLibrary, (
 				[self.libIdKey, target.key -> target];
 			},
 
+			getTarget: { arg self;
+				self.libId.last.value
+			},
+
 			eventToLibId: { arg self, ev;
 				var tar;
 				Log(\Param).debug("clipFactories.%.eventToLibId: getEventTarget: %", self.key, self[\getEventTarget].asCompileString);
@@ -192,270 +204,194 @@ ProtoDef(\GlobalLibrary, (
 
 			getEvent: { arg self;
 				var ev = ();
-				self.redefineClip(self.libIdTargetKey, ev);
+				self.redefineEvent(ev, self.getTarget);
 				ev;
 			},
-		);
-		
-		superself.clipFactories_parent = parentFactory;
 
-		superself.clipFactories.ndef = (
-			key: 'ndef',
-			libIdKey: 'Ndef',
-			label: { arg self; self.key.asString },
-			keylist: {
-				if(Ndef.all[\localhost].notNil) {
-					Ndef.all[\localhost].envir.keys.asArray.sort;
-				} {
-					[];
-				}
+			tagSpec: { arg self;
+				TagSpecDef(self.libIdKey)
 			},
 
-			getName: { arg self, ev;
-				ev.receiver.value.key;
+			keylist: { arg self;
+				self.tagSpec.keyList
 			},
 
-			className: {
-				Ndef
+			label: { arg self;
+				PlayerWrapper(self.getTarget).label.asString;
 			},
-
-			getEventTarget: { arg self, ev;
-				// depends pattern event, player event
-				if(ev.receiver.isKindOf(Ndef)) {
-					// pattern type
-					ev.receiver;
-				} {
-					// player type
-					var tar = ev.receiver.value;
-					//tar.key; // PlayerWrapper has key wrapper
-					if(tar.isKindOf(PlayerWrapper)) {
-						tar = tar.target;
-					};
-					if(tar.isKindOf(Ndef)) {
-						tar;
-					} {
-						Log(\Param).error("clipFactories.ndef: ERROR: getEventTarget: don't know what type!!!");
-						nil;
-					}; 
-				}
-				
-			},
-
-			editSelected: { arg self, model;
-				var player = model.receiver.value;
-				if(player.class == PlayerWrapper) {
-					player = player.target;
-				};
-				if(player.getHalo(\edit).notNil) {
-					player.getHalo(\edit).value;
-				} {
-					player.edit;
-				}
-			},
-
-			redefineClip: { arg self, curname, model;
-				PlayerEvent.redefine(model);
-				model[\receiver] = PlayerWrapper(Ndef(curname));
-				//model.changed(\refresh);
-				superself.parent_model.changed(\refresh);
-			},
-
-			makeScore: { arg self, scorekey, target;
-				(
-					timeline: ClipTimeline(scorekey, target)
-				)
-			},
-
-
-		).putAll(parentFactory); // TODO: put this at begining else it overwrite
-
-		superself.clipFactories.pdef = (
-			key: 'pdef',
-			libIdKey: 'Pdef',
-			label: { arg self; self.key.asString },
-			keylist: {
-				Pdef.all.keys.asArray.sort; 
-			},
-
-			getEventTarget: { arg self, ev;
-				// depends pattern event, player event
-				if(ev.pattern.isKindOf(Pdef)) {
-					// pattern type
-					ev.pattern;
-				} {
-					// player type
-					var tar = ev.receiver.value;
-					tar.key; // PlayerWrapper has key wrapper
-					if(tar.isKindOf(PlayerWrapper)) {
-						tar = tar.target;
-					};
-					if(tar.isKindOf(Pdef)) {
-						tar;
-					} {
-						Log(\Param).error("clipFactories.pdef: ERROR: getEventTarget: don't know what type!!!");
-						nil;
-					}; 
-				}
-			},
-
-			getTarget: { arg self;
-				Pdef(self.libIdTargetKey)
-			},
-
-			classObject: {
-				Pdef
-			},
-
-			getEventTargetKey: { arg self, ev; // NOT USED FOR THE MOMENT
-				self.getTarget(ev).key;
-			},
-
-			editSelected: { arg self, model;
-				var player;
-				//player = model.receiver.value;
-				//player.asParamGroup.debug("Edit: pattern");
-				//if(player.class == PlayerWrapper) {
-				//	player = player.target;
-				//};
-				//player.debug("clipeditor: player");
-				//player.getHalo(\edit).debug("clipeditor: player, edit");
-				player = self.getTarget(model);
-				if(player.isKindOf(Pdef)) {
-					if(player.getHalo(\edit).notNil) {
-						//player.getHalo(\edit).debug("clipeditor: player, halo edit");
-						player.getHalo(\edit).value;
-					} {
-						//player.getHalo(\edit).debug("clipeditor: normal edit");
-						player.asParamGroup.edit;
-					}
-				} {
-					Log(\Param).error("clipFactories.pdef: ERROR: edit: don't know what to do with type of %", player)
-				}
-			},
-
-			redefineClip: { arg self, curname, model;
-				PatternEvent.redefine(model);
-				model[\pattern] = Pdef(curname);
-				//model.changed(\refresh);
-				superself.parent_model.changed(\refresh);
-			},
-
-			makeScore: { arg self, scorekey;
-				(
-					timeline: NoteTimeline(scorekey, self.getTarget)
-				)
-			},
-		).putAll(parentFactory);
-
-		superself.clipFactories.trackdef = (
-			key: 'trackdef',
-			libIdKey: 'TrackDef',
-			label: { arg self; self.key.asString },
-			keylist: {
-				TrackDef.all.keys.asArray.sort; 
-			},
-
-			getName: { arg self, ev;
-				ev.receiver.value.key;
-			},
-
-			editSelected: { arg self, model;
-				var player = model.receiver.value;
-				if(player.class == PlayerWrapper) {
-					player = player.target;
-				};
-				if(player.getHalo(\edit).notNil) {
-					player.getHalo(\edit).value;
-				} {
-					if(player[\edit].notNil) {
-						player.edit;
-					} {
-						player.editor.front;
-					}
-				}
-			},
-
-			redefineClip: { arg self, curname, model;
-				PlayerEvent.redefine(model);
-				model[\receiver] = "{ PlayerWrapper(TrackDef(%)) }".format(curname).interpret;
-				//model.changed(\refresh);
-				superself.parent_model.changed(\refresh);
-			},
-
-			makeScore: { arg self, scorekey, target;
-				TrackTimeline(scorekey, target)
-			},
-		).putAll(parentFactory);
-
-		// generic timeline factory
-		tl = (
-			key: 'generictimeline',
-			label: { arg self; self.key.asString },
 
 			className: { arg self; // deprecated
 				self.classObject
 			},
 
-			classObject: {
-				ProtoClassDef(\NoteTimeline)
-				//~noteTimeline
+			redefineEvent: { arg self, ev, target;
+				self.redefineEventAsPlayerEvent(ev, target)
 			},
 
+			redefineEventAsPlayerEvent: { arg self, ev, target;
+				// unless redefineClipAsPlayerEvent, it use target
+				PlayerEvent.redefine(ev);
+				ev[\receiver] = PlayerWrapper(target);
+				//model.changed(\refresh);
+				superself.parent_model.changed(\refresh);
+			},
+
+			redefineEventAsPatternEvent: { arg self, ev, target;
+				PatternEvent.redefine(ev);
+				// need a closed function to use eventList.asCompileString as preset
+				ev[\timeline] = "{ % }".format(( target ?? {self.getTarget} ).refCompileString).interpret; 
+				//model.changed(\refresh);
+				superself.parent_model.changed(\refresh);
+			},
+
+
+			/// static methods (not using libId)
+
 			getEventTarget: { arg self, ev;
-				ev.timeline
+				// depends pattern event, player event
+				if(ev.type == \pattern) {
+					// pattern type
+					ev.pattern;
+				} {
+					// player type
+					if(ev.type == \player) {
+						var tar = ev.receiver.value;
+						//tar.key; // PlayerWrapper has key wrapper
+						if(tar.isKindOf(PlayerWrapper)) {
+							tar = tar.target;
+						};
+						if(tar.notNil) {
+							tar;
+						} {
+							Log(\Param).error("clipFactories.parent: ERROR: getEventTarget: receiver is nil");
+							nil;
+						}; 
+					} {
+						Log.error("ERROR: can't find target of unknown type event %", ev);
+						nil;
+					};
+				}
+			},
+
+			getTargetKeyFromEvent: { arg self, ev;
+				PlayerWrapper(self.getEventTarget(ev)).key;
+			},
+
+			getName: { arg self, ev; // deprecated
+				self.getTargetKeyFromEvent(ev)
+			},
+
+			editEventTarget: { arg self, ev;
+				PlayerWrapper(self.getEventTarget(ev)).edit;
+			},
+
+			editSelected: { arg self, model; // deprecated
+				self.editEventTarget(model);
+			},
+
+		);
+		
+		superself.clipFactories_parent = parentFactory;
+
+		superself.clipFactories.ndef = (
+			parent: superself.clipFactories_parent,
+			key: 'ndef',
+			libIdKey: 'Ndef',
+
+			classObject: {
+				Ndef
+			},
+		);
+
+		superself.clipFactories.pdef = (
+			parent: superself.clipFactories_parent,
+			key: 'pdef',
+			libIdKey: 'Pdef',
+
+			classObject: {
+				Pdef
+			},
+
+		);
+
+		superself.clipFactories.pbindef = (
+			parent: superself.clipFactories_parent,
+			key: 'pbindef',
+			libIdKey: 'Pbindef',
+			label: { arg self; self.key.asString },
+
+			keylist: {
+				Pbindef.all.keys.asArray.sort; 
+			},
+
+			classObject: {
+				Pbindef
+			},
+
+		);
+
+		superself.clipFactories.trackdef = (
+			parent: superself.clipFactories_parent,
+			key: 'trackdef',
+			libIdKey: 'TrackDef',
+
+			keylist: {
+				TrackDef.all.keys.asArray.sort; 
+			},
+
+		);
+
+		superself.clipFactories.tracklist = (
+			parent: superself.clipFactories.trackdef,
+			key: 'tracklist',
+			libIdKey: 'TrackList',
+			keylist: {
+				TrackDef.all.keys.asArray.sort; 
+			},
+		);
+
+		superself.clipFactories.tracklistpart = (
+			parent: superself.clipFactories.trackdef,
+			key: 'tracklistpart',
+			libIdKey: 'TrackListPart',
+			tagSpec: {
+				TagSpecDef(\TrackListPart)
+			}
+		);
+
+		superself.clipFactories.playergrid = (
+			parent: superself.clipFactories.trackdef,
+			key: 'playergrid',
+			libIdKey: 'PlayerGrid',
+			keylist: {
+				TrackDef.all.keys.asArray.sort; 
+			},
+		);
+
+		// generic timeline factory
+		tl = (
+			parent: superself.clipFactories_parent,
+			key: 'generictimeline',
+
+			classObject: {
+				ProtoClassDef(\NoteTimeline)
 			},
 
 			keylist: { arg self;
 				self.className.all.keys.asArray.sort;
 			},
 
-			getName: { arg self, model;
-				model.timeline.key;
-			},
-
-			editSelected: { arg self, model;
-				model.timeline.edit;
-			},
-
-			getTarget: { arg self;
-				self.classObject.new(self.libIdTargetKey)
-			},
-
-			setTrackInstrument: { arg self, trackinstr;
-				self.getTarget.trackInstrument = trackinstr;
-			},
-
-			redefineClip: { arg self, curname, model;
-				var tlobj;
-				Log(\Param).debug("redefineClip timeline before ev:% %", model, model.class);
-				PatternEvent.redefine(model);
-				Log(\Param).debug("redefineClip timeline ev:% %", model, model.class);
-
-				tlobj = ( "{ " ++ self.className.new(curname).refCompileString ++ " }" ).interpret;
-				model[\timeline] = tlobj;
-				//model[\timeline] = { 
-				//	me.keys.debug("redefineClip3:me.new!!!!!");
-				//	me.className.new(curname)
-				//};
-				//"redefineClip3".debug;
-				//model.changed(\refresh);
-				superself.parent_model.changed(\refresh);
-				//"redefineClip4".debug;
-			},
-
-			makeScore: { arg self, scorekey, target;
-				ClipTimeline(scorekey, target)
-			},
-		).putAll(parentFactory);
+		);
 
 		superself.clipFactories_timeline_parent = tl;
 
 		[\noteTimeline, \clipTimeline, \modStepTimeline, \kitTimeline].do { arg key;
+			var uckey = (key.asString[0].toUpper ++ key.asString[1..]).asSymbol;
 			superself.clipFactories[key] = (
 				key: key,
-				libIdKey: (key.asString[0].toUpper ++ key.asString[1..]).asSymbol,
+				libIdKey: uckey,
 				parent: tl,
-				classObject: "{ topEnvironment[%] }".format(key.asCompileString).interpret,
+				classObject: "{ ProtoClassDef(%) }".format(uckey.asCompileString).interpret,
 			);
 		};
 		[\paramTimeline, \sampleTimeline].do { arg key;
@@ -464,7 +400,7 @@ ProtoDef(\GlobalLibrary, (
 				key: key,
 				libIdKey: uckey.asSymbol,
 				parent: tl,
-				classObject: "{ % }".format(uckey).interpret,
+				classObject: "{ ProtoClassDef(%) }".format(uckey.asCompileString).interpret,
 			);
 		};
 
@@ -562,13 +498,14 @@ ProtoDef(\GlobalLibrary, (
 			},
 		));
 
-		superself.clipFactories.instrumenttrack = ().putAll(superself.clipFactories_parent).putAll((
+		superself.clipFactories.instrumenttrack = (
+			parent: superself.clipFactories.clipFactories_parent,
 			key: 'instrumenttrack',
 			libIdKey: 'InstrumentTrack',
 			label: { arg self; self.key.asString },
-			keylist: {
-				// TODO (done in TagSpecDef)
-				[]
+
+			tagSpec: { arg self;
+				TagSpecDef(\InstrumentTrack)
 			},
 
 			targetToLibId: { arg self, target;
@@ -665,7 +602,7 @@ ProtoDef(\GlobalLibrary, (
 					timeline: KitTimeline(scorekey, self.getTarget)
 				)
 			},
-		));
+		);
 
 		superself.clipFactories.instrumenttrackpart = ().putAll(superself.clipFactories_parent).putAll((
 			key: 'instrumenttrackpart',
@@ -848,6 +785,7 @@ ProtoDef(\GlobalLibrary, (
 		));
 
 		// instrument of InstrumentTrack, used to create new timelines
+		// maybe deprecated
 		superself.clipFactories.trackinstrument = ().putAll(superself.clipFactories_parent).putAll((
 			key: 'trackinstrument',
 			libIdKey: 'TrackInstrument',
@@ -1176,29 +1114,71 @@ TagSpecDef(\TrackListPart, {
 			nil
 		}
 	}).flatten.select(_.notNil)
-}).list;
+});
 
-TagSpecDef(\InstrumentTrackPart, {
+TagSpecDef(\InstrumentTrack, {
 	TagSpecDef(\TrackList).valueList.collect({ arg tracklist;
-		tracklist.children.select{|x|x.isEmpty.not}.collect { arg channel;
-			channel.children.select({|x|x.isEmpty.not}).collect({ arg part, partidx;
+		tracklist.existingChildren.collect { arg track;
+			track.trackKey -> track
+		}
+	}).flatten;
+});
+
+TagSpecDef(\TrackListPart, {
+	var tracklists = TagSpecDef(\TrackList).valueList;
+	tracklists.collect({ arg tracklist;
+		var sizes = tracklist.children.select{|x|x.isEmpty.not}.collect({ arg channel;
+			// for each channel, count the number of part
+			channel.children.select{|x|x.isEmpty.not}.size; 
+		});
+		var channelIdxWithMostParts = sizes.maxIndex;
+		// now the max number of part is the number of part of the tracklist
+		if(sizes.size > 0) {
+
+			(0..sizes[channelIdxWithMostParts]-1).collect({ arg idx;
 				// format: (libLabel -> libObj)
 				// type is added by TagSpecDef key
-				//("%.%.part%".format(tracklist.key, channel.label, part.index) -> part)
-				part.trackKey -> part
-			}).asArray;
+				var line = tracklist.linePlayerAt(idx);
+				//(("%.part%".format(tracklist.key, idx)) -> ( tracklist.linePlayerAt(idx) ));
+				line.trackKey -> line;
+			})
+		} {
+			nil
 		}
-	}).flatten(2);
-}).list;
+	}).flatten.select(_.notNil)
+});
 
 // maybe should rename to TrackInstrument_ClipTimeline
-TagSpecDef('TrackInstrument', [
+TagSpecDef('TrackInstrument', [ // maybe deprecated
 	\ClipTimelineTrack,
 	\KitTimelineTrack,
 	\NoteTimelineTrack,
 	\SampleTimelineTrack,
 	\ParamTimelineTrack,
 ]);
+
+///// new objects
+
+TagSpecDef(\ClipTimeline_newPlayer, [
+	'ClipTimeline' -> { arg name; ClipTimeline(name) },
+	'NoteTimeline' -> { arg name; NoteTimeline(name) },
+	'KitTimeline' -> { arg name; KitTimeline(name) },
+	'SampleTimeline' -> { arg name; SampleTimeline(name) },
+	'ParamTimeline' -> { arg name; ParamTimeline(name) },
+	'TrackList' -> { arg name; TrackDef(name, \CustomTrackList) },
+	'PlayerGrid' -> { arg name; TrackDef(name, \playergrid) },
+	//'TrackTimeline' -> { arg name; TrackTimeline(name) },
+	//'Pdef' -> { arg name; Pdef(name) },
+	'Pbindef' -> { arg name; Pbindef(name) },
+	'Ndef' -> { arg name; Ndef(name) },
+]);
+
+TagSpecDef(\MainProject_newObject, {
+	TagSpecDef(\ClipTimeline_newPlayer).list ++ [
+		\PatKitDef -> { arg name; PatKitDef(name) },
+		\TrackMixerDef -> { arg name; TrackMixerDef(name) },
+	]
+});
 
 
 //////////////////////////////////////
@@ -1253,7 +1233,7 @@ TagSpecDef(\GlobalLibraryCategory, [
 
 
 // FIXME: rename to GlobalLibrary.category.TrackInstrument
-TagSpecDef('GlobalLibrary.type.TrackInstrument', [
+TagSpecDef('GlobalLibrary.type.TrackInstrument', [ // maybe deprecated
 	\TrackInstrument,
 ]);
 
@@ -1262,7 +1242,7 @@ TagSpecDef('GlobalLibrary.type.SynthDef', [
 ]);
 
 
-TagSpecDef('GlobalLibrary.type.TrackInstrumentTarget', [
+TagSpecDef('GlobalLibrary.type.TrackInstrumentTarget', [ // maybe deprecated
 	\SynthDef,
 	\Pdef,
 	\Ndef,
@@ -1417,7 +1397,8 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 			def.changed(\category);
 	}).keyUpAction_({ arg me, key, modifiers, unicode, keycode;
 		//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
-		def.changed(\results);
+		//def.changed(\results);
+		updateItems.()
 	}).focus(true);
 
 	updateItems = {

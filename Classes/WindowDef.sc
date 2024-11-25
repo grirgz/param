@@ -18,6 +18,7 @@ WindowLayout {
 
 WindowDef {
 	classvar <>all;
+	classvar <>useWindowViewRecallQuark = true;
 	classvar <>tryModeEnabled = true; // debugging tool
 	var <>key;
 	var <source;
@@ -110,31 +111,40 @@ WindowDef {
 		window.front;
 	}
 
-	saveWindowProperties {
-
-		window.tryPerform(\autoRememberPosition, this.key); // WindowViewRecall support
-		[\alwaysOnTop].do { arg k;
-			windowProperties[k] = window.perform(k);
+	saveBounds {
+		//if(window.notNil and: { this.isFullScreen.notNil and: {this.isFullScreen.not }) {
+		if(window.notNil) {
+			//FIXME: full screen protection dont work: bounds are saved wide
+			windowProperties[\bounds] = window.bounds;
 		}
 	}
 
+	saveWindowProperties {
+		[\alwaysOnTop].do { arg k;
+			windowProperties[k] = window.perform(k);
+		};
+		//this.saveWindowPropertiesOnDisk;
+	}
+
 	saveWindowPropertiesOnDisk {
-		// TODO
-		
+		Archive.global.put(\WindowDef, key, windowProperties);
 	}
 
 	loadWindowProperties {
-		[\alwaysOnTop, \bounds].do { arg k;
-			if(k == \bounds) {
-				// in 3.11.1, setting nil to bounds put the window in bottom left corner, almost not visible
-				if( windowProperties[k].notNil ) {
+        if(useWindowViewRecallQuark) {
+			window.tryPerform(\autoRememberPosition, this.key); // WindowViewRecall support
+		} {
+			[\alwaysOnTop, \bounds].do { arg k;
+				if(k == \bounds) {
+					// in 3.11.1, setting nil to bounds put the window in bottom left corner, almost not visible
+					if( windowProperties[k].notNil ) {
+						window.perform(k.asSetter, windowProperties[k]);
+					};
+				} {
 					window.perform(k.asSetter, windowProperties[k]);
-				};
-			} {
-				window.perform(k.asSetter, windowProperties[k]);
-			}
+				}
+			};
 		};
-		window.tryPerform(\autoRememberPosition, this.key); // WindowViewRecall support
 	}
 	
 	isFullScreen {
@@ -153,14 +163,6 @@ WindowDef {
 			^val;
 		} {
 			^false
-		}
-	}
-
-	saveBounds {
-		//if(window.notNil and: { this.isFullScreen.notNil and: {this.isFullScreen.not }) {
-		if(window.notNil) {
-			//FIXME: full screen protection dont work: bounds are saved wide
-			windowProperties[\bounds] = window.bounds;
 		}
 	}
 
@@ -263,17 +265,20 @@ WindowDef {
 		};
 		if(window.isNil or: { window.isClosed }) {
 			window = Window.new(border:border);
+			// theses can overwrite WindowViewRecall hooks, be sure to define them before or use addFunc
+			if(useWindowViewRecallQuark.not) {
+				window.onClose = window.onClose.addFunc({
+					this.saveWindowProperties;
+				});
+				window.view.onResize = {
+					this.saveBounds;
+				};
+				window.view.onMove = {
+					this.saveBounds;
+				};
+			};
 			this.loadWindowProperties;
 			this.updateView(*args);
-			window.onClose = window.onClose.addFunc({
-				this.saveWindowProperties;
-			});
-			window.view.onResize = {
-				this.saveBounds;
-			};
-			window.view.onMove = {
-				this.saveBounds;
-			};
 		};
 		//window.alwaysOnTop = true;
 	}

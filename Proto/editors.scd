@@ -108,6 +108,16 @@ WindowDef(\NdefEditor, { arg me, key=\default;
 			PlayerWrapper(target).asView,
 			EventClass.presetSelectorView.(pg),
 			Param(Message(target), \quant, ParamNonFloatSpec()).asTextField.maxWidth_(80),
+			BasicButton.new.string_("...").maxWidth_(20).action_({
+				Menu(
+					MenuAction("Refresh GUI", {
+						me.front(key)
+					}),
+					MenuAction("Send Ndef", {
+						target.send;
+					}),
+				).front
+			})
 		),
 		ParamGroupLayout.two_panes(target.asParamGroup)
 	);
@@ -122,6 +132,34 @@ WindowDef(\ParamGenericContextMenu, { arg def, param;
 });
 
 WindowDef(\ParamGenericContextMenuEntries, { arg def, param;
+	var newmodmenu;
+	newmodmenu = Menu(*
+		TagSpecDef(\ModulatorTemplate).list.collect { arg asso, idx;
+			MenuAction(asso.key, {
+				var combi, nextidx;
+				var child = TrackDef(\ModulatorRack).addModulator(asso.value);
+				var pa = param;
+				if(param.property.value == \source) {
+					pa = param.parent;
+				};
+				if(param.hasCombinator.not) {
+					ParamCombinator(pa).setBusMode(true);
+				};
+				combi = param.getCombinator;
+				nextidx = combi.nextFreeInput;
+				if(nextidx.notNil) {
+					combi.inputParam.at(nextidx).setBus(PlayerWrapper(child).outBus.asMap);
+					combi.inputObjects[nextidx] = child;
+					//pa.at(\source).set(combi);
+					child.play;
+					param.target.changed(\keyForm, param); // for PbindefEditor
+				} {
+					Log(\Param).error("No free input for param % combi %".format(param, combi));
+				};
+			})
+		}
+	).title_("New modulator");
+
 	[
 		MenuAction(param.fullLabel).enabled_(false),
 		MenuAction.separator,
@@ -249,35 +287,37 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param;
 								};
 							})
 						};
-					).title_("Modulate by bus")
+					).title_("Modulate by bus"),
+					newmodmenu,
 				];
 			).title_("Add modulator")
 		} {
-			MenuAction("Add modulator", {
-				var combi;
-				var pa = param;
-				if(param.property.value == \source) {
-					pa = param.parent;
-				};
-				combi = ParamCombinator(pa).setBusMode(true);
-				if(TrackDef(\ModulatorRack).parent.notNil) { // if ModulatorRack is loaded
-					// automatically create and connect a modulator
-					var mod;
+			newmodmenu
+			//MenuAction("Add modulator", {
+				//var combi;
+				//var pa = param;
+				//if(param.property.value == \source) {
+					//pa = param.parent;
+				//};
+				//combi = ParamCombinator(pa).setBusMode(true);
+				//if(TrackDef(\ModulatorRack).parent.notNil) { // if ModulatorRack is loaded
+					//// automatically create and connect a modulator
+					//var mod;
 
-					if( TrackDef(\ModulatorRack).existingChildren.size == 0) {
-						TrackDef(\ModulatorRack).addModulator;
-					};
-					mod = TrackDef(\ModulatorRack).existingChildren.first;
-					combi.inputParam.at(0).setBus(mod.outBus.asMap);
-					combi.inputObjects[0] = mod;
-					//pa.at(\source).set(combi);
-					mod.play;
-					param.target.changed(\keyForm, param); // for PbindefEditor
-				} {
-					WindowDef(\ParamCombinatorModulatorEditor).front(pa)
+					//if( TrackDef(\ModulatorRack).existingChildren.size == 0) {
+						//TrackDef(\ModulatorRack).addModulator;
+					//};
+					//mod = TrackDef(\ModulatorRack).existingChildren.first;
+					//combi.inputParam.at(0).setBus(mod.outBus.asMap);
+					//combi.inputObjects[0] = mod;
+					////pa.at(\source).set(combi);
+					//mod.play;
+					//param.target.changed(\keyForm, param); // for PbindefEditor
+				//} {
+					//WindowDef(\ParamCombinatorModulatorEditor).front(pa)
 
-				};
-			})
+				//};
+			//})
 		},
 		if(param.hasCombinator) {
 			Menu(

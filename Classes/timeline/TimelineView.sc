@@ -13,6 +13,7 @@ TimelineView : SCViewHolder {
 	var >clock;
 	var <viewport; // zero is topLeft, all is normalised between 0 and 1
 	var <areasize;
+	var <>preCreateNodeHook;
 	var <>createNodeHook;
 	var <>deleteNodeHook;
 	var <>paraNodes, connections; 
@@ -318,6 +319,56 @@ TimelineView : SCViewHolder {
 		}
 	}
 	///////////////////////////////////////////////////////// input events handling
+	
+	createNode { arg gpos;
+		//var nodesize = Point(1,1);
+		var newpos;
+		var newevent;
+
+		//debug("---------mouseDownAction: create node mode");
+
+		//nodesize = this.gridPointToNormPoint(nodesize);
+		if(gpos.isNil) {
+			gpos = lastGridPos;
+		};
+
+		if(enableQuant) {
+			newpos = gpos.trunc(quant.value); 
+		} {
+			newpos = gpos; 
+		};
+
+		//"mouseDownAction: 1".debug;
+		preCreateNodeHook.(newpos); // to call addHistorySnapshot
+		newevent = this.eventFactory(newpos);
+		if(newevent.notNil) {
+
+			Log(\Param).debug("new event!!!!!!!!! %", newevent);
+			chosennode = this.addEvent(newevent);
+			//newevent.debug("mouseDownAction: 2");
+			Log(\Param).debug("new event after add!!!!!!!!! %", newevent);
+
+			createNodeDeferedAction = {
+				//debug("mouseDownAction: 3");
+				model.addEvent(newevent);
+				Log(\Param).debug("new event after add to model!!!!!!!!! %", newevent);
+				//debug("mouseDownAction: 4");
+				model.reorder; // reorder lose node selection
+				//debug("mouseDownAction: 5");
+				//model.changed(\refresh); // commented because refresh is already called in mouseUp
+				//debug("mouseDownAction: 6");
+				chosennode = nil; // chosennode was set to know which node to resize with mouseMove, but is not really selected
+				createNodeHook.(newevent);
+			};
+
+			//[chosennode.posyKey, chosennode.model, chosennode.origin].debug("posy, model, origin");
+			//[chosennode.width].debug("pppp");
+			refPoint = newpos; // var used here for reference in trackfunc
+			refWidth = chosennode.width;
+		}
+
+		//chosennode.debug("mouseDownAction: chosennode!");
+	}
 
 	mouseDownActionBase {|me, px, py, mod, buttonNumber, clickCount|
 		// select clicked node, or unselect all node is none is clicked, add connection if c is pushed
@@ -351,52 +402,12 @@ TimelineView : SCViewHolder {
 		case
 		{ mod.isCtrl and: { buttonNumber == 1 } } {
 			this.setEndPosition(gpos.x.trunc(quant.value.x));
+			^false;
 		}
 		{ mod.isCtrl and: { buttonNumber == 0 } } {
 			// create node mode
 
-			//var nodesize = Point(1,1);
-			var newpos;
-			var newevent;
-
-			//debug("---------mouseDownAction: create node mode");
-
-			//nodesize = this.gridPointToNormPoint(nodesize);
-
-			if(enableQuant) {
-				newpos = gpos.trunc(quant.value); 
-			} {
-				newpos = gpos; 
-			};
-
-			//"mouseDownAction: 1".debug;
-			newevent = this.eventFactory(newpos);
-			if(newevent.notNil) {
-
-				Log(\Param).debug("new event!!!!!!!!! %", newevent);
-				chosennode = this.addEvent(newevent);
-				//newevent.debug("mouseDownAction: 2");
-				Log(\Param).debug("new event after add!!!!!!!!! %", newevent);
-
-				createNodeDeferedAction = {
-					//debug("mouseDownAction: 3");
-					model.addEvent(newevent);
-					Log(\Param).debug("new event after add to model!!!!!!!!! %", newevent);
-					//debug("mouseDownAction: 4");
-					model.reorder; // reorder lose node selection
-					//debug("mouseDownAction: 5");
-					//model.changed(\refresh); // commented because refresh is already called in mouseUp
-					//debug("mouseDownAction: 6");
-					chosennode = nil; // chosennode was set to know which node to resize with mouseMove, but is not really selected
-				};
-
-				//[chosennode.posyKey, chosennode.model, chosennode.origin].debug("posy, model, origin");
-				//[chosennode.width].debug("pppp");
-				refPoint = newpos; // var used here for reference in trackfunc
-				refWidth = chosennode.width;
-			}
-
-			//chosennode.debug("mouseDownAction: chosennode!");
+			this.createNode(gpos);
 		}
 		{ mod.isShift and: { buttonNumber == 0 } } {
 			if(chosennode !=nil) { // a node is selected
@@ -867,7 +878,13 @@ TimelineView : SCViewHolder {
 
 	setEndPosition { arg time;
 		model.setEndPosition(time);
-		model.print;
+		//model.print;
+		this.refreshEventList;
+	}
+
+	setStartPosition { arg time;
+		model.setStartPosition(time);
+		//model.print;
 		this.refreshEventList;
 	}
 
@@ -1595,7 +1612,7 @@ TimelineView : SCViewHolder {
 		nodeCount = nodeCount + 1;
 		paraNodes.add(node);
 		this.initNode(node);
-		createNodeHook.(node, nodeCount);
+		//createNodeHook.(node, nodeCount); // moved this to real event creation, this is graphic creation
 		if(refreshEnabled) { this.refresh };
 		^node;
 	}
