@@ -2,6 +2,7 @@
 PlayerEvent : Event {
 	classvar <>myevent; // for debug: replace without rebooting
 	classvar <>defaultParent;
+    classvar <>playFunction;
 
 
 	*initClass {
@@ -36,9 +37,8 @@ PlayerEvent : Event {
 			}.inEnvir);
 			//~miam = (haha: "bla" );
 		};
+        playFunction = playfun;
 
-		Event.addEventType(\player, playfun);
-		Event.addEventType(\pattern, playfun); // just for compat
 
 		// make start and stop event silent
 		// FIXME: would be better to have only one type of event instead of polluting namespace
@@ -62,6 +62,8 @@ PlayerEvent : Event {
 				}
 			}
 		);
+
+		Event.addEventType(\player, playfun, defaultParent);
 	}
 
 	*new { arg ev;
@@ -126,6 +128,8 @@ PatternEvent : Event {
 	classvar <>defaultParent;
 
 	*initClass {
+		Class.initClassTree(PlayerEvent);
+
 		defaultParent = (
 			type: \pattern,
 			parent: Event.default,
@@ -196,6 +200,7 @@ PatternEvent : Event {
 			},
 		);
 
+		Event.addEventType(\pattern, PlayerEvent.playFunction, defaultParent);
 	}
 
 	*new { arg ev;
