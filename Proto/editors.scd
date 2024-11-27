@@ -1,23 +1,23 @@
+////// Main editors
 
 (
-	WindowDef(\GenericEditor, { arg me, model;
-		case(
-			{ model.isKindOf(Ndef) }, {
-				WindowDef(\NdefEditor).asView(model);
-			},
-			{ model.isKindOf(Pdef) }, {
-				WindowDef(\PdefEditor).asView(model);
-			}, 
-			{ model.isKindOf(EventPatternProxy) }, {
-				WindowDef(\PdefEditor).asView(model);
-			}, {
-				BasicButton.new("Edit").action_({
-					model.edit
-				})
-			}
-		)
-
-	});
+WindowDef(\GenericEditor, { arg me, model;
+	case(
+		{ model.isKindOf(Ndef) }, {
+			WindowDef(\NdefEditor).asView(model);
+		},
+		{ model.isKindOf(Pdef) }, {
+			WindowDef(\PdefEditor).asView(model);
+		}, 
+		{ model.isKindOf(EventPatternProxy) }, {
+			WindowDef(\PdefEditor).asView(model);
+		}, {
+			BasicButton.new("Edit").action_({
+				model.edit
+			})
+		}
+	)
+});
 );
 
 (
@@ -124,6 +124,7 @@ WindowDef(\NdefEditor, { arg me, key=\default;
 });
 );
 
+////// Param editors
 (
 WindowDef(\ParamGenericContextMenu, { arg def, param;
 	Menu(*
@@ -419,7 +420,6 @@ WindowDef(\ParamEditor, { arg def, param;
 		WindowDef(\ParamSpecEditor).embedView(def, param),
 		nil
 	)
-
 });
 
 WindowDef(\ParamEditorSimple, { arg def, param;
@@ -470,8 +470,9 @@ WindowDef(\ParamEditorSimple, { arg def, param;
 		),
 		nil
 	)
-
 });
+
+////// Param Spec editors
 
 WindowDef(\ParamSpecEditor, { arg def, param;
 	var setspec;
@@ -528,9 +529,14 @@ WindowDef(\ParamSpecEditor, { arg def, param;
 						\exp -> ExponentialWarp()
 					]
 				))),
-				BasicButton.new.string_("Save in Spec library").action_({
-					Spec.add(param.propertyRoot, spec.copy);
-				}),
+				HLayout (
+					BasicButton.new.string_("Save spec in object Halo").action_({
+						param.target.addSpec(param.propertyRoot, spec.copy)
+					}),
+					BasicButton.new.string_("Save in Spec library").action_({
+						Spec.add(param.propertyRoot, spec.copy);
+					}),
+				),
 				nil
 			)
 		}, {
@@ -539,10 +545,11 @@ WindowDef(\ParamSpecEditor, { arg def, param;
 			})
 		}
 	);
-	
 });
 );
 
+
+////// ParamCombinator
 (
 TagSpecDef(\ParamCombinatorInput_asMap, { 
 	["-" -> 0] ++ TagSpecDef(\ParamCombinatorInput).list.collect({ arg x; x.key -> x.value.asMap }).sort({ arg a, b; a.key < b.key })
@@ -701,10 +708,10 @@ WindowDef(\ParamCombinatorModulatorEditor, { arg def, param;
 			def.front(param);
 		})
 	}
-	
 });
 );
 
+////// Server
 (
 WindowDef(\ServerVolumeEditor, { arg def, server;
 	var slider;
@@ -728,10 +735,10 @@ WindowDef(\ServerVolumeEditor, { arg def, server;
 		Param(server.volume, \volume, \db).asTextField(4),
 		stack,
 	)
-	
 });
 );
 
+////// Debug
 
 (
 WindowDef(\ParamDebugView, { arg def, param;
@@ -826,7 +833,5 @@ WindowDef(\ParamDebugView, { arg def, param;
 			lay,
 		)
 	};
-
-	
 });
 );

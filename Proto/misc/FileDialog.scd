@@ -210,7 +210,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		node.splitPath.do({ arg p, idx;
 			//p.name.debug("update_pathview p");
 			pathview.layout.add(
-				BasicButton.new.string_(p.label).action_({
+				BasicButton.new.minSize_(10).string_(p.label).action_({
 					changepath.(fileview, node.splitPath[idx].fullPath)
 
 				})
@@ -220,11 +220,17 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	};
 
 	quicklist.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+		var item;
 		//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 		
 		//[view.value, view.items].debug("double click select: ");
 		if(clickCount == 2 and: {view.items.size > 0}) {
-			changepath.(fileview, view.items[view.value])
+			item = view.items[view.value];
+			if(item == "Recent files") {
+				proto.show_recent_files
+			} {
+				changepath.(fileview, item)
+			};
 		}
 	});
 
@@ -234,8 +240,15 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	proto.save_quicklist = { arg self;
 		File.use(self.config_file, "w", { arg file;
 			file.write(
-				"ProtoDef(\\filemanager_player).quicklist = [\n%];\n".format(
+				"ProtoDef(%).quicklist = List[\n%];\n".format(
+					self.key.asCompileString,
 					self.quicklist.collect(_.asCompileString).join(",\n")
+				)
+			);
+			file.write(
+				"ProtoDef(%).recent_files_list = List[\n%];\n".format(
+					self.key.asCompileString,
+					self.recent_files_list.collect(_.asCompileString).join(",\n")
 				)
 			)
 		});
@@ -280,6 +293,36 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		
 	};
 
+	proto.show_recent_files = { arg self;
+		var newnode;
+		//[path, nodeClass.keys].debug("changepath: ");
+		proto.disable_play = true;
+		fileview.items = proto.recent_files_list.as(Array);
+		//view.items.debug("changepath items");
+		{
+			// hack because selectionAction is triggered even without valueAction_
+			// and with a delay
+			proto.disable_play = false;
+		}.defer(1/4);
+		//debug("end disable play");
+
+		//proto.cwd = node.fullPath;
+		//update_pathview.()
+	};
+
+	proto.recent_files_list = List[];
+
+	proto.add_to_recent_files = { arg self, cwd, name;
+		var filename;
+		if(name.notNil) {
+			filename = cwd +/+ name
+		} {
+			filename = cwd;
+		};
+		proto.recent_files_list.add(filename);
+		proto.save_quicklist;
+	};
+
 	//proto.play_file = { arg self, file, node;
 		//self.current_file = file;
 		//if(self.disable_play != true) {
@@ -307,8 +350,10 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 
 	proto.init = { arg self;
 		//"wtf".debug;
+		proto.config_file = Platform.userConfigDir +/+ "filemanager_quicklist.sc";
 		proto.load_quicklist;
 		proto.quicklist = proto.quicklist ? [
+			"Recent files",
 			path, 
 			"/", 
 			"~", 
@@ -320,9 +365,8 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 			"~/code/sc/seco/vlive/repeat/",
 			"~/code/sc/seco/vlive/repeat/capsule/",
 		].select(_.notNil);
-		proto.config_file = Platform.userConfigDir +/+ "filemanager_quicklist.sc";
 		proto.update_quicklistview;
-		self.player = self.player ? EventPatternProxy.new;
+		self.player = self.player ?? { Pdef(\FileDialogPreview) };
 		self.player.quant = 0;
 		proto.playerwrapper = PlayerWrapper(proto.player);
 		proto.auto_mode = proto.auto_mode ?? 0;
@@ -354,15 +398,18 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 					var fpath = proto.cwd+/+name_field.value;
 					if(File.exists(fpath)) { // FIXME: should use .exists from node proto to not break the API
 						WindowDef(\ConfirmDialog).front("File already exists, are you sure you want to overwrite ?\n\n%".format(fpath), {
+							proto.add_to_recent_files(proto.cwd, name_field.value);
 							callback.(proto.cwd, name_field.value);
 							def.closeWindow;
 						})
 					} {
+						proto.add_to_recent_files(proto.cwd, name_field.value);
 						callback.(proto.cwd, name_field.value);
 						def.closeWindow;
 					};
 				} {
 					proto.check_name_field {
+						proto.add_to_recent_files(proto.current_file);
 						callback.(proto.current_file);
 						def.closeWindow;
 					};
