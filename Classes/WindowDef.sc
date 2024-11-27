@@ -119,10 +119,19 @@ WindowDef {
 		}
 	}
 
-	saveWindowProperties {
-		[\alwaysOnTop].do { arg k;
-			windowProperties[k] = window.perform(k);
+	saveAlwaysOnTop {
+		// alwaysOnTop doesn't work in onClose code, it is always false
+		// setting alwaysOnTop with window manager is not reflected in code
+		if(window.notNil) {
+			windowProperties[\alwaysOnTop] = window.alwaysOnTop;
 		};
+		windowProperties.debug("saveAlwaysOnTop");
+	}
+
+	saveWindowProperties {
+		this.saveAlwaysOnTop;
+		this.saveBounds;
+		windowProperties.debug("saveWindowProperties");
 		//this.saveWindowPropertiesOnDisk;
 	}
 
@@ -131,8 +140,11 @@ WindowDef {
 	}
 
 	loadWindowProperties {
+		windowProperties.debug("loadWindowProperties");
+		~win = window; // debug
         if(useWindowViewRecallQuark) {
 			window.tryPerform(\autoRememberPosition, this.key); // WindowViewRecall support
+            window.alwaysOnTop = windowProperties[\alwaysOnTop];
 		} {
 			[\alwaysOnTop, \bounds].do { arg k;
 				if(k == \bounds) {
@@ -266,15 +278,22 @@ WindowDef {
 		if(window.isNil or: { window.isClosed }) {
 			window = Window.new(border:border);
 			// theses can overwrite WindowViewRecall hooks, be sure to define them before or use addFunc
-			if(useWindowViewRecallQuark.not) {
-				window.onClose = window.onClose.addFunc({
-					this.saveWindowProperties;
-				});
-				window.view.onResize = {
-					this.saveBounds;
+			if(useWindowViewRecallQuark) {
+				window.view.onResize = window.view.onResize.addFunc{
+					this.saveAlwaysOnTop;
 				};
-				window.view.onMove = {
+				window.view.onMove = window.view.onMove.addFunc{
+					this.saveAlwaysOnTop;
+				};
+			} {
+				window.onClose = window.onClose.addFunc({
 					this.saveBounds;
+				});
+				window.view.onResize = window.view.onResize.addFunc{
+					this.saveWindowProperties;
+				};
+				window.view.onMove = window.view.onMove.addFunc{
+					this.saveWindowProperties;
 				};
 			};
 			this.loadWindowProperties;
