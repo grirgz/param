@@ -130,7 +130,7 @@ BufDef {
 	*getBufferForPath { arg path, channels, action;
 		this.watchServer(this.server);
 		path = path.asSymbol;
-		this.bufferChannelCache[path] = this.bufferChannelCache[path] ? Dictionary.new; // channels can be an array so no Identity
+		this.bufferChannelCache[path] = this.bufferChannelCache[path] ?? { Dictionary.new }; // channels can be an array so no IdentityDictionary
 		if(this.bufferChannelCache[path][\numChannels].isNil) {
 			var numchan = SoundFile.use(path.asString, { arg f;
 				f.numChannels;
@@ -142,7 +142,7 @@ BufDef {
 			this.bufferChannelCache[path][\wantedChannels] = channels ? this.bufferChannelCache[path][\numChannels];
 		};
 		if(channels.isNil) {
-			channels = this.bufferChannelCache[path][\wantedChannels]
+			channels = this.bufferChannelCache[path][\numChannels]
 		};
 		//channels.debug("channels");
 		if(this.bufferChannelCache[path][channels].isNil) {
