@@ -474,11 +474,9 @@ WindowDef(\ParamEditorSimple, { arg def, param;
 
 ////// Param Spec editors
 
-WindowDef(\ParamSpecEditor, { arg def, param;
+WindowDef(\ParamControlSpecEditor, { arg def, spec;
 	var setspec;
 	var speclist;
-	var spec = param.spec.copy; // copy to avoid modifying standard specs
-	param.spec = spec;
 	setspec = { arg key;
 		var newspec;
 		newspec = Spec.specs[key];
@@ -498,37 +496,47 @@ WindowDef(\ParamSpecEditor, { arg def, param;
 		Log(\Param).debug("done setting spec %", newspec);
 	};
 	speclist = Spec.specs.select({ arg spec; spec.isKindOf(ControlSpec) }).keys.as(Array).sort;
+	VLayout(
+		HLayout (
+			StaticText.new.string_("Load from spec: "),
+			PopUpMenu.new.items_(speclist).action_({ arg view;
+				setspec.(view.item.asSymbol);
+			}).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				if(buttonNumber == 1) {
+					WindowDef(\ListSelectDialog).front(speclist, { arg selected, asso;
+						[view, selected, asso].debug("ListSelectDialog");
+						defer {
+							setspec.(asso.value);
+						};
+						//view.valueAction = 1;
+					}, view.item)
+				};
+			})
+		),
+		ParamGroupLayout.formEntry( Param(Message(spec), \minval, \widefreq)),
+		ParamGroupLayout.formEntry( Param(Message(spec), \maxval, \widefreq)),
+		ParamGroupLayout.formEntry( Param(Message(spec), \default, \widefreq)),
+		ParamGroupLayout.formEntry( Param(Message(spec), \step, \widefreq)),
+		ParamGroupLayout.formEntry( Param(Message(spec), \warp, TagSpec(
+			[
+				\lin -> LinearWarp(),
+				\exp -> ExponentialWarp()
+			]
+		))),
+	)
+});
+
+WindowDef(\ParamSpecEditor, { arg def, param;
+	var setspec;
+	var speclist;
+	var spec = param.spec.copy; // copy to avoid modifying standard specs
+	param.spec = spec;
 	case(
 		{ spec.isKindOf(ControlSpec) }, {
 			VLayout (
 				ParamGroupLayout.formEntry( param),
-				HLayout (
-					StaticText.new.string_("Load from spec: "),
-					~mp = PopUpMenu.new.items_(speclist).action_({ arg view;
-						setspec.(view.item.asSymbol);
-					}).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-						//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-						if(buttonNumber == 1) {
-							WindowDef(\ListSelectDialog).front(speclist, { arg selected, asso;
-								[view, selected, asso].debug("ListSelectDialog");
-								defer {
-									setspec.(asso.value);
-								};
-								//view.valueAction = 1;
-							}, view.item)
-						};
-					})
-				),
-				ParamGroupLayout.formEntry( Param(Message(spec), \minval, \widefreq)),
-				ParamGroupLayout.formEntry( Param(Message(spec), \maxval, \widefreq)),
-				ParamGroupLayout.formEntry( Param(Message(spec), \default, \widefreq)),
-				ParamGroupLayout.formEntry( Param(Message(spec), \step, \widefreq)),
-				ParamGroupLayout.formEntry( Param(Message(spec), \warp, TagSpec(
-					[
-						\lin -> LinearWarp(),
-						\exp -> ExponentialWarp()
-					]
-				))),
+				WindowDef(\ParamControlSpecEditor).asView(spec),
 				HLayout (
 					BasicButton.new.string_("Save spec in object Halo").action_({
 						param.target.addSpec(param.propertyRoot, spec.copy)
@@ -539,6 +547,62 @@ WindowDef(\ParamSpecEditor, { arg def, param;
 				),
 				nil
 			)
+		}, { spec.isKindOf(ParamArraySpec) }, {
+			VLayout (
+				ParamGroupLayout.formEntry( param),
+				VLayout (
+					StaticText.new.string_("Levels:").align_(\center),
+					WindowDef(\ParamControlSpecEditor).asView(spec.dynamicSpec),
+				),
+				HLayout (
+					BasicButton.new.string_("Set spec to all channels").action_({
+						spec.array = spec.dynamicSpec;
+					}),
+					BasicButton.new.string_("Change spec to ParamEnvSpec").action_({
+						param.spec = ParamEnvSpec(spec.dynamicSpec);
+						def.front(param);
+					}),
+					BasicButton.new.string_("Save spec in object Halo").action_({
+						param.target.addSpec(param.propertyRoot, spec.copy)
+					}),
+					BasicButton.new.string_("Save in Spec library").action_({
+						Spec.add(param.propertyRoot, spec.copy);
+					}),
+				),
+				nil
+			)
+		}, { spec.isKindOf(ParamEnvSpec) }, {
+			VLayout (
+				ParamGroupLayout.formEntry( param),
+				HLayout (
+					VLayout (
+						StaticText.new.string_("Levels:").align_(\center),
+						WindowDef(\ParamControlSpecEditor).asView(spec.levels.first),
+					),
+					VLayout (
+						StaticText.new.string_("Times:").align_(\center),
+						WindowDef(\ParamControlSpecEditor).asView(spec.times.first),
+					)
+				),
+				HLayout (
+					BasicButton.new.string_("Set spec to all channels").action_({
+						spec.levels = spec.levels.first;
+						spec.times = spec.times.first;
+					}),
+					BasicButton.new.string_("Change spec to ParamArraySpec").action_({
+						param.spec = ParamArraySpec(spec.levels.first);
+						def.front(param);
+					}),
+					BasicButton.new.string_("Save spec in object Halo").action_({
+						param.target.addSpec(param.propertyRoot, spec.copy)
+					}),
+					BasicButton.new.string_("Save in Spec library").action_({
+						Spec.add(param.propertyRoot, spec.copy);
+					}),
+				),
+				nil
+			)
+
 		}, {
 			TextField.new.string_(spec.asCompileString).action_({ arg view;
 				param.spec = view.string.interpret;

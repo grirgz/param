@@ -22,53 +22,112 @@ ParamBaseSpec : Spec {
 
 
 ParamArraySpec : ParamBaseSpec {
-	var <array, <default;
-	var <>size, <>isMonoSpec;
-	var <>isDynamic;
+	var array, default;
+	var size, <>isMonoSpec;
+	var isDynamic;
 
 	*new { arg array, default=nil;
-		var size = array.size;
-		var isMonoSpec;
-		var isDynamic = false;
-		if(array.isSequenceableCollection.not) {
-			isDynamic = true;
-			array = [array.asSpec];
-		};
-		array = array.collect(_.asSpec);
+		var inst;
+		inst = super.new;
+		inst.array = array;
+		inst.default = default;
+		^inst;
+	}
 
-		array.do({ arg sp;
-			if(sp.isNil) {
-				Error("ParamArraySpec: spec is nil or not in Spec library: "++array.asCompileString).throw
-			}
-		});
-
-		if(
-			array.any { arg val;
-				val != array[0]
-			};
-		) {
-			isMonoSpec = false
+	default {
+		if(this.isDynamic) {
+			^[default]
 		} {
-			isMonoSpec = true
-		};
+			^default;
+		}
 
-		if(default.isNil) {
-			if(isMonoSpec) {
-				default = array[0].default ! size;
+	}
+
+	size {
+		if(this.isDynamic) {
+			^size
+		} {
+			^array.size;
+		};
+	}
+	
+	size_ { arg val;
+		if(this.isDynamic) {
+			size = val;
+		} {
+			this.array = this.array.extend(val)
+		};
+	}
+
+	default_ { arg val;
+		if(val.isNil) {
+			if(this.isDynamic) {
+				default = array.default;
 			} {
 				default = array.collect(_.default);
 			}
+		} {
+			default = val;
 		};
 
-		if(default.size != array.size and: { isDynamic.not }) {
-			"Warning: default value size does not match the spec array size".postln;
-		};
-
-		^super.newCopyArgs(array, default, size, isMonoSpec, isDynamic);
+		//if(default.size != array.size and: { isDynamic.not }) {
+			//"Warning: default value size does not match the spec array size".postln;
+		//};
+		
 	}
 
+	dynamicSpec {
+		if(this.isDynamic) {
+			^array
+		} {
+			^array[0]
+		};
+	}
+
+    array {
+		if(this.isDynamic) {
+			^[array]
+		} {
+			^array;
+		}
+    }
+    
+    isDynamic {
+		^array.isSequenceableCollection.not;
+    }
+
+    array_ { arg val;
+		val.debug("array_ val");
+		if(val.isSequenceableCollection.not) {
+			if(val.isNil) {
+				^Error("ParamArraySpec: spec is nil or not in Spec library: "++array.asCompileString).throw
+			} {
+				array = val.asSpec;
+				size = 1;
+			};
+			isMonoSpec = true;
+		} {
+			val.do({ arg sp;
+				if(sp.isNil) {
+					^Error("ParamArraySpec: spec is nil or not in Spec library: "++array.asCompileString).throw
+				}
+			});
+			array = val.collect(_.asSpec);
+			size = array.size; // not really used when not dynamic
+			if(
+				array.any { arg val;
+					val != array[0]
+				};
+			) {
+				isMonoSpec = false
+			} {
+				isMonoSpec = true
+			};
+		};
+    }
+
 	numChannels {
-		^size
+		^this.size
 	}
 
 	storeArgs {
@@ -76,7 +135,7 @@ ParamArraySpec : ParamBaseSpec {
 	}
 
 	at { arg idx;
-		^array.wrapAt(idx);
+		^this.array.wrapAt(idx);
 	}
 
 	map { arg val;
@@ -121,10 +180,10 @@ ParamArraySpec : ParamBaseSpec {
 	}
 
 	step {
-		^array.first.step
+		^this.dynamicSpec.step
 	}
 	range {
-		^array.first.range
+		^this.dynamicSpec.range
 	}
 }
 
@@ -204,6 +263,24 @@ ParamEnvSpec : ParamBaseSpec {
 		};
 
 		^super.newCopyArgs(levels, times, curves, default, size, isMonoSpec, isDynamic)
+	}
+
+    levels_ { arg val;
+		if(val.isSequenceableCollection.not) {
+			isDynamic = true;
+			levels = val.asSpec ! 2;
+		};
+		levels = levels.collect(_.asSpec);
+		size = levels.size;
+    }
+
+	times_ { arg val;
+
+		if(times.isSequenceableCollection.not) {
+			times = times.asSpec ! levels.size;
+		};
+		times = times.asArray.wrapExtend(size - 1);
+		times = times.collect(_.asSpec);
 	}
 
 	storeArgs {
