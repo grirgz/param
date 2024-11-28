@@ -125,13 +125,13 @@ WindowDef {
 		if(window.notNil) {
 			windowProperties[\alwaysOnTop] = window.alwaysOnTop;
 		};
-		windowProperties.debug("saveAlwaysOnTop");
+		//windowProperties.debug("saveAlwaysOnTop");
 	}
 
 	saveWindowProperties {
 		this.saveAlwaysOnTop;
 		this.saveBounds;
-		windowProperties.debug("saveWindowProperties");
+		//windowProperties.debug("saveWindowProperties");
 		//this.saveWindowPropertiesOnDisk;
 	}
 
@@ -140,8 +140,8 @@ WindowDef {
 	}
 
 	loadWindowProperties {
-		windowProperties.debug("loadWindowProperties");
-		~win = window; // debug
+		//windowProperties.debug("loadWindowProperties");
+		//~win = window; // debug
         if(useWindowViewRecallQuark) {
 			window.tryPerform(\autoRememberPosition, this.key); // WindowViewRecall support
             window.alwaysOnTop = windowProperties[\alwaysOnTop];
