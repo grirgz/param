@@ -18,6 +18,9 @@ ParamViewToolBox {
 	classvar <>color_userStoppedRecording;
 	classvar <>color_stoppedRecording;
 
+	classvar <>color_TextField_enabled;
+	classvar <>color_TextField_disabled;
+
 	classvar <>clipboard;
 
 	*initClass {
@@ -38,6 +41,8 @@ ParamViewToolBox {
 		color_userStoppedRecording = Color.red.alpha_(0.2);
 		color_stoppedRecording = Color.white;
 
+        color_TextField_enabled = Color.black;
+        color_TextField_disabled = Color.grey(0.5);
 		//color_ligth = Color.newHex("5CCCCC");
 		//color_dark = Color.newHex("009999");
 

@@ -230,6 +230,53 @@ ParamGroup : List {
 		ret = "ParamGroup([\n%\n]).presets_(IdentityDictionary[\n%\n]);\n".format(params, presets);
 		^ret;
 	}
+
+	*getPdefCompileString { arg pdef;
+		// use Pdef.envir
+		if(pdef.envir.notNil and: { pdef.envir.keys.size > 0 }) {
+			var pairs = pdef.envir.keys.as(Array).collect { arg key, idx;
+				"\t%, %\n".format(key.asCompileString, pdef.envir[key].asCompileString);
+			};
+			^"%.set(\n%);\n".format(pdef.asCompileString, pairs.join(", "));
+		} {
+			^""
+		}
+	}
+
+    *getPbindefCompileString { arg pbindef, exkeys;
+		// use Pbindef source and Pdef.envir
+		var params;
+		var setpairs;
+		exkeys = exkeys ?? { [] };
+
+		params = pbindef.source.pairs.clump(2).flop.first.reject({ arg k; exkeys.includes(k) }).collect { arg key, idx;
+			Param(pbindef, key)
+		};
+		params = params.collect { arg param, idx;
+			// needed because instrumentParam is already a source subparam
+			// and double source in propertyPath return wrong value
+			param = if(
+				PdefParam.associationToArray(param.propertyPath).last != \source
+			) {
+				param.at(\source)
+			} {
+				param;
+			};
+			if(param.spec.isKindOf(ParamBufferSpec)) {
+				"\t%, %,\n".format(
+					param.propertyRoot.asCompileString,
+					"BufDef(%)".format(param.spec.tagSpec.unmapKey(param.get).asCompileString)
+				)
+			} {
+				"\t%, %,\n".format(
+					param.propertyRoot.asCompileString,
+					param.getRaw.asCompileString, // getRaw to keep double brackets for arrays
+				)
+			}
+		}.join;
+		setpairs = this.getPdefCompileString(pbindef);
+		^"Pbindef(%,\n%);\n%\n".format(pbindef.key.asCompileString, params, setpairs)
+    }
 }
 
 ParamGroupDef {

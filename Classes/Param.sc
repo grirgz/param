@@ -1020,6 +1020,7 @@ Param {
 		var updateAction = { arg force=false; 
 			{ arg view, param;
 				var val = "";
+                var color;
 				//Log(\Param).debug("mapTextField start: " ++ this.fullLabel);
                 if(param.spec.isKindOf(ParamStringSpec)) {
 					val = param.get;
@@ -1035,6 +1036,11 @@ Param {
 				};
 				//Log(\Param).debug("mapTextField: val: %", val);
 				// refresh action
+                color = if(param.isSet) {
+					ParamViewToolBox.color_TextField_enabled;
+                } {
+					ParamViewToolBox.color_TextField_disabled;
+                };
 				{
 					//[val.asCompileString, view.hasFocus].debug("Param.mapTextField: hasfocus");
 					// hasFocus is nil in some unidentified cases
@@ -1043,6 +1049,7 @@ Param {
 					if(force or: {view.hasFocus.notNil and: {view.hasFocus.not}}) {
 
 						view.value = val;
+                        view.stringColor = color;
 					} {
 						Log(\Param).debug("mapTextField: focus, no set, view %, val %", view, val);
 					};
@@ -1053,11 +1060,20 @@ Param {
 		};
 		this.makeSimpleController(view, 
 			action: { arg view, param;
+				var color;
 				if(param.spec.isKindOf(ParamStringSpec)) { 
 					param.set(view.value)
 				} {
 					param.set(view.value.interpret);
 				};
+				// updating the textfield value could change the string
+				// so i only update isSet
+                color = if(param.isSet) {
+					ParamViewToolBox.color_TextField_enabled;
+                } {
+					ParamViewToolBox.color_TextField_disabled;
+                };
+				view.stringColor = color;
 				//"done".debug;
 			}, 
 			updateAction: updateAction.value(false),
@@ -4758,6 +4774,10 @@ DictionaryParam : BaseParam {
 			this.set(this.default);
 		};
 	}
+
+    isSet {
+		^target[property].notNil
+    }
 
 	get {
 		var val;

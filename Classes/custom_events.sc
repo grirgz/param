@@ -48,7 +48,7 @@ PlayerEvent : Event {
 
 		defaultParent = (
 			type: \player,
-			parent: Event.default,
+			//parent: Event.default, // cause infinite loop
 			target: { arg self; // should decide if named receiver (old) or target (like PlayerWrapper)
 				self.receiver;
 			},
@@ -64,6 +64,7 @@ PlayerEvent : Event {
 		);
 
 		Event.addEventType(\player, playfun, defaultParent);
+		//Event.addEventType(\player, playfun);
 	}
 
 	*new { arg ev;
@@ -132,7 +133,7 @@ PatternEvent : Event {
 
 		defaultParent = (
 			type: \pattern,
-			parent: Event.default,
+			//parent: Event.default,
 			label: { arg self;
 				if(self.timeline.notNil) {
 					self.timeline.label;
@@ -201,6 +202,7 @@ PatternEvent : Event {
 		);
 
 		Event.addEventType(\pattern, PlayerEvent.playFunction, defaultParent);
+		//Event.addEventType(\pattern, PlayerEvent.playFunction);
 	}
 
 	*new { arg ev;

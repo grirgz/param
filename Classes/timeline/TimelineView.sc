@@ -116,7 +116,7 @@ TimelineView : SCViewHolder {
 		//		Rect(10, 250, bounds.left + bounds.width + 40, bounds.top + bounds.height+30));
 		//	win.front;
 		//});
-		Log(\Param).debug("initParaSpace: this:% %", this, this.hash);
+		//Log(\Param).debug("initParaSpace: this:% %", this, this.hash);
 
 		this.makeUpdater;
 		action = {
@@ -343,15 +343,15 @@ TimelineView : SCViewHolder {
 		newevent = this.eventFactory(newpos);
 		if(newevent.notNil) {
 
-			Log(\Param).debug("new event!!!!!!!!! %", newevent);
+			//Log(\Param).debug("new event!!!!!!!!! %", newevent);
 			chosennode = this.addEvent(newevent);
 			//newevent.debug("mouseDownAction: 2");
-			Log(\Param).debug("new event after add!!!!!!!!! %", newevent);
+			//Log(\Param).debug("new event after add!!!!!!!!! %", newevent);
 
 			createNodeDeferedAction = {
 				//debug("mouseDownAction: 3");
 				model.addEvent(newevent);
-				Log(\Param).debug("new event after add to model!!!!!!!!! %", newevent);
+				//Log(\Param).debug("new event after add to model!!!!!!!!! %", newevent);
 				//debug("mouseDownAction: 4");
 				model.reorder; // reorder lose node selection
 				//debug("mouseDownAction: 5");
@@ -387,7 +387,7 @@ TimelineView : SCViewHolder {
 		lastPixelPos = Point(px,py);
 		lastGridPos = gpos.trunc(quant.value);
 		this.changed(\lastGridPos);
-		Log(\Param).debug("mouseDownAction_ px %,py %, npos %, gpos %", px, py, npos, gpos);
+		//Log(\Param).debug("mouseDownAction_ px %,py %, npos %, gpos %", px, py, npos, gpos);
 
 		chosennode = this.findNodeHandle(gpos.x, gpos.y);
 		isClickOnSelection = this.startSelPoint != nilSelectionPoint and: {
@@ -421,7 +421,7 @@ TimelineView : SCViewHolder {
 					[ node, node.visible == true and: { node.class != TimelineViewLocatorLineNode } ].debug("merde");
 					node.visible == true and: { node.class != TimelineViewLocatorLineNode }
 				});
-				Log(\Param).debug("changeCurveMode: pair found %", pair);
+				//Log(\Param).debug("changeCurveMode: pair found %", pair);
 				if(pair.notNil) {
 					chosennode = pair.first;
 					clickedNextNode = pair.last;
@@ -465,14 +465,14 @@ TimelineView : SCViewHolder {
 
 				this.refresh;
 			}, { 
-				Log(\Param).debug("mouseDownAction: start % end % sel", this.startSelPoint, this.endSelPoint);
+				//Log(\Param).debug("mouseDownAction: start % end % sel", this.startSelPoint, this.endSelPoint);
 				if(isClickOnSelection == true) {
 					// clicked on the selection area, ready to move the selection
 					selectionRefloc = this.startSelPoint;
 					refPoint = gpos; // to know where mouse clicked before moving
 				} {
 					// no node is selected
-					Log(\Param).debug("---------mouseDownAction: deselect all and draw selrecti");
+					//Log(\Param).debug("---------mouseDownAction: deselect all and draw selrecti");
 					this.deselectAllNodes;
 					if(quantizedSelection) {
 						rawStartSelPoint = npos;
@@ -483,7 +483,7 @@ TimelineView : SCViewHolder {
 						this.startSelPoint = npos;
 						this.endSelPoint = npos;
 					};
-					Log(\Param).debug("sel:% %", this.startSelPoint, this.endSelPoint);
+					//Log(\Param).debug("sel:% %", this.startSelPoint, this.endSelPoint);
 					this.refresh;
 				};
 			});
@@ -497,9 +497,9 @@ TimelineView : SCViewHolder {
 		mouseUpAction.(me, x, y, mod);
 		//selNodes.debug("-------------- mouseUpAction: selNodes");
 		//chosennode.debug("mouseUpAction: chosennode");
-		Log(\Param).debug("------------- mouseUpAction: chosennode %", chosennode);
+		//Log(\Param).debug("------------- mouseUpAction: chosennode %", chosennode);
 		if(chosennode != nil, { // a node is selected
-			Log(\Param).debug("mouseUpAction: a node is selected %", chosennode);
+			//Log(\Param).debug("mouseUpAction: a node is selected %", chosennode);
 			createNodeDeferedAction.value; // function defined when a new node is created
 			createNodeDeferedAction = nil;
 			upAction.value(chosennode);
@@ -513,7 +513,7 @@ TimelineView : SCViewHolder {
 			var wasSelected = false;
 			var ppos = Point(x,y);
 			var gpos = this.pixelPointToGridPoint(ppos);
-			Log(\Param).debug("mouseUpAction: no node is selected");
+			//Log(\Param).debug("mouseUpAction: no node is selected");
 			//Log(\Param).debug("mouseUpAction st %, en %", this.startSelPoint, this.endSelPoint);
 			if(this.startSelPoint.notNil and: {this.endSelPoint.notNil}) {
 
@@ -622,7 +622,7 @@ TimelineView : SCViewHolder {
 						1;
 					};
 					newcurve = refWidth + ( refPoint.y - gpos.y / this.pixelExtentToGridExtent(Point(1,1)).y / 10 * direction );
-					Log(\Param).debug("newcurve %, gpos %, ref %", newcurve, gpos, refPoint);
+					//Log(\Param).debug("newcurve %, gpos %, ref %", newcurve, gpos, refPoint);
 					node.model.curve = newcurve;
 					model.changed(\redraw);
 					node.refresh;
@@ -712,7 +712,7 @@ TimelineView : SCViewHolder {
 						this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
 						useSpecInConversions = true;
 
-						Log(\Param).debug("sel %, prevsel %, normdif % gdiff %", this.startSelPoint, this.previousNormSelRect, norm_diff, grid_diff);
+						//Log(\Param).debug("sel %, prevsel %, normdif % gdiff %", this.startSelPoint, this.previousNormSelRect, norm_diff, grid_diff);
 						this.changed(\nodeMoved);
 						this.refresh;
 
@@ -893,10 +893,10 @@ TimelineView : SCViewHolder {
 		// why nodesize is in normalized form ???
 		nodesize = this.gridPointToNormPoint(nodesize);
 		if(eventFactory.isNil) {
-			Log(\Param).debug("TimelineView: eventFactory is nil");
+			//Log(\Param).debug("TimelineView: eventFactory is nil");
 			^(absTime: pos.x, midinote: pos.y, sustain:nodesize.x);
 		} {
-			Log(\Param).debug("TimelineView: eventFactory is %", eventFactory.asCompileString);
+			//Log(\Param).debug("TimelineView: eventFactory is %", eventFactory.asCompileString);
 			^eventFactory.(pos, nodesize.x);
 		}
 	}
@@ -1770,7 +1770,7 @@ TimelineView : SCViewHolder {
 	findNode {arg x, y;
 		// findNode take x and y in grid coordinates, because TimelineNode.rect is in grid coordinates
 		var point = Point.new(x,y);
-		Log(\Param).debug("::: findNode: %", point);
+		//Log(\Param).debug("::: findNode: %", point);
 		if(chosennode.notNil and: {chosennode.rect.containsPoint(point)}) {
 			// priority to the already selected node
 			^chosennode;
@@ -1778,14 +1778,14 @@ TimelineView : SCViewHolder {
 		paraNodes.reverse.do({arg node;  // reverse because topmost is last
 			//node.spritenum.debug("spritnum");
 			//[node.rect, point].debug("findNode");
-			Log(\Param).debug("findNode: test node % node.selectable % node.rect %", node, node.selectable, node.rect);
+			//Log(\Param).debug("findNode: test node % node.selectable % node.rect %", node, node.selectable, node.rect);
 			if(node.selectable and: {node.rect.containsPoint(point)}, {
 				//[node.rect, point].debug("findNode: found!!");
-				Log(\Param).debug("findNode: found node %", node);
+				//Log(\Param).debug("findNode: found node %", node);
 				^node;
 			});
 		});
-		Log(\Param).debug("findNode: not found");
+		//Log(\Param).debug("findNode: not found");
 		^nil;
 	}
 
@@ -1815,7 +1815,7 @@ TimelineView : SCViewHolder {
 
 	findPreviousNode { arg gposx;
 		^paraNodes.reverse.detect { arg node;
-			Log(\Param).debug("findPreviousNode gposx %, origin %, %", gposx, node.origin, node.origin.x >= gposx);
+			//Log(\Param).debug("findPreviousNode gposx %, origin %, %", gposx, node.origin, node.origin.x >= gposx);
 			node.origin.x <= gposx
 		};
 	}
@@ -1824,7 +1824,7 @@ TimelineView : SCViewHolder {
 		var idx;
 		var revnodes = paraNodes.reverse;
 		idx = revnodes.detectIndex { arg node;
-			Log(\Param).debug("findPreviousAndNextNode gposx %, origin %, %", gposx, node.origin, node.origin.x >= gposx);
+			//Log(\Param).debug("findPreviousAndNextNode gposx %, origin %, %", gposx, node.origin, node.origin.x >= gposx);
 			( includeFilter.isNil or: { includeFilter.value(node) == true } ) and: {node.origin.x <= gposx }
 		};
 		if(idx.notNil) {
@@ -1847,7 +1847,7 @@ TimelineView : SCViewHolder {
 	}
 
 	free {
-		Log(\Param).debug("TimelineView: free % %", this, this.hash);
+		//Log(\Param).debug("TimelineView: free % %", this, this.hash);
 		paraNodes.reverse.do { arg node;
 			node.free;
 		};
@@ -2078,8 +2078,8 @@ TimelineViewNode {
 			type = \timeline;
 		};
 
-		Log(\Param).debug("% %".format("TimelineViewNode: new: parent, nodeType/type",[ parent.class, type.asCompileString ]));
-		Log(\Param).debug("TimelineViewNode: nodeType %".format([ event[\nodeType], event, event.parent ]));
+		//Log(\Param).debug("% %".format("TimelineViewNode: new: parent, nodeType/type",[ parent.class, type.asCompileString ]));
+		//Log(\Param).debug("TimelineViewNode: nodeType %".format([ event[\nodeType], event, event.parent ]));
 		node = switch(type,
 			\start, {
 				var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
@@ -2128,7 +2128,7 @@ TimelineViewNode {
 			}
 		);
 
-		Log(\Param).debug("node created: % %".format(node.class, node));
+		//Log(\Param).debug("node created: % %".format(node.class, node));
 
 		^node;
 	}
@@ -2588,7 +2588,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 			//Pen.addRect(previewrect);
 			Pen.addRect(visiblebounds);
 			Pen.clip;
-			Log(\Param).debug("preview");
+			//Log(\Param).debug("preview");
 			preview.drawFunc;
 		};
 		

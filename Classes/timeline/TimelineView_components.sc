@@ -523,7 +523,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 			//"TimelineViewLocatorLineNode: refresh: 4".debug;
 			//[parent.viewport, parent.areasize, Point(width,height)].debug("parent vi, are, size");
 			extent = parent.pixelExtentToGridExtent(Point(width,height)); //FIXME: why /2 ???
-			Log(\Param).debug("TimelineViewLocatorNode refresh: extent: %, width %", extent, Point(width,height));
+			//Log(\Param).debug("TimelineViewLocatorNode refresh: extent: %, width %", extent, Point(width,height));
 			//"TimelineViewLocatorLineNode: refresh: 5".debug;
 			//extent.debug("---------extent");
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
@@ -596,7 +596,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		//extent = parent.pixelExtentToGridExtent(Point(width,height));  // not used because should not be influenced by viewport
 		extent = parent.pixelExtentToGridExtent(Point(width,height)); 
 		rect = Rect(point.x-(extent.x/2), 0, extent.x, extent.y*4);
-		Log(\Param).debug("TimelineViewLocatorNode rect: extent: %, width %, rect %", extent, Point(width,height), rect);
+		//Log(\Param).debug("TimelineViewLocatorNode rect: extent: %, width %, rect %", extent, Point(width,height), rect);
 		^rect;
 	}
 
@@ -821,7 +821,7 @@ ParamTimelineRulerView : TimelineView {
 	}
 
 	specialInit { arg ptimeline;
-		Log(\Param).debug("ParamTimelineRulerView init");
+		//Log(\Param).debug("ParamTimelineRulerView init");
 		paramTimeline = ptimeline;
 		this.view.drawFunc = { TimelineDrawer.draw_param_values(this, this.paramTimeline.param) };
 	}
@@ -1032,7 +1032,7 @@ CursorTimelineView : TimelineView {
 					};
 
 					privcursor = cursorPos;
-					Log(\Param).debug("start_beat %, start_offset %, endTime:%", start_beat, start_offset, endTime);
+					//Log(\Param).debug("start_beat %, start_offset %, endTime:%", start_beat, start_offset, endTime);
 
 					while({
 						privcursor < endTime;

@@ -51,7 +51,7 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 				playStatus = \play;
 				stopStatus = \stop;
 			};
-			Log(\Param).debug("listener: status: %", status);
+			Log(\Param).debug("startRecording: listener: status: %", status);
 			if(status == playStatus) {
 				if(player.recordedEvent.notNil and: {
 					player.recordedEvent.clockTime > startRecordingTime
@@ -60,15 +60,23 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 					// FIXME: how to prevent breaking recording by skipping to nil the recordedEvent ?
 					Log(\Param).debug("listener: playStatus: already recording event for player %", player);
 				} {
+					//Log(\Param).debug("listener xxx");
+					//Log(\Param).debug("listener xx : %", player);
+					//Log(\Param).debug("listener : %", player.asPlayerEvent);
 					player.recordedEvent = self.eventLoop.recordEvent(player.asPlayerEvent);
+					//Log(\Param).debug("listener xxx2");
 					player.recordedEvent[\clockTime] = self.tempoClock.beats;
-					Log(\Param).debug("listener: start: player:%, recordedEvent:%", player, player.recordedEvent);
+					//Log(\Param).debug("listener: start: player:%, recordedEvent:%", player, player.recordedEvent);
 				}
 			} {
+				//Log(\Param).debug("listener xxx3");
 				if(status == stopStatus and: {player.recordedEvent.notNil}) {
+					//Log(\Param).debug("listener xxx4");
 					player.recordedEvent[\sustain] = self.tempoClock.beats - player.recordedEvent[\clockTime];
-					Log(\Param).debug("listener: stop: recordedEvent:%", player.recordedEvent);
+					//Log(\Param).debug("listener xxx4.1");
+					//Log(\Param).debug("listener: stop: recordedEvent:%", player.recordedEvent);
 					player.recordedEvent.changed(\refresh);
+					//Log(\Param).debug("listener xxx5");
 					player.recordedEvent = nil; // prevent setting sustain again at end of record
 				} {
 					Log(\Param).debug("listener: don't know what to do with %: recordedEvent:%", status.asCompileString, player.recordedEvent);

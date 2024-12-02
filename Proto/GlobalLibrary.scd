@@ -1095,9 +1095,9 @@ TagSpecDef(\Spec, {
 TagSpecDef(\TrackListPart, {
 	var tracklists = TagSpecDef(\TrackList).valueList;
 	tracklists.collect({ arg tracklist;
-		var sizes = tracklist.children.select{|x|x.isEmpty.not}.collect({ arg channel;
+		var sizes = tracklist.existingChildren.collect({ arg channel;
 			// for each channel, count the number of part
-			channel.children.select{|x|x.isEmpty.not}.size; 
+			channel.existingChildren.size; 
 		});
 		var channelIdxWithMostParts = sizes.maxIndex;
 		// now the max number of part is the number of part of the tracklist

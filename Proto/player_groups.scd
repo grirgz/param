@@ -185,7 +185,7 @@ ProtoTemplateDef(\NotePlayer, (
 	asPlayerEvent: { arg self; 
 		// PlayerEvent == does not embed in stream
 		// but asPlayerEvent is taken by PlayerWrapper
-		Log(\Param).debug("asPlayerEvent: raw_ev:%, idx:%, h:%", self.raw_ev, self.index, self.hash);
+		//Log(\Param).debug("asPlayerEvent: raw_ev:%, idx:%, h:%", self.raw_ev, self.index, self.hash);
 		self.raw_ev;
 	},
 
