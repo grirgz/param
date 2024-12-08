@@ -126,13 +126,13 @@ WindowDef(\NdefEditor, { arg me, key=\default;
 
 ////// Param editors
 (
-WindowDef(\ParamGenericContextMenu, { arg def, param;
+WindowDef(\ParamGenericContextMenu, { arg def, param, view;
 	Menu(*
-		WindowDef(\ParamGenericContextMenuEntries).sourceValue(param)
+		WindowDef(\ParamGenericContextMenuEntries).sourceValue(param, view)
 	)
 });
 
-WindowDef(\ParamGenericContextMenuEntries, { arg def, param;
+WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 	var newmodmenu;
 	newmodmenu = Menu(*
 		TagSpecDef(\ModulatorTemplate).list.collect { arg asso, idx;
@@ -211,6 +211,13 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param;
 				};
 			}
 		),
+		// view is only the label, can't work, must find another way
+		//if(param.propertyArray.last == \source) {
+			//MenuAction("Convert to bare param")
+		//} {
+			//MenuAction("Convert to source param", {
+			//})
+		//},
 
 		MenuAction.separator,
 		//if(param.hasCombinator) {

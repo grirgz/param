@@ -229,7 +229,7 @@
 							//}
 							StepListView(steplist).setCursor.view;
 						} {
-							if(steplist.isKindOf(Event) and: { steplist.eventType == \envTimeline }) {
+							if(steplist.isKindOf(Event) and: { steplist.eventType == \paramTimeline }) {
 								//~envTimelinePanelView.newView(steplist).debug("panel!!!!!!!!!").makeLayout;
 								~envTimelinePanelView.newView(steplist).make_header_(nil).makeLayout;
 							} {
@@ -325,7 +325,7 @@
 			var list = List.new;
 			self.stepevent.keys.asArray.do({ arg key;
 				var val = self.stepevent[key];
-				if(val.isKindOf(Event) and: { val.eventType == \envTimeline }) {
+				if(val.isKindOf(Event) and: { val.eventType == \paramTimeline }) {
 					list.add(val.xasPattern);
 				};
 			});

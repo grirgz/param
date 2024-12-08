@@ -5,6 +5,12 @@
 ProtoClassDef(\EventTimeline, (
 	proxyQuantIsDefault: true, // the only way to preserve default proxy quant
 
+	controller_: { arg self, val;
+		self[\controller] = val;
+		self.startControl;
+		self.changed(\controller);
+	},
+
 	prAdd: { arg self, name;
 		self.all[name] = self;
 		self.key = name;
@@ -353,10 +359,22 @@ ProtoClassDef(\EventTimeline, (
 		ret;
 	},
 
+
+	hasSavePath: { arg self;
+		self.presetCompileStringSavePath.notNil
+	},
+
+	presetCompileStringSaveFilename: { arg self;
+		var etype;
+		etype = self.eventType.asString;
+		etype = "%%".format(etype[0].toUpper, etype[1..]);
+		"%_%.scd".format(etype, self.key)
+	},
+
 	presetCompileStringSaveFile: { arg self;
 		if(self.presetCompileStringSavePath.notNil) {
 			if( self.presetCompileStringSavePath.isFolder) {
-				self.presetCompileStringSavePath +/+ "ClipTimeline_%.scd".format(self.key)
+				self.presetCompileStringSavePath +/+ self.presetCompileStringSaveFilename
 			} {
 				self.presetCompileStringSavePath
 			}
@@ -398,7 +416,7 @@ ProtoClassDef(\EventTimeline, (
 			} {
 				if(WindowDef(\filedialog_save).notNil) {
 					WindowDef(\filedialog_save).front(
-						PathName(Document.current.path).pathOnly +/+ "ClipTimeline_%.scd".format(self.key),
+						PathName(Document.current.path).pathOnly +/+ self.presetCompileStringSaveFilename,
 						{ arg dir, filename;
 							save_it.(dir+/+filename)
 						}
@@ -490,37 +508,6 @@ ProtoClassDef(\ClipTimeline, (
 
 	track_count: { arg self;
 		self.tracks.size;
-	},
-
-	new_load: { arg self, data;
-		self = self.deepCopy;
-		self.prAdd(data.name).init(data.param);
-		self.eventloop = ~eventloop_loadArchiveData.(data.eventloop);
-		self.eventList.reorder;
-		self.areasize = data.areasize;
-		self.cursor.startPosition = self.eventList.startTime;
-		self.quant_ref = data.quant_ref;
-		self.tracks_bypassed = data.tracks_bypassed;
-		self;
-	},
-
-	asArchiveData: { arg self;
-		(
-			name: self.key,
-			param: self.param,
-			eventloop: ~eventloop_asArchiveData.(self.eventList),
-			areasize: self.areasize,
-			quant_ref: self.quant_ref,
-			tracks_bypassed: self.tracks_bypassed,
-			load: { arg me; ~clipTimeline.new_load(me) },
-		)
-	},
-
-	asRefArchiveData: { arg self;
-		(
-			key: self.key,
-			load: { arg me; ~clipTimeline.new(me.key) },
-		)
 	},
 
 	add_track: { arg self;
@@ -639,13 +626,13 @@ ProtoClassDef(\ClipTimeline, (
 	//},
 
 	edit: { arg self;
-		var x = ~clipTimelinePanelView.new(self);
+		var x = ProtoTemplateDef(\ClipTimelinePanelView).new(self);
 		self.editor = { x };
 		x;
 	},
 
 	asView: { arg self;
-		~clipTimelinePanelView.newView(self).makeLayout;
+		ProtoTemplateDef(\ClipTimelinePanelView).newView(self).makeLayout;
 	},
 
 	refCompileString: { arg self, name;
@@ -785,25 +772,6 @@ ProtoClassDef(\TrackTimeline, (
 		};
 	},
 
-	asArchiveData: { arg self;
-		(
-			name: self.key,
-			param: self.param,
-			eventloop: ~eventloop_asArchiveData.(self.eventList),
-			areasize: self.areasize,
-			quant_ref: self.quant_ref,
-			tracks_bypassed: self.tracks_bypassed,
-			load: { arg me; ~trackTimeline.new_load(me) },
-		)
-	},
-
-	asRefArchiveData: { arg self;
-		(
-			key: self.key,
-			load: { arg me; ~trackTimeline.new(me.key) },
-		)
-	},
-
 
 	edit: { arg self;
 		var x = ProtoTemplateDef(\TrackTimelinePanelView).new(self);
@@ -812,7 +780,7 @@ ProtoClassDef(\TrackTimeline, (
 	},
 
 	asView: { arg self;
-		~trackTimelinePanelView.newView(self).makeLayout;
+		ProtoTemplateDef(\TrackTimelinePanelView).newView(self).makeLayout;
 	},
 
 
@@ -835,11 +803,6 @@ ProtoClassDef(\NoteTimeline, (
 	eventType: \noteTimeline,
 	composeParamPattern: true,
 	controller: { ControllerDef.getTagSpec(\piano).list.asDict[\piano_generic] },
-	controller_: { arg self, val;
-		self[\controller] = val;
-		self.startControl;
-		self.changed(\controller);
-	},
 
 	new: { arg self, name, param;
 
@@ -898,34 +861,6 @@ ProtoClassDef(\NoteTimeline, (
 		//self.recorder.eventLoop = self.eventLoop;
 	},
 
-	new_load: { arg self, data;
-		self = self.deepCopy;
-		self.prAdd(data.name).init(data.param);
-		self.eventloop = ~eventloop_loadArchiveData.(data.eventloop);
-		self.eventList.reorder;
-		self.areasize = data.areasize;
-		self.cursor.startPosition = self.eventList.startTime;
-		self.quant_ref = data.quant_ref;
-		self;
-	},
-
-	asArchiveData: { arg self;
-		(
-			name: self.key,
-			param: self.param,
-			eventloop: ~eventloop_asArchiveData.(self.eventloop),
-			areasize: self.areasize,
-			quant_ref: self.quant_ref,
-			load: { arg me; ~noteTimeline.new_load(me) },
-		)
-	},
-
-	asRefArchiveData: { arg self;
-		(
-			key: self.key,
-			load: { arg me; ~noteTimeline.new(me.key) },
-		)
-	},
 
 	cutPatternFunction: { arg self, parentEvent, parentTimeline;
 		{ arg sloop, offset, dur;
@@ -1016,13 +951,13 @@ ProtoClassDef(\NoteTimeline, (
 
 
 	edit: { arg self;
-		var x = ~noteTimelinePanelView.new(self);
+		var x = ProtoTemplateDef(\NoteTimelinePanelView).new(self);
 		self.editor = { x };
 		x;
 	},
 
 	asView: { arg self;
-		~noteTimelinePanelView.newView(self).makeLayout;
+		ProtoTemplateDef(\NoteTimelinePanelView).newView(self).makeLayout;
 	},
 
 	refCompileString: { arg self, name;
@@ -1035,8 +970,8 @@ ProtoClassDef(\NoteTimeline, (
 
 ProtoClassDef(\ParamTimeline, (
 	parent: ProtoClassDef(\EventTimeline),
-	all: { PresetDictionary.new(\envTimeline) }, // FIXME: rename it to paramTimeline
-	eventType: \envTimeline, // FIXME: rename it to paramTimeline
+	all: { PresetDictionary.new(\paramTimeline) }, 
+	eventType: \paramTimeline,
 
 	new: { arg self, name, param;
 	
@@ -1127,42 +1062,6 @@ ProtoClassDef(\ParamTimeline, (
 
 		self;
 		
-	},
-
-	new_load: { arg self, data;
-		self = self.deepCopy;
-		self.prAdd(data.name).init(data.param);
-		self.eventloop = ~eventloop_loadArchiveData.(data.eventloop);
-		self.eventList.reorder;
-		self.areasize = data.areasize;
-		self.cursor.startPosition = self.eventList.startTime;
-		self.quant_ref = data.quant_ref;
-		self.xasPattern;
-		self;
-	},
-
-	asArchiveData: { arg self;
-		(
-			name: self.key,
-			param: self.param,
-			eventloop: ~eventloop_asArchiveData.(self.eventloop),
-			areasize: self.areasize,
-			quant_ref: self.quant_ref,
-			load: { arg me; ~envTimeline.new_load(me) },
-		)
-	},
-
-	asRefArchiveData: { arg self;
-		// TODO: what if it's an instance, not a def ?
-		// maybe no need for this "if", just call asArchiveData when needed ?
-		if(self.key == \instance) {
-			self.asArchiveData
-		} {
-			(
-				key: self.key,
-				load: { arg me; ~envTimeline.new(me.key) },
-			)
-		}
 	},
 
 	cutPatternFunction: { arg self;
@@ -1354,7 +1253,7 @@ ProtoClassDef(\ParamTimeline, (
 	//},
 
 	edit: { arg self;
-		var x = ~envTimelinePanelView.new(self);
+		var x = ProtoTemplateDef(\ParamTimelinePanelView).new(self);
 		self.editor = { x };
 		x;
 	},
@@ -1372,7 +1271,7 @@ ProtoClassDef(\ParamTimeline, (
 	},
 
 	asView: { arg self;
-		~envTimelinePanelView.newView(self).makeLayout;
+		ProtoTemplateDef(\ParamTimelinePanelView).newView(self).makeLayout;
 	},
 
 	refCompileString: { arg self, name;
@@ -1589,12 +1488,12 @@ ProtoClassDef(\KitTimeline, (
 	kit_: { arg self, kit;
 		if(kit.isSequenceableCollection) {
 			self[\kit] = kit;
-			self[\wrapper] = ~parPlayerGroup.new(self.kit) !? { arg x; {x} };
+			self[\wrapper] = ProtoTemplateDef(\ParPlayerGroup).new(self.kit) !? { arg x; {x} };
 		} {
 			self[\wrapper] = kit;
-			self[\kit] = { arg self; self.wrapper.targets };
+			self[\kit] = { arg self; self.wrapper.getPatternList };
 		};
-		self.recorder = ~playerGroupRecorder.new(self.wrapper) !? { arg x; {x} }; 
+		self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.wrapper) !? { arg x; {x} }; 
 		self.recorder.eventLoop = self.eventLoop;
 		// FIXME: this polymorphism look ugly
 		self.changed(\kit);
@@ -1603,17 +1502,6 @@ ProtoClassDef(\KitTimeline, (
 
 	wrapper_: { arg self, kit;
 		self.kit = kit;
-	},
-
-	new_load: { arg self, data;
-		self = self.deepCopy;
-		self.prAdd(data.name).init(data.param);
-		self.eventloop = ~eventloop_loadArchiveData.(data.eventloop);
-		self.eventList.reorder;
-		self.areasize = data.areasize;
-		self.cursor.startPosition = self.eventList.startTime;
-		self.quant_ref = data.quant_ref;
-		self;
 	},
 
 	isRecording: { arg self;
@@ -1632,6 +1520,13 @@ ProtoClassDef(\KitTimeline, (
 		self.recorder.isRecording = val;
 	},
 
+	//startControl: { arg self;
+		//if(self.controller.notNil) {
+			//self.controller.startControl(self.wrapper);
+		//}
+	//},
+
+
 	asPreview: { arg self;
 		TimelinePreview.new(\kitIndex)
 			.mapEventList(self.eventList)
@@ -1640,24 +1535,6 @@ ProtoClassDef(\KitTimeline, (
 			.view.mouseDownAction_({ 
 				self.edit;
 			}).fixedHeight_(40);
-	},
-
-	asArchiveData: { arg self;
-		(
-			name: self.key,
-			param: self.param,
-			eventloop: ~eventloop_asArchiveData.(self.eventloop),
-			areasize: self.areasize,
-			quant_ref: self.quant_ref,
-			load: { arg me; ~noteTimeline.new_load(me) },
-		)
-	},
-
-	asRefArchiveData: { arg self;
-		(
-			key: self.key,
-			load: { arg me; ~noteTimeline.new(me.key) },
-		)
 	},
 
 	cutPatternFunction: { arg self;
@@ -1670,8 +1547,11 @@ ProtoClassDef(\KitTimeline, (
 			);
 
 
+			//Log(\Param).debug("KitTimeline: cutPatternFunction 1");
 			if(self.kit.notNil and: {self.composeParamPattern == true}) {
+				//Log(\Param).debug("KitTimeline: cutPatternFunction 2");
 				pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
+				//~pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
 				if(self.wrapper.postChain.notNil) {
 					//"post!".debug;
 					pat = self.wrapper.postChain <> pat;
@@ -1766,13 +1646,13 @@ ProtoClassDef(\KitTimeline, (
 	//},
 
 	edit: { arg self;
-		var x = ~kitTimelinePanelView.new(self);
+		var x = ProtoTemplateDef(\KitTimelinePanelView).new(self);
 		self.editor = { x };
 		x;
 	},
 
 	asView: { arg self;
-		~kitTimelinePanelView.newView(self).makeLayout;
+		ProtoTemplateDef(\KitTimelinePanelView).newView(self).makeLayout;
 	},
 
 	presetCompileString: { arg self;
@@ -1797,11 +1677,9 @@ ProtoClassDef(\ClipTimeline).all.loadIfNotInitialized;
 
 
 ProtoClassDef(\ClipTimelineClipList, (
-	parent: ~clipEditor,
 	new: { arg self, timeline;
 		self = self.deepCopy;
 	
-		self.init_default_clip_factories;
 		self.lib = ProtoDef(\GlobalLibrary);
 		self.clipList = List.new;
 		self.timeline = timeline;
@@ -2135,29 +2013,36 @@ ProtoClassDef(\LoopMaster, (
 				var previewEndAbsTime;
 				var finalStartAbsTime;
 				var dur;
-				previewStartAbsTime = absStart.value ? sloop.previewStartAbsTime;
-				previewEndAbsTime = absEnd.value ? sloop.previewEndAbsTime;
 
-				// if null loop, set end to end of list
-				if(previewStartAbsTime >= previewEndAbsTime) {
-					previewEndAbsTime = sloop.endOfLastEventAbsTime
-				};
-
-				if(count == 0) {
-					finalStartAbsTime = previewStartAbsTime;
+				if(self.timeline.isRecording) {
+					Log(\Param).debug("timeline is recording, playing is muted");
+					ret = Event.silent(1).yield;
 				} {
-					if(sloop.hasPreviewEnd.not and:{ absEnd.value.isNil and: {sloop.enablePreviewLoopToClipStart == true}}) {
-						finalStartAbsTime = sloop.startEventAbsTime;
-					} {
-						finalStartAbsTime = previewStartAbsTime;
+					previewStartAbsTime = absStart.value ? sloop.previewStartAbsTime;
+					previewEndAbsTime = absEnd.value ? sloop.previewEndAbsTime;
+
+
+					// if null loop, set end to end of list
+					if(previewStartAbsTime >= previewEndAbsTime) {
+						previewEndAbsTime = sloop.endOfLastEventAbsTime
 					};
+
+					if(count == 0) {
+						finalStartAbsTime = previewStartAbsTime;
+					} {
+						if(sloop.hasPreviewEnd.not and:{ absEnd.value.isNil and: {sloop.enablePreviewLoopToClipStart == true}}) {
+							finalStartAbsTime = sloop.startEventAbsTime;
+						} {
+							finalStartAbsTime = previewStartAbsTime;
+						};
+					};
+					// Pembed need startOffset to be relative to first event, not absTime
+					//		so need to substract firstEventAbsTime
+					firstEventOffset = finalStartAbsTime - sloop.firstEventAbsTime;
+					dur = previewEndAbsTime - finalStartAbsTime;
+					//self.cutAndEmbedPattern(pat, firstEventOffset, dur);
+					ret = self.embedPattern(cutFunction, firstEventOffset, dur);
 				};
-				// Pembed need startOffset to be relative to first event, not absTime
-				//		so need to substract firstEventAbsTime
-				firstEventOffset = finalStartAbsTime - sloop.firstEventAbsTime;
-				dur = previewEndAbsTime - finalStartAbsTime;
-				//self.cutAndEmbedPattern(pat, firstEventOffset, dur);
-				ret = self.embedPattern(cutFunction, firstEventOffset, dur);
 			};
 			ret;
 
@@ -2281,7 +2166,6 @@ ProtoClassDef(\LoopMaster, (
 			self.getPreviewLoopPattern(cutFunction, loclist[idx].absTime, loclist[idx+1].absTime, repeatCount)
 		});
 	},
-
 ));
 
 if(currentEnvironment.isKindOf(ProxySpace).not) {

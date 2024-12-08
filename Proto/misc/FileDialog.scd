@@ -564,7 +564,7 @@ WindowDef(\RenameDialog, { arg me, question, defaultValue="", savefun, cancelfun
 );
 
 (
-WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue;
+WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue, label;
 	var lay;
 	var listview = ListView.new;
 	var textfield = TextField.new;
@@ -618,7 +618,7 @@ WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue;
 	lay;
 });
 
-WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue;
+WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue, label;
 	var listview = ListView.new;
 	var textfield;
 	var selectedView = StaticText.new;
@@ -632,6 +632,7 @@ WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue;
 	};
 	var listitems;
 	var filteredList;
+	def.windowName = label ?? {"ListSelectDialog"};
 	listitems = list.collect { arg item, idx;
 		if(item.isKindOf(Association)) {
 			item;

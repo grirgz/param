@@ -123,6 +123,19 @@ BufDef {
 		};
 	}
 
+    *newFrom { arg buf;
+		if(buf.key.notNil) {
+			// kind of useless because BufDef just return the buffer
+			^BufDef(buf.key);
+		} {
+			if(buf.path.notNil) {
+				^BufDef(buf.path);
+			};
+		};
+		Log(\Param).debug("BufDef.newFrom: no BufDef for %", buf);
+		^nil
+    }
+
 	*server {
 		^Server.default;
 	}
@@ -388,6 +401,7 @@ BufDef {
 	}
 
     *bufferCompileString { arg buffer;
+		// Buffer.asCompileString is added in Param_extensions.sc
 		if(buffer.key.notNil) {
 			^"BufDef(%)".format(buffer.key.asCompileString)
 		} {

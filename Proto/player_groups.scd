@@ -14,7 +14,7 @@ ProtoTemplateDef(\StreamPlayer, (
 	},
 
 	target: { arg self;
-		self.parent_self.targets[self.index];
+		self.parent_self.getTarget(self.index);
 	},
 
 	target_: { arg self, val;
@@ -23,6 +23,10 @@ ProtoTemplateDef(\StreamPlayer, (
 
 	defaultTarget: { arg self;
 		self.parent_self.defaultTarget
+	},
+
+	pattern: { arg self;
+		self.target.pattern;
 	},
 
 	playMode: { arg self;
@@ -42,27 +46,34 @@ ProtoTemplateDef(\StreamPlayer, (
 	},
 
 	play: { arg self;
-		if(self.target.notNil) {
+		if(self.isEmpty.not) {
 
 			if(self.stream.isNil) {
-				var pat = self.target.asPattern;
+				var pat = self.pattern;
 				if(self.preChain.notNil) {
-					pat = self.target.asPattern <> self.preChain;
+					pat = pat <> self.preChain;
 				};
 				if(self.postChain.notNil) {
-					pat = self.postChain <> self.target.asPattern;
+					pat = self.postChain <> pat
 				};
 				self.stream = pat.asStream;
+				//[self.stream, pat, pat.source].debug("set stream from pat")
 			};
 			if(self.cur_ev.notNil) { // required for not overwriting player if already playing (too fast pushing)
+				//self.ev.debug("self.cur_ev not nil, release");
 				self.cur_ev.release;
 				self.cur_ev = nil;
 			};
 			if(self.ev.isNil) {
+				//self.ev.debug("self.ev is nil, setting it to Event.default");
 				self.ev = Event.default;
 			};
 			//self.ev.debug("play: before next: ev");
-			self.ev = self.stream.next(self.ev);
+			// FIXME: is self.ev used as parent ? so each event is parent of the next ?
+			// something is wrong
+			self.ev = self.stream.next(Event.default);
+			//self.ev.debug("self.ev is the next event to be played");
+			//self.ev = self.stream.next(self.ev);
 			if(self.ev.notNil) {
 				//self.ev.debug("play: ev");
 				self.raw_ev = self.ev.copy; // for recording, find better property name
@@ -136,6 +147,7 @@ ProtoTemplateDef(\NotePlayer, (
 		self.ev = self.ev.copy.putAll(local_pre_event ?? {()});
 		//self.ev.debug("play: before next: ev");
 		//Log(\Param).debug("NotePlayer: play: ev 2: %", self.ev);
+		// FIXME: next should take Event.default
 		self.ev = self.stream.next(self.ev);
 		//self.ev.debug("play: ev");
 
@@ -248,6 +260,10 @@ ProtoTemplateDef(\ParPlayerGroup, (
 		self.children.do({ arg x; x.reboot });
 	},
 
+	getTarget: { arg self, idx;
+		self[\targets][idx]
+	},
+
 	setTarget: { arg self, idx, val;
 		if(self[\targets].size <= idx) {
 			self[\targets].tryPerform(\extend, idx+1)
@@ -272,7 +288,7 @@ ProtoTemplateDef(\ParPlayerGroup, (
 	makeListener: { arg self, fun;
 		// FIXME: not the good way, need a omni controller
 		var listenfun = { arg target, msg ... args;
-			Log(\Param).debug("playergroup: listenfun %", [target, msg, args]);
+			//Log(\Param).debug("playergroup: listenfun %", [target, msg, args]);
 			fun.(self.elAt(args[0]), msg, *args);
 		};
 		SimpleController.new(self).put(\play, listenfun).put(\stop, listenfun)
@@ -363,7 +379,7 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 
 	makeListener: { arg self, fun;
 		var listenfun = { arg target, msg ... args;
-			Log(\Param).debug("playergroup: listenfun %", [msg, args]);
+			//Log(\Param).debug("playergroup: listenfun %", [msg, args]);
 			fun.(self.elAt(args[0]), msg, *args);
 		};
 		SimpleController.new(self).put(\play, listenfun).put(\stop, listenfun)
@@ -432,7 +448,7 @@ ProtoClassDef(\PatKitDef, (
 	new: { arg self, key, instrs;
 
 		if(self.all[key].isNil) {
-			self = self.deepCopy;
+			self = ProtoClass((parent: ProtoClassDef(\PatKitDef)));
 			if(instrs.notNil) {
 				if(instrs.isSequenceableCollection) {
 					self.source = instrs;
@@ -462,62 +478,309 @@ ProtoClassDef(\PatKitDef, (
 		self;
 	},
 
-	convert: { arg self, val, oldval;
-		if(val.isKindOf(Pbind) or: { val.isKindOf(EventPatternProxy) } or: { val.isKindOf(Pdef) }) {
-			var ret;
-			if(oldval.notNil and: { oldval.isKindOf(ProtoClass) } and: { oldval.protoClass == \PchainProxy }) {
-				ret = oldval;
-				ret.source = val;
-			} {
-				ret = ProtoInst(\PchainProxy, val);
-			};
-			ret;
+	convertOldStepEventToEvent: { arg self, stepevent;
+		if(stepevent.isNil) {
+			nil
+		} {
+			stepevent.as(Event)
+		};
+	},
+
+
+	newChild: { arg parent_self, x;
+		ProtoTemplateDef(\PatKitDefChild).new(parent_self, x)
+	},
+
+	/////// target lists
+
+	targets_: { arg self, targetlist;
+		if(targetlist.first.isKindOf(StepEvent)) {
+			Log(\Param).debug("Converting old StepEvent to Event");
+			targetlist = targetlist.collect({ arg x; self.convertOldStepEventToEvent(x) });
+			Log(\Param).debug("Converting old StepEvent to Event2");
+			self.targetsData = targetlist;
 		} {
-			val
-		}
-	},
-
-	targets_: { arg self, val;
-		self[\targets] = val.collect({ arg x, idx; self.convert(x, self.targets !? {self.targets[idx]}) }).as(SparseArray);
-		self.children.do({ arg x; x.reboot });
-	},
-
-	targetsData_: { arg self, data;
-		self[\targetsData] = data;
-		self.targets.do { arg target, idx;
-			var data;
-			if(target.isKindOf(StepEvent)) {
-				// no data for StepEvent
-			} {
-				data = self.targetsData[idx];
-				if(data.notNil) {
-					data.keys.do { arg key;
-						target.proxy.set(key, data[key])
-					};
-				};
+			targetlist.do{ arg target, idx; 
+				self.setTarget(idx, target);
+				self.getTargetDataProxy(idx).set(\instrument, nil);
+				self.getPattern(idx); // just for update
 			};
-			
 		};
 	},
 
-	setTarget: { arg self, idx, val;
-		if(self[\targets].size <= idx) {
-			self[\targets].tryPerform(\extend, idx+1)
+	targets: { arg self;
+		self[\targetProxyList].collect { arg item, idx;
+			self.getTarget(idx)
 		};
-		self[\targets][idx] = self.convert(val, self.targets[idx]);
 	},
+
+	targetsData_: { arg self, datalist;
+		datalist.do { arg data, idx;
+			self.setTargetData(idx, data)
+		};
+		//self.targets.do { arg target, idx;
+			//var data;
+			//if(target.isKindOf(StepEvent)) {
+				//// no data for StepEvent
+			//} {
+				//data = self.targetsData[idx];
+				//if(data.notNil) {
+					//data.keys.do { arg key;
+						//target.proxy.set(key, data[key])
+					//};
+				//};
+			//};
+			
+		//};
+	},
+
+	targetsData: { arg self;
+		self[\targetDataProxyList].size.collect { arg idx;
+			self.getTargetData(idx);
+		};
+	},
+
+	/////// target
+
+	getTargetProxy: { arg self, idx; // default value
+		// return the EventPatternProxy
+		if(self[\targetProxyList].isNil) {
+			self[\targetProxyList] = SparseArray();
+		};
+		//if(self[\targets].size <= idx) {
+			//self[\targets].tryPerform(\extend, idx+1)
+		//};
+		if(self[\targetProxyList][idx].isNil) {
+			self[\targetProxyList][idx] = self.defaultTargetProxy;
+		};
+		self[\targetProxyList][idx]
+	},
+
+	getTarget: { arg self, idx; 
+		self.getTargetProxy(idx).source;
+	},
+
+	setTarget: { arg self, idx, val; 
+		// accept the source, not the proxy itself, not symetrical with getTarget
+		//[idx,val].debug("setTarget");
+		self.getTargetProxy(idx).source = val;
+	},
+
+	defaultTargetProxy: { arg self;
+		EventPatternProxy(Pbind());
+	},
+
+	/////// target data
+
+	getTargetDataProxy: { arg self, idx; 
+		// return the EventPatternProxy
+		//Log(\Param).debug("=== %.getTargetDataProxy: %, %".format(self.key, idx, self[\targetDataProxyList]));
+		if(self[\targetDataProxyList].isNil) {
+			self[\targetDataProxyList] = SparseArray();
+		};
+		//self[\targetDataProxyList].debug("before targetDataProxyList");
+		//self[\targetDataProxyList].dump;
+		if(self[\targetDataProxyList][idx].isNil) {
+			self[\targetDataProxyList][idx] = self.defaultTargetDataProxy;
+			//self[\targetDataProxyList].debug("after targetDataProxyList");
+			//self[\targetDataProxyList].dump;
+			//self[\targetDataProxyList][idx].debug("getTargetDataProxy: new! idx=%".format(idx));
+			//self[\targetDataProxyList][idx].envir.debug("getTargetDataProxy: envir");
+		};
+		self[\targetDataProxyList][idx];
+	},
+
+	setTargetData: { arg self, idx, val; 
+		// accept only Event object, not symetrical with getTargetData
+		// used in presetCompileString
+		var proxy;
+		proxy = self.getTargetDataProxy(idx);
+		//[idx,val, proxy.envir].debug("setTargetData");
+		proxy.envir.clear;
+		if(val.isNil) {
+			Log(\Param).debug("setTargetData %: val is nil, clearing child".format(idx));
+			val = self.defaultTargetDataProxy.envir;
+		};
+		val.keys.do { arg key, idx;
+			proxy.setVal(key, val[key]);
+		};
+	},
+
+	getTargetData: { arg self, idx;
+		self.getTargetDataProxy(idx).envir
+	},
+
+	defaultTargetDataProxy: { arg self;
+		EventPatternProxy(Pbind()).set(\instrument, \saw);
+	},
+
+	/////// pattern
+
+	getPattern: { arg self, idx; // child pattern
+		if(self.patterns.isNil) {
+			self.patterns = SparseArray();
+		};
+		if(self.patterns[idx].isNil) {
+			self.patterns[idx] = EventPatternProxy(self.getTargetDataProxy(idx) <> self.getTargetProxy(idx));
+			//self.patterns[idx].debug("CREATED PATTERN %".format(idx));
+			//self.patterns[idx].source.patterns.first.dump;
+		};
+		self.patterns[idx];
+	},
+
+	getPatternList: { arg self;
+		self.lastChildIndex.collect { arg idx;
+			self.getPattern(idx)
+		};
+	},
+
+	updatePattern: { arg self, idx;
+		// useful only for debug because proxies should be updated automatically
+		var pat;
+		var data;
+		var chain;
+		pat = self.getPattern(idx);
+		chain = pat.source;
+		//chain.debug("before chain");
+		//chain.dump;
+		data = pat.source.patterns.first;
+		//data.debug("before targetData");
+		//data.dump;
+		self.getPattern(idx).source = self.getTargetDataProxy(idx) <> self.getTargetProxy(idx);
+		pat = self.getPattern(idx);
+		chain = pat.source;
+		//chain.debug("after chain");
+		//chain.dump;
+		data = pat.source.patterns.first;
+		//data.debug("after targetData");
+		//data.dump;
+	},
+
+	setPattern: { arg self;
+		
+	},
+
+	asPattern: { arg self, score; // PatKitDef pattern
+		var pat = PdrumStep(self.patterns, score, 1, key:\kitIndex);
+		pat
+	},
+
+	/////// general children methods
 
 	clear: { arg self;
 		self.all[self.key] = nil;
 		nil;
 	},
 
+	clearChildren: { arg self;
+		// TODO
+		self[\patterns] = nil;
+		self[\targets] = nil;
+		self[\targetsData] = nil;
+	},
+
+	lastChildIndex: { arg self;
+		var datalist;
+		datalist = self[\targetDataProxyList].copy;
+		while { datalist.size > 0 and: { datalist.last == nil or: { self.childAt(datalist.size-1).isEmpty } } } { 
+			datalist.pop 
+		}; 
+		datalist.size;
+	},
+
+	clearChild: { arg self, idx;
+		//idx.debug("clearChild");
+		self.setTarget(idx, self.defaultTargetProxy.source);
+		self.setTargetData(idx, self.defaultTargetDataProxy.envir);
+		self.getPattern(idx);
+	},
+
+	pasteChild: { arg self, idx, child;
+		//idx.debug("pasteChild");
+		//self[\targetDataProxyList].debug("pasteChild targetDataProxyList 1");
+		self.setTarget(idx, child.target.copy);
+		//self[\targetDataProxyList].debug("pasteChild targetDataProxyList 2");
+		self.setTargetData(idx, child.targetData.copy);
+		//self[\targetDataProxyList].debug("pasteChild targetDataProxyList 3");
+		// no copy of targetData source for the moment
+		self.getPattern(idx);
+		//self[\targetDataProxyList].debug("pasteChild targetDataProxyList 4");
+	},
+
+	loadFrom: { arg self, kit;
+		var count;
+		//self[\targetDataProxyList].debug("loadFrom targetDataProxyList 1");
+		count = max(kit.lastChildIndex, self.lastChildIndex);
+		//self[\targetDataProxyList].debug("loadFrom targetDataProxyList 2");
+		//count.debug("loadFrom");
+		count.do { arg idx;
+			//self[\targetDataProxyList].debug("loadFrom targetDataProxyList 3");
+			if(kit.childAt(idx).isEmpty) {
+				self.clearChild(idx);
+			} {
+				self.pasteChild(idx, kit.childAt(idx));
+			};
+			//self[\targetDataProxyList].debug("loadFrom targetDataProxyList 4");
+		};
+	},
+
+	///////
+
+	getInstrument: { arg self, idx;
+		Param.getInstrumentFromPbind(self.getTarget(idx)) ?? { 
+			var proxy = self.getTargetDataProxy(idx);
+			if(proxy.envir.notNil and: { proxy.envir.keys.includes(\instrument) }) {
+				proxy.get(\instrument) ? \playersec
+			} {
+				\playersec
+			}
+		}
+	},
+
+	setInstrument: { arg self, idx, instr;
+		if(Param.getInstrumentFromPbind(self.getTarget(idx)).isNil) {
+			self.getTargetDataProxy(idx).set(\instrument, instr)
+		} {
+			Log(\Param).debug("Abort setting the instrument because target already have instrument");
+		};
+	},
+
+
 	refCompileString: { arg self, name;
 		"PatKitDef(%)".format(name ? self.key.asCompileString)
 	},
 
-	presetCompileString: { arg self, varname="~ppg";
-		self.parent[\presetCompileString].(self, self.refCompileString)
+	presetCompileString: { arg self, varname;
+		var str;
+		varname = varname ?? { self.refCompileString };
+		str = "%.targetsData = [\n%];".format(
+			varname ?? {self.refCompileString},
+			{
+				var datalist = self.targetsData.as(Array);
+
+				// remove trailing empty children
+				while { datalist.size > 0 and: { datalist.last == nil or: { self.childAt(datalist.size-1).isEmpty } } } { 
+					datalist.pop 
+				}; 
+
+				datalist = datalist.collect({ arg data, dataidx;
+					var res;
+					if(self.childAt(dataidx).isEmpty.not) {
+						data = data.keys.as(Array).collect { arg key, idx;
+							"%: %".format(key.asCompileString, self.getTargetDataProxy(dataidx).getVal(key).asCompileString)
+						}.join(", ");
+
+						res = "\t(%),\n".format(data);
+					} {
+						res = "\t%,\n".format(nil.asCompileString);
+					};
+					res;
+				});
+				datalist = datalist.join;
+				datalist;
+			}.value
+		);
+		str;
 	},
 
 	savePresetCompileString: { arg self, path, action, force_dialog=false;
@@ -539,6 +802,61 @@ ProtoClassDef(\PatKitDef, (
 
 
 
+ProtoTemplateDef(\PatKitDefChild, (
+	parent: ProtoTemplateDef(\StreamPlayer),
+
+	targetProxy: { arg self;
+		self.parent_self.getTargetProxy(self.index)
+	},
+
+	targetData: { arg self;
+		self.parent_self.getTargetData(self.index);
+	},
+
+	targetDataProxy: { arg self;
+		self.parent_self.getTargetDataProxy(self.index);
+	},
+
+	pattern: { arg self;
+		self.parent_self.getPattern(self.index);
+	},
+
+	presetCompileString: { arg self;
+		self.targetData.asParamGroup.getEventCompileString
+	},
+
+	defaultTargetDataProxy: { arg self;
+		self.parent_self.defaultTargetDataProxy;
+	},
+
+	defaultTargetProxy: { arg self;
+		self.parent_self.defaultTargetProxy;
+	},
+
+	instrument: { arg self;
+		self.parent_self.getInstrument(self.index)
+	},
+
+	instrument_: { arg self, instr;
+		self.parent_self.setInstrument(self.index, instr)
+	},
+
+	isEmpty: { arg self;
+		//Log(\Param).debug("IS EMPTY!!!!! %", self.index);
+		(self.targetProxy.isNil or: { self.targetProxy.source.patternpairs == self.defaultTargetProxy.source.patternpairs }) and: {
+			self.targetDataProxy.isNil or: {
+				self.targetDataProxy.source.patternpairs == self.defaultTargetDataProxy.source.patternpairs
+				and: { self.targetDataProxy.envir.size == 0 or: { 
+					self.targetDataProxy.envir == self.defaultTargetDataProxy.envir 
+				} }
+			}
+		}
+	},
+
+	asParamGroup: { arg self;
+		self.targetDataProxy.asParamGroup(self.instrument)
+	},
+));
 
 (
 ProtoClassDef(\PchainProxy, (
@@ -546,7 +864,7 @@ ProtoClassDef(\PchainProxy, (
 	new: { arg self, pattern;
 		self = self.deepCopy;
 	
-		pattern.debug("hoo");
+		//pattern.debug("hoo");
 		
 		self[\proxy] = EventPatternProxy.new.source_(Pbind());
 		self[\pattern] = EventPatternProxy.new.source_(Pbind());

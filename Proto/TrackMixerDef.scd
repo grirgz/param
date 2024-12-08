@@ -130,10 +130,12 @@ ProtoClassDef(\TrackMixerDef, (
 		self.proxy.get(\mute) == 1;
 	},
 
-	soloMode_: { arg self, val;
-		self.proxy.set(\solo, val.asInteger);
-		self.soloModeHook(val); // this should call .muteBySolo on all other tracks
-		self.changed(\soloMode);
+	soloMode_: { arg self, valbool;
+		var valint;
+		valint = valbool.asInteger;
+		self.proxy.set(\solo, valint);
+		self.soloModeHook(valbool); // this should call .muteBySolo on all other tracks
+		self.changed(\soloMode, valbool);
 	},
 
 	muteBySolo: { arg self, val;

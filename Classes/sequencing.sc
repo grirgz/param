@@ -64,7 +64,7 @@ PstepSeq : ListPattern {
 
 PdrumStep : Pattern {
 	var <dict, <>score, <>repeats, <>default, <>key, <>isRestFunction;
-	var streamDict;
+	var <>streamDict;
 	var silentEvent;
 	*new { arg dict, score, repeats=inf, default, key=\midinote, isRestFun;
 		^super.newCopyArgs(dict, score, repeats, default, key).initPdrumStep(isRestFun);
@@ -86,6 +86,7 @@ PdrumStep : Pattern {
 	dictStream { arg idx;
 		if(streamDict[idx].isNil) {
 			var item = dict[idx];
+			[item, dict].debug("dictStream");
 			if(item.notNil) {
 				if(item.class == Event) { // debug only
 					streamDict[idx] = item.as_stream;
@@ -101,40 +102,44 @@ PdrumStep : Pattern {
 	}
 
 	dictNext { arg idx, ev;
-		ev = ev ? ();
+		ev = ev ?? { () };
 		^this.dictStream(idx).next(ev)
 	}
 
 	embedInStream { arg inval;
 		var scoreStream, note;
 		var ev = inval; // i don't know what i'm doing..
-		repeats.value(inval).do({
+		repeats.value(ev).do({
 			scoreStream = score.asStream;
 			scoreStream.do( { arg scoreev;
 				var pat;
+				var kitIndex;
 				if(scoreev.isNil) { 
 					//"RETRUN".debug; 
-					^inval
+					^ev
 				};
 				if(scoreev.isNumber) {
 					scoreev = (isRest:true, dur:scoreev)
 				};
-				if(scoreev[key].isNil or: {isRestFunction.(scoreev[key])}) {
+				kitIndex = scoreev.use {  currentEnvironment[key].value };
+				if(kitIndex.isNil or: {isRestFunction.(kitIndex)}) {
 					ev = silentEvent.composeEvents(scoreev).yield(ev);
 					//ev = silentEvent.composeEvents(scoreev).yield(ev);
 				} {
 					var padevs;
 					var xscoreev = scoreev.copy;
-					//scoreev[key].debug("midinote (or specified key)");
+					kitIndex = kitIndex.asInteger;
+					//[scoreev, key, kitIndex, ev].debug("midinote (or specified key)");
 					xscoreev[key] = nil;
-					padevs = this.dictStream(scoreev[key]).next(inval);
+					padevs = this.dictStream(kitIndex).next(ev);
+					//~padevs = padevs;
 					//padevs.debug("padevs");
 					if(padevs.isSequenceableCollection.not) {
 						padevs = [padevs]
 					};
-					padevs = padevs.collect({ arg x; Event.newFrom(x) }); // FIXME: convert StepEvent to Event as a workaround because when embedInStream the StepEvent is repeated instead of one shot (see PatKitDef doc)
+					//padevs = padevs.collect({ arg x; Event.newFrom(x) }); // FIXME: convert StepEvent to Event as a workaround because when embedInStream the StepEvent is repeated instead of one shot (see PatKitDef doc)
 					//padevs.debug("padevs as event"); 
-					padevs.collect{ arg padev, x;
+					padevs.do{ arg padev, x;
 						if(x == ( padevs.size-1 )) {
 							ev = padev.composeEvents(xscoreev).yield(ev);
 							//ev = padev.composeEvents(xscoreev).yield(ev);
@@ -144,12 +149,11 @@ PdrumStep : Pattern {
 							ev = padev.composeEvents(sc).yield(ev);
 							//ev = padev.composeEvents(sc).yield(ev);
 						};
-						ev;
 					};
 				}
-			}, inval);
+			}, ev);
 		});
-		^inval
+		^ev
 	}
 }
 
@@ -283,7 +287,7 @@ StepEvent : Event {
 								val.embedInStream(inevent);
 								rep = false;
 							}
-							{ val.isKindOf(Event) and: { val[\eventType] == \envTimeline } } {
+							{ val.isKindOf(Event) and: { val[\eventType] == \paramTimeline } } {
 								val.outBus.asMap.yield;
 								rep = true;
 							}
@@ -338,7 +342,7 @@ StepEvent : Event {
 			var list = List.new;
 			this.keys.asArray.do({ arg key;
 				var val = this[key];
-				if(val.isKindOf(Event) and: { val.eventType == \envTimeline }) {
+				if(val.isKindOf(Event) and: { val.eventType == \paramTimeline }) {
 					list.add(val.xasPattern);
 				};
 			});

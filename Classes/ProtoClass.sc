@@ -332,10 +332,17 @@ ProtoClassDef {
 
 	*new { arg key, val;
 		if(val.notNil) {
-			if(val.isKindOf(ProtoClass).not) {
-				val = ProtoClass(val);
+			if(protoClassDef_all[key].notNil) {
+				// don't know if its a good idea to update event instead of replacing, now it look a lot like ProtoDef 
+				// but now i can update the protoclass and all instances are updated
+				protoClassDef_all[key].putAll(val);
+				protoClassDef_all[key].parent = val.parent;
+			} {
+				if(val.isKindOf(ProtoClass).not) {
+					val = ProtoClass(val);
+				};
+				protoClassDef_all[key] = val;
 			};
-			protoClassDef_all[key] = val;
 			^val
 		} {
 			^protoClassDef_all[key];

@@ -402,7 +402,6 @@ TimelineView : SCViewHolder {
 		case
 		{ mod.isCtrl and: { buttonNumber == 1 } } {
 			this.setEndPosition(gpos.x.trunc(quant.value.x));
-			^false;
 		}
 		{ mod.isCtrl and: { buttonNumber == 0 } } {
 			// create node mode
@@ -2100,7 +2099,7 @@ TimelineViewNode {
 			\timeline, {
 				//if(event.timeline.isKindOf(EnvTimeline)) {
 				switch(event.timeline.eventType,
-					\envTimeline, {
+					\paramTimeline, {
 						TimelineViewEventEnvNode(parent, nodeidx, event)
 					},
 					\sampleTimeline, {

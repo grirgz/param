@@ -1124,29 +1124,6 @@ TagSpecDef(\InstrumentTrack, {
 	}).flatten;
 });
 
-TagSpecDef(\TrackListPart, {
-	var tracklists = TagSpecDef(\TrackList).valueList;
-	tracklists.collect({ arg tracklist;
-		var sizes = tracklist.children.select{|x|x.isEmpty.not}.collect({ arg channel;
-			// for each channel, count the number of part
-			channel.children.select{|x|x.isEmpty.not}.size; 
-		});
-		var channelIdxWithMostParts = sizes.maxIndex;
-		// now the max number of part is the number of part of the tracklist
-		if(sizes.size > 0) {
-
-			(0..sizes[channelIdxWithMostParts]-1).collect({ arg idx;
-				// format: (libLabel -> libObj)
-				// type is added by TagSpecDef key
-				var line = tracklist.linePlayerAt(idx);
-				//(("%.part%".format(tracklist.key, idx)) -> ( tracklist.linePlayerAt(idx) ));
-				line.trackKey -> line;
-			})
-		} {
-			nil
-		}
-	}).flatten.select(_.notNil)
-});
 
 // maybe should rename to TrackInstrument_ClipTimeline
 TagSpecDef('TrackInstrument', [ // maybe deprecated
@@ -1222,7 +1199,7 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\Clip,
 	\Timeline,
 	\Editable,
-	\Players,
+	\Player,
 	\AudioBuffer,
 	\SynthDef,
 ]);
@@ -1251,7 +1228,7 @@ TagSpecDef('GlobalLibrary.type.TrackInstrumentTarget', [ // maybe deprecated
 	\Sample,
 ]);
 
-TagSpecDef('GlobalLibrary.type.Clip', [
+TagSpecDef('GlobalLibrary.type.Clip', [ // deprecated, use Player instead
 	//\SynthDef, // FIXME: not implemented yet
 	//\BufDef, // FIXME: not implemented yet
 	\Sample,
@@ -1324,7 +1301,7 @@ TagSpecDef('GlobalLibrary.type.AllTracks', {
 	}.flat;
 });
 
-TagSpecDef('GlobalLibrary.type.Players', {
+TagSpecDef('GlobalLibrary.type.Player', {
 	[
 		\Pdef,
 		\Ndef,

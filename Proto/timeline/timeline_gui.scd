@@ -47,7 +47,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 			self.cursor.endPosition = nil;
 			PlayerWrapper(self.timeline_model).stop;
 			self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
-		}).maxWidth_(30);
+		}).fixedWidth_(30).maxHeight_(25).font_(Font.default.size_(16));
+	},
+
+	make_repeatCount_box: { arg self;
+		Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox.maxWidth_(40)
 	},
 
 	make_quant_spec: { arg self;
@@ -72,13 +76,13 @@ ProtoTemplateDef(\TimelinePanelView, (
 		quant_spec = self.make_quant_spec;
 
 		self.quant_param = Param({ self.get_xquant }, { arg val; self.set_xquant(val) }, quant_spec);
-		quant_popup = self.quant_param.asPopUpMenu;
+		quant_popup = self.quant_param.asPopUpMenu.toolTip_("Quant");
 		self.quant_popup = quant_popup;
 		self.quant_popup;
 	}, 
 
 	hasSavePath: { arg self;
-		self.timeline_model.presetCompileStringSavePath.notNil
+		self.timeline_model.hasSavePath
 	},
 
 	saveAction: { arg self, view;
@@ -185,6 +189,10 @@ ProtoTemplateDef(\TimelinePanelView, (
 		//var window = Window.new;
 		WindowDef("%_%".format(self.timeline_model.eventType, self.timeline_model.key).asSymbol, { arg me;
 			var layout;
+			var etype;
+			etype = self.timeline_model.eventType.asString;
+			etype = "%%".format(etype[0].toUpper, etype[1..]);
+			me.windowName = "%: %".format(etype, self.timeline_model.key);
 			me.window.onClose_({
 				self.save_timeline_properties;
 			});
@@ -846,7 +854,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		var locatorbar;
 		var ruler_x_beat;
 		cursor_timeline = CursorTimelineView.new;
-		~cursor_timeline = cursor_timeline;
+		//~cursor_timeline = cursor_timeline;
 		self.cursor_timeline = cursor_timeline;
 		cursor_timeline.mapCursor(self.cursor);
 		cursor_timeline.quant = self.quant_ref;
@@ -905,14 +913,14 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.timeline = timeline;
 		self.load_timeline_properties;
 		//timeline.areasize = self.pr_areasize.debug("==================seting areasize");
-		~mytl = timeline;
+		//~mytl = timeline; // debug
 		timeline.mouseDownAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
 			if(clickCount == 2) {
 				if(chosennode.notNil) {
 					self.showClipEditor(chosennode.model, self.eventloop.list)
 				};
 			};
-			if(buttonNumber == 1) {
+			if(buttonNumber == 1 and: { mod.isCtrl.not }) {
 				self.showTimelineContextMenu(chosennode)
 				
 			};
@@ -1361,7 +1369,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 					self.showClipEditor(chosennode.model);
 				}
 			} {
-				if(buttonNumber == 1) {
+				if(buttonNumber == 1 and: { mod.isCtrl.not }) {
 					self.showTimelineContextMenu(chosennode);
 				} {
 					//if(chosennode.notNil) {
@@ -1608,10 +1616,10 @@ ProtoTemplateDef(\TrackTimelinePanelView, (
 ));
 
 ProtoTemplateDef(\ParamTimelinePanelView, (
-	parent: ~timelinePanelView,
+	parent: ProtoTemplateDef(\TimelinePanelView),
 
 	new: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		// self.timeline is timelineView actually
 		self.timeline_model = timeline;
@@ -1622,7 +1630,7 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 	},
 
 	newView: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		// self.timeline is timelineView actually
 		self.timeline_model = timeline;
@@ -1681,7 +1689,7 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 	},
 
 	make_header: { arg self;
-		self.paramKnob = Knob.new;
+		self.paramKnob = Knob.new.maxHeight_(25);
 		self.paramBusModeButton = BoolButton.new.string_("Bus mode");
 		self.targetPlayerView = PlayerWrapperView.new;
 		HLayout(
@@ -1692,27 +1700,50 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 				//PlayerWrapperView(PlayerWrapper(self.param.target)).view;
 			//},
 			self.targetPlayerView,
+			self.param.asStaticTextLabel.attachContextMenu,
 			self.paramKnob,
 			//Param(Message(self.param), \inBusMode, XBoolSpec()).asButton("Bus mode old"),
 			self.paramBusModeButton,
-			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
+			self.make_repeatCount_box,
 			self.make_quant_popup,
-			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			self.make_undo_system_buttons,
 			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			RecordButton(self.timeline_model.recorder, "Rec"),
-			BasicButton.new.string_("Select param").action_({
-				WindowDef(\ParamSelectDialog).front(nil, { arg param;
-					self.timeline_model.param = param;
-				})
-			}),
-			BasicButton.new.string_("Edit param").action_({
-				WindowDef(\ParamEditor).front(self.param)
-			}),
+			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			//Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
 				//["Rec", Color.black, Color.white],
 				//["Rec", Color.black, Color.red],
 			//]),
+			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				var model = self.timeline_model;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				Menu(
+					* [
+						MenuAction("Edit param", { 
+							WindowDef(\ParamEditor).front(self.param)
+						}),
+						MenuAction("Select param", {
+							WindowDef(\ParamSelectDialog).front(nil, { arg param;
+								self.timeline_model.param = param;
+							})
+						}),
+						MenuAction.separator,
+						if(model.hasSavePath) {
+							MenuAction("Save", {
+								self.saveAction
+							})
+						},
+						MenuAction("Save as...", {
+							self.saveAsAction;
+						}),
+						MenuAction("Copy refString to clipboard", { 
+							model.refCompileString.pbcopy;
+						}),
+					].select(_.notNil)
+				).front;
+
+				//WindowDef(\TimelineOverlayMenu).front(self.timeline_model, view, x, y)
+			}).maxWidth_(20)
 		)
 	},
 
@@ -1825,20 +1856,58 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
-			self.make_saveas_button,
-			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
+			//self.make_saveas_button,
+			self.make_repeatCount_box,
 			self.make_quant_popup,
-			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			self.make_undo_system_buttons,
 			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			RecordButton( self.timeline_model.recorder, "Rec" ),
+			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			//Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
 				//["Rec", Color.black, Color.white],
 				//["Rec", Color.black, Color.red],
 			//]),
 			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				var model = self.timeline_model;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-				WindowDef(\TimelineOverlayMenu).front(self.timeline_model, view, x, y)
+				Menu(
+					* [
+						MenuAction("Edit", { 
+							PlayerWrapper(model.param.target).edit;
+						}),
+						Param(
+							Message(model),
+							\outBus, 
+							TagSpecDef(\BusDef),
+							//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
+						).asMenu("outBus"),
+						MenuAction("Piano keyboard", { 
+							//model.debug("m");
+							//model.target.debug("t");
+							WindowDef(\TimelinePianoKeyboard).front(model.wrapper)
+						}),
+						Param(
+							Message(model),
+							\controller, 
+							ControllerDef.getTagSpec(\piano),
+							//TagSpecDef(\NoteTimeline_controller),
+						).asMenu("Controller"),
+						MenuAction.separator,
+						if(model.hasSavePath) {
+							MenuAction("Save", {
+								self.saveAction
+							})
+						},
+						MenuAction("Save as...", {
+							self.saveAsAction;
+						}),
+						MenuAction("Copy refString to clipboard", { 
+							model.refCompileString.pbcopy;
+						}),
+					].select(_.notNil)
+				).front;
+
+				//WindowDef(\TimelineOverlayMenu).front(self.timeline_model, view, x, y)
 			}).maxWidth_(20)
 		);
 		
@@ -1903,10 +1972,10 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 ));
 
 ProtoTemplateDef(\KitTimelinePanelView, (
-	parent: ~timelinePanelView,
+	parent: ProtoTemplateDef(\TimelinePanelView),
 
 	new: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		self.timeline_model = timeline;
 		self.areasize = self.timeline_model.areasize;
@@ -1917,7 +1986,7 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 	},
 
 	newView: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		self.timeline_model = timeline;
 		self.areasize = self.timeline_model.areasize;
@@ -1967,28 +2036,63 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 	},
 
 	make_header: { arg self;
+		self.recordButton = RecordButton(self.timeline_model.recorder, "Rec");
+		self.recordButton.followChange(self.timeline_model, \kit, {
+			self.recordButton.model = self.timeline_model.recorder;
+		});
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
-			self.make_saveas_button,
-			Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox,
+			//self.make_saveas_button,
+			self.make_repeatCount_box,
 			self.make_quant_popup,
-			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			self.make_undo_system_buttons,
 			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			RecordButton(self.timeline_model.recorder, "Rec"),
+			self.recordButton,
+			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			//Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
 				//["Rec", Color.black, Color.white],
 				//["Rec", Color.black, Color.red],
 			//]),
-			Param(
-				Message(self.timeline_model),
-				\outBus, 
-				TagSpecDef(\BusDef),
-				//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
-			).asPopUpMenu,
 			BasicButton.new.string_("Edit kit").action_({ 
-				WindowDef(\KitTimeline_PatKitDefEditor).front(self.timeline_model)
+				WindowDef(\PatKitDefEditor).front(self.timeline_model.wrapper)
+		   	}),
+			BasicButton.new.string_("...").fixedWidth_(20).action_({ 
+				var model = self.timeline_model;
+				Menu(
+					*[
+						Param(
+							Message(model),
+							\outBus, 
+							TagSpecDef(\BusDef),
+							//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
+						).asMenu("outBus"),
+						MenuAction("Select kit", {
+							WindowDef(\GlobalLibrary_select).front(self.wrapper, { arg libid;
+								model.wrapper = libid.last.value;
+							}, \Kit)
+						}),
+						Param(
+							Message(model),
+							\controller, 
+							ControllerDef.getTagSpec(\drumpad),
+							//TagSpecDef(\NoteTimeline_controller),
+						).asMenu("Controller"),
+						MenuAction.separator,
+						if(model.hasSavePath) {
+							MenuAction("Save", {
+								self.saveAction
+							})
+						},
+						MenuAction("Save as...", {
+							self.saveAsAction;
+						}),
+						MenuAction("Copy refString to clipboard", { 
+							model.refCompileString.pbcopy;
+						}),
+					].select(_.notNil)
+				).front;
+				//WindowDef(\PatKitDefEditor).front(self.wrapper)
 		   	}),
 		);
 		
@@ -2023,6 +2127,10 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 			var noteidx = self.ruler_y.pixelPointToGridPoint(Point(x,y)).y.asInteger;
 			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
 			self.timeline_model.wrapper.elAt(oldnote ? noteidx).stop;
+		});
+		self.ruler_y.followChange(self.timeline_model, \kit, {
+			self.ruler_y.mapWrapper(self.timeline_model.wrapper);
+			self.ruler_y.refresh;
 		});
 	},
 
@@ -2083,541 +2191,14 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 ));
 
 
-////////////////// clip editor (really: clip chooser/selector)
+////////////////// clip editor 
 
-ProtoTemplateDef(\ClipEditor, ( // deprecated
-	new: { arg self, model, parent;
-		self = self.deepCopy;
-	
-		self.model = model;
-		self.parent_model = {parent};
-		//self.makeWindow;
-		
-		self.init_default_clip_factories;
-	
-		self;
-	},
-
-	init_default_clip_factories: { arg self;
-		var tl;
-		self.clipFactories = ();
-
-		self.clipFactories.ndef = (
-			key: 'ndef',
-			label: { arg self; self.key.asString },
-			keylist: {
-				if(Ndef.all[\localhost].notNil) {
-					Ndef.all[\localhost].envir.keys.asArray.sort;
-				} {
-					[];
-				}
-			},
-
-			getName: { arg self, ev;
-				ev.receiver.value.key;
-			},
-
-			className: {
-				Ndef
-			},
-
-			editSelected: { arg self, model;
-				var player = model.receiver.value;
-				if(player.class == PlayerWrapper) {
-					player = player.target;
-				};
-				if(player.getHalo(\edit).notNil) {
-					player.getHalo(\edit).value;
-				} {
-					player.edit;
-				}
-			},
-
-			redefineClip: { arg me, curname, model;
-				PlayerEvent.redefine(model);
-				model[\receiver] = PlayerWrapper(Ndef(curname));
-				//model.changed(\refresh);
-				self.parent_model.changed(\refresh);
-			},
-
-
-		);
-
-		self.clipFactories.pdef = (
-			key: 'pdef',
-			label: { arg self; self.key.asString },
-			keylist: {
-				Pdef.all.keys.asArray.sort; 
-			},
-
-			getTarget: { arg self, ev;
-				// depends pattern event, player event
-				if(ev.pattern.isKindOf(Pdef)) {
-					// pattern type
-					ev.pattern;
-				} {
-					// player type
-					var tar = ev.receiver.value;
-					tar.key; // PlayerWrapper has key wrapper
-					if(tar.isKindOf(PlayerWrapper)) {
-						tar = tar.target;
-					};
-					if(tar.isKindOf(Pdef)) {
-						tar;
-					} {
-						Log(\Param).error("clipFactories.pdef: ERROR: getTarget: don't know what type!!!");
-						nil;
-					}; 
-				}
-				
-			},
-
-			className: {
-				Pdef
-			},
-
-			getName: { arg self, ev;
-				self.getTarget(ev).key;
-			},
-
-			editSelected: { arg self, model;
-				var player;
-				//player = model.receiver.value;
-				//player.asParamGroup.debug("Edit: pattern");
-				//if(player.class == PlayerWrapper) {
-				//	player = player.target;
-				//};
-				//player.debug("clipeditor: player");
-				//player.getHalo(\edit).debug("clipeditor: player, edit");
-				player = self.getTarget(model);
-				if(player.isKindOf(Pdef)) {
-					if(player.getHalo(\edit).notNil) {
-						//player.getHalo(\edit).debug("clipeditor: player, halo edit");
-						player.getHalo(\edit).value;
-					} {
-						//player.getHalo(\edit).debug("clipeditor: normal edit");
-						player.asParamGroup.edit;
-					}
-				} {
-					"clipFactories.pdef: ERROR: edit: don't know what type!!!".inform;
-				}
-			},
-
-			redefineClip: { arg me, curname, model;
-				PatternEvent.redefine(model);
-				model[\pattern] = Pdef(curname);
-				//model.changed(\refresh);
-				self.parent_model.changed(\refresh);
-			},
-		);
-
-		self.clipFactories.trackdef = (
-			key: 'trackdef',
-			label: { arg self; self.key.asString },
-			keylist: {
-				TrackDef.all.keys.asArray.sort; 
-			},
-
-			getName: { arg self, ev;
-				ev.receiver.value.key;
-			},
-
-			editSelected: { arg self, model;
-				var player = model.receiver.value;
-				if(player.class == PlayerWrapper) {
-					player = player.target;
-				};
-				if(player.getHalo(\edit).notNil) {
-					player.getHalo(\edit).value;
-				} {
-					if(player[\edit].notNil) {
-						player.edit;
-					} {
-						player.editor.front;
-					}
-				}
-			},
-
-			redefineClip: { arg me, curname, model;
-				PlayerEvent.redefine(model);
-				model[\receiver] = "{ PlayerWrapper(TrackDef(%)) }".format(curname).interpret;
-				//model.changed(\refresh);
-				self.parent_model.changed(\refresh);
-			},
-
-		);
-
-		// generic timeline factory
-		tl = (
-			key: 'generictimeline',
-			label: { arg self; self.key.asString },
-
-			className: {
-				~noteTimeline
-			},
-
-			keylist: { arg self;
-				self.className.all.keys.asArray.sort;
-			},
-
-			getName: { arg self, model;
-				model.timeline.key;
-			},
-
-			editSelected: { arg self, model;
-				model.timeline.edit;
-			},
-
-			redefineClip: { arg me, curname, model;
-				var tlobj;
-				Log(\Param).debug("redefineClip timeline before ev:% %", model, model.class);
-				PatternEvent.redefine(model);
-				Log(\Param).debug("redefineClip timeline ev:% %", model, model.class);
-
-				tlobj = ( "{ " ++ me.className.new(curname).refCompileString ++ " }" ).interpret;
-				model[\timeline] = tlobj;
-				//model[\timeline] = { 
-				//	me.keys.debug("redefineClip3:me.new!!!!!");
-				//	me.className.new(curname)
-				//};
-				//"redefineClip3".debug;
-				//model.changed(\refresh);
-				self.parent_model.changed(\refresh);
-				//"redefineClip4".debug;
-			},
-		);
-		self.clipFactories_timeline_parent = tl;
-
-		[\noteTimeline, \clipTimeline, \envTimeline, \modStepTimeline, \kitTimeline].do { arg key;
-			self.clipFactories[key] = (
-				key: key,
-				parent: tl,
-				className: "{ topEnvironment[%] }".format(key.asCompileString).interpret,
-			);
-		};
-
-		self.clipFactories.sampleTimeline = (
-			key: 'sampleTimeline',
-			parent: tl,
-			className: { SampleTimeline.proto },
-		);
-
-		self.clipFactories_keys = self.clipFactories.keys.asArray.sort;
-		
-	},
-
-	event_to_clipFactory_key: { arg self, model;
-		var clipkey;
-
-		// 'Pdef',
-		// 'Ndef',
-		// 'ClipTimeline',
-		// 'SampleTimeline',
-		// 'NoteTimeline',
-		// 'EnvTimeline',
-		// 'ModStepTimeline',
-		// 'Tracks',
-
-		switch(model.type, 
-			\pattern, {
-				if(model.timeline.notNil) {
-					if(self.clipFactories_keys.includes(model.timeline.eventType)) {
-						clipkey = model.timeline.eventType
-					};
-					//switch(model.timeline.eventType,
-						//\envTimeline, {
-							//clipkey = 'envTimeline'
-						//},
-						//\clipTimeline, {
-							//clipkey = 'clipTimeline'
-						//},
-						//\sampleTimeline, {
-							//clipkey = 'sampleTimeline'
-						//},
-						//\noteTimeline, {
-							//clipkey = 'noteTimeline'
-						//},
-						//\kitTimeline, {
-							//clipkey = 'kitTimeline'
-						//},
-						//\modStepTimeline, {
-							//clipkey = 'modStepTimeline'
-						//},
-					//)
-				} {
-					//var tar = model.receiver.value;
-					//if(tar.isKindOf(PlayerWrapper)) {
-					//	tar = tar.target;
-					//};
-					var tar = model.pattern;
-					if(tar.isKindOf(Pdef)) {
-						clipkey = 'pdef'
-					} {
-						//model.debug("event_to_clipFactory_key: pattern: unknown");
-					}
-				}
-			},
-			\player, {
-				var branch = { arg obj;
-					switch( obj.class,
-						PlayerWrapper, {
-							branch.(obj.target)
-						},
-						Ndef, {
-							'ndef'
-						},
-						Pdef, {
-							'pdef'
-						},
-						TrackDef, {
-							'trackdef'
-						},
-						{
-							//model.debug("event_to_clipFactory_key: player: unknown");
-						}
-					);
-				};
-				clipkey = branch.(model[\receiver].value);
-			},
-			{
-				//model.debug("event_to_clipFactory_key: unknown");
-				nil
-			}
-		);
-		//clipkey.debug("event_to_clipFactory_key: result");
-		clipkey;
-	},
-
-	clearEditor: { arg self;
-		// when no event selected
-
-		self.type_popup.items = [""];
-		self.name_popup.items = [""];
-		self.clipLabelField.mapParam(nil);
-		self.startOffsetField.mapParam(nil);
-		self.sustainField.mapParam(nil);
-	},
-
-	makeUpdater: { arg self;
-		self.controller.remove;
-		self.controller = SimpleController(self.model).put(\selection, {
-			var ev = self.model;
-			Log(\Param).debug("entering clipEditor updater: %, %", self.type_popup, ev);
-			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
-				self.controller.remove;
-			} {
-				var clipkey;
-				var clipfac;
-				self.refreshPopups;
-				clipkey = self.event_to_clipFactory_key(ev);
-				Log(\Param).debug("makeUpdater: clipkey", clipkey);
-				self.startOffsetField.mapParam(Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)));
-				self.clipLabelField.mapParam(Param(Message(self.model), \label));
-				self.sustainField.mapParam(Param(self.model, Pembed.sustainKey));
-				if(clipkey.notNil) {
-					//clipkey.debug("makeUpdater: clipkey not nil");
-					clipfac = self.clipFactories[clipkey];
-					self.type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
-					self.name_popup.items = clipfac.keylist;
-					self.name_popup.value = self.name_popup.items.detectIndex({ arg x; 
-						x == clipfac.getName(ev)
-					});
-
-					// FIXME: should use parent_model startOffsetKey to be flexible
-				} {
-					// selected event not recognized
-
-					self.type_popup.value = nil;
-					self.name_popup.value = nil;
-				}
-			}
-		});
-	},
-
-	refreshPopups: { arg self;
-		var name_popup = self.name_popup;
-		self.type_popup.items = self.clipFactories_keys.collect({ arg x; self.clipFactories[x].label });
-		self.type_popup.action = {
-			name_popup.items = self.clipFactories[ self.clipFactories_keys[self.type_popup.value] ].keylist;
-		};
-		self.type_popup.valueAction = 0;
-	},
-
-	edit_selected: { arg self, xmodel;
-		// edit event
-		if((xmodel ? self.model).notNil) {
-			WindowDef(\EventEditor, { arg def, model;
-				var type_popup, name_popup;
-				//var clipLabelField, startOffsetField, sustainField;
-				var params;
-				var clipkey, clipfac;
-				type_popup = PopUpMenu.new;
-				name_popup = PopUpMenu.new;
-				type_popup.items = self.clipFactories_keys.collect({ arg x; self.clipFactories[x].label });
-				type_popup.action = {
-					name_popup.items = self.clipFactories[ self.clipFactories_keys[type_popup.value] ].keylist;
-				};
-				//type_popup.valueAction = 0;
-
-				clipkey = self.event_to_clipFactory_key(model);
-				//clipkey.debug("makeUpdater: clipkey");
-				if(clipkey.notNil) {
-					//clipkey.debug("makeUpdater: clipkey not nil");
-					clipfac = self.clipFactories[clipkey];
-					type_popup.value = self.clipFactories_keys.detectIndex({ arg x; x == clipkey });
-					name_popup.items = clipfac.keylist;
-					name_popup.value = name_popup.items.detectIndex({ arg x; 
-						x == clipfac.getName(model)
-					});
-				};
-
-				params = [
-					Param(Message(self.model), \label),
-					Param(self.model, Pembed.startOffsetKey, ControlSpec(0,100,\lin)),
-					Param(self.model, \gain, \gain.asSpec),
-					Param(self.model, \outBus, TagSpecDef(\BusDefDefault)),
-					Param(self.model, \absTime),
-					Param(self.model, Pembed.sustainKey),
-				];
-				name_popup.action = {
-					var curname = name_popup.items[name_popup.value];
-					var model = self.model;
-					self.clipFactories[self.clipFactories_keys[type_popup.value]].redefineClip(curname, model);
-				};
-				VLayout (
-					[type_popup, stretch:2],
-					[name_popup, stretch:2],
-					Button.new.string_("Edit target").action_({
-						self.edit_selected_target;
-					}),
-					* params.collect({ arg param;
-						HLayout(
-							StaticText.new.string_(param.property).minWidth_(110),
-							if(param.spec.isKindOf(TagSpec)) {
-								param.asPopUpMenu;
-							} {
-								TextField.new.mapParam(param);
-							},
-						);
-					}) ++ [nil]
-				);
-			}).front(xmodel ? self.model);
-		}
-	},
-
-	edit_selected_target: { arg self, model;
-		var clipkey, clipfac;
-		model = model ? self.model;
-		//[model.type, model].debug("Edit: type");
-		clipkey = self.event_to_clipFactory_key(model);
-		clipfac = self.clipFactories[clipkey];
-		clipfac.editSelected(model);
-	},
-
-	makeLayout: { arg self;
-		var layout;
-		var header;
-		var editor;
-		var type_popup, name_popup;
-		var model = self.model;
-		//"clipEditor.makeLayout: init".debug;
-		type_popup = PopUpMenu.new;
-		name_popup = PopUpMenu.new;
-		self.name_popup = name_popup;
-		self.type_popup = type_popup;
-		name_popup.allowsReselection = true;
-		//"clipEditor.makeLayout: part 1".debug;
-		//type_popup.allowsReselection = true; // lose selection
-		//name_popup.items = type_popup.items[type_popup.value].asClass.all.keys.asArray;
-		name_popup.action = {
-			var curname = name_popup.items[name_popup.value];
-			var model = self.model;
-			self.clipFactories[self.clipFactories_keys[type_popup.value]].redefineClip(curname, model);
-		};
-
-		self.refreshPopups;
-		//"clipEditor.makeLayout: part 2".debug;
-		self.clipLabelField = TextField.new.fixedWidth_(60);
-		self.startOffsetField = TextField.new
-					.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
-						// FIXME: this doesn't work because parent_model is the EventList and not the timeline. refactor: Timeline GUI should provide the keyDownAction function directly
-						//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
-						
-						if(modifiers.isCtrl and: {keycode == $ .ascii}) { // ^s
-							"play/stop now!".debug;
-							if(self.parent_model.selection_cursor.notNil) {
-								self.parent_model.cursor.setPositions(
-									self.parent_model.selection_cursor.startPosition ? 0,
-									self.parent_model.selection_cursor.endPosition
-								);
-							} {
-								Log(\Param).debug("no selection cursor");
-							};
-							self.parent_model.playNow(1);
-						};
-						if(keycode == 65307) { // esc
-							"Focus!".inform;
-							me.focus(false;) // FIXME: this outfocus but do not focus on the timeline
-						};
-						if(keycode == 65481) { // F12
-							"Panic!".inform;
-							CmdPeriod.run;
-						};
-						if(keycode == 65474) { // F5
-							"play!".inform;
-							self.timeline_model.play;
-						}
-					})
-			.fixedWidth_(60);
-		self.sustainField = TextField.new.fixedWidth_(60);
-
-		header = HLayout(
-			[type_popup, stretch:2],
-			[name_popup, stretch:2],
-			XSimpleButton.new.label_("Edit").action_({
-				self.edit_selected;
-			}),
-			[HLayout(
-				StaticText.new.string_("offset:"),
-				self.startOffsetField,
-			), stretch:0],
-			[HLayout(
-				StaticText.new.string_("sustain:"),
-				self.sustainField,
-			), stretch:0],
-			[HLayout(
-				StaticText.new.string_("name:"),
-				self.clipLabelField,
-			), stretch:0],
-
-		);
-		layout = VLayout(
-			header,
-			editor,
-		);
-
-		//"clipEditor.makeLayout: part 3".debug;
-		self.layout = layout;
-		self.layout;
-	},
-
-	makeWindow: { arg self;
-		var window = Window.new;
-		var layout;
-		layout = self.makeLayout;
-		window.layout = layout;
-		//window.alwaysOnTop = true;
-		window.front;
-
-		self.makeUpdater;
-		self.model.changed(\refresh);
-	},
-));
 
 WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 	var lib = ProtoDef(\GlobalLibrary);
 	var libid = lib.eventToLibId(clip);
 	var target = lib.libIdToTarget(libid);
+	var wrapper = lib.libIdToWrapper(libid);
 	var params;
 	var refresh;
 	params = [
@@ -2645,7 +2226,14 @@ WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 			StaticText.new.string_("Target:"),
 			TextField.new.string_(target.asCompileString),
 			//TextField.new.string_(PlayerWrapper(target).refCompileString),
-			BasicButton.new.string_("Select target"),
+			BasicButton.new.string_("Select target").action_({
+				WindowDef(\GlobalLibrary_select).front(target, { arg playerid;
+					//playerid.debug("playerid");
+					wrapper.redefineEvent(clip, playerid.last.value);
+					def.front(clip, eventlist);
+					//clip.debug("new clip");
+				}, \Player)
+			}),
 		),
 		BasicButton.new.string_("Edit target").action_({
 			PlayerWrapper(target).edit
@@ -2666,142 +2254,6 @@ WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 	)
 });
 
-ProtoTemplateDef(\TrackEditor, ( // to update
-	new: { arg self, model, parent, trackgroup;
-		self = self.deepCopy;
-	
-		self.model = model;
-		self.parent_model = {parent};
-		self.trackgroup = { trackgroup };
-		~clipEditor[\init_default_clip_factories].(self);
-		
-		self;
-	},
-	
-	mapModel: { arg self, model, parent, trackgroup;
-		self.model = model;
-		self.parent_model = { parent };
-		self.trackgroup = { trackgroup };
-		self.makeUpdater;
-		self.model.changed(\refresh);
-	},
-
-	makeUpdater: { arg self;
-		self.controller.remove;
-		self.controller = SimpleController(self.model).put(\refresh, {
-			var ev = self.model;
-			//[self.type_popup, ev].debug("entering clipEditor updater");
-			if(self.type_popup.isNil or: {self.type_popup.isClosed}) {
-				self.controller.remove;
-			} {
-				var clipkey;
-				var clipfac;
-				self.refreshPopups;
-			}
-		});
-	},
-
-	model_to_type_index: { arg self;
-		var track;
-		if(self.model.notNil and: { self.model.receiver.notNil }) {
-			//track = self.model.receiver.value.target.parentTrack; // for PlayerWrapperGroup
-			track = self.model.receiver.value.parentTrack;
-			self.trackgroup.detectIndex({ arg x; x.target === track  });
-		}
-	},
-
-	model_to_name_index: { arg self;
-		if(self.model.notNil and: { self.model.receiver.notNil }) {
-			//self.model.receiver.value.target.index;
-			self.model.receiver.value.index;
-		}
-	},
-
-	redefineSelected: { arg self, model;
-		var view = self.name_popup;
-		var track = self.trackgroup[self.type_popup.value].target;
-		var idx = view.value;
-		model = model ? self.model;
-		PlayerEvent.redefine(model);
-		model[\receiver] = { PlayerWrapper(track.childAt(idx)) };
-		self.parent_model.changed(\refresh);
-	},
-
-	refreshPopups: { arg self;
-		var name_popup = self.name_popup;
-		//"refreshPopups".debug;
-		self.type_popup.items = self.trackgroup.asArray.collect(_.label);
-		self.type_popup.action = {
-			//"type_popup.action".debug;
-			if(self.type_popup.value.notNil) {
-				name_popup.items = self.trackgroup[self.type_popup.value ].target.children.asArray.collect(_.label);
-			}
-		};
-		self.name_popup.action = { arg view;
-			//"name_popup.action".debug;
-			if(view.value.notNil and: {self.model.notNil and: {self.type_popup.value.notNil}}) {
-				self.redefineSelected;
-			}
-		};
-		self.type_popup.valueAction = self.model_to_type_index;
-		self.name_popup.value = self.model_to_name_index;
-	},
-
-	edit_selected: { arg self, model;
-		model = model ? self.model;
-		//[model.type, model].debug("Edit: type");
-		self.model.receiver.value.edit;
-	},
-
-	makeLayout: { arg self;
-		var layout;
-		var header;
-		var editor;
-		var type_popup, name_popup;
-		var model = self.model;
-		//"clipEditor.makeLayout: init".debug;
-		type_popup = PopUpMenu.new;
-		name_popup = PopUpMenu.new;
-		self.name_popup = name_popup;
-		self.type_popup = type_popup;
-		name_popup.allowsReselection = true;
-		//"clipEditor.makeLayout: part 1".debug;
-		//type_popup.allowsReselection = true; // lose selection
-		self.refreshPopups;
-
-		header = HLayout(
-			type_popup,
-			name_popup,
-			BasicButton.new.label_("Edit").action_({
-				self.edit_selected;
-			})
-		);
-		layout = VLayout(
-			header,
-			editor,
-		);
-
-		//"clipEditor.makeLayout: part 3".debug;
-		self.layout = layout;
-		self.layout;
-	},
-
-	makeWindow: { arg self;
-		var window = Window.new;
-		var layout;
-		layout = self.makeLayout;
-		window.layout = layout;
-		//window.alwaysOnTop = true;
-		window.front;
-
-		self.makeUpdater;
-		self.model.changed(\refresh);
-	},
-
-	asView: { arg self;
-		self.makeLayout;
-	},
-));
 
 /////////////////////// cliplist side panel
 
@@ -3147,36 +2599,6 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook, tagSpec;
 	)
 });
 
-
-WindowDef(\ClipTimelineNewClip, { arg def, model, fac; // deprecated
-	var namefield = TextField.new;
-	VLayout (
-		HLayout(
-			StaticText.new.string_("name:"),
-			namefield,
-		),
-		ListView.new.items_(fac.keylist ++ [""]).action_({ arg view;
-			namefield.string = view.items[view.value];
-		}),
-		HLayout(
-			BasicButton.new.string_("Cancel").action_({ arg view;
-				def.closeWindow;
-			}),
-			BasicButton.new.string_("OK").action_({ arg view;
-				var name = namefield.string;
-				if(name.notNil and: {name.trim != ""}) {
-					var inst = fac.className.new(name.asSymbol);
-					model.addClipIdToClipList([fac.key, inst.key]);
-					def.closeWindow;
-				} {
-					"no name".debug;
-				}
-			}),
-		)
-	)
-});
-
-
 ///////////////////////////////
 
 
@@ -3285,7 +2707,7 @@ WindowDef(\ClipTimelineContextMenu, { arg def, viewmodel, view;
 			MenuAction("Save as", {
 				viewmodel.saveAsAction;
 			}),
-			MenuAction("Clipboard refString", { 
+			MenuAction("Copy refString to clipboard", { 
 				viewmodel.timeline_model.refCompileString.pbcopy;
 			}),
 		].select(_.notNil)

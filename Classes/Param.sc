@@ -1302,6 +1302,8 @@ Param {
 			keys = TagSpec(keys);
 		};
 
+		view.toolTip = this.fullLabel;
+
 		view.refreshChangeAction = {
 			var vspec;
 			var val;
@@ -1384,12 +1386,13 @@ Param {
 					};
 				};
 				if(speclist.notNil) {
+					var listlabel = "% %".format(this.fullLabel, speclist.tryPerform(\key) ?? { "" });
 					ParamProto.init;
 					//speclist.debug("speclist");
 					WindowDef(\ListSelectDialog).front(speclist, { arg selected, asso;
 						//selected.asCompileString.debug("selected");
 						this.set(asso.value)
-					}, this.get)
+					}, this.get, listlabel);
 				}
 			}
 		});
@@ -1945,6 +1948,10 @@ Param {
 		};
 		^val;
 	}
+
+    *getInstrumentFromPbind { arg inval;
+		^BaseParam.getInstrumentFromPbind(inval);
+    }
 
 	/////////////
 	

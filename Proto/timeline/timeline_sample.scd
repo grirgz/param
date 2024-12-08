@@ -539,13 +539,14 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 BufDef.addPath(SampleTimeline.proto.recordFolder);
 
 
+//////// GUI
 
 ProtoTemplateDef(\SampleTimelineView, (
-	parent: ~timelinePanelView,
+	parent: ProtoTemplateDef(\TimelinePanelView),
 
 	new: { arg self, timeline;
 		//"so strange".debug;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		self.timeline_model = { timeline };
 		self.areasize = self.timeline_model.areasize;
@@ -557,7 +558,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 	},
 
 	newView: { arg self, timeline;
-		self = ~timelinePanelView[\new].(self, timeline.eventloop);
+		self = ProtoTemplateDef(\TimelinePanelView)[\new].(self, timeline.eventloop);
 	
 		self.timeline_model = {timeline};
 		self.areasize = self.timeline_model.areasize;
@@ -583,6 +584,67 @@ ProtoTemplateDef(\SampleTimelineView, (
 		self.timeline_model.param;
 	},
 
+	make_main_context_menu: { arg self;
+		var model = self.timeline_model;
+		var viewmodel = self;
+		Menu(
+			MenuAction("Edit buffer", { 
+				WindowDef(\BufferEditor).front(model.bufferInfo.buffer);
+			}),
+			MenuAction("Edit with audacity", { 
+				{
+					var tmpname = "/tmp/SampleTimeline_audacity.wav";
+					Log(\Param).debug("Writing tmp file %...", tmpname);
+					model.buffer.write(tmpname);
+					1.wait;
+					Log(\Param).debug("Launching audacity...");
+					"audacity %".format(tmpname).unixCmd { arg res, pid;
+						Buffer.read(Server.default, tmpname, action: { arg buf;
+							model.buffer = buf;
+						});
+						Log(\Param).info("edit done");
+					};
+				}.fork;
+			}),
+			MenuAction("Export selection to buffer", { 
+				viewmodel.exportSelectionToBufferEditor;
+			}),
+
+			MenuAction.separator,
+			MenuAction("Load audio file", { 
+				WindowDef(\filedialog_sample).front(nil, { arg path;
+					viewmodel.timeline_model.buffer = BufDef(path);
+				})
+			}),
+
+			MenuAction.separator,
+			MenuAction("Clipboard refString", { 
+				model.refCompileString.pbcopy;
+			}),
+
+			MenuAction.separator,
+			Param(
+				Message(model),
+				\outBus, 
+				TagSpecDef(\BusDef),
+				//MenuSpec([\default -> nil, \0->0] ++ BusDef.all.keys.as(Array).sort.collect({ arg k; k -> BusDef(k) }) )
+			).asMenu("outBus"),
+			Param(Message(model), \enableWaveformView, ParamBoolSpec()).asMenuAction("Display waveform"),
+			CustomViewAction(View.new.layout_(HLayout (
+				StaticText.new.string_("Buf length (beats):"),
+				Param(Message(model), \bufferNumBeats, ControlSpec(1/8,512,\lin)).asTextField,
+			))),
+			CustomViewAction(
+				View.new.layout_(HLayout(StaticText.new.string_(
+					if(model.buffer.notNil) {
+						"Path: %".format(model.buffer.path)
+					} {
+						"No buffer"
+					};
+				))),
+			)
+		)
+	},
 
 	make_header: { arg self;
 		self.counterView = StaticText.new.fixedWidth_(50).font_(Font.default.copy.size_(9));
@@ -613,8 +675,9 @@ ProtoTemplateDef(\SampleTimelineView, (
 			self.counterView,
 
 			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				self.make_main_context_menu.front;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-				WindowDef(\SampleTimelineOverlayMenu).front(self, view, x, y)
+				//WindowDef(\SampleTimelineOverlayMenu).front(self, view, x, y)
 			}).maxWidth_(20),
 
 		);

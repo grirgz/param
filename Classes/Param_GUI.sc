@@ -144,7 +144,7 @@ ParamViewToolBox {
             //[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
 			if(buttonNumber == 1) {
 				if(WindowDef(\ParamGenericContextMenu).notNil) {
-					WindowDef(\ParamGenericContextMenu).sourceValue(param).front;
+					WindowDef(\ParamGenericContextMenu).sourceValue(param, vie).front;
 				} {
 					if(WindowDef(\ParamGenericOverlayMenu).notNil) {
 						WindowDef(\ParamGenericOverlayMenu).front(vie, x, y, param)

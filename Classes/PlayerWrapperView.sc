@@ -293,6 +293,10 @@ RecordButton {
 		^view;
 	}
 
+	followChange { arg model, msg, fun ...args;
+		^this.view.followChange(model, msg, fun, *args);
+	}
+
 	layout {
 		^this.view;
 	}
