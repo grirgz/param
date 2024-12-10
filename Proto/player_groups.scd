@@ -280,6 +280,17 @@ ProtoTemplateDef(\ParPlayerGroup, (
 		self.reboot;
 	},
 
+	startControl: { arg self;
+		if(self.controller.notNil) {
+			self.controller.startControl((wrapper:{self}));
+		}
+	},
+
+	controller_: { arg self, val;
+		self[\controller] = val;
+		self.startControl;
+	},
+
 	postChain_: { arg self, val;
 		self[\postChain] = val;
 		self.reboot;
@@ -476,6 +487,10 @@ ProtoClassDef(\PatKitDef, (
 		};
 		
 		self;
+	},
+
+	edit: { arg self;
+		WindowDef("PatKitDefEditor_%".format(self.key).asSymbol, WindowDef(\PatKitDefEditor)).front(self);
 	},
 
 	convertOldStepEventToEvent: { arg self, stepevent;

@@ -222,12 +222,14 @@ CompactServerMeterView : SimpleServerMeterView {
 	var <minViewWidth = 3; // TODO: write setter (makeLayout happen before setting it)
 	var <hideTicks = false;
 	var <>ticksView;
+
 	makeLayout {
 
 		var ticks = LevelIndicator.new.numTicks_(numTicks).numMajorTicks_(numMajorTicks);
 		var layout;
 		var fixedSetter, minSetter;
 		ticksView = ticks;
+		orientation.debug("CompactServerMeterView.makeLayout orientation");
 		if(orientation == \vertical) {
 			ticks.fixedWidth_(minViewWidth);
 			fixedSetter = \fixedWidth_;
@@ -256,6 +258,7 @@ CompactServerMeterView : SimpleServerMeterView {
 			;
 		};
 		if(this.view.notNil) {
+			this.view.removeAll;
 			this.view.remove;
 		};
 		this.view = View.new;
@@ -266,6 +269,10 @@ CompactServerMeterView : SimpleServerMeterView {
 				[ticks] 
 			};
 		).spacing_(0).margins_(0);
+		//layout.debug("CompactServerMeterView: layout");
+		//this.view.layout = layout.new (* 
+			//outmeters 
+		//).spacing_(0).margins_(0);
 	}
 
 	hideTicks_ { arg val;
@@ -285,11 +292,22 @@ CompactServerMeterView : SimpleServerMeterView {
 
 	orientation_ { arg val;
 		orientation = val;
+		orientation.debug("CompactServerMeterView set orientation");
 		this.makeLayout;
+		this.view.onClose = { this.stop }; // cleanup
+
+		this.setSynthFunc(inmeters, outmeters);
+		startResponderFunc = {this.startResponders};
+		this.start;
 	}
 
 	minViewWidth_ { arg val;
 		minViewWidth = val;
 		this.makeLayout;
+		this.view.onClose = { this.stop }; // cleanup
+
+		this.setSynthFunc(inmeters, outmeters);
+		startResponderFunc = {this.startResponders};
+		this.start;
 	}
 }

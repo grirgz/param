@@ -29,7 +29,7 @@ TagSpecDef(\SampleTimeline_player).addUnique(\SampleTimeline_player_rhpf);
 
 
 SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with key and prAdd
-	parent: ~eventTimeline,
+	parent: ProtoClassDef(\EventTimeline),
 	all: { PresetDictionary.new(\sampleTimeline) },
 	eventType: \sampleTimeline,
 	fixedResampleCount: 500,
@@ -309,7 +309,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 						{
 							newbuf.debug("newbuf loaded slice2");
 							xbuf.debug("xbuf loaded slice2");
-							~newbuf = newbuf;
+							//~newbuf = newbuf;
 							self.bufferInfo.bufferHistory = self.bufferInfo.bufferHistory.add(self.buffer);
 							self.buffer = newbuf;
 							self.changed(\bufferNumFrames);
@@ -699,17 +699,13 @@ ProtoTemplateDef(\SampleTimelineView, (
 		SampleTimelineView
 	},
 
-	clipEditorNew: { arg self, model;
-		~clipEditor.new(model ? self.model, self.timeline_model.eventList);
-	},
-
 	makeXRuler: { arg self;
 		var cursor_timeline;
 		var locatorbar;
 		var ruler_x_beat;
 		var ruler_x_second;
 		cursor_timeline = CursorTimelineView.new;
-		~cursor_timeline = cursor_timeline;
+		//~cursor_timeline = cursor_timeline;
 		self.cursor_timeline = cursor_timeline;
 		cursor_timeline.mapCursor(self.cursor);
 		cursor_timeline.quant = self.quant_ref;
@@ -771,7 +767,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 			//	PlayerWrapperView(Pdef(self.eventloop.key)).view,
 			//	XSimpleButton.new.label_("yep"),
 			//),
-			[~timelinePanelView[\makeLayout].(self), stretch:1],
+			[ProtoTemplateDef(\TimelinePanelView)[\makeLayout].(self), stretch:1],
 		);
 		//"clipTimelinePanelView.makeLayout: part 2".debug;
 		//"clipTimelinePanelView.makeLayout: part 3".debug;
@@ -825,7 +821,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 			endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 			endpos = endpos.round.asInteger;
 			//"ém1".debug;
-			~sampleTimeline_clipboard = arr[startpos..endpos];
+			ParamViewToolBox.clipboard.sampleTimeline = arr[startpos..endpos];
 		})
 
 	},
@@ -882,7 +878,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 	},
 
 	pasteAction: { arg self;
-		if(~sampleTimeline_clipboard.notNil) {
+		if(ParamViewToolBox.clipboard.sampleTimeline.notNil) {
 			var cursor = self.timeline_model.selection_cursor;
 			var startpos, endpos;
 			var buf = self.timeline_model.buffer;
@@ -893,7 +889,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 				startpos = startpos.round.asInteger;
 				endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 				endpos = endpos.round.asInteger;
-				arr.overWrite(~sampleTimeline_clipboard, startpos);
+				arr.overWrite(ParamViewToolBox.clipboard.sampleTimeline, startpos);
 				//"ém1".debug;
 				buf.loadCollection(arr, action:{
 					//model.bufferTempPath = nil;
@@ -939,7 +935,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 					{
 						//newbuf.debug("newbuf loaded slice2");
 						//xbuf.debug("xbuf loaded slice2");
-						~newbuf = newbuf;
+						//~newbuf = newbuf;
 						WindowDef("%_%".format("BufferEditor", 100000000.rand).asSymbol, WindowDef(\BufferEditor)).front(newbuf);
 					}.defer
 				})

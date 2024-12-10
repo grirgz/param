@@ -77,4 +77,15 @@ ControllerDef {
 		source.value(this, *args)
 	}
 
+	// make printOn return the same than storeOn
+	printOn { arg stream;
+		this.storeOn(stream);
+	}
+
+	storeOn { arg stream;
+		stream << "ControllerDef(";
+		stream << key;
+		stream << ")";
+	} 
+
 }

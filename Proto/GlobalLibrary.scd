@@ -1480,7 +1480,18 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 			selectedCategories = categoryView.items;
 		};
 		filteredTypes = selectedCategories.collect({ arg superkey;
-			TagSpecDef("GlobalLibrary.type.%".format(superkey).asSymbol).keyList;
+			var rlist;
+			rlist = TagSpecDef("GlobalLibrary.type.%".format(superkey).asSymbol).keyList;
+
+			// allow types in categoryWhitelist
+			rlist.debug("rlist");
+			if(rlist.size == 0) {
+				if(TagSpecDef(\GlobalLibraryType).keyList.includes(superkey)) {
+					rlist = [ superkey ];
+				};
+			};
+
+			rlist;
 		}).flat.asSet.asArray;
 
 		tmpAction = typeView.selectionAction; // avoid calling typeView.selectionAction
@@ -1508,15 +1519,32 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 	categoryView = ListView.new
 		.items_(
-			TagSpecDef(\GlobalLibraryCategory).list.collect ({ arg superitem;
-				superitem.key;
-			}).select({ arg superitem;
-				if(categoryWhitelist.notNil) {
-					categoryWhitelist.includes(superitem)
-				} {
-					true
-				};
-			}).flat.asArray
+			{
+				var catlist = TagSpecDef(\GlobalLibraryCategory).keyList;
+				var typelist = TagSpecDef(\GlobalLibraryType).keyList;
+				var rlist;
+
+				rlist = catlist.select({ arg superitem;
+					if(categoryWhitelist.notNil) {
+						categoryWhitelist.includes(superitem)
+					} {
+						true
+					};
+				}).flat.asArray;
+
+				// allow types in categoryWhitelist
+				categoryWhitelist.do({ arg item;
+					item.debug("item");
+					[typelist.includes(item), typelist].debug("typelist");
+					if(catlist.includes(item).not and: { typelist.includes(item) }) {
+						rlist = rlist.add(item);
+					};
+				});
+				rlist.debug("rlist");
+
+				rlist;
+				
+			}.value
 		)
 		.selectionMode_(\multi)
 		.selection_([])

@@ -566,6 +566,7 @@ WindowDef(\RenameDialog, { arg me, question, defaultValue="", savefun, cancelfun
 (
 WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue, label;
 	var lay;
+	var savefun;
 	var listview = ListView.new;
 	var textfield = TextField.new;
 	var selectAction = { arg view, x, y, modifiers, buttonNumber, clickCount;
@@ -583,31 +584,45 @@ WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue, label;
 			item;
 		};
 	};
+	savefun = {
+		var name = textfield.value.trim();
+		if(name != "") {
+			name = name.asSymbol;
+			if(listitems.includes(name)) {
+				WindowDef(\ConfirmDialog).front("This preset already exists, are you sure ?", {
+					okHook.(name);
+					def.closeWindow;
+				})
+			} {
+				okHook.(name);
+				def.closeWindow;
+			}
+		} {
+			"invalid name".debug;
+		};
+	};
 	listview.items = listitems;
 	if(defaultValue.notNil) {
-		listview.value = listitems.detectIndex { arg x; x == defaultValue };
-		selectAction.(listview);
+		var defidx = listitems.detectIndex { arg x; x == defaultValue };
+		if(defidx.notNil) {
+			listview.value = defidx;
+			selectAction.(listview);
+		} {
+			textfield.value = defaultValue;
+		};
 	};
+	textfield.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
+		[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+		if(key == $\r) {
+			savefun.();
+		};
+	});
 	lay = VLayout (
 		textfield,
 		listview.selectionAction_(selectAction),
 		HLayout (
 			BasicButton.new.string_("Save").action_({
-				var name = textfield.value.trim();
-				if(name != "") {
-					name = name.asSymbol;
-					if(listitems.includes(name)) {
-						WindowDef(\ConfirmDialog).front("This preset already exists, are you sure ?", {
-							okHook.(name);
-							def.closeWindow;
-						})
-					} {
-						okHook.(name);
-						def.closeWindow;
-					}
-				} {
-					"invalid name".debug;
-				};
+				savefun.();
 			}),
 			BasicButton.new.string_("Cancel").action_({
 				def.closeWindow;

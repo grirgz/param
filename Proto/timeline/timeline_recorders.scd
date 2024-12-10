@@ -4,6 +4,7 @@
 // can record seqPlayerGroup (NoteTimeline) and parPlayerGroup (KitTimeline)
 ProtoTemplateDef(\PlayerGroupRecorder, (
 	inQuantMode: false,
+	recordOnlyIndex: true,
 	new: { arg self, group;
 		self = self.deepCopy;
 	

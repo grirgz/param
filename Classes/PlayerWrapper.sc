@@ -1021,8 +1021,12 @@ PlayerWrapperGroup : List {
 		}
 	}
 
-	edit { 
-		WindowDef("%_%".format(\PlayerWrapperGroup, this.identityHash).asSymbol, { arg def;
+	asView {
+		^this.editor.asView;
+	}
+
+	editor {
+		^WindowDef("%_%".format(\PlayerWrapperGroup, this.identityHash).asSymbol, { arg def;
 			VLayout (
 				PlayerWrapperView(this).asView,
 				StaticText.new,
@@ -1043,7 +1047,11 @@ PlayerWrapperGroup : List {
 					}) ++ [nil]
 				)
 			)
-		}).front;
+		});
+	}
+
+	edit { 
+		this.editor.front;
 	}
 }
 

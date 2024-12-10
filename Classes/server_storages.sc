@@ -737,18 +737,55 @@ GroupDef {
 		groupdict = Dictionary.new;
 	}
 
-	*newGroup { arg target, addaction;
-		^Group.new(target, addaction)
+	*newGroup { arg target, addaction, nodeID;
+		if(nodeID.notNil) {
+			^Group.basicNew(Server.default, nodeID)
+		} {
+			^Group.new(target, addaction)
+		}
 	}
 
-	*new { arg name, target, addaction='addToHead';
+	*new { arg name, target, addaction='addToHead', nodeID;
 		var group;
 		target = target ? Server.default;
 		if(groupdict[name].isNil or: { groupdict[name].isPlaying.not }) {
-			groupdict[name] = this.newGroup(target, addaction);
+			groupdict[name] = this.newGroup(target, addaction, nodeID);
 			groupdict[name].register(true);
 		};
 		^groupdict[name]
+	}
+
+	*makePayload { arg event, fun;
+		// re-use payload code from PmodEnv quark to avoid dependency
+		if(event[\hasPmodEnvPayload] != true) {
+			//debug("attach payload");
+			event[\hasPmodEnvPayload] = true;
+			event[\finish] = event[\finish].addFunc({ arg ev;
+				//"ss".debug("run finish");
+				ev.keys.do { arg key;
+					if(ev[key].isKindOf(Event)) {
+						if([\PmodEnv_payload].includes(ev[key][\type])) {
+							//ev[key].payload.debug("run finish");
+							ev[key] = ev[key].payload.(ev, key);
+						};
+					};
+
+				};
+
+			});
+		} {
+			//Log(\Param).debug("Pgroup has already a payload");
+		};
+		^(type: \PmodEnv_payload, payload: { fun }).yield;
+	}
+
+
+	*pattern { arg name, target, addaction='addToHead';
+		^Prout({ arg ev;
+			this.makePayload(ev, {
+				GroupDef(name, target, addaction);
+			})
+		}).loop
 	}
 }
 

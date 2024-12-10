@@ -25,11 +25,16 @@ ParamGroup : List {
 
 	save { arg key=\default; 
 		presets[key] = super.array.collect { arg param;
-			var val = param.get;
-			if(val.isKindOf(Buffer)) {
-				val; // should not copy buffer else WavetableDef and BufDef.asCompileString does not work
+			var val;
+			if(param.isSet) {
+				val = param.get;
+				if(val.isKindOf(Buffer)) {
+					val; // should not copy buffer else WavetableDef and BufDef.asCompileString does not work
+				} {
+					val.copy;// need to copy to avoid reference sharing with array
+				};
 			} {
-				val.copy;// need to copy to avoid reference sharing with array
+				nil
 			};
 		};
 		this.changed(\presets);
@@ -105,7 +110,9 @@ ParamGroup : List {
 	load { arg key=\default; 
 		if(presets[key].notNil) {
 			presets[key].do { arg val, x;
-				super.array[x].set(val)
+				if(val.notNil) {
+					super.array[x].set(val)
+				};
 			}
 		}
 	}
@@ -373,6 +380,10 @@ ParamGroupDef {
 		} {
 			this.loadArchive;
 		};
+	}
+
+	*hasSavedPresets { arg key;
+		^Archive.global.at(\ParamGroupDef, key).notNil
 	}
 
 	prGroup_ { arg val;

@@ -41,36 +41,76 @@ WindowDef(\PdefEditor, { arg me, key=\default;
 			PlayerWrapper(target).asView,
 
 			BasicButton.new.string_("...").maxWidth_(20).action_({ arg view;
-				WindowDef(\PdefEditorOverlayMenu, { arg def, model, view, x=0, y=0;
-					var inview, layout;
-					def.windowDo { arg win;
-						var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
-						win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
-						win.endFrontAction = { win.close };
-					};
-					inview = View.new;
-
-
-					layout = VLayout (
+				Menu(
 						* [
+							MenuAction("Load from Pdef", {
+								WindowDef(\GlobalLibrary_select).front(nil, { arg libid;
+									var pdef = libid.last.value;
+									target.source = pdef.source.copy;
+									target.envir = pdef.envir.copy;
+									me.front(target);
+								}, \Pdef)
+							}),
+							MenuAction("Save preset", {
+								var group = ParamGroupDef.update(target.key, target.asParamGroup);
+								WindowDef(\ListSaveDialog).front(group.presets.keys.asArray, { arg name;
+									group.save(name)
+								}, "preset1", "Choose preset name")
+							}),
+							if(ParamGroupDef.hasSavedPresets(target.key)) {
+								var group = ParamGroupDef.update(target.key, target.asParamGroup);
+								Menu(
+									* ParamGroupDef(target.key).presets.keys.asArray.collect { arg prekey;
+										MenuAction(prekey, {
+											ParamGroupDef(target.key).load(prekey)
+										})
+									}
+								).title_("Load preset")
+							},
 							if(target.getHalo(\edit).notNil) {
-								BasicButton.new.string_("Halo edit").action_({
+								MenuAction("Halo edit", {
 									target.getHalo(\edit).value(target);
 								})
 							},
 							if(WindowDef(\PbindefEditor).notNil) {
-								BasicButton.new.string_("Convert to Pbindef").action_({
+								MenuAction("Convert to Pbindef", {
 									target.convertToPbindef;
 									WindowDef(\PbindefEditor).front(target);
 									me.closeWindow;
 								})
 							},
-						].reject(_.isNil) ++
-						[ nil ]
-					);
-					inview.layout_(layout);
+						].reject(_.isNil)
+				).front;
+				//WindowDef(\PdefEditorOverlayMenu, { arg def, model, view, x=0, y=0;
+					//var inview, layout;
+					//def.windowDo { arg win;
+						//var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
+						//win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
+						//win.endFrontAction = { win.close };
+					//};
+					//inview = View.new;
 
-				}).border_(false).front(target, view);
+
+					//layout = VLayout (
+						//* [
+							//if(target.getHalo(\edit).notNil) {
+								//BasicButton.new.string_("Halo edit").action_({
+									//target.getHalo(\edit).value(target);
+								//})
+							//},
+							//if(WindowDef(\PbindefEditor).notNil) {
+								//BasicButton.new.string_("Convert to Pbindef").action_({
+									//target.convertToPbindef;
+									//WindowDef(\PbindefEditor).front(target);
+									//me.closeWindow;
+								//})
+							//},
+						//].reject(_.isNil) ++
+						//[ nil ]
+					//);
+					//inview.layout_(layout);
+
+				//}).border_(false).front(target, view);
 			}),
 		),
 		ParamGroupLayout.two_panes(target.asParamGroup),

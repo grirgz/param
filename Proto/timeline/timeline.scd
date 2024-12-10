@@ -1033,7 +1033,7 @@ ProtoClassDef(\ParamTimeline, (
 			} {
 				// FIXME: should always provide a bus or customBus when calling newInstance
 				// else everything write to the same bus since .key is the same
-				self[\outBus] = BusDef("ParamTimeline_%".format(self.key), \control);
+				self[\outBus] = BusDef("ParamTimeline_%".format(self.key).asSymbol, \control);
 			};
 		} {
 			self[\outBus] = self.customBus;
@@ -1669,9 +1669,9 @@ ProtoClassDef(\KitTimeline, (
 ));
 
 //////////////////////////////////////////// loading archived data
-ProtoClassDef(\NoteTimeline).all.loadIfNotInitialized;
-ProtoClassDef(\ParamTimeline).all.loadIfNotInitialized;
-ProtoClassDef(\ClipTimeline).all.loadIfNotInitialized;
+//ProtoClassDef(\NoteTimeline).all.loadIfNotInitialized;
+//ProtoClassDef(\ParamTimeline).all.loadIfNotInitialized;
+//ProtoClassDef(\ClipTimeline).all.loadIfNotInitialized;
 
 /////////////////////// cliplist side panel
 

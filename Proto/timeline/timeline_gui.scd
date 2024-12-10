@@ -1317,7 +1317,6 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		//PdefTimelineView
 	},
 
-	//clipEditorNew:
 	showClipEditor: { arg self, ev;
 		//ProtoTemplateDef(\ClipEditor).new(model ? self.model, self.timeline_model.eventList);
 		WindowDef(\ClipTimeline_ClipEditor).front(ev, self.timeline_model.eventList);
@@ -1327,36 +1326,17 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		var clipEditor;
 		//"clipTimelinePanelView.makeLayout: start init".debug;
 
-		//clipEditor = self.clipEditorNew;
-		//self.clipEditor = { clipEditor };
-		//"clipTimelinePanelView.makeLayout: part 0.1".debug;
-		//self.clipEditorLayout = self.clipEditor.makeLayout; // disabled bottom layout
-		//"clipTimelinePanelView.makeLayout: part 0.2".debug;
-		//self.clipEditor.clearEditor;
-		//"clipTimelinePanelView.makeLayout: part 1".debug;
 		self[\makeVelocityView] = {}; // disable velocity view
 		self.layout = VLayout(
-			//HLayout(
-			//	PlayerWrapperView(Pdef(self.eventloop.key)).view,
-			//	XSimpleButton.new.label_("yep"),
-			//),
 			HLayout (
 				*[
 					self.makeLeftPaneLayout,
 					VLayout (
 						[ProtoTemplateDef(\TimelinePanelView)[\makeLayout].(self), stretch:1],
-						//HLayout (
-							//*[
-								//self.makeLeftPaneToggle,
-								////self.clipEditorLayout,
-								//self.makeRightPaneToggle,
-							//].select(_.notNil)
-						//)
 					),
 					self.makeRightPaneLayout,
 				].select(_.notNil)
 			),
-			//self.parent.makeLayout,
 		);
 		//"clipTimelinePanelView.makeLayout: part 2".debug;
 		self.timeline.followChange(self.timeline_model, \eventFactory, {
@@ -1371,15 +1351,6 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			} {
 				if(buttonNumber == 1 and: { mod.isCtrl.not }) {
 					self.showTimelineContextMenu(chosennode);
-				} {
-					//if(chosennode.notNil) {
-						//self.clipEditor.model = chosennode.model;
-						//self.clipEditor.makeUpdater;
-						//chosennode.model.changed(\refresh);
-					//} {
-						//self.clipEditor.model = nil;
-						//self.clipEditor.clearEditor;
-					//}
 				};
 			}
 		};
@@ -1520,11 +1491,6 @@ ProtoTemplateDef(\TrackTimelinePanelView, (
 		//self.makeWindow;
 	
 		self;
-	},
-
-	clipEditorNew: { arg self, model;
-		//"clipEditorNew".debug;
-		ProtoTemplateDef(\TrackEditor).new(model ? self.model, self.timeline_model.eventList, self.timeline_model.tracks);
 	},
 
 	clipboard: { arg self;
@@ -2071,6 +2037,14 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 							WindowDef(\GlobalLibrary_select).front(self.wrapper, { arg libid;
 								model.wrapper = libid.last.value;
 							}, \Kit)
+						}),
+						MenuAction("Use new kit", {
+							WindowDef(\RenameDialog).front("Create new kit and use it. Choose a symbol name", model.key, { 
+								arg val;
+								var pkd= PatKitDef(val);
+								model.kit = pkd;
+								pkd.edit;
+							})
 						}),
 						Param(
 							Message(model),
