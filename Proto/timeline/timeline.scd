@@ -466,10 +466,6 @@ ProtoClassDef(\EventTimeline, (
 	},
 ));
 
-//if(~clipTimeline_all.isNil) {
-//	~clipTimeline_all = IdentityDictionary.new;
-//};
-//ClipTimeline.proto = ProtoClass((
 ProtoClassDef(\ClipTimeline, (
 	parent: ProtoClassDef(\EventTimeline),
 	all: { PresetDictionary.new(\clipTimeline) },
@@ -802,9 +798,6 @@ ProtoClassDef(\TrackTimeline, (
 ));
 
 
-//if(~noteTimeline_all.isNil) {
-//	~noteTimeline_all = IdentityDictionary.new;
-//};
 ProtoClassDef(\NoteTimeline, (
 	parent: ProtoClassDef(\EventTimeline),
 	all: { PresetDictionary.new(\noteTimeline) },
@@ -893,6 +886,21 @@ ProtoClassDef(\NoteTimeline, (
 				inpat,
 				offset, dur,
 			);
+
+
+			pat = Pbind(\addAutomation, Prout({ arg ev;
+				ev[\finish] = ev[\finish].addFunc({
+					if(self.automationRack.isEmpty.not) {
+						"playing automation".debug;
+						self.automationRack.play;
+					};
+				});
+				inf.do { arg idx;
+					1.yield
+				};
+				
+			})) <> pat;
+
 			if(parentTimeline.notNil) {
 				pat = parentTimeline.mutingPattern(parentEvent) <> pat;
 			};

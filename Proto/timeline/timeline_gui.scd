@@ -781,12 +781,12 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.bottomPanelShowButton = BasicButton.new.string_(">")
 			.fixedWidth_(20)
 			.action_({ arg me;
-				if(self.isBottomPanelHidden) {
+				if(self.isBottomPanelVisible) {
 					me.string = ">";
-					self.isBottomPanelHidden = false;
+					self.isBottomPanelVisible = false;
 				} {
 					me.string = "^";
-					self.isBottomPanelHidden = true;
+					self.isBottomPanelVisible = true;
 				}
 			})
 		;
@@ -818,10 +818,15 @@ ProtoTemplateDef(\TimelinePanelView, (
 			ptview.makeAutomationLayout;
 			ptview.timeline.mimicTimeline(self.timeline, \horizontal);
 			self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
+			self.bottomPanelHeaderView.removeAll;
+			self.bottomPanelHeaderView.layout = HLayout(
+				ptview.track_header
+			).margins_(0);
 
 			self.bottomPanelView.layout = VLayout (
 				ptview.timeline
-			).margins_(0)
+			).margins_(0);
+			self.isBottomPanelVisible = true;
 		});
 		self.bottomPanelToolbar.layout = HLayout (
 			self.bottomPanelShowButton,
@@ -833,21 +838,25 @@ ProtoTemplateDef(\TimelinePanelView, (
 	makeBottomPanelView: { arg self;
 		self.bottomPanelView = View.new;
 		self.makeAutomationView;
+		self.bottomPanelHeaderView = View.new;
 		self.bottomPanelVerticalScroller = TimelineScroller.new;
 		self.bottomPanelVerticalScroller.orientation = \vertical;
 		self.makeBottomPanelToolbar;
+		self.isBottomPanelVisible = false;
 	},
 
-	isBottomPanelHidden_: { arg self, val;
+	isBottomPanelVisible_: { arg self, val;
 		if(val == true) {
 			self.bottomPanelView.visible = true;
 			self.bottomPanelVerticalScroller.visible = true;
+			self.bottomPanelHeaderView.visible = true;
 		} {
 			self.bottomPanelView.visible = false;
 			self.bottomPanelVerticalScroller.visible = false;
+			self.bottomPanelHeaderView.visible = false;
 		};
 	},
-	isBottomPanelHidden: { arg self;
+	isBottomPanelVisible: { arg self;
 		self.bottomPanelView.visible;
 	},
 
@@ -1086,7 +1095,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 			++ if(self.bottomPanelView.notNil) {
 				[
 					[
-						nil,
+						self.bottomPanelHeaderView,
 						self.bottomPanelView,
 						self.bottomPanelVerticalScroller,
 						//self.velocityTimeline.view,
@@ -1854,10 +1863,11 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		self.timeline.eventFactory = { arg pos, nodesize;
 			(absTime: pos.x, level: pos.y, legato:1);
 		};
-		//self.timeline.view.followChange(self.timeline_model, \param, { 
-			//self.timeline.mapParam(self.levelParam);
-			//self.ruler_y.refresh;
-		//});
+		self.make_track_header(self.timeline);
+		self.timeline.view.followChange(self.timeline_model, \param, { 
+			self.timeline.mapParam(self.levelParam);
+			self.ruler_y.refresh;
+		});
 		self.set_yquant(self.param.spec.step);
 
 		self.timeline.view.followChange(self.eventloop, \list, { 
