@@ -995,6 +995,14 @@ PlayerWrapperGroup : List {
 		this.do({ arg x; x.quant = val });
 	}
 
+	doWithQuant { arg fun;
+		if(this.quant.isNil) {
+			fun.()
+		} {
+			TempoClock.default.schedAbs(TempoClock.default.nextTimeOnGrid(this.quant), fun)
+		}
+	}
+
 	play { 
 		this.collect(_.play);
 	}
