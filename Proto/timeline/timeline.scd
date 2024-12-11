@@ -439,7 +439,10 @@ ProtoClassDef(\EventTimeline, (
 		if(self.presetCompileStringSavePath.notNil) {
 			FileSystemProject.load(self.presetCompileStringSavePath)
 		} {
-			"%.savePresetCompileString: no file to load: %".format(self.refCompileString, self.presetCompileStringSavePath).error;
+			"%.savePresetCompileString: no file to load: %".format(
+				self.refCompileString, 
+				self.presetCompileStringSavePath
+			).error;
 		}
 	},
 
@@ -454,6 +457,12 @@ ProtoClassDef(\EventTimeline, (
 
 	addHistorySnapshot: { arg self;
 		self.eventLoop.historyAddSnapshot;
+	},
+
+	automationRack: { arg self;
+		var arkey = "AutomationRack_%_%".format(self.eventType, self.key);
+		self[\automationRack] = TrackDef(arkey, \ParamTimelineRack);
+		self[\automationRack];
 	},
 ));
 
@@ -1273,6 +1282,11 @@ ProtoClassDef(\ParamTimeline, (
 	asView: { arg self;
 		ProtoTemplateDef(\ParamTimelinePanelView).newView(self).makeLayout;
 	},
+
+	asAutomationView: { arg self;
+		ProtoTemplateDef(\ParamTimelinePanelView).newView(self).makeAutomationLayout;
+	},
+
 
 	refCompileString: { arg self, name;
 		if(name.isNil) {
