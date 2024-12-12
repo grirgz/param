@@ -133,7 +133,7 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	previewPattern: { arg self, absStart, absEnd, repeatCount;
-		self.loopMaster.getPreviewLoopPattern(self.cutPatternFunction, absStart, absEnd, repeatCount ? self.repeatCount);
+		self.loopMaster.getPreviewLoopPattern(self.cutPatternFunction, absStart, absEnd, repeatCount ? self.repeatCount, self.automationPattern);
 	},
 
 	asPatternSlice: { arg self, startLocator, endLocator, repeatCount=1;
@@ -439,7 +439,10 @@ ProtoClassDef(\EventTimeline, (
 		if(self.presetCompileStringSavePath.notNil) {
 			FileSystemProject.load(self.presetCompileStringSavePath)
 		} {
-			"%.savePresetCompileString: no file to load: %".format(self.refCompileString, self.presetCompileStringSavePath).error;
+			"%.savePresetCompileString: no file to load: %".format(
+				self.refCompileString, 
+				self.presetCompileStringSavePath
+			).error;
 		}
 	},
 
@@ -455,12 +458,24 @@ ProtoClassDef(\EventTimeline, (
 	addHistorySnapshot: { arg self;
 		self.eventLoop.historyAddSnapshot;
 	},
+
+	automationRack: { arg self;
+		var arkey = "AutomationRack_%_%".format(self.eventType, self.key);
+		self[\automationRack] = TrackDef(arkey, \ParamTimelineRack);
+		self[\automationRack];
+	},
+
+	automationEnabled: true,
+
+	automationPattern: { arg self;
+		if(self.automationEnabled == true) {
+			self.automationRack.asPattern
+		} {
+			nil
+		};
+	},
 ));
 
-//if(~clipTimeline_all.isNil) {
-//	~clipTimeline_all = IdentityDictionary.new;
-//};
-//ClipTimeline.proto = ProtoClass((
 ProtoClassDef(\ClipTimeline, (
 	parent: ProtoClassDef(\EventTimeline),
 	all: { PresetDictionary.new(\clipTimeline) },
@@ -793,9 +808,6 @@ ProtoClassDef(\TrackTimeline, (
 ));
 
 
-//if(~noteTimeline_all.isNil) {
-//	~noteTimeline_all = IdentityDictionary.new;
-//};
 ProtoClassDef(\NoteTimeline, (
 	parent: ProtoClassDef(\EventTimeline),
 	all: { PresetDictionary.new(\noteTimeline) },
@@ -884,6 +896,28 @@ ProtoClassDef(\NoteTimeline, (
 				inpat,
 				offset, dur,
 			);
+
+
+			//pat = Ppar([pat, self.automationRack.asPattern]);
+			//pat = Pbind(\addAutomation, Prout({ arg ev;
+				//var cleanup = EventStreamCleanup();
+				//cleanup.addFunction(ev, {
+					//"cleanup save me!!!".debug;
+					//self.automationRack.stop;
+				//});
+				//ev[\finish] = ev[\finish].addFunc({
+					//if(self.automationRack.isEmpty.not) {
+						//"playing automation".debug;
+						//self.automationRack.playNow;
+					//};
+				//});
+				//inf.do { arg idx;
+					//ev = 1.yield;
+					//cleanup.update(ev);
+				//};
+				
+			//})) <> pat;
+
 			if(parentTimeline.notNil) {
 				pat = parentTimeline.mutingPattern(parentEvent) <> pat;
 			};
@@ -1087,7 +1121,7 @@ ProtoClassDef(\ParamTimeline, (
 				\out, self.outBus,
 				//\level, Pfunc({ arg ev; ev[self.param.property] ? default }),
 				\time, Pfunc({ arg ev; 
-					Log(\Param).debug("cutPatternFunction ParamTimeline postpat time");
+					//Log(\Param).debug("cutPatternFunction ParamTimeline postpat time");
 					ev.use { 
 						// absTime is in beats (but maybe should be in seconds ?)
 						// need to convert to seconds
@@ -1099,7 +1133,7 @@ ProtoClassDef(\ParamTimeline, (
 				}),
 				\type, Pfunc({  arg ev;
 
-					Log(\Param).debug("postpat type %", ev[\type]);
+					//Log(\Param).debug("postpat type %", ev[\type]);
 					if(ev[\type].isNil or: { ev[\type] == \note }) {
 						if(ev[\next_level].isNil) { // last one should be rest
 							\rest
@@ -1273,6 +1307,11 @@ ProtoClassDef(\ParamTimeline, (
 	asView: { arg self;
 		ProtoTemplateDef(\ParamTimelinePanelView).newView(self).makeLayout;
 	},
+
+	asAutomationView: { arg self;
+		ProtoTemplateDef(\ParamTimelinePanelView).newView(self).makeAutomationLayout;
+	},
+
 
 	refCompileString: { arg self, name;
 		if(name.isNil) {
@@ -1892,6 +1931,7 @@ ProtoClassDef(\LoopMaster, (
 			\type: \rest,
 			\dur: 0,
 			\play: {
+				self.cursor.startTime = thisThread.beats;
 				self.eventList.changed(\cursor, \play);
 			}
 		)
@@ -2001,9 +2041,10 @@ ProtoClassDef(\LoopMaster, (
 
 	enablePreviewLoopToClipStart: true,
 
-	getPreviewLoopPattern: { arg self, cutFunction, absStart, absEnd, customRepeatCount;
+	getPreviewLoopPattern: { arg self, cutFunction, absStart, absEnd, customRepeatCount, parallelPat;
+		var pat;
 		// read outside notes when outside clip loop
-		Prout({
+		pat = Prout({
 			var sloop = self;
 			var ret;
 			var repeatCount = customRepeatCount ? sloop.repeatCount;
@@ -2046,7 +2087,15 @@ ProtoClassDef(\LoopMaster, (
 			};
 			ret;
 
-		})
+		});
+		if(parallelPat.notNil) {
+			parallelPat.debug("parallelPat");
+			pat = Ppar([
+				pat,
+				parallelPat
+			])
+		};
+		pat;
 		
 	},
 

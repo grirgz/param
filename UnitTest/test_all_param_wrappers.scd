@@ -167,6 +167,7 @@ Param.trace = true;
 	~env_individual_params.(Ndef(\target_object)),
 	~array_individual_params.(Ndef(\target_object)),
 	Param(Ndef(\target_object), "vol"), // no gui update
+	Param(Ndef(\target_object), \scalar_bus_param).setBusMode, // bus mode for Pdef
 	Param(Ndef(\target_object), \inexistant),
 	Param(Ndef(\target_object), \mapped_audio_bus),
 	Param(Ndef(\target_object), \audio_bus),

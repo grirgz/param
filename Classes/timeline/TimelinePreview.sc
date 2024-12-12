@@ -4,7 +4,7 @@
 TimelinePreview : TimelineView {
 
 	drawFunc {
-		Log(\Param).debug("preview drawFunc");
+		//Log(\Param).debug("preview drawFunc");
 		this.drawNodes;
 		//this.drawNodesDebug;
 		this.drawEndLine;
@@ -14,12 +14,12 @@ TimelinePreview : TimelineView {
 
 		var defered_nodes = List.new;
 		var first = true;
-		Log(\Param).debug("x==x==x==x==x((( start drawing nodes DEBUG");
+		//Log(\Param).debug("x==x==x==x==x((( start drawing nodes DEBUG");
 		//debug("start drawing nodes");
 		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
 
 		//[this.viewport, this.bounds, this.virtualBounds, this.areasize].debug("drawNodes:bounds");
-		Log(\Param).debug("paraNodes %", paraNodes);
+		//Log(\Param).debug("paraNodes %", paraNodes);
 		paraNodes.do({arg node;
 			//[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
 			//[node.rect, this.gridRectToNormRect(node.rect), this.gridRectToPixelRect(node.rect)].debug("drawNodes:rect, norm, pixel");
@@ -33,7 +33,7 @@ TimelinePreview : TimelineView {
 						Pen.moveTo(this.gridPointToPixelPoint(node.origin));
 						first = false;
 					};
-					Log(\Param).debug("x==x==x node %", node.asCompileString);
+					//Log(\Param).debug("x==x==x node %", node.asCompileString);
 					node.draw;
 				}
 			}
@@ -43,21 +43,21 @@ TimelinePreview : TimelineView {
 		};
 
 		//debug("stop drawing nodes");
-		Log(\Param).debug("x==x==x==x==x))) stop drawing nodes DEBUG");
+		//Log(\Param).debug("x==x==x==x==x))) stop drawing nodes DEBUG");
 		Pen.stroke;		
 	}
 
 	mapModel { arg model;
 		// FIXME: duplicated code in caller
 		// FIXME: timeline.asPreview call directly mapEventList, who call mapModel ?
-		Log(\Param).debug("x==x model % %", model, model[\eventlist]);
+		//Log(\Param).debug("x==x model % %", model, model[\eventlist]);
 		if(model[\eventlist].notNil) {
 			this.mapEventList(model.eventlist);
 		};
 		if(model[\timeline].notNil) {
 			this.mapEventList(model.timeline.eventList);
 			this.areasize = model.timeline.areasize;
-			Log(\Param).debug("areasize preview %, timeline %", this.areasize, model.timeline.areasize);
+			//Log(\Param).debug("areasize preview %, timeline %", this.areasize, model.timeline.areasize);
 		};
 
 
@@ -84,7 +84,7 @@ TimelinePreview : TimelineView {
 
 TimelinePreview_Env : TimelineEnvView {
 	drawFunc {
-		Log(\Param).debug("preview drawFunc env");
+		//Log(\Param).debug("preview drawFunc env");
 		this.drawNodes;
 		this.drawCurve;
 		this.drawEndLine;
@@ -100,7 +100,7 @@ TimelinePreview_Env : TimelineEnvView {
 
 TimelinePreview_Sample : SampleTimelineView {
 	drawFunc {
-		Log(\Param).debug("preview drawFunc sample");
+		//Log(\Param).debug("preview drawFunc sample");
 		this.drawWaveform;
 		this.drawNodes;
 		this.drawEndLine;

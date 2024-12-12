@@ -1263,7 +1263,7 @@ TimelineView : SCViewHolder {
 		if(timeline_controller.notNil) {timeline_controller.remove};
 		timeline_controller = SimpleController(timeline)
 			.put(\viewport, {
-				if(this.view.isClosed) {
+				if(this.view.isNil or: { this.view.isClosed }) {
 					timeline_controller.remove;
 				} {
 					//[this].debug("refresh viewport because mimicTimeline!!");
@@ -1283,7 +1283,7 @@ TimelineView : SCViewHolder {
 				}
 			})
 			.put(\areasize, {
-				if(this.view.isClosed) {
+				if(this.view.isNil or: {this.view.isClosed}) {
 					timeline_controller.remove;
 				} {
 					//[this].debug("refresh viewport because mimicTimeline!!");
@@ -1336,7 +1336,7 @@ TimelineView : SCViewHolder {
 		if(node_selection_controller.notNil) {node_selection_controller.remove};
 		node_selection_controller = SimpleController(timeline)
 			.put(\selectedNodes, {
-				if(this.view.isClosed) {
+				if(this.view.isNil or: {this.view.isClosed}) {
 					timeline_controller.remove;
 				} {
 					var to_select = List.new;
