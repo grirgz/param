@@ -1336,7 +1336,7 @@ TimelineView : SCViewHolder {
 		if(node_selection_controller.notNil) {node_selection_controller.remove};
 		node_selection_controller = SimpleController(timeline)
 			.put(\selectedNodes, {
-				if(this.view.isClosed) {
+				if(this.view.isNil or: {this.view.isClosed}) {
 					timeline_controller.remove;
 				} {
 					var to_select = List.new;

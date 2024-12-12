@@ -382,7 +382,7 @@
 				} {
 					bus.set(val);
 				};
-				//this.changed(\set, [key, val]);
+				this.changed(\set, [key, val]);
 			} {
 				this.set(key, val)
 			};

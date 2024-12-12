@@ -19,6 +19,60 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self;
 	},
 
+
+	timelineInstrumentParamGroup: { arg self;
+		var target;
+		if(self.param.isNil) {
+			ParamGroup()
+		} {
+			target = self.param.target;
+			target.asParamGroup
+				.add( Param(target, \velocity, ControlSpec(0,127,\lin,0,64)) )
+				.add( Param(target, \sustain) )
+				.reject({ arg x; x.property == \legato })
+			;
+		}
+	},
+
+	asPattern: { arg self;
+		// TODO
+		Pfunc({})
+	},
+
+	////// properties
+
+	save_timeline_properties: { arg self;
+		var tl = self;
+		// tl is view ProtoDef, tl.timeline is View subclass, tl.timeline_model is the object programmer interact with
+		if(tl.timeline.notNil) {
+			tl.timeline_model.addHalo(\viewport, tl.timeline.viewport);
+			tl.timeline_model.addHalo(\areasize, tl.timeline.areasize);
+			tl.timeline_model.addHalo(\enablePreview, tl.timeline.enablePreview);
+			// quant_ref is now member of timeline model
+			//tl.timeline_model.addHalo(\gridquant, tl.timeline.quant_ref.value); // this line seems wrong
+			//tl.quant_ref.value.debug("quant_ref saving!!!");
+			//tl.quant_ref.value ?? { tl.timeline_model.addHalo(\gridquant, tl.quant_ref.value); }
+		}
+	},
+
+	load_timeline_properties: { arg self;
+		var tl = self;
+		var cur;
+		cur = tl.timeline_model.getHalo(\viewport);
+		if(cur.notNil) {
+			tl.timeline.viewport = cur;
+		};
+		cur = tl.timeline_model.getHalo(\areasize) ? self.pr_areasize;
+		if(cur.notNil) {
+			tl.timeline.areasize = cur;
+		};
+		tl.timeline_model.getHalo(\enablePreview) !? { arg x;
+			tl.timeline.enablePreview = x;
+		};
+		//tl.timeline_model.getHalo(\gridquant) ?? { arg x; self.timeline.quant_ref.value = x; }; // this line seems wrong
+		//tl.timeline_model.getHalo(\gridquant) ?? { arg x; self.quant_ref.value = x; };
+	},
+
 	areasize: { arg self;
 		if(self.timeline.notNil) {
 			self.timeline.areasize 
@@ -34,259 +88,72 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.pr_areasize = val;
 	},
 
-	makeRulerY: { arg self, timeline;
-		//self.ruler_y = MidinoteTimelineRulerView.new;
-		//self.ruler_y.mimicTimeline(timeline);
-		//self.ruler_y;
-		nil
+
+	node_move_multiplier_x: 8,
+	node_move_multiplier_y: 8,
+
+	set_xquant: { arg self, quant;
+		self.quant_ref.value = Point(quant, self.quant_ref.value.y);
 	},
 
-	make_stop_button: { arg self;
-		BasicButton.new.label_("⏹").action_({ // doesnt work with my font but show a square anyway
-			self.cursor.startPosition = nil;
-			self.cursor.endPosition = nil;
-			PlayerWrapper(self.timeline_model).stop;
-			//self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
-		}).fixedWidth_(30).maxHeight_(25).font_(Font.default.size_(16));
+	get_xquant: { arg self;
+		self.quant_ref.value.x;
 	},
 
-	make_repeatCount_box: { arg self;
-		Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox.maxWidth_(40)
+	set_yquant: { arg self, quant;
+		self.quant_ref.value = Point(self.quant_ref.value.x, quant);
 	},
 
-	make_quant_spec: { arg self;
-		TagSpec([
-			"0",
-			"1/32",
-			"1/16",
-			"1/8",
-			"1/4",
-			"1/2",
-			"1",
-			"2",
-			"4",
-			"8",
-			"16",
-		].collect({ arg x; x -> x.interpret }));
+	get_yquant: { arg self;
+		self.quant_ref.value.y;
 	},
 
-	make_quant_popup: { arg self;
-		var quant_popup;
-		var quant_spec;
-		quant_spec = self.make_quant_spec;
+	eventLoop: { arg self;
+		self.timeline_model.eventLoop;
+	},
 
-		self.quant_param = Param({ self.get_xquant }, { arg val; self.set_xquant(val) }, quant_spec);
-		quant_popup = self.quant_param.asPopUpMenu.toolTip_("Quant");
-		self.quant_popup = quant_popup;
-		self.quant_popup;
-	}, 
+	eventLoop_: { arg self, val;
+		self.timeline_model.eventLoop = val;
+		self;
+	},
+
+	eventList: { arg self;
+		self.timeline_model.eventList;
+	},
+
+	eventList_: { arg self, val;
+		self.timeline_model.eventList = val;
+		self;
+	},
+
+
+	////// saving system
 
 	hasSavePath: { arg self;
 		self.timeline_model.hasSavePath
 	},
 
-	saveAction: { arg self, view;
-		var me = view ?? { () };
-		if(self.hasSavePath) {
-			var dialog;
-			if(PathName(self.timeline_model.presetCompileStringSavePath).isFolder) {
-				self.timeline_model.presetCompileStringSavePath = self.timeline_model.presetCompileStringSavePath +/+ self.timeline_model.key.asString ++ ".scd"
-			};
-			dialog = Window.new("Save").layout_(
-				VLayout(
-					StaticText.new.string_("Save this object to the file % ?".format(self.timeline_model.presetCompileStringSavePath.asCompileString)),
-					HLayout(
-						nil,
-						BasicButton.new.string_("OK").action_({ 
-							self.timeline_model.savePresetCompileString;
-							me.refreshChange;
-							dialog.close;
-						}),
-						BasicButton.new.string_("Choose").action_({ 
-							self.timeline_model.savePresetCompileString(nil, {
-								me.refreshChange;
-							}, true);
-							dialog.close;
-						}),
-						BasicButton.new.string_("Cancel").action_({
-							dialog.close;
-						}),
-					)
-				)
-			).setInnerExtent(600,140).front;
-		} {
-			self.saveAsAction(me);
+
+	////// gui components
+
+	// update
+
+	refresh: { arg self;
+		// event list has changed, refresh the mappings
+		self.timeline.mapEventList(self.eventloop.list);
+
+		if(self.cursor_timeline.notNil) {
+			self.cursor_timeline.mapEventList(self.eventloop.list);
 		};
-	},
-
-	saveAsAction: { arg self, view;
-		var me = view ?? { () };
-		self.timeline_model.savePresetCompileString(nil, {
-			me.refreshChange;
-		}, true)
-	},
-
-	make_saveas_button: { arg self;
-		BasicButton.new
-			.action_({ arg me;
-				self.saveAction(me)
-			})
-			.mouseUpAction_({ arg me, x, y, mod, but;
-				//[a,b,c,but].debug("but");
-				if(but == 1) { // right click
-					self.saveAsAction(me)
-				}
-			})
-			.refreshChangeAction_({ arg me;
-				if(self.timeline_model.presetCompileStringSavePath.notNil) {
-					me.string = "Save"
-				} {
-					me.string = "Save as"
-				};
-			})
-			.refreshChange
-		;
-	},
-
-	make_header: { arg self;
-
-		//self.header_layout = HLayout(
-		//	PlayerWrapperView(Pdef(self.eventloop.key)).view,
-		//	self.make_stop_button,
-		//	XSimpleButton.new.label_("Add track").action_({
-		//		self.add_track;
-		//	}),
-		//	self.make_quant_popup,
-		//);
-		//
-		//self.header_layout;
-		View.new;
-	},
-
-	//definePattern: { arg self;
-	//	// FIXME: why this is in a view class ??
-	//	Pdef(self.eventloop.key, Plazy({
-	//		//PtimeGatePunch(self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"))
-	//		var start, end;
-	//		var eventlist = self.eventloop.list;
-	//		if(self.cursor.notNil) {
-	//			start = self.cursor.startPosition - eventlist.startTime;
-	//			if(self.cursor.endPosition.notNil) {
-	//				end = self.cursor.endPosition - eventlist.endTime;
-	//			}
-	//		};
-	//		~timeline_pattern.(
-	//			~eventlist_aspattern.(
-	//				self.eventloop.list
-	//			).trace(prefix:"xxxxxxxxxxxxxxxxxxxxx"),
-	//			start, end
-	//		);
-	//		//self.eventloop.list.asPattern.trace(prefix:"xxxxxxxxxxxxxxxxxxxxx")
-	//	}));
-	//},
-
-	makeWindow: { arg self;
-		//var window = Window.new;
-		WindowDef("%_%".format(self.timeline_model.eventType, self.timeline_model.key).asSymbol, { arg me;
-			var layout;
-			var etype;
-			etype = self.timeline_model.eventType.asString;
-			etype = "%%".format(etype[0].toUpper, etype[1..]);
-			me.windowName = "%: %".format(etype, self.timeline_model.key);
-			me.window.onClose_({
-				self.save_timeline_properties;
-			});
-			layout = self.makeLayout;
-			//window.layout = layout;
-			//window.alwaysOnTop = true;
-			//window.front;	
-			layout
-		}).front
-	},
-
-	add_track: { arg self;
-		self.timeline_model.add_track;
-		self.timeline.refreshEventList;
-		self.timeline.refresh;
-		self.update_track_header;
-	},
-
-	zoomFitAction: { arg self;
-		// TODO: use timeline.spec to get initial maxy and miny
-		var timeline = self.timeline;
-		var maxy=0, miny=127;
-		var range;
-
-		if(timeline.model.size < 3) { // if empty
-			// NOOP
-		} {
-
-			timeline.model.do { arg ev, x;
-				var midi = ev.use { ev.midinote };
-				//[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
-				if(midi.notNil) {
-					//[x, midi].debug("zoom_fit, notnil");
-					if(midi > maxy) {
-						maxy = midi;
-					};
-					if(midi < miny) {
-						miny = midi;
-					};
-				}
-			};
-
-			if(( maxy + 1 ) > timeline.areasize.y) {
-				timeline.areasize.y = maxy + 1;
-			};
-
-			// add margin top and bottom
-			miny = miny - 1;
-			maxy = maxy + 1;
-
-			//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
-			//[timeline.areasize].debug("areasize");
-			range = (maxy-miny+1)/timeline.areasize.y;
-			timeline.viewport.top = (miny/timeline.areasize.y);
-			timeline.viewport.height = range.clip(0.1,1);
-			//[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
-
-			//timeline.viewport.top = 42/128;
-			//timeline.viewport.height = ((54-42)/128);
-
-			//timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
-
-
-			timeline.changed(\viewport);
-			timeline.refresh;
+		if(self.locatorbar.notNil) {
+			self.locatorbar.mapEventList(self.eventloop.list);
 		};
-
-
-		//[self.areasize, self.timeline.areasize].debug("2");
-		self.areasize = self.timeline.areasize;
-		//[self.areasize, self.timeline.areasize].debug("4");
-	},
-
-	zoom_fit: { arg self;
-		// deprecated name
-		self.zoomFitAction;
-	},
-
-	make_tracks_listeners: { arg self;
-		if(self.tracks_controller.notNil) {
-			self.tracks_controller.remove;
+		if(self.ruler_x_beat.notNil) {
+			self.ruler_x_beat.mapEventList(self.eventloop.list);
 		};
-		self.tracks_controller = SimpleController(self.timeline_model)
-		.put(\tracks, {
-			//"update_track_header_size: areasize".debug;
-			if(self.track_header.isNil or: {self.track_header.isClosed}) {
-				self.tracks_controller.remove;
-			} {
-				self.update_track_header;
-				self.areasize = Point(self.areasize.x, self.timeline_model.track_count);
-			}
-			//self.update_track_header;
-		})
-		;
+		if(self.velocityTimeline.notNil) {
+			self.velocityTimeline.mapEventList(self.eventloop.list);
+		}
 	},
 
 	update_track_header: { arg self;
@@ -379,245 +246,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 				//self.track_header.visibleOrigin.debug("update_track_header_size: visibleOrigin");
 			}
 		}
-	},
-
-	set_xquant: { arg self, quant;
-		self.quant_ref.value = Point(quant, self.quant_ref.value.y);
-	},
-
-	get_xquant: { arg self;
-		self.quant_ref.value.x;
-	},
-
-	set_yquant: { arg self, quant;
-		self.quant_ref.value = Point(self.quant_ref.value.x, quant);
-	},
-
-	get_yquant: { arg self;
-		self.quant_ref.value.y;
-	},
-
-	make_track_header: { arg self;
-		// should return the track header view
-		var track_header;
-		track_header = ScrollView.new;
-		track_header.keyDownAction = self.getTimelineKeyDownAction;
-		track_header.hasBorder = false;
-		track_header.hasVerticalScroller = false;
-		track_header.hasHorizontalScroller = false;
-		self.track_header = track_header;
-
-		self.verticalScroller_track_header_action = { arg self, slider;
-			if(slider.isNil) {
-				//Log(\Param).debug("dont know why there is two actions with one nil: % %", self.key, self.verticalScroller.view.action.array);
-			} {
-
-				self.track_header_view.fixedHeight = 1/slider.range * track_header.bounds.height;
-				//( 1/slider.range * track_header.bounds.height ).debug("vrange.view.action: fixedHeight");
-				track_header.visibleOrigin = Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height;
-				//( Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height ).debug("vrange.view.action: visibleOrigin");
-			};
-		};
-
-		self.verticalScroller.view.addAction({ arg slider;
-			self.verticalScroller_track_header_action.(slider)
-		});
-
-		self.make_tracks_listeners;
-		self.update_track_header;
-
-		//self.verticalScroller.view.activeLo = self.verticalScroller.view.lo; // trigger action
-
-		self.track_header;
-
-	},
-
-	undoAction: { arg self;
-		var el = self.timeline_model.eventLoop;
-		el.historyUndo;
-		//self.timeline.refreshSelectionView;
-	},
-
-	redoAction: { arg self;
-		var el = self.timeline_model.eventLoop;
-		el.historyRedo;
-		//self.timeline.refreshSelectionView;
-	},
-	
-	make_undo_system_buttons: { arg self;
-		var el = self.timeline_model.eventLoop;
-		var undobut, redobut;
-
-		undobut = BasicButton.new.string_("<Undo").action_({
-			self.undoAction;
-		}).enabled_(el.historyCanUndo).fixedWidth_(50).toolTip_("Undo");
-
-		redobut = BasicButton.new.string_("->").action_({ arg but;
-			self.redoAction;
-		}).enabled_(el.historyCanRedo).fixedWidth_(30).toolTip_("Redo");
-
-		redobut.followChange(el, \inHistoryMode, {
-			var el = self.timeline_model.eventLoop;
-			undobut.enabled_(el.historyCanUndo);
-			redobut.enabled_(el.historyCanRedo);
-		});
-
-		HLayout (
-			undobut,
-			redobut,
-		).spacing_(1)
-
-	},
-
-	makeTimelineView: { arg self;
-		self.timelineClass.new
-	},
-
-	eventLoop: { arg self;
-		self.timeline_model.eventLoop;
-	},
-
-	eventLoop_: { arg self, val;
-		self.timeline_model.eventLoop = val;
-		self;
-	},
-
-	eventList: { arg self;
-		self.timeline_model.eventList;
-	},
-
-	eventList_: { arg self, val;
-		self.timeline_model.eventList = val;
-		self;
-	},
-
-	copyAction_old: { arg self;
-		var selnodes;
-		var cursor = self.timeline_model.cursor;
-		var startpos, endpos;
-		selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
-		if(selnodes.size == 0) {
-			startpos = cursor.startPosition ? self.eventList.startTime;
-			endpos = cursor.endPosition ? self.eventList.endTime;
-			self.timeline.nodes.collect({ arg node;
-				var at = node.model[\absTime];
-				if(at >= startpos and: { at < endpos and: { node.selectable }} ) {
-					self.timeline.selectNode(node)
-				}
-			});
-			selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
-		};
-		if(selnodes.size > 0) {
-			self.clipboard = selnodes;
-			self.selection_rect = self.selection_cursor.rect;
-		};
-	},
-
-	copyAction: { arg self;
-		var selevents;
-		var cursor = self.timeline_model.cursor;
-		var startpos, endpos;
-		selevents = self.timeline.copyAtSelectionEdges;
-		Log(\Param).debug("clipTimeline.copyAction: selevents: %", selevents);
-		if(selevents.size > 0) {
-			self.clipboard = selevents;
-			self.selection_rect = self.selection_cursor.rect;
-		};
-	},
-
-	pasteAction: { arg self;
-		if(self.clipboard.notNil) {
-			var delta;
-			var newnodes;
-			var first = self.clipboard.as(Array).inject(nil, { arg a, b; 
-				if(a.isNil) {
-					b
-				} {
-					if(a[\absTime] < b[\absTime]) {
-						a
-					} {
-						b
-					}
-				};
-			});
-			//first.debug("first");
-			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
-			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - self.selection_rect.origin;
-			//self.clipboard.debug("clipboard");
-			self.timeline_model.addHistorySnapshot;
-			self.clipboard.do({ arg event;
-				var new;
-				new = event.copy;
-				//[new, delta].debug("new, delta");
-				new[\absTime] = new[\absTime] + delta.x;
-				new[self.timeline.valueKey] = new[self.timeline.valueKey] + delta.y;
-				self.timeline.model.addEvent(new);
-			});
-			//self.timeline.model.changed(\refresh);
-
-			self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
-			self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
-			self.timeline.deselectAllNodes;
-			//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
-			newnodes = self.timeline.findNodes(self.selection_cursor.rect);
-			//Log(\Param).debug("new nodes %".format(newnodes));
-			self.timeline.selectNodes(newnodes);
-			//self.timeline.model.changed(\refresh);
-			self.timeline.model.reorder;
-		}
-	},
-
-
-	deleteSelectedNodesHook: { arg self;
-		{ arg tl;
-			self.timeline_model.addHistorySnapshot;
-			//self.timeline_model.eventLoop.cloneAndPushList;
-			//Log(\Param).debug("hook qui foire");
-			self.timeline.deleteSelectedNodes;
-			//self.timeline_model.eventLoop.pushList;
-		}
-	},
-
-	quantizeAction: { arg self;
-		var selNodes;
-		var snapshot;
-		// TODO: should be implemented by adding a new property to the event, understood by XEventList
-		//			to be able to undo it
-		//quant.value.debug("quantize!!");
-		//"quantize ouais c'est ici".debug;
-		//snapshot = self.timeline_model.eventList.clone;
-		//self.timeline_model.pushList;
-
-
-		self.timeline_model.addHistorySnapshot;
-		selNodes = self.timeline.selNodes;
-		selNodes.do { arg node;
-			//node.nodeloc.debug("before");
-			node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
-			//node.nodeloc.debug("after");
-		};
-
-
-		////// this works
-		//snapshot = self.timeline_model.eventList.clone;
-		//selNodes = self.timeline.selNodes;
-		//selNodes.do { arg node;
-		////node.nodeloc.debug("before");
-		//node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
-		////node.nodeloc.debug("after");
-		//};
-		//self.timeline_model.eventLoop.cloneAndPushList(snapshot);
-		//self.timeline_model.eventLoop.addList;
-	},
-
-	setStartAction: { arg self;
-		self.timeline.setStartPosition(self.timeline.lastGridPos.x.trunc(self.quant_ref.value.x));
-		self.refresh;
-	},
-
-	setEndAction: { arg self;
-		self.timeline.setEndPosition(self.timeline.lastGridPos.x.trunc(self.quant_ref.value.x));
-		self.refresh;
 	},
 
 	getTimelineKeyDownAction: { arg self;
@@ -752,326 +380,191 @@ ProtoTemplateDef(\TimelinePanelView, (
 				handleMove.(quant, keycode)
 			}
 		});
-
 	},
 
-	node_move_multiplier_x: 8,
-	node_move_multiplier_y: 8,
+	// make
 
-	timelineInstrumentParamGroup: { arg self;
-		var target;
-		if(self.param.isNil) {
-			ParamGroup()
-		} {
-			target = self.param.target;
-			target.asParamGroup
-				.add( Param(target, \velocity, ControlSpec(0,127,\lin,0,64)) )
-				.add( Param(target, \sustain) )
-				.reject({ arg x; x.property == \legato })
-			;
-		}
-	},
+	make_track_header: { arg self;
+		// should return the track header view
+		var track_header;
+		track_header = ScrollView.new;
+		track_header.keyDownAction = self.getTimelineKeyDownAction;
+		track_header.hasBorder = false;
+		track_header.hasVerticalScroller = false;
+		track_header.hasHorizontalScroller = false;
+		self.track_header = track_header;
 
-	showAutomation: { arg self, prop;
-		//var prop = self.automationPopup.items[self.automationPopup.value];
-		var selectedParam = Param(self.timeline_model.param.target, prop);
-		var ptline;
-		var ptview;
-		self.selectedAutomationParam = selectedParam;
-		self.timeline_model.automationRack.addParam(selectedParam);
-		self.bottomPanelView.removeAll;
-		ptline = self.timeline_model.automationRack.getParamTimeline(selectedParam);
-		self.automationRackView = self.timeline_model.automationRack.getParamTimeline(selectedParam);
-
-		ptview = ProtoTemplateDef(\ParamTimelinePanelView).newView(ptline);
-		ptview.makeAutomationLayout;
-		ptview.timeline.mimicTimeline(self.timeline, \horizontal);
-		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
-		self.bottomPanelHeaderView.removeAll;
-		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg obj, msg, arg1;
-			if(arg1 == \play) {
-				//ptview.cursor_timeline.play; // already sent by loopMaster
+		self.verticalScroller_track_header_action = { arg self, slider;
+			if(slider.isNil) {
+				//Log(\Param).debug("dont know why there is two actions with one nil: % %", self.key, self.verticalScroller.view.action.array);
 			} {
-				// this event is sent by timeline_model.stop function
-				ptline.eventList.changed(\cursor, \stop);
-				//ptview.cursor_timeline.stop;
-			}
-		});
-		//if(self.timeline_model.isPlaying) {
-		//ptview.cursor_timeline.play;
-		//};
-		self.bottomPanelSelectedTimelineView = ptview.timeline;
-		self.bottomPanelHeaderView.layout = HLayout(
-			ptview.track_header
-		).margins_(0);
 
-		self.bottomPanelView.layout = HLayout(ptview.timelineStack).margins_(0);
-		self.isBottomPanelVisible = true;
-		
-	},
-
-	showAllAutomations: { arg self;
-		var rack = self.timeline_model.automationRack;
-		self.bottomPanelView.removeAll;
-		self.bottomPanelView.layout = VLayout (
-			rack.asStackPreview({ arg view;
-				view.timeline.mimicTimeline(self.timeline, \horizontal)
-		   	})
-		).margins_(0);
-		//self.bottomPanelView.fixedHeight_(40);
-		self.isBottomPanelVisible = true;
-		//self.timelineGridLayout.setRowStretch(1, 100);
-		//self.timelineGridLayout.setRowStretch(2, 0);
-		self.bottomPanelVerticalScroller.visible = false;
-		self.bottomPanelHeaderView.removeAll;
-	},
-
-	makeAutomationMenu: { arg self;
-		var rack = self.timeline_model.automationRack;
-		Menu(
-			*[
-				if(rack.isEmpty.not) {
-					[
-						Param(Message(self), \isBottomPanelVisible, ParamBoolSpec()).asMenuAction("Show automation panel"),
-						Param(Message(self.timeline_model), \automationEnabled, ParamBoolSpec()).asMenuAction("Enable automation"),
-						MenuAction("Preview all automations", {
-							self.showAllAutomations;
-						}),
-					]
-				},
-
-				if(self.selectedAutomationParam.notNil) {
-					[
-						MenuAction.separator,
-						Menu(
-							MenuAction("Edit", {
-								rack.getParamTimeline(self.selectedAutomationParam).edit;
-							}),
-							MenuAction("Remove", {
-								rack.removeParam(self.selectedAutomationParam)
-							}),
-						).title_("Current: %".format(self.selectedAutomationParam.propertyRoot)),
-					]
-				},
-
-				MenuAction.separator,
-				self.timelineInstrumentParamGroup.rejectByKey([\dur, \legato, \sustain]).selectByType(\scalar).asArray.collect { arg param, idx;
-					var ptline = self.timeline_model.automationRack.getParamTimeline(param);
-
-					MenuAction(param.propertyRoot, {
-						self.showAutomation(param.property);
-					}).checkable_(true).checked_(ptline.notNil)
-				}
-			].flat.reject(_.isNil)
-		).front;
-	},
-
-	makeBottomPanelValueText: { arg self;
-		self.bottomPanelValueText = StaticText.new;
-		self.bottomPanelValueText.fixedWidth = 50;
-		self.bottomPanelValueText.font = Font.default.size_(10);
-		//self.bottomPanelValueText.string = "XXX";
-
-		self.refreshBottomPanelValueText = {
-			var node;
-			//"---------------heyyyyyyyyyyyyyyy".debug;
-			//"heyyyyyyyyyyyyyyy".debug;
-			//"heyyyyyyyyyyyyyyy".debug;
-			node = self.bottomPanelSelectedTimelineView.chosennode;
-			if(node.notNil and: { node.model.notNil }) {
-				var val =   node.model[node.posyKey];
-				if(val.notNil) {
-					val = val.round(0.001)
-				};
-				self.bottomPanelValueText.string = val;
-			}
+				self.track_header_view.fixedHeight = 1/slider.range * track_header.bounds.height;
+				//( 1/slider.range * track_header.bounds.height ).debug("vrange.view.action: fixedHeight");
+				track_header.visibleOrigin = Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height;
+				//( Point(0, ( 1-slider.hi ) / slider.range) * track_header.bounds.height ).debug("vrange.view.action: visibleOrigin");
+			};
 		};
-		self.bottomPanelValueText.followChange(self.velocityTimeline, \nodeMoved, {
-			self.refreshBottomPanelValueText;
+
+		self.verticalScroller.view.addAction({ arg slider;
+			self.verticalScroller_track_header_action.(slider)
 		});
-		self.bottomPanelValueText.followChange(self.velocityTimeline, \selectedNodes, {
-			self.refreshBottomPanelValueText;
+
+		self.make_tracks_listeners;
+		self.update_track_header;
+
+		//self.verticalScroller.view.activeLo = self.verticalScroller.view.lo; // trigger action
+
+		self.track_header;
+	},
+
+	make_undo_system_buttons: { arg self;
+		var el = self.timeline_model.eventLoop;
+		var undobut, redobut;
+
+		undobut = BasicButton.new.string_("<Undo").action_({
+			self.undoAction;
+		}).enabled_(el.historyCanUndo).fixedWidth_(50).toolTip_("Undo");
+
+		redobut = BasicButton.new.string_("->").action_({ arg but;
+			self.redoAction;
+		}).enabled_(el.historyCanRedo).fixedWidth_(30).toolTip_("Redo");
+
+		redobut.followChange(el, \inHistoryMode, {
+			var el = self.timeline_model.eventLoop;
+			undobut.enabled_(el.historyCanUndo);
+			redobut.enabled_(el.historyCanRedo);
 		});
+
+		HLayout (
+			undobut,
+			redobut,
+		).spacing_(1)
 	},
 
-	showVelocityView: { arg self, prop;
-		var keyspec;
-		var height = 150;
-		var param = Param(self.timeline_model.param.target, prop);
-		self.velocityTimeline = VelocityTimelineView.new;
-		self.velocityTimeline.fixedHeight = height;
-		self.velocityTimeline.mimicTimeline(self.timeline, \horizontal);
-		self.velocityTimeline.mimicNodeSelection(self.timeline);
-		//self.velocityTimeline.mapParam(Param(self.param.target, \velocity, ControlSpec(0,127,\lin,0,64)));
-		self.velocityTimeline.quant = Point(0,0);
-		self.velocityTimeline.forbidHorizontalNodeMove = true;
-
-		self.bottomPanelVerticalScroller.orientation = \vertical;
-		self.bottomPanelVerticalScroller.fixedHeight = height;
-		self.bottomPanelVerticalScroller.mapTimeline(self.velocityTimeline);
-
-		self.bottomPanelSelectedTimelineView = self.velocityTimeline;
-		self.isBottomPanelVisible = true;
-		self.bottomPanelView.layout = HLayout(self.velocityTimeline).margins_(0);
-		self.velocityTimeline.mapParam(param);
-		
+	makeTimelineView: { arg self;
+		self.timelineClass.new
 	},
 
-	makeVelocityMenu: { arg self;
-		Menu(
-			* self.timelineInstrumentParamGroup.collect({ arg x; 
-				MenuAction(x.propertyRoot, {
-					self.showVelocityView(x.propertyRoot)
-				});
-			})
-		).front
+	makeWindow: { arg self;
+		//var window = Window.new;
+		WindowDef("%_%".format(self.timeline_model.eventType, self.timeline_model.key).asSymbol, { arg me;
+			var layout;
+			var etype;
+			etype = self.timeline_model.eventType.asString;
+			etype = "%%".format(etype[0].toUpper, etype[1..]);
+			me.windowName = "%: %".format(etype, self.timeline_model.key);
+			me.window.onClose_({
+				self.save_timeline_properties;
+			});
+			layout = self.makeLayout;
+			//window.layout = layout;
+			//window.alwaysOnTop = true;
+			//window.front;	
+			layout
+		}).front
 	},
 
-	makeBottomPanelToolbar: { arg self;
-		self.bottomPanelToolbar = View.new;
-		self.bottomPanelShowButton = BasicButton.new.string_(">")
-			.fixedWidth_(20)
-			.action_({ arg me;
-				if(self.isBottomPanelVisible) {
-					me.string = ">";
-					self.isBottomPanelVisible = false;
-				} {
-					me.string = "^";
-					self.isBottomPanelVisible = true;
-				}
-			})
+	make_tracks_listeners: { arg self;
+		if(self.tracks_controller.notNil) {
+			self.tracks_controller.remove;
+		};
+		self.tracks_controller = SimpleController(self.timeline_model)
+		.put(\tracks, {
+			//"update_track_header_size: areasize".debug;
+			if(self.track_header.isNil or: {self.track_header.isClosed}) {
+				self.tracks_controller.remove;
+			} {
+				self.update_track_header;
+				self.areasize = Point(self.areasize.x, self.timeline_model.track_count);
+			}
+			//self.update_track_header;
+		})
 		;
-		if(self.automationPopup.isNil) {
-			self.automationPopup = PopUpMenu.new;
-			self.automationPopup.action_({ arg me;
-				//var paramgroup = self.timelineInstrumentParamGroup[me.value];
-
-				//self.velocityTimeline.mapParam();
-				//self.velocityTimeline.param.debug("new param!!!");
-			}).items_(
-				self.timelineInstrumentParamGroup.collect({ arg x; 
-					x.property;
-				})
-			);
-
-		};
-		self.velocityButton = BasicButton.new.string_("Notes prop").fixedWidth_(80).action_({
-			self.makeVelocityMenu;
-		});
-		self.automationButton = BasicButton.new.string_("Automate").fixedWidth_(80).action_({
-			self.makeAutomationMenu;
-		});
-		self.bottomPanelToolbar.layout = HLayout (
-			self.bottomPanelShowButton,
-			//self.automationPopup,
-			self.velocityButton,
-			self.automationButton,
-			self.bottomPanelValueText,
-		).margins_(0);
 	},
 
-	makeBottomPanelView: { arg self;
-		self.bottomPanelView = View.new;
-		self.makeAutomationView;
-		self.bottomPanelHeaderView = View.new;
-		self.bottomPanelVerticalScroller = TimelineScroller.new;
-		self.bottomPanelVerticalScroller.orientation = \vertical;
-		self.makeBottomPanelToolbar;
-		self.isBottomPanelVisible = false;
-	},
-
-	isBottomPanelVisible_: { arg self, val;
-		if(val == true) {
-			self.bottomPanelView.visible = true;
-			self.bottomPanelVerticalScroller.visible = true;
-			self.bottomPanelHeaderView.visible = true;
-		} {
-			self.bottomPanelView.visible = false;
-			self.bottomPanelVerticalScroller.visible = false;
-			self.bottomPanelHeaderView.visible = false;
-		};
-	},
-	isBottomPanelVisible: { arg self;
-		self.bottomPanelView.visible;
-	},
-
-	makeVelocityView: { arg self;
-		// deprecated by showVelocityView
-		var keyspec;
-		var height = 150;
-		self.velocityTimeline = VelocityTimelineView.new;
-		self.velocityTimeline.fixedHeight = height;
-		self.velocityTimeline.mimicTimeline(self.timeline, \horizontal);
-		self.velocityTimeline.mimicNodeSelection(self.timeline);
-		//self.velocityTimeline.mapParam(Param(self.param.target, \velocity, ControlSpec(0,127,\lin,0,64)));
-		self.velocityTimeline.quant = Point(0,0);
-		self.velocityTimeline.forbidHorizontalNodeMove = true;
-
-		self.velocityVerticalRange = TimelineScroller.new;
-		self.velocityVerticalRange.orientation = \vertical;
-		self.velocityVerticalRange.fixedHeight = height;
-		self.velocityVerticalRange.mapTimeline(self.velocityTimeline);
-
-		self.velocityValue = StaticText.new;
-		self.velocityValue.fixedWidth = 50;
-		self.velocityValue.font = Font.default.size_(10);
-		//self.velocityValue.string = "XXX";
-
-		self.refreshPosyValue = {
-			var node;
-			//"---------------heyyyyyyyyyyyyyyy".debug;
-			//"heyyyyyyyyyyyyyyy".debug;
-			//"heyyyyyyyyyyyyyyy".debug;
-			node = self.velocityTimeline.chosennode;
-			if(node.notNil and: { node.model.notNil }) {
-				var val =   node.model[node.posyKey];
-				if(val.notNil) {
-					val = val.round(0.001)
-				};
-				self.velocityValue.string = val;
-			}
-
-		};
-		self.velocityValue.followChange(self.velocityTimeline, \nodeMoved, {
-			self.refreshPosyValue;
-		});
-		self.velocityValue.followChange(self.velocityTimeline, \selectedNodes, {
-			self.refreshPosyValue;
-		});
-
-		self.velocityTimeline.visible = false; // not visible by default, FIXME: should be remembered
-		self.velocityVerticalRange.visible = false;
-		self.velocityShowButton = BasicButton.new.string_(">")
-			.fixedWidth_(20)
+	make_saveas_button: { arg self;
+		BasicButton.new
 			.action_({ arg me;
-				if(self.velocityTimeline.visible) {
-					me.string = ">";
-					self.velocityTimeline.visible = false;
-					self.velocityVerticalRange.visible = false;
-				} {
-					me.string = "^";
-					self.velocityTimeline.visible = true;
-					self.velocityVerticalRange.visible = true;
+				self.saveAction(me)
+			})
+			.mouseUpAction_({ arg me, x, y, mod, but;
+				//[a,b,c,but].debug("but");
+				if(but == 1) { // right click
+					self.saveAsAction(me)
 				}
 			})
-		;
-		
-		self.velocityPopUp = PopUpMenu.new;
-		self.velocityPopUp.action_({ arg me;
-			//"velocityPopUp.action".debug;
-			//"velocityPopUp.actio3n".postln;
-			self.velocityTimeline.mapParam(self.timelineInstrumentParamGroup[me.value]);
-			//self.velocityTimeline.param.debug("new param!!!");
-		}).items_(
-			self.timelineInstrumentParamGroup.collect({ arg x; 
-				x.property;
+			.refreshChangeAction_({ arg me;
+				if(self.timeline_model.presetCompileStringSavePath.notNil) {
+					me.string = "Save"
+				} {
+					me.string = "Save as"
+				};
 			})
-		);
-		if(self.timelineInstrumentParamGroup.size>0) {
-			self.velocityPopUp.valueAction = 0;
-		};
-		//self.velocityPopUp.mapParam(Param(Message(self.velocityTimeline), \valueKey, keyspec));
+			.refreshChange
+		;
 	},
+
+	make_header: { arg self;
+		//self.header_layout = HLayout(
+		//	PlayerWrapperView(Pdef(self.eventloop.key)).view,
+		//	self.make_stop_button,
+		//	XSimpleButton.new.label_("Add track").action_({
+		//		self.add_track;
+		//	}),
+		//	self.make_quant_popup,
+		//);
+		//
+		//self.header_layout;
+		View.new;
+	},
+
+	makeRulerY: { arg self, timeline;
+		//self.ruler_y = MidinoteTimelineRulerView.new;
+		//self.ruler_y.mimicTimeline(timeline);
+		//self.ruler_y;
+		nil
+	},
+
+	make_stop_button: { arg self;
+		BasicButton.new.label_("⏹").action_({ // doesnt work with my font but show a square anyway
+			self.cursor.startPosition = nil;
+			self.cursor.endPosition = nil;
+			PlayerWrapper(self.timeline_model).stop;
+			//self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
+		}).fixedWidth_(30).maxHeight_(25).font_(Font.default.size_(16));
+	},
+
+	make_repeatCount_box: { arg self;
+		Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox.maxWidth_(40)
+	},
+
+	make_quant_spec: { arg self;
+		TagSpec([
+			"0",
+			"1/32",
+			"1/16",
+			"1/8",
+			"1/4",
+			"1/2",
+			"1",
+			"2",
+			"4",
+			"8",
+			"16",
+		].collect({ arg x; x -> x.interpret }));
+	},
+
+	make_quant_popup: { arg self;
+		var quant_popup;
+		var quant_spec;
+		quant_spec = self.make_quant_spec;
+
+		self.quant_param = Param({ self.get_xquant }, { arg val; self.set_xquant(val) }, quant_spec);
+		quant_popup = self.quant_param.asPopUpMenu.toolTip_("Quant");
+		self.quant_popup = quant_popup;
+		self.quant_popup;
+	}, 
 
 	makeCursorTimeline: { arg self;
 		var cursor_timeline;
@@ -1148,7 +641,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.timeline.mapSelectionCursor(self.selection_cursor);
 		self.timeline.keyDownAction = self.getTimelineKeyDownAction;
 		self.timeline.deleteSelectedNodesHook = self.deleteSelectedNodesHook;
-
 	},
 
 	makeSizerButton: { arg self;
@@ -1290,33 +782,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 		layout;
 	},
 
-	newScoreAction: { arg self;
-		self.eventLoop.pushList;
-		self.timeline_model.addHistorySnapshot;
-		self.eventList = self.timeline_model.makeDefaultEventList;
-		self.eventLoop.pushList;
-	},
-
-	cloneScoreAction: { arg self;
-		self.eventLoop.pushList;
-		self.timeline_model.addHistorySnapshot;
-		self.eventList = self.eventList.clone;
-		self.eventLoop.pushList;
-	},
-
-	doubleScoreAction: { arg self;
-		self.timeline_model.addHistorySnapshot;
-		self.eventList = self.eventList.clone.double;
-	},
-
-	deleteAction: { arg self;
-		self.deleteSelectedNodesHook.value;
-	},
-
-	createNodeAction: { arg self;
-		self.timeline.createNode
-	},
-
 	showTimelineContextMenu: { arg self, chosennode;
 		var selected;
 		selected = self.timeline.selectedNodes;
@@ -1402,7 +867,285 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 			].flat.select(_.notNil)
 		).front
+	},
 
+	////// gui actions
+
+	saveAction: { arg self, view;
+		var me = view ?? { () };
+		if(self.hasSavePath) {
+			var dialog;
+			if(PathName(self.timeline_model.presetCompileStringSavePath).isFolder) {
+				self.timeline_model.presetCompileStringSavePath = self.timeline_model.presetCompileStringSavePath +/+ self.timeline_model.key.asString ++ ".scd"
+			};
+			dialog = Window.new("Save").layout_(
+				VLayout(
+					StaticText.new.string_("Save this object to the file % ?".format(self.timeline_model.presetCompileStringSavePath.asCompileString)),
+					HLayout(
+						nil,
+						BasicButton.new.string_("OK").action_({ 
+							self.timeline_model.savePresetCompileString;
+							me.refreshChange;
+							dialog.close;
+						}),
+						BasicButton.new.string_("Choose").action_({ 
+							self.timeline_model.savePresetCompileString(nil, {
+								me.refreshChange;
+							}, true);
+							dialog.close;
+						}),
+						BasicButton.new.string_("Cancel").action_({
+							dialog.close;
+						}),
+					)
+				)
+			).setInnerExtent(600,140).front;
+		} {
+			self.saveAsAction(me);
+		};
+	},
+
+	saveAsAction: { arg self, view;
+		var me = view ?? { () };
+		self.timeline_model.savePresetCompileString(nil, {
+			me.refreshChange;
+		}, true)
+	},
+
+	undoAction: { arg self;
+		var el = self.timeline_model.eventLoop;
+		el.historyUndo;
+		//self.timeline.refreshSelectionView;
+	},
+
+	redoAction: { arg self;
+		var el = self.timeline_model.eventLoop;
+		el.historyRedo;
+		//self.timeline.refreshSelectionView;
+	},
+	
+
+	add_track: { arg self;
+		self.timeline_model.add_track;
+		self.timeline.refreshEventList;
+		self.timeline.refresh;
+		self.update_track_header;
+	},
+
+	zoomFitAction: { arg self;
+		// TODO: use timeline.spec to get initial maxy and miny
+		var timeline = self.timeline;
+		var maxy=0, miny=127;
+		var range;
+
+		if(timeline.model.size < 3) { // if empty
+			// NOOP
+		} {
+
+			timeline.model.do { arg ev, x;
+				var midi = ev.use { ev.midinote };
+				//[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
+				if(midi.notNil) {
+					//[x, midi].debug("zoom_fit, notnil");
+					if(midi > maxy) {
+						maxy = midi;
+					};
+					if(midi < miny) {
+						miny = midi;
+					};
+				}
+			};
+
+			if(( maxy + 1 ) > timeline.areasize.y) {
+				timeline.areasize.y = maxy + 1;
+			};
+
+			// add margin top and bottom
+			miny = miny - 1;
+			maxy = maxy + 1;
+
+			//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
+			//[timeline.areasize].debug("areasize");
+			range = (maxy-miny+1)/timeline.areasize.y;
+			timeline.viewport.top = (miny/timeline.areasize.y);
+			timeline.viewport.height = range.clip(0.1,1);
+			//[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
+
+			//timeline.viewport.top = 42/128;
+			//timeline.viewport.height = ((54-42)/128);
+
+			//timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
+
+
+			timeline.changed(\viewport);
+			timeline.refresh;
+		};
+
+
+		//[self.areasize, self.timeline.areasize].debug("2");
+		self.areasize = self.timeline.areasize;
+		//[self.areasize, self.timeline.areasize].debug("4");
+	},
+
+	zoom_fit: { arg self;
+		// deprecated name
+		self.zoomFitAction;
+	},
+
+	copyAction_old: { arg self;
+		var selnodes;
+		var cursor = self.timeline_model.cursor;
+		var startpos, endpos;
+		selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
+		if(selnodes.size == 0) {
+			startpos = cursor.startPosition ? self.eventList.startTime;
+			endpos = cursor.endPosition ? self.eventList.endTime;
+			self.timeline.nodes.collect({ arg node;
+				var at = node.model[\absTime];
+				if(at >= startpos and: { at < endpos and: { node.selectable }} ) {
+					self.timeline.selectNode(node)
+				}
+			});
+			selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
+		};
+		if(selnodes.size > 0) {
+			self.clipboard = selnodes;
+			self.selection_rect = self.selection_cursor.rect;
+		};
+	},
+
+	copyAction: { arg self;
+		var selevents;
+		var cursor = self.timeline_model.cursor;
+		var startpos, endpos;
+		selevents = self.timeline.copyAtSelectionEdges;
+		Log(\Param).debug("clipTimeline.copyAction: selevents: %", selevents);
+		if(selevents.size > 0) {
+			self.clipboard = selevents;
+			self.selection_rect = self.selection_cursor.rect;
+		};
+	},
+
+	pasteAction: { arg self;
+		if(self.clipboard.notNil) {
+			var delta;
+			var newnodes;
+			var first = self.clipboard.as(Array).inject(nil, { arg a, b; 
+				if(a.isNil) {
+					b
+				} {
+					if(a[\absTime] < b[\absTime]) {
+						a
+					} {
+						b
+					}
+				};
+			});
+			//first.debug("first");
+			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
+			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - self.selection_rect.origin;
+			//self.clipboard.debug("clipboard");
+			self.timeline_model.addHistorySnapshot;
+			self.clipboard.do({ arg event;
+				var new;
+				new = event.copy;
+				//[new, delta].debug("new, delta");
+				new[\absTime] = new[\absTime] + delta.x;
+				new[self.timeline.valueKey] = new[self.timeline.valueKey] + delta.y;
+				self.timeline.model.addEvent(new);
+			});
+			//self.timeline.model.changed(\refresh);
+
+			self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
+			self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
+			self.timeline.deselectAllNodes;
+			//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
+			newnodes = self.timeline.findNodes(self.selection_cursor.rect);
+			//Log(\Param).debug("new nodes %".format(newnodes));
+			self.timeline.selectNodes(newnodes);
+			//self.timeline.model.changed(\refresh);
+			self.timeline.model.reorder;
+		}
+	},
+
+
+	deleteSelectedNodesHook: { arg self;
+		{ arg tl;
+			self.timeline_model.addHistorySnapshot;
+			//self.timeline_model.eventLoop.cloneAndPushList;
+			//Log(\Param).debug("hook qui foire");
+			self.timeline.deleteSelectedNodes;
+			//self.timeline_model.eventLoop.pushList;
+		}
+	},
+
+	quantizeAction: { arg self;
+		var selNodes;
+		var snapshot;
+		// TODO: should be implemented by adding a new property to the event, understood by XEventList
+		//			to be able to undo it
+		//quant.value.debug("quantize!!");
+		//"quantize ouais c'est ici".debug;
+		//snapshot = self.timeline_model.eventList.clone;
+		//self.timeline_model.pushList;
+
+
+		self.timeline_model.addHistorySnapshot;
+		selNodes = self.timeline.selNodes;
+		selNodes.do { arg node;
+			//node.nodeloc.debug("before");
+			node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
+			//node.nodeloc.debug("after");
+		};
+
+
+		////// this works
+		//snapshot = self.timeline_model.eventList.clone;
+		//selNodes = self.timeline.selNodes;
+		//selNodes.do { arg node;
+		////node.nodeloc.debug("before");
+		//node.nodeloc = node.nodeloc.round(self.quant_ref.value.x);
+		////node.nodeloc.debug("after");
+		//};
+		//self.timeline_model.eventLoop.cloneAndPushList(snapshot);
+		//self.timeline_model.eventLoop.addList;
+	},
+
+	setStartAction: { arg self;
+		self.timeline.setStartPosition(self.timeline.lastGridPos.x.trunc(self.quant_ref.value.x));
+		self.refresh;
+	},
+
+	setEndAction: { arg self;
+		self.timeline.setEndPosition(self.timeline.lastGridPos.x.trunc(self.quant_ref.value.x));
+		self.refresh;
+	},
+
+	newScoreAction: { arg self;
+		self.eventLoop.pushList;
+		self.timeline_model.addHistorySnapshot;
+		self.eventList = self.timeline_model.makeDefaultEventList;
+		self.eventLoop.pushList;
+	},
+
+	cloneScoreAction: { arg self;
+		self.eventLoop.pushList;
+		self.timeline_model.addHistorySnapshot;
+		self.eventList = self.eventList.clone;
+		self.eventLoop.pushList;
+	},
+
+	doubleScoreAction: { arg self;
+		self.timeline_model.addHistorySnapshot;
+		self.eventList = self.eventList.clone.double;
+	},
+
+	deleteAction: { arg self;
+		self.deleteSelectedNodesHook.value;
+	},
+
+	createNodeAction: { arg self;
+		self.timeline.createNode
 	},
 
 	zoomFullAction: { arg self;
@@ -1410,60 +1153,322 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.refresh;
 	},
 
-	asPattern: { arg self;
-		// TODO
-		Pfunc({})
+
+	////// bottom panel
+
+	// automation 
+
+	showAutomation: { arg self, prop;
+		//var prop = self.automationPopup.items[self.automationPopup.value];
+		var selectedParam = Param(self.timeline_model.param.target, prop);
+		var ptline;
+		var ptview;
+		var rack = self.timeline_model.automationRack;
+		self.selectedAutomationParam = selectedParam;
+		//if(rack.getParamTimeline(selectedParam).isNil) {
+			//// automatically enable automation if new automation is created
+			//self.timeline_model.automationEnabled = true;
+		//};
+		self.timeline_model.automationRack.addParam(selectedParam);
+		self.bottomPanelView.removeAll;
+		ptline = rack.getParamTimeline(selectedParam);
+		self.automationRackView = self.timeline_model.automationRack.getParamTimeline(selectedParam);
+
+		ptview = ProtoTemplateDef(\ParamTimelinePanelView).newView(ptline);
+		ptview.makeAutomationLayout;
+		ptview.timeline.mimicTimeline(self.timeline, \horizontal);
+		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
+		self.bottomPanelHeaderView.removeAll;
+		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg obj, msg, arg1;
+			if(arg1 == \play) {
+				//ptview.cursor_timeline.play; // already sent by loopMaster
+			} {
+				// this event is sent by timeline_model.stop function
+				ptline.eventList.changed(\cursor, \stop);
+				//ptview.cursor_timeline.stop;
+			}
+		});
+		//if(self.timeline_model.isPlaying) {
+		//ptview.cursor_timeline.play;
+		//};
+		self.bottomPanelSelectedTimelineView = ptview.timeline;
+		self.bottomPanelHeaderView.layout = HLayout(
+			ptview.track_header
+		).margins_(0);
+
+		self.bottomPanelView.layout = HLayout(ptview.timelineStack).margins_(0);
+		self.isBottomPanelVisible = true;
+		self.bottomPanelDescription.string = "Automation: %".format(prop);
+		self.updateBottomPanel;
 	},
 
-	refresh: { arg self;
-		// event list has changed, refresh the mappings
-		self.timeline.mapEventList(self.eventloop.list);
-
-		if(self.cursor_timeline.notNil) {
-			self.cursor_timeline.mapEventList(self.eventloop.list);
-		};
-		if(self.locatorbar.notNil) {
-			self.locatorbar.mapEventList(self.eventloop.list);
-		};
-		if(self.ruler_x_beat.notNil) {
-			self.ruler_x_beat.mapEventList(self.eventloop.list);
-		};
-		if(self.velocityTimeline.notNil) {
-			self.velocityTimeline.mapEventList(self.eventloop.list);
-		}
+	showAllAutomations: { arg self;
+		var rack = self.timeline_model.automationRack;
+		self.bottomPanelView.removeAll;
+		self.bottomPanelView.layout = VLayout (
+			rack.asStackPreview({ arg view;
+				view.timeline.mimicTimeline(self.timeline, \horizontal)
+		   	})
+		).margins_(0);
+		//self.bottomPanelView.fixedHeight_(40);
+		self.isBottomPanelVisible = true;
+		//self.timelineGridLayout.setRowStretch(1, 100);
+		//self.timelineGridLayout.setRowStretch(2, 0);
+		self.bottomPanelVerticalScroller.visible = false;
+		self.bottomPanelHeaderView.removeAll;
 	},
 
-	save_timeline_properties: { arg self;
-		var tl = self;
-		// tl is view ProtoDef, tl.timeline is View subclass, tl.timeline_model is the object programmer interact with
-		if(tl.timeline.notNil) {
-			tl.timeline_model.addHalo(\viewport, tl.timeline.viewport);
-			tl.timeline_model.addHalo(\areasize, tl.timeline.areasize);
-			tl.timeline_model.addHalo(\enablePreview, tl.timeline.enablePreview);
-			// quant_ref is now member of timeline model
-			//tl.timeline_model.addHalo(\gridquant, tl.timeline.quant_ref.value); // this line seems wrong
-			//tl.quant_ref.value.debug("quant_ref saving!!!");
-			//tl.quant_ref.value ?? { tl.timeline_model.addHalo(\gridquant, tl.quant_ref.value); }
-		}
+	makeAutomationMenu: { arg self;
+		var rack = self.timeline_model.automationRack;
+		Menu(
+			*[
+				if(rack.isEmpty.not) {
+					[
+						Param(Message(self), \isBottomPanelVisible, ParamBoolSpec()).asMenuAction("Show automation panel"),
+						Param(Message(self.timeline_model), \automationEnabled, ParamBoolSpec()).asMenuAction("Enable automation"),
+						MenuAction("Preview all automations", {
+							self.showAllAutomations;
+						}),
+					]
+				},
+
+				if(self.selectedAutomationParam.notNil) {
+					[
+						MenuAction.separator,
+						Menu(
+							MenuAction("Edit", {
+								rack.getParamTimeline(self.selectedAutomationParam).edit;
+							}),
+							MenuAction("Remove", {
+								rack.removeParam(self.selectedAutomationParam)
+							}),
+						).title_("Current: %".format(self.selectedAutomationParam.propertyRoot)),
+					]
+				},
+
+				MenuAction.separator,
+				self.timelineInstrumentParamGroup.rejectByKey([\dur, \legato, \sustain]).selectByType(\scalar).asArray.collect { arg param, idx;
+					var ptline = self.timeline_model.automationRack.getParamTimeline(param);
+
+					MenuAction(param.propertyRoot, {
+						self.showAutomation(param.property);
+					}).checkable_(true).checked_(ptline.notNil)
+				}
+			].flat.reject(_.isNil)
+		).front;
 	},
 
-	load_timeline_properties: { arg self;
-		var tl = self;
-		var cur;
-		cur = tl.timeline_model.getHalo(\viewport);
-		if(cur.notNil) {
-			tl.timeline.viewport = cur;
-		};
-		cur = tl.timeline_model.getHalo(\areasize) ? self.pr_areasize;
-		if(cur.notNil) {
-			tl.timeline.areasize = cur;
-		};
-		tl.timeline_model.getHalo(\enablePreview) !? { arg x;
-			tl.timeline.enablePreview = x;
-		};
-		//tl.timeline_model.getHalo(\gridquant) ?? { arg x; self.timeline.quant_ref.value = x; }; // this line seems wrong
-		//tl.timeline_model.getHalo(\gridquant) ?? { arg x; self.quant_ref.value = x; };
+	// velocity 
+
+	showVelocityView: { arg self, prop;
+		var keyspec;
+		var height = 150;
+		var param = Param(self.timeline_model.param.target, prop);
+		self.velocityTimeline = VelocityTimelineView.new;
+		//self.velocityTimeline.fixedHeight = height;
+		self.velocityTimeline.mimicTimeline(self.timeline, \horizontal);
+		self.velocityTimeline.mimicNodeSelection(self.timeline);
+		//self.velocityTimeline.mapParam(Param(self.param.target, \velocity, ControlSpec(0,127,\lin,0,64)));
+		self.velocityTimeline.quant = Point(0,0);
+		self.velocityTimeline.forbidHorizontalNodeMove = true;
+
+		self.bottomPanelVerticalScroller.orientation = \vertical;
+		//self.bottomPanelVerticalScroller.fixedHeight = height;
+		self.bottomPanelVerticalScroller.mapTimeline(self.velocityTimeline);
+
+		self.bottomPanelSelectedTimelineView = self.velocityTimeline;
+		self.isBottomPanelVisible = true;
+		self.bottomPanelView.layout = HLayout(self.velocityTimeline).margins_(0);
+		self.velocityTimeline.mapParam(param);
+		self.updateBottomPanel;
+		self.bottomPanelDescription.string = "Property: %".format(prop);
+		self.refresh; // required for mapping EventList to velocityTimeline
 	},
+
+	makeVelocityMenu: { arg self;
+		Menu(
+			* self.timelineInstrumentParamGroup.collect({ arg x; 
+				MenuAction(x.propertyRoot, {
+					self.showVelocityView(x.propertyRoot)
+				});
+			})
+		).front
+	},
+
+	makeVelocityView: { arg self; // deprecated by showVelocityView
+		var keyspec;
+		var height = 150;
+		self.velocityTimeline = VelocityTimelineView.new;
+		self.velocityTimeline.fixedHeight = height;
+		self.velocityTimeline.mimicTimeline(self.timeline, \horizontal);
+		self.velocityTimeline.mimicNodeSelection(self.timeline);
+		//self.velocityTimeline.mapParam(Param(self.param.target, \velocity, ControlSpec(0,127,\lin,0,64)));
+		self.velocityTimeline.quant = Point(0,0);
+		self.velocityTimeline.forbidHorizontalNodeMove = true;
+
+		self.velocityVerticalRange = TimelineScroller.new;
+		self.velocityVerticalRange.orientation = \vertical;
+		self.velocityVerticalRange.fixedHeight = height;
+		self.velocityVerticalRange.mapTimeline(self.velocityTimeline);
+
+		self.velocityValue = StaticText.new;
+		self.velocityValue.fixedWidth = 50;
+		self.velocityValue.font = Font.default.size_(10);
+		//self.velocityValue.string = "XXX";
+
+		self.refreshPosyValue = {
+			var node;
+			//"---------------heyyyyyyyyyyyyyyy".debug;
+			//"heyyyyyyyyyyyyyyy".debug;
+			//"heyyyyyyyyyyyyyyy".debug;
+			node = self.velocityTimeline.chosennode;
+			if(node.notNil and: { node.model.notNil }) {
+				var val =   node.model[node.posyKey];
+				if(val.notNil) {
+					val = val.round(0.001)
+				};
+				self.velocityValue.string = val;
+			}
+
+		};
+		self.velocityValue.followChange(self.velocityTimeline, \nodeMoved, {
+			self.refreshPosyValue;
+		});
+		self.velocityValue.followChange(self.velocityTimeline, \selectedNodes, {
+			self.refreshPosyValue;
+		});
+
+		self.velocityTimeline.visible = false; // not visible by default, FIXME: should be remembered
+		self.velocityVerticalRange.visible = false;
+		self.velocityShowButton = BasicButton.new.string_(">")
+			.fixedWidth_(20)
+			.action_({ arg me;
+				if(self.velocityTimeline.visible) {
+					me.string = ">";
+					self.velocityTimeline.visible = false;
+					self.velocityVerticalRange.visible = false;
+				} {
+					me.string = "^";
+					self.velocityTimeline.visible = true;
+					self.velocityVerticalRange.visible = true;
+				}
+			})
+		;
+		
+		self.velocityPopUp = PopUpMenu.new;
+		self.velocityPopUp.action_({ arg me;
+			//"velocityPopUp.action".debug;
+			//"velocityPopUp.actio3n".postln;
+			self.velocityTimeline.mapParam(self.timelineInstrumentParamGroup[me.value]);
+			//self.velocityTimeline.param.debug("new param!!!");
+		}).items_(
+			self.timelineInstrumentParamGroup.collect({ arg x; 
+				x.property;
+			})
+		);
+		if(self.timelineInstrumentParamGroup.size>0) {
+			self.velocityPopUp.valueAction = 0;
+		};
+		//self.velocityPopUp.mapParam(Param(Message(self.velocityTimeline), \valueKey, keyspec));
+	},
+	// bottom panel 
+
+	makeBottomPanelValueText: { arg self;
+		self.bottomPanelValueText = StaticText.new;
+		self.bottomPanelValueText.fixedWidth = 50;
+		self.bottomPanelValueText.font = Font.default.size_(10);
+
+		self.refreshBottomPanelValueText = {
+			var node;
+			//"---------------heyyyyyyyyyyyyyyy".debug;
+			//"heyyyyyyyyyyyyyyy".debug;
+			//"heyyyyyyyyyyyyyyy".debug;
+			node = self.bottomPanelSelectedTimelineView.chosennode;
+			if(node.notNil and: { node.model.notNil }) {
+				var val =   node.model[node.posyKey];
+				if(val.notNil) {
+					val = val.round(0.001)
+				};
+				self.bottomPanelValueText.string = val;
+			}
+		};
+	},
+
+	updateBottomPanel: { arg self;
+		var con;
+		con = self.bottomPanelValueText.getHalo(\followChangeController);
+		if(con.notNil) {
+			con.remove;
+		};
+		self.bottomPanelValueText.followChange(self.bottomPanelSelectedTimelineView, \nodeMoved, {
+			self.refreshBottomPanelValueText;
+		});
+		con = self.bottomPanelValueText.getHalo(\followChangeController);
+		con.put(\selectedNodes, {
+			self.refreshBottomPanelValueText;
+		});
+		self.bottomPanelValueText.string = "-";
+		
+	},
+
+	makeBottomPanelToolbar: { arg self;
+		self.bottomPanelToolbar = View.new;
+		self.bottomPanelShowButton = BasicButton.new.string_(">")
+			.fixedWidth_(20)
+			.action_({ arg me;
+				if(self.isBottomPanelVisible) {
+					me.string = ">";
+					self.isBottomPanelVisible = false;
+				} {
+					me.string = "^";
+					self.isBottomPanelVisible = true;
+				}
+			})
+		;
+		self.bottomPanelDescription = StaticText.new;
+		self.velocityButton = BasicButton.new.string_("Notes prop").fixedWidth_(80).action_({
+			self.makeVelocityMenu;
+		});
+		self.automationButton = BasicButton.new.string_("Automate").fixedWidth_(80).action_({
+			self.makeAutomationMenu;
+		});
+		self.makeBottomPanelValueText;
+		self.bottomPanelToolbar.layout = HLayout (
+			self.bottomPanelShowButton,
+			//self.automationPopup,
+			self.velocityButton,
+			self.automationButton,
+			self.bottomPanelDescription,
+			self.bottomPanelValueText,
+			nil,
+		).margins_(0);
+	},
+
+	makeBottomPanelView: { arg self;
+		self.bottomPanelView = View.new;
+		self.makeAutomationView;
+		self.bottomPanelHeaderView = View.new;
+		self.bottomPanelVerticalScroller = TimelineScroller.new;
+		self.bottomPanelVerticalScroller.orientation = \vertical;
+		self.makeBottomPanelToolbar;
+		self.isBottomPanelVisible = false;
+	},
+
+	isBottomPanelVisible_: { arg self, val;
+		if(val == true) {
+			self.bottomPanelView.visible = true;
+			self.bottomPanelVerticalScroller.visible = true;
+			self.bottomPanelHeaderView.visible = true;
+		} {
+			self.bottomPanelView.visible = false;
+			self.bottomPanelVerticalScroller.visible = false;
+			self.bottomPanelHeaderView.visible = false;
+		};
+	},
+	isBottomPanelVisible: { arg self;
+		self.bottomPanelView.visible;
+	},
+
 ));
 
 /////// derivatives
@@ -1510,6 +1515,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		self.timeline_model.param;
 	},
 
+	makeBottomPanelView: { },
 
 	make_header: { arg self;
 		//var mute_button = Button.new.states_([
@@ -1753,6 +1759,8 @@ ProtoTemplateDef(\TrackTimelinePanelView, (
 		ParamViewToolBox.clipboard.trackTimeline_selectionRect = val;
 	},
 
+	makeBottomPanelView: { },
+
 
 	update_track_header: { arg self;
 		var track_count;
@@ -1896,6 +1904,8 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 	selection_rect_: { arg self, val;
 		ParamViewToolBox.clipboard.paramTimeline_selectionRect = val;
 	},
+
+	makeBottomPanelView: { },
 
 	make_header: { arg self;
 		self.paramKnob = Knob.new.maxHeight_(25);

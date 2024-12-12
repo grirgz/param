@@ -133,7 +133,7 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	previewPattern: { arg self, absStart, absEnd, repeatCount;
-		self.loopMaster.getPreviewLoopPattern(self.cutPatternFunction, absStart, absEnd, repeatCount ? self.repeatCount, self.automationRack.asPattern);
+		self.loopMaster.getPreviewLoopPattern(self.cutPatternFunction, absStart, absEnd, repeatCount ? self.repeatCount, self.automationPattern);
 	},
 
 	asPatternSlice: { arg self, startLocator, endLocator, repeatCount=1;
@@ -463,6 +463,16 @@ ProtoClassDef(\EventTimeline, (
 		var arkey = "AutomationRack_%_%".format(self.eventType, self.key);
 		self[\automationRack] = TrackDef(arkey, \ParamTimelineRack);
 		self[\automationRack];
+	},
+
+	automationEnabled: true,
+
+	automationPattern: { arg self;
+		if(self.automationEnabled == true) {
+			self.automationRack.asPattern
+		} {
+			nil
+		};
 	},
 ));
 
