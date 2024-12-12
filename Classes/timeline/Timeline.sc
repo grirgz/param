@@ -94,6 +94,7 @@ CursorTimeline {
 	var <>controller;
 	var <>enableSwapIfNegative = true;
 	var <>loopMaster;
+	var <>startTime; // set by loopMaster cursor start event
 
 	startPosition {
 		^(startPoint !? _.x);

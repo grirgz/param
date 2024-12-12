@@ -1263,7 +1263,7 @@ TimelineView : SCViewHolder {
 		if(timeline_controller.notNil) {timeline_controller.remove};
 		timeline_controller = SimpleController(timeline)
 			.put(\viewport, {
-				if(this.view.isClosed) {
+				if(this.view.isNil or: { this.view.isClosed }) {
 					timeline_controller.remove;
 				} {
 					//[this].debug("refresh viewport because mimicTimeline!!");
@@ -1283,7 +1283,7 @@ TimelineView : SCViewHolder {
 				}
 			})
 			.put(\areasize, {
-				if(this.view.isClosed) {
+				if(this.view.isNil or: {this.view.isClosed}) {
 					timeline_controller.remove;
 				} {
 					//[this].debug("refresh viewport because mimicTimeline!!");

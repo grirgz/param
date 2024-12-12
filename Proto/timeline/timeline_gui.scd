@@ -46,7 +46,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 			self.cursor.startPosition = nil;
 			self.cursor.endPosition = nil;
 			PlayerWrapper(self.timeline_model).stop;
-			self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
+			//self.cursor_timeline.stop; // FIXME: should be automatic when stoping Pdef
 		}).fixedWidth_(30).maxHeight_(25).font_(Font.default.size_(16));
 	},
 
@@ -772,8 +772,159 @@ ProtoTemplateDef(\TimelinePanelView, (
 		}
 	},
 
-	makeAutomationView: { arg self;
+	showAutomation: { arg self, prop;
+		//var prop = self.automationPopup.items[self.automationPopup.value];
+		var selectedParam = Param(self.timeline_model.param.target, prop);
+		var ptline;
+		var ptview;
+		self.selectedAutomationParam = selectedParam;
+		self.timeline_model.automationRack.addParam(selectedParam);
+		self.bottomPanelView.removeAll;
+		ptline = self.timeline_model.automationRack.getParamTimeline(selectedParam);
+		self.automationRackView = self.timeline_model.automationRack.getParamTimeline(selectedParam);
+
+		ptview = ProtoTemplateDef(\ParamTimelinePanelView).newView(ptline);
+		ptview.makeAutomationLayout;
+		ptview.timeline.mimicTimeline(self.timeline, \horizontal);
+		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
+		self.bottomPanelHeaderView.removeAll;
+		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg obj, msg, arg1;
+			if(arg1 == \play) {
+				//ptview.cursor_timeline.play; // already sent by loopMaster
+			} {
+				// this event is sent by timeline_model.stop function
+				ptline.eventList.changed(\cursor, \stop);
+				//ptview.cursor_timeline.stop;
+			}
+		});
+		//if(self.timeline_model.isPlaying) {
+		//ptview.cursor_timeline.play;
+		//};
+		self.bottomPanelSelectedTimelineView = ptview.timeline;
+		self.bottomPanelHeaderView.layout = HLayout(
+			ptview.track_header
+		).margins_(0);
+
+		self.bottomPanelView.layout = HLayout(ptview.timelineStack).margins_(0);
+		self.isBottomPanelVisible = true;
 		
+	},
+
+	showAllAutomations: { arg self;
+		var rack = self.timeline_model.automationRack;
+		self.bottomPanelView.removeAll;
+		self.bottomPanelView.layout = VLayout (
+			rack.asStackPreview({ arg view;
+				view.timeline.mimicTimeline(self.timeline, \horizontal)
+		   	})
+		).margins_(0);
+		//self.bottomPanelView.fixedHeight_(40);
+		self.isBottomPanelVisible = true;
+		//self.timelineGridLayout.setRowStretch(1, 100);
+		//self.timelineGridLayout.setRowStretch(2, 0);
+		self.bottomPanelVerticalScroller.visible = false;
+		self.bottomPanelHeaderView.removeAll;
+	},
+
+	makeAutomationMenu: { arg self;
+		var rack = self.timeline_model.automationRack;
+		Menu(
+			*[
+				if(rack.isEmpty.not) {
+					[
+						Param(Message(self), \isBottomPanelVisible, ParamBoolSpec()).asMenuAction("Show automation panel"),
+						Param(Message(self.timeline_model), \automationEnabled, ParamBoolSpec()).asMenuAction("Enable automation"),
+						MenuAction("Preview all automations", {
+							self.showAllAutomations;
+						}),
+					]
+				},
+
+				if(self.selectedAutomationParam.notNil) {
+					[
+						MenuAction.separator,
+						Menu(
+							MenuAction("Edit", {
+								rack.getParamTimeline(self.selectedAutomationParam).edit;
+							}),
+							MenuAction("Remove", {
+								rack.removeParam(self.selectedAutomationParam)
+							}),
+						).title_("Current: %".format(self.selectedAutomationParam.propertyRoot)),
+					]
+				},
+
+				MenuAction.separator,
+				self.timelineInstrumentParamGroup.rejectByKey([\dur, \legato, \sustain]).selectByType(\scalar).asArray.collect { arg param, idx;
+					var ptline = self.timeline_model.automationRack.getParamTimeline(param);
+
+					MenuAction(param.propertyRoot, {
+						self.showAutomation(param.property);
+					}).checkable_(true).checked_(ptline.notNil)
+				}
+			].flat.reject(_.isNil)
+		).front;
+	},
+
+	makeBottomPanelValueText: { arg self;
+		self.bottomPanelValueText = StaticText.new;
+		self.bottomPanelValueText.fixedWidth = 50;
+		self.bottomPanelValueText.font = Font.default.size_(10);
+		//self.bottomPanelValueText.string = "XXX";
+
+		self.refreshBottomPanelValueText = {
+			var node;
+			//"---------------heyyyyyyyyyyyyyyy".debug;
+			//"heyyyyyyyyyyyyyyy".debug;
+			//"heyyyyyyyyyyyyyyy".debug;
+			node = self.bottomPanelSelectedTimelineView.chosennode;
+			if(node.notNil and: { node.model.notNil }) {
+				var val =   node.model[node.posyKey];
+				if(val.notNil) {
+					val = val.round(0.001)
+				};
+				self.bottomPanelValueText.string = val;
+			}
+		};
+		self.bottomPanelValueText.followChange(self.velocityTimeline, \nodeMoved, {
+			self.refreshBottomPanelValueText;
+		});
+		self.bottomPanelValueText.followChange(self.velocityTimeline, \selectedNodes, {
+			self.refreshBottomPanelValueText;
+		});
+	},
+
+	showVelocityView: { arg self, prop;
+		var keyspec;
+		var height = 150;
+		var param = Param(self.timeline_model.param.target, prop);
+		self.velocityTimeline = VelocityTimelineView.new;
+		self.velocityTimeline.fixedHeight = height;
+		self.velocityTimeline.mimicTimeline(self.timeline, \horizontal);
+		self.velocityTimeline.mimicNodeSelection(self.timeline);
+		//self.velocityTimeline.mapParam(Param(self.param.target, \velocity, ControlSpec(0,127,\lin,0,64)));
+		self.velocityTimeline.quant = Point(0,0);
+		self.velocityTimeline.forbidHorizontalNodeMove = true;
+
+		self.bottomPanelVerticalScroller.orientation = \vertical;
+		self.bottomPanelVerticalScroller.fixedHeight = height;
+		self.bottomPanelVerticalScroller.mapTimeline(self.velocityTimeline);
+
+		self.bottomPanelSelectedTimelineView = self.velocityTimeline;
+		self.isBottomPanelVisible = true;
+		self.bottomPanelView.layout = HLayout(self.velocityTimeline).margins_(0);
+		self.velocityTimeline.mapParam(param);
+		
+	},
+
+	makeVelocityMenu: { arg self;
+		Menu(
+			* self.timelineInstrumentParamGroup.collect({ arg x; 
+				MenuAction(x.propertyRoot, {
+					self.showVelocityView(x.propertyRoot)
+				});
+			})
+		).front
 	},
 
 	makeBottomPanelToolbar: { arg self;
@@ -804,34 +955,18 @@ ProtoTemplateDef(\TimelinePanelView, (
 			);
 
 		};
-		self.automationButton = BasicButton.new.string_("Automate").action_({
-			var prop = self.automationPopup.items[self.automationPopup.value];
-			var selectedParam = Param(self.timeline_model.param.target, prop);
-			var ptline;
-			var ptview;
-			self.timeline_model.automationRack.addParam(selectedParam);
-			self.bottomPanelView.removeAll;
-			ptline = self.timeline_model.automationRack.getParamTimeline(selectedParam);
-			self.automationRackView = self.timeline_model.automationRack.getParamTimeline(selectedParam);
-
-			ptview = ProtoTemplateDef(\ParamTimelinePanelView).newView(ptline);
-			ptview.makeAutomationLayout;
-			ptview.timeline.mimicTimeline(self.timeline, \horizontal);
-			self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
-			self.bottomPanelHeaderView.removeAll;
-			self.bottomPanelHeaderView.layout = HLayout(
-				ptview.track_header
-			).margins_(0);
-
-			self.bottomPanelView.layout = VLayout (
-				ptview.timeline
-			).margins_(0);
-			self.isBottomPanelVisible = true;
+		self.velocityButton = BasicButton.new.string_("Notes prop").fixedWidth_(80).action_({
+			self.makeVelocityMenu;
+		});
+		self.automationButton = BasicButton.new.string_("Automate").fixedWidth_(80).action_({
+			self.makeAutomationMenu;
 		});
 		self.bottomPanelToolbar.layout = HLayout (
 			self.bottomPanelShowButton,
-			self.automationPopup,
+			//self.automationPopup,
+			self.velocityButton,
 			self.automationButton,
+			self.bottomPanelValueText,
 		).margins_(0);
 	},
 
@@ -861,6 +996,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	makeVelocityView: { arg self;
+		// deprecated by showVelocityView
 		var keyspec;
 		var height = 150;
 		self.velocityTimeline = VelocityTimelineView.new;
@@ -937,16 +1073,26 @@ ProtoTemplateDef(\TimelinePanelView, (
 		//self.velocityPopUp.mapParam(Param(Message(self.velocityTimeline), \valueKey, keyspec));
 	},
 
-	makeXRuler: { arg self;
+	makeCursorTimeline: { arg self;
 		var cursor_timeline;
-		var locatorbar;
-		var ruler_x_beat;
+		
 		cursor_timeline = CursorTimelineView.new;
+
 		//~cursor_timeline = cursor_timeline;
 		self.cursor_timeline = cursor_timeline;
 		cursor_timeline.mapCursor(self.cursor);
 		cursor_timeline.quant = self.quant_ref;
+		cursor_timeline.mimicTimeline(self.timeline);
+		if(self.timeline_model.isPlaying) {
+			self.cursor_timeline.play;
+		};
+	},
 
+	makeXRuler: { arg self;
+		var locatorbar;
+		var ruler_x_beat;
+
+		self.makeCursorTimeline;
 
 		ruler_x_beat = TimelineRulerView.new;
 		ruler_x_beat.mapCursor(self.cursor);
@@ -966,7 +1112,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 		ruler_x_beat.mimicTimeline(self.timeline);
 		locatorbar.mimicTimeline(self.timeline);
-		cursor_timeline.mimicTimeline(self.timeline);
 
 		self.locatorbar.view.minSize = Point(10,15);
 		self.ruler_x_beat.view.minSize = Point(10,10);
@@ -1008,13 +1153,13 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 	makeSizerButton: { arg self;
 		var sizer = HLayout(
-			XSimpleButton.new.label_("<").action_({
+			BasicButton.new.label_("<").action_({
 				var point = Point(2,1);
 				//self.areasize = self.areasize - point;
 				self.areasize = self.areasize / point;
 				self.timeline.refresh;
 			}).fixedSize_(Point(10,20)),
-			XSimpleButton.new.label_(">").action_({
+			BasicButton.new.label_(">").action_({
 				var point = Point(2,1);
 				self.areasize = self.areasize * point;
 				self.timeline.refresh;
@@ -1076,7 +1221,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 				[
 					nil,
 					self.ruler_x,
-					XSimpleButton.new.label_("z")
+					BasicButton.new.label_("z")
 						.maxWidth_(10)
 						.action_({
 							self.zoom_fit;
@@ -1114,6 +1259,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 			} { [] }  
 		);
 		tl_layout.spacing = 0;
+		self.timelineGridLayout = tl_layout;
 
 		layout = VLayout(*
 			[
@@ -1870,11 +2016,18 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		});
 		self.set_yquant(self.param.spec.step);
 
+		self.makeCursorTimeline; // should be before refresh to mapEventList
+
 		self.timeline.view.followChange(self.eventloop, \list, { 
 			self.refresh;
 		});
 
-		self.timeline;
+
+		self.timelineStack = StackLayout(
+			self.cursor_timeline.view,
+			self.timeline.selectionView,
+			self.timeline.view,
+		).mode_(1)
 	},
 ));
 ProtoTemplateDef(\EnvTimelinePanelView, ProtoTemplateDef(\ParamTimelinePanelView)); // compat

@@ -949,8 +949,10 @@ CursorTimelineView : TimelineView {
 				var sloop = this.cursor.loopMaster;
 				var startAbsTime = sloop.currentLoopStartAbsTime;
 				var finalDur = sloop.currentLoopDur;
+				var start_beat;
 				var currentDur = 0;
-				var start_beat = TempoClock.default.beats;
+
+				start_beat = this.cursor.startTime ?? { TempoClock.default.beats };
 
 				while({
 					currentDur < finalDur;
@@ -958,7 +960,9 @@ CursorTimelineView : TimelineView {
 				}, {
 					currentDur = TempoClock.default.beats - start_beat;
 					cursorPos = startAbsTime + currentDur;
+					//sloop.timeline.refCompileString.debug("cursor of timeline");
 					//cursorPos.debug("cursorPos");
+					//currentDur.debug("currentDur");
 					{
 						if(this.view.isNil or: { this.view.isClosed }) {
 							this.stop;

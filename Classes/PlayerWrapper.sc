@@ -1011,6 +1011,14 @@ PlayerWrapperGroup : List {
 		this.collect(_.stop);
 	}
 
+	playNow {
+		this.collect(_.playNow);
+	}
+
+	stopNow {
+		this.collect(_.stopNow);
+	}
+
 	isPlaying {
 		if(mode == \any) {
 			^this.any({ arg x;
