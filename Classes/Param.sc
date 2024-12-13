@@ -1046,12 +1046,19 @@ Param {
 					// hasFocus is nil in some unidentified cases
 					// i think the goal is to prevent continuously updating widgets in minimized windows
 					// i think the real goal is to prevent updating the field while we are editing it
-					if(force or: {view.hasFocus.notNil and: {view.hasFocus.not}}) {
+					if(view.isClosed.not) {
+						// with ParamSelectDialog i get an error when view is already closed
+						// should not happen since updater check if view is closed
+						// maybe caused by defer delay
+						if(force or: {view.hasFocus.notNil and: {view.hasFocus.not}}) {
 
-						view.value = val;
-                        view.stringColor = color;
-					} {
-						Log(\Param).debug("mapTextField: focus, no set, view %, val %", view, val);
+							view.value = val;
+							view.debug("TextField updateAction view");
+							view.isClosed.debug("TextField updateAction closed");
+							view.stringColor = color;
+						} {
+							Log(\Param).debug("mapTextField: focus, no set, view %, val %", view, val);
+						};
 					};
 					//Log(\Param).debug("mapTextField: updateAction: end");
 					//"done".debug;
