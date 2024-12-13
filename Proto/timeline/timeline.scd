@@ -1135,8 +1135,8 @@ ProtoClassDef(\ParamTimeline, (
 				}),
 				\type, Pfunc({  arg ev;
 
-					Log(\Param).debug("postpat type %", ev[\type]);
-					Log(\Param).debug("postpat ev %", ev);
+					//Log(\Param).debug("postpat type %", ev[\type]);
+					//Log(\Param).debug("postpat ev %", ev);
 					if(ev[\type].isNil or: { ev[\type] == \note }) {
 						if(ev[\next_level].isNil) { // last one should be rest
 							\rest
@@ -1204,91 +1204,6 @@ ProtoClassDef(\ParamTimeline, (
 		self.asStream;
 	},
 
-	//asPattern_old: { arg self, relStartTime, totalDur;
-		////[relStartTime, totalDur].debug("xasPattern: relstart, totdur");
-		//self.proxy.source = Plazy({ arg inval;
-			//var eventlist = self.eventloop.list;
-			//var pat;
-			//var str;
-			//var first;
-			//var first_level;
-			//var xrelStartTime, xtotalDur;	
-			//var postpat, prepat;
-
-			//xrelStartTime = relStartTime.value ? eventlist.relStartTime;
-			//xtotalDur = totalDur.value ? eventlist.totalDur;
-
-			////[xrelStartTime, xtotalDur].debug("xasPattern: prout: relstart, totdur");
-			//self.eventloop.list.changed(\cursor, \play);
-
-			//if(xtotalDur <= 0) {
-				//"ERROR: totalDur is negative or zero".postln;
-				//xtotalDur = 2
-			//};
-
-
-			//// FIXME: this should be an event
-			//if(self.param.notNil and:{ self.param.target.isKindOf(Bus).not }) {
-				//// FIXME: bus mode should be generic
-				//if(self.param.target.class == Pdef) {
-					//self.param.target.set(self.param.property, self.outBus.asMap)
-				//} {
-					//self.param.set(self.outBus.asMap);
-				//};
-				////default = self.param.default;
-			//};
-
-			//~remove_envlist_duplicate.(eventlist);
-			//~compute_eventenv_sustain.(eventlist);
-
-			//postpat = Pbind(
-				//\out, self.outBus,
-				////\level, Pfunc({ arg ev; ev[self.param.property] ? default }),
-				//\time, Pfunc({ arg ev; ev.use { 
-					//// absTime is in beats (but maybe should be in seconds ?)
-					//// need to convert to seconds
-					////(ev.next_absTime ? ev.absTime) - ev.absTime / thisThread.clock.tempo
-					//// use dur instead
-					//( ev[\sustain] ? 1 ) / thisThread.clock.tempo
-				//} }),
-				//\type, Pfunc({  arg ev;
-
-					//if(ev[\type].isNil or: { ev[\type] == \note }) {
-						//if(ev[\next_level].isNil) { // last one should be rest
-							//\rest
-						//} {
-							//if(ev[\time].notNil and: {ev[\time] < 0.051}, {
-								//ev[\array] = [ ev[\level] ];
-								////ev.debug("envTimeline: asPattern: busmode!");
-								//\bus;
-							//}, { 
-								//\note;
-							//});
-						//}
-
-					//} {
-						//ev[\type]
-					//}
-				//})
-			//);
-			////postpat = postpat.trace(prefix:"MAIIIIIIIIIIIIIIIIIIIIIIII"); // debug
-			//prepat = Pbind(
-				//\instrument, \env_segment,
-				//\curve, 0,
-			//);
-
-			//pat = Pfindur(xtotalDur, Pembed(
-				//Pn(self.eventloop.list.clone, 1), 
-				//xrelStartTime
-			//));
-			//pat = postpat <> pat <> prepat;
-
-			////~pattern_to_envpattern.(pat).embedInStream(inval ? ()); 
-			//~pattern_to_envpattern.(pat);
-
-		//}).repeat(self.repeatCount);
-		//self.proxy;
-	//},
 
 	edit: { arg self;
 		var x = ProtoTemplateDef(\ParamTimelinePanelView).new(self);
@@ -1433,10 +1348,10 @@ ProtoClassDef(\ParamTimeline, (
 					};
 					val.notNil;
 				}, {
-					val.debug("pattern_to_envpattern val");
+					//val.debug("pattern_to_envpattern val");
 					if(first == true) { // first not rest
 						if(is_rest.(val)) {
-							val.type.debug("pattern_to_envpattern: start/end");
+							//val.type.debug("pattern_to_envpattern: start/end");
 							previous_val = val;
 							previous_val.yield;
 						} {
@@ -1471,11 +1386,11 @@ ProtoClassDef(\ParamTimeline, (
 					} {
 						if(previous_val.use { previous_val.time } <= 0) {
 							previous_val[\array] = [previous_val[\next_level]];
-							previous_val.debug("pattern_to_envpattern: yield previous time=0");
+							//previous_val.debug("pattern_to_envpattern: yield previous time=0");
 							previous_val[\type] = \bus;
 						} {
 							previous_val[\level] = previous_val[\next_level];
-							previous_val.debug("pattern_to_envpattern: yield previous");
+							//previous_val.debug("pattern_to_envpattern: yield previous");
 							previous_val;
 						};
 						previous_val.yield;
@@ -1496,7 +1411,7 @@ ProtoClassDef(\ParamTimeline, (
 					previous_val[\type] = \bus;
 				} {
 					previous_val[\level] = previous_val[\next_level];
-					previous_val.debug("pattern_to_envpattern: yield last previous");
+					//previous_val.debug("pattern_to_envpattern: yield last previous");
 					previous_val;
 				};
 				previous_val.yield;

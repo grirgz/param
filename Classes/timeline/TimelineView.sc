@@ -639,7 +639,7 @@ TimelineView : SCViewHolder {
 				if(chosennode != nil) { // a node is selected
 					var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
 					var norm_diff;
-					//debug("---------mouseMoveAction: move mode");
+					debug("---------mouseMoveAction: move node");
 					//Log(\Param).debug("---------mouseMoveAction: move mode");
 					//debug("======= selected nodes will be moved!!!");
 					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
@@ -673,8 +673,8 @@ TimelineView : SCViewHolder {
 					useSpecInConversions = false;
 					norm_diff = this.gridPointToNormPoint(grid_diff);
 
-					this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
-					this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
+					//this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
+					//this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
 					useSpecInConversions = true;
 
 					// ----------debug algo
@@ -697,6 +697,7 @@ TimelineView : SCViewHolder {
 					if(isClickOnSelection == true ) {
 						var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
 						var norm_diff;
+						debug("---------mouseMoveAction: move selection");
 						// move whole selection, quantize on selection left edges
 						grid_diff = (gpos - refPoint).trunc(this.quant.value);
 

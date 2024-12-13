@@ -85,6 +85,8 @@ TrackTimeline {
 
 CursorTimeline {
 	// represent a slice of time with start and end position
+	// drawed by CursorTimelineView to show blue vertical lines
+	// a second CursorTimeline is used as a store for selection rectangle
 	var startPosition; // scalar in grid units (beats)
 	var endPosition;
 	var <startPoint; // point in grid units (for selection)

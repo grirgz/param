@@ -41,6 +41,14 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 	////// properties
 
+	cursor: { arg self;
+		self.timeline_model.cursor;
+	},
+
+	selection_cursor: { arg self;
+		self.timeline_model.selection_cursor;
+	},
+
 	save_timeline_properties: { arg self;
 		var tl = self;
 		// tl is view ProtoDef, tl.timeline is View subclass, tl.timeline_model is the object programmer interact with
@@ -566,7 +574,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.quant_popup;
 	}, 
 
-	makeCursorTimeline: { arg self;
+	makeCursorTimelineView: { arg self;
 		var cursor_timeline;
 		
 		cursor_timeline = CursorTimelineView.new;
@@ -585,7 +593,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		var locatorbar;
 		var ruler_x_beat;
 
-		self.makeCursorTimeline;
+		self.makeCursorTimelineView;
 
 		ruler_x_beat = TimelineRulerView.new;
 		ruler_x_beat.mapCursor(self.cursor);
@@ -1499,18 +1507,6 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		self;
 	},
 
-	cursor: { arg self;
-		self.timeline_model.cursor;
-	},
-
-	selection_cursor: { arg self;
-		self.timeline_model.selection_cursor;
-	},
-
-	key: { arg self;
-		self.timeline_model.key;
-	},
-
 	param: { arg self;
 		self.timeline_model.param;
 	},
@@ -1855,18 +1851,6 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		self;
 	},
 
-	cursor: { arg self;
-		self.timeline_model.cursor;
-	},
-
-	selection_cursor: { arg self;
-		self.timeline_model.selection_cursor;
-	},
-
-	key: { arg self;
-		self.timeline_model.key;
-	},
-
 	param: { arg self;
 		self.timeline_model.param;
 	},
@@ -2026,7 +2010,7 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		});
 		self.set_yquant(self.param.spec.step);
 
-		self.makeCursorTimeline; // should be before refresh to mapEventList
+		self.makeCursorTimelineView; // should be before refresh to mapEventList
 
 		self.timeline.view.followChange(self.eventloop, \list, { 
 			self.refresh;
@@ -2067,19 +2051,6 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 	},
 
 	node_move_multiplier_y: 12,
-
-	cursor: { arg self;
-		self.timeline_model.cursor;
-	},
-
-	selection_cursor: { arg self;
-		self.timeline_model.selection_cursor;
-	},
-
-
-	key: { arg self;
-		self.timeline_model.key;
-	},
 
 	param: { arg self;
 		self.timeline_model.param;
@@ -2249,18 +2220,6 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 		self.areasize = self.timeline_model.areasize;
 	
 		self;
-	},
-
-	cursor: { arg self;
-		self.timeline_model.cursor;
-	},
-
-	selection_cursor: { arg self;
-		self.timeline_model.selection_cursor;
-	},
-
-	key: { arg self;
-		self.timeline_model.key;
 	},
 
 	param: { arg self;
