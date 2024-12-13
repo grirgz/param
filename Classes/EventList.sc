@@ -415,6 +415,12 @@ TimelineEventList : List {
 		^ret
 	}
 
+	hasContent {
+		// isEmpty is already implemented in List
+		^this.any { arg item;
+			[\start, \end].includes(item.type).not
+		};
+	}
 }
 
 XEventList : TimelineEventList {}

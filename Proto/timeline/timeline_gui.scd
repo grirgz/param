@@ -2104,6 +2104,10 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 
 
 	make_header: { arg self;
+		self.recordButton = RecordButton(self.timeline_model.recorder, "Rec");
+		self.recordButton.followChange(self.timeline_model, \recorder, {
+			self.recordButton.model = self.timeline_model.recorder;
+		});
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
@@ -2112,7 +2116,7 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 			self.make_quant_popup,
 			self.make_undo_system_buttons,
 			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			RecordButton( self.timeline_model.recorder, "Rec" ),
+			self.recordButton,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				var model = self.timeline_model;

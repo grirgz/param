@@ -33,6 +33,10 @@ ProtoTemplateDef(\StreamPlayer, (
 		self.parent_self.playMode
 	},
 
+	recordFullEventMode: { arg self;
+		self.parent_self.recordFullEventMode ? true
+	},
+
 	isEmpty: { arg self;
 		self.target.isNil or: { self.target == self.defaultTarget }
 	},
@@ -45,7 +49,10 @@ ProtoTemplateDef(\StreamPlayer, (
 		self.parent_self.postChain
 	},
 
-	play: { arg self;
+	// FIXME: how to keep the property of NoteTimeline.param ?
+	strippedEventKeys: [\dur, \legato, \delta, \velocity, \kitIndex, \midinote],
+
+	play: { arg self, inputEvent;
 		if(self.isEmpty.not) {
 
 			if(self.stream.isNil) {
@@ -75,9 +82,18 @@ ProtoTemplateDef(\StreamPlayer, (
 			//self.ev.debug("self.ev is the next event to be played");
 			//self.ev = self.stream.next(self.ev);
 			if(self.ev.notNil) {
+				if(inputEvent.notNil) {
+					self.ev.putAll(inputEvent)
+				};
 				//self.ev.debug("play: ev");
 				self.raw_ev = self.ev.copy; // for recording, find better property name
 				self.raw_ev[\kitIndex] = self.index;
+
+				self.strippedEvent = ();
+				self.strippedEventKeys.do { arg key;
+					self.strippedEvent[key] = self.ev[key].copy;
+				};
+
 				self.play_ev = self.ev.copy;
 				self.play_ev[\isRest] = false;
 				self.play_ev[\sustain] = inf;
@@ -94,7 +110,11 @@ ProtoTemplateDef(\StreamPlayer, (
 		// PlayerEvent == does not embed in stream
 		// but asPlayerEvent is taken by PlayerWrapper
 		//self.raw_ev.debug("asPlayerEvent: raw_ev");
-		self.raw_ev;
+		if(self.recordFullEventMode) {
+			self.raw_ev;
+		} {
+			self.strippedEvent
+		};
 	},
 
 	reboot: { arg self;
@@ -132,6 +152,8 @@ ProtoTemplateDef(\NotePlayer, (
 		self;
 	},
 
+	strippedEventKeys: [\dur, \legato, \delta, \velocity, \kitIndex, \midinote],
+
 	play: { arg self, local_pre_event, local_post_event;
 
 		// event generating
@@ -161,6 +183,11 @@ ProtoTemplateDef(\NotePlayer, (
 		self.raw_ev = self.ev.copy; // for recording, find better property name
 		self.raw_ev[\kitIndex] = self.index;
 		//Log(\Param).debug("NotePlayer: play: ev 5: %", self.ev);
+
+		self.strippedEvent = ();
+		self.strippedEventKeys.do { arg key;
+			self.strippedEvent[key] = self.ev[key].copy;
+		};
 
 		// playing
 		self.play_ev = self.ev.copy;
@@ -194,11 +221,19 @@ ProtoTemplateDef(\NotePlayer, (
 		self.parent_self.changed(\play, self.index);
 	},
 
+	recordFullEventMode: { arg self;
+		self.parent_self.recordFullEventMode ? true
+	},
+
 	asPlayerEvent: { arg self; 
 		// PlayerEvent == does not embed in stream
 		// but asPlayerEvent is taken by PlayerWrapper
 		//Log(\Param).debug("asPlayerEvent: raw_ev:%, idx:%, h:%", self.raw_ev, self.index, self.hash);
-		self.raw_ev;
+		if(self.recordFullEventMode) {
+			self.raw_ev;
+		} {
+			self.strippedEvent
+		};
 	},
 
 	isPlaying: { arg self;
@@ -232,6 +267,7 @@ ProtoTemplateDef(\ParPlayerGroup, (
 		self;
 	},
 
+	recordFullEventMode: false,
 	playMode: \gate, // play on key down and stop on key up
 
 	init: { arg self, list;
@@ -387,6 +423,8 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 		self.target = pat;
 		self.children = SparseArray.new;
 	},
+
+	recordFullEventMode: false,
 
 	makeListener: { arg self, fun;
 		var listenfun = { arg target, msg ... args;
