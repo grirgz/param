@@ -206,7 +206,11 @@ CursorTimeline {
 			if(arg1 == \play) {
 				this.changed(\play);
 			} {
-				this.changed(\stop);
+				if(arg1 == \stop) {
+					this.changed(\stop);
+				} {
+					//this.changed(\play); // was testing
+				}
 			}
 		});
 		controller.put(\redraw, {

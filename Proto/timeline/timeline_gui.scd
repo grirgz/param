@@ -1187,18 +1187,23 @@ ProtoTemplateDef(\TimelinePanelView, (
 		ptview.timeline.mimicTimeline(self.timeline, \horizontal);
 		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
 		self.bottomPanelHeaderView.removeAll;
-		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg obj, msg, arg1;
+		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg view, obj, msg, arg1;
+			[view, obj, msg, arg1].debug("showAutomation cursor");
 			if(arg1 == \play) {
 				//ptview.cursor_timeline.play; // already sent by loopMaster
 			} {
-				// this event is sent by timeline_model.stop function
-				ptline.eventList.changed(\cursor, \stop);
-				//ptview.cursor_timeline.stop;
+
+				if(arg1 == \stop) {
+
+					// this event is sent by timeline_model.stop function
+					ptline.eventList.changed(\cursor, \stop);
+					//ptview.cursor_timeline.stop;
+				};
 			}
 		});
-		//if(self.timeline_model.isPlaying) {
-		//ptview.cursor_timeline.play;
-		//};
+		if(self.timeline_model.isPlaying) {
+			ptview.cursor_timeline.play;
+		};
 		self.bottomPanelSelectedTimelineView = ptview.timeline;
 		self.bottomPanelHeaderView.layout = HLayout(
 			ptview.track_header

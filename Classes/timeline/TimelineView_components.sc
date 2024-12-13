@@ -924,7 +924,9 @@ CursorTimelineView : TimelineView {
 					if(arg1 == \play) {
 						this.play;
 					} {
-						this.stop;
+						if(arg1 == \stop) {
+							this.stop;
+						};
 					}
 				//}.defer(Server.default.latency)
 
