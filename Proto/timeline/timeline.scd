@@ -855,6 +855,8 @@ ProtoClassDef(\NoteTimeline, (
 		self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.wrapper) !? { arg x; {x} };
 		self.recorder.eventLoop = self.eventLoop;
 		self.recorder.startRecordingHook = { arg iself; self.startControl };
+		self.changed(\param);
+		self.changed(\recorder);
 
 		//self.eventFactory = ~class_event_factory.new(self.param.target);
 		//self.eventFactory.eventLoop = self.eventloop;
@@ -1012,7 +1014,7 @@ ProtoClassDef(\ParamTimeline, (
 		if(self.all[name].notNil) {
 			self = self.all[name]
 		} {
-			self = self.deepCopy;
+			self = ProtoClass(( parent:ProtoClassDef(\ParamTimeline) ));
 			self.prAdd(name).init(param);
 		};
 	
@@ -1133,7 +1135,8 @@ ProtoClassDef(\ParamTimeline, (
 				}),
 				\type, Pfunc({  arg ev;
 
-					//Log(\Param).debug("postpat type %", ev[\type]);
+					Log(\Param).debug("postpat type %", ev[\type]);
+					Log(\Param).debug("postpat ev %", ev);
 					if(ev[\type].isNil or: { ev[\type] == \note }) {
 						if(ev[\next_level].isNil) { // last one should be rest
 							\rest
@@ -1165,6 +1168,7 @@ ProtoClassDef(\ParamTimeline, (
 			//pat = postpat.trace(prefix:"postpat: ") <> pat.trace(prefix:"pat: ") <> prepat.trace(prefix:"prepat: ");
 			pat = postpat <> pat <> prepat;
 
+			~pat = pat;
 			//~pattern_to_envpattern.(pat).embedInStream(inval ? ()); 
 			self.pattern_to_envpattern(pat).embedInStream;
 		}
@@ -1413,7 +1417,10 @@ ProtoClassDef(\ParamTimeline, (
 			var val;
 			var first = true;
 			var previous_val;
-			var nextval; // ugly hack (FIXME: for what ?)
+			var nextval; // not used
+			var is_rest = { arg val;
+				val.type == \rest or: { val.type == \start or: { val.type == \end } };
+			};
 
 			//val.debug("pattern_to_envpattern start");
 
@@ -1426,16 +1433,14 @@ ProtoClassDef(\ParamTimeline, (
 					};
 					val.notNil;
 				}, {
-					var is_rest = { arg val;
-						val.type == \rest or: { val.type == \start or: { val.type == \end } };
-					};
-					//val.debug("pattern_to_envpattern val");
-					if(first == true) {
+					val.debug("pattern_to_envpattern val");
+					if(first == true) { // first not rest
 						if(is_rest.(val)) {
-							//val.type.debug("pattern_to_envpattern: start/end");
+							val.type.debug("pattern_to_envpattern: start/end");
 							previous_val = val;
 							previous_val.yield;
 						} {
+							// need a bus.set event because env_segment start from bus value
 							var level = val.use { val.level };
 							var busev = val.copy;
 							var next_level, next_absTime;
@@ -1456,6 +1461,7 @@ ProtoClassDef(\ParamTimeline, (
 									type: \bus,
 									array: [level],
 									delta: 0,
+									dur: 0,
 								)
 							);
 							busev.yield;
@@ -1465,10 +1471,11 @@ ProtoClassDef(\ParamTimeline, (
 					} {
 						if(previous_val.use { previous_val.time } <= 0) {
 							previous_val[\array] = [previous_val[\next_level]];
+							previous_val.debug("pattern_to_envpattern: yield previous time=0");
 							previous_val[\type] = \bus;
 						} {
 							previous_val[\level] = previous_val[\next_level];
-							//previous_val.debug("pattern_to_envpattern: yield previous");
+							previous_val.debug("pattern_to_envpattern: yield previous");
 							previous_val;
 						};
 						previous_val.yield;
@@ -1477,15 +1484,23 @@ ProtoClassDef(\ParamTimeline, (
 				});
 			};
 			//previous_val[\type] = \rest; // this seems to be the cause to the last segment is rest
-			if(previous_val.use { previous_val.time } <= 0) {
-				previous_val[\array] = [previous_val[\next_level]];
-				previous_val[\type] = \bus;
-			} {
-				previous_val[\level] = previous_val[\next_level];
-				//previous_val.debug("pattern_to_envpattern: yield previous");
-				previous_val;
-			};
-			previous_val.yield;
+			if(previous_val.type != \start and: { first != true }) {
+				// if eventList has no content (contains only start event and end event is ommited)
+				// 		previous_val is type start and should not be repeated here
+				// if eventList has only one point (and start event)
+				// 		the last point is always rest, so "first" never became false
+				//		should not be repeated here
+
+				if(previous_val.use { previous_val.time } <= 0) {
+					previous_val[\array] = [previous_val[\next_level]];
+					previous_val[\type] = \bus;
+				} {
+					previous_val[\level] = previous_val[\next_level];
+					previous_val.debug("pattern_to_envpattern: yield last previous");
+					previous_val;
+				};
+				previous_val.yield;
+			}
 		});
 
 	},
@@ -1928,9 +1943,10 @@ ProtoClassDef(\LoopMaster, (
 
 	startCursorEvent: { arg self;
 		(
-			\type: \rest,
-			\dur: 0,
-			\play: {
+			type: \rest,
+			dur: 0,
+			startCursorEvent: true,
+			play: {
 				self.cursor.startTime = thisThread.beats;
 				self.eventList.changed(\cursor, \play);
 			}
