@@ -455,11 +455,17 @@ TimelineView : SCViewHolder {
 					});
 				});
 
-				if(selNodes.size < 2) {
-					//debug("---------mouseDownAction: deselect all and select clicked node");
-					this.deselectAllNodes(chosennode);
+				if(isClickOnSelection == true) {
+					// NOOP: already selected
+				} {
+					this.deselectAllNodes;
+					this.selectNode(chosennode);
+					this.clearSelectionRect;
 				};
-				this.selectNode(chosennode);
+				//if(selNodes.size < 2) {
+					////debug("---------mouseDownAction: deselect all and select clicked node");
+					//this.deselectAllNodes(chosennode);
+				//};
 				downAction.value(chosennode);
 
 				this.refresh;
@@ -633,91 +639,93 @@ TimelineView : SCViewHolder {
 
 
 		} {
-			// move node
+			////// move mode
+
 			if( buttonNumber == 0 ) {
 
-				if(chosennode != nil) { // a node is selected
+				////// move selection
+				if(isClickOnSelection == true ) {
 					var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
 					var norm_diff;
-					debug("---------mouseMoveAction: move node");
-					//Log(\Param).debug("---------mouseMoveAction: move mode");
-					//debug("======= selected nodes will be moved!!!");
-					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
-
-					// ----------new algo
-					// - pixel_click_offset = determine diff in pixel from clicked point to origin point of chosennode (chosennode_old_origin)
-					// - the new location of node is the point where the mouse has moved (newpos) minus the pixel_click_offset
-					// - then convert it to grid unit and quantize it
-					// - now determine the diff between old node location and new node location (grid_diff) and apply this change to all selected nodes
-					// - since the function is called continously, chosennode_old_origin should be fixed to the first position of node (refloc), and not his
-					//		position changing continuously
-
-					chosennode_old_origin = chosennode.refloc;
-					pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
-					pixel_newpos_point = ppos;
-					pixel_click_offset = pixel_clicked_point - this.gridPointToPixelPoint(chosennode_old_origin);
-					chosennode_new_origin = this.pixelPointToGridPoint(pixel_newpos_point - pixel_click_offset);
-					chosennode_new_origin = this.quantizeGridPoint(chosennode_new_origin);
-
-					if(this.forbidHorizontalNodeMove == true) {
-						chosennode_new_origin.x = chosennode_old_origin.x;
-					};
-
-					chosennode.setLoc(chosennode_new_origin);
-					grid_diff = chosennode_new_origin - chosennode_old_origin;
+					debug("---------mouseMoveAction: move selection");
+					// move whole selection, quantize on selection left edges
+					grid_diff = (gpos - refPoint).trunc(this.quant.value);
 
 					selNodes.do { arg node;
 						node.setLoc(node.refloc + grid_diff)
 					};
 
-					useSpecInConversions = false;
-					norm_diff = this.gridPointToNormPoint(grid_diff);
+					useSpecInConversions = false; // FIXME: this doesn't work with exponential spec 
+					norm_diff = this.gridPointToNormPoint(grid_diff); // TimelineEnvView use spec so can't go below zero, pass the flag to avoid this
 
-					//this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
-					//this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
+					this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
+					this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
 					useSpecInConversions = true;
 
-					// ----------debug algo
-					//pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
-					//pixel_newpos_point = ppos;
-					//pixel_click_offset = pixel_clicked_point - this.gridPointToPixelPoint(chosennode_old_origin);
-					//chosennode_new_origin = this.pixelPointToGridPoint(pixel_newpos_point - pixel_click_offset);
-
-					//chosennode.setLoc(chosennode_new_origin);
-
-					//-----------
-
-
+					//Log(\Param).debug("sel %, prevsel %, normdif % gdiff %", this.startSelPoint, this.previousNormSelRect, norm_diff, grid_diff);
 					this.changed(\nodeMoved);
-					//debug("======= selected nodes was moved!!!");
-					//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes was moved!!!");
-					//model.print;  // debug
 					this.refresh;
-				} { // no node is selected
-					if(isClickOnSelection == true ) {
+				} {
+					////// move node
+					if(chosennode != nil) { // a node is selected
 						var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
 						var norm_diff;
-						debug("---------mouseMoveAction: move selection");
-						// move whole selection, quantize on selection left edges
-						grid_diff = (gpos - refPoint).trunc(this.quant.value);
+						debug("---------mouseMoveAction: move node");
+						//Log(\Param).debug("---------mouseMoveAction: move mode");
+						//debug("======= selected nodes will be moved!!!");
+						//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
+
+						// ----------new algo
+						// - pixel_click_offset = determine diff in pixel from clicked point to origin point of chosennode (chosennode_old_origin)
+						// - the new location of node is the point where the mouse has moved (newpos) minus the pixel_click_offset
+						// - then convert it to grid unit and quantize it
+						// - now determine the diff between old node location and new node location (grid_diff) and apply this change to all selected nodes
+						// - since the function is called continously, chosennode_old_origin should be fixed to the first position of node (refloc), and not his
+						//		position changing continuously
+
+						chosennode_old_origin = chosennode.refloc;
+						pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
+						pixel_newpos_point = ppos;
+						pixel_click_offset = pixel_clicked_point - this.gridPointToPixelPoint(chosennode_old_origin);
+						chosennode_new_origin = this.pixelPointToGridPoint(pixel_newpos_point - pixel_click_offset);
+						chosennode_new_origin = this.quantizeGridPoint(chosennode_new_origin);
+
+						if(this.forbidHorizontalNodeMove == true) {
+							chosennode_new_origin.x = chosennode_old_origin.x;
+						};
+
+						chosennode.setLoc(chosennode_new_origin);
+						grid_diff = chosennode_new_origin - chosennode_old_origin;
 
 						selNodes.do { arg node;
 							node.setLoc(node.refloc + grid_diff)
 						};
 
-						useSpecInConversions = false; // FIXME: this doesn't work with exponential spec 
-						norm_diff = this.gridPointToNormPoint(grid_diff); // TimelineEnvView use spec so can't go below zero, pass the flag to avoid this
+						useSpecInConversions = false;
+						norm_diff = this.gridPointToNormPoint(grid_diff);
 
-						this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
-						this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
+						//this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
+						//this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
 						useSpecInConversions = true;
 
-						//Log(\Param).debug("sel %, prevsel %, normdif % gdiff %", this.startSelPoint, this.previousNormSelRect, norm_diff, grid_diff);
+						// ----------debug algo
+						//pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
+						//pixel_newpos_point = ppos;
+						//pixel_click_offset = pixel_clicked_point - this.gridPointToPixelPoint(chosennode_old_origin);
+						//chosennode_new_origin = this.pixelPointToGridPoint(pixel_newpos_point - pixel_click_offset);
+
+						//chosennode.setLoc(chosennode_new_origin);
+
+						//-----------
+
+
 						this.changed(\nodeMoved);
+						//debug("======= selected nodes was moved!!!");
+						//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes was moved!!!");
+						//model.print;  // debug
 						this.refresh;
-
 					} {
-
+						////// draw selection
 						if( this.startSelPoint != nilSelectionPoint ) {
 							if(quantizedSelection) {
 								var realLeftTop = { arg rect;
@@ -758,9 +766,141 @@ TimelineView : SCViewHolder {
 							};
 							this.refreshSelectionView;
 						}
-					};
+					}
 				}
-			}
+			};
+
+
+			///////////////////////////
+
+
+			//if( buttonNumber == 0 ) {
+
+				//if(chosennode != nil) { // a node is selected
+					//var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
+					//var norm_diff;
+					//debug("---------mouseMoveAction: move node");
+					////Log(\Param).debug("---------mouseMoveAction: move mode");
+					////debug("======= selected nodes will be moved!!!");
+					////selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
+
+					//// ----------new algo
+					//// - pixel_click_offset = determine diff in pixel from clicked point to origin point of chosennode (chosennode_old_origin)
+					//// - the new location of node is the point where the mouse has moved (newpos) minus the pixel_click_offset
+					//// - then convert it to grid unit and quantize it
+					//// - now determine the diff between old node location and new node location (grid_diff) and apply this change to all selected nodes
+					//// - since the function is called continously, chosennode_old_origin should be fixed to the first position of node (refloc), and not his
+					////		position changing continuously
+
+					//chosennode_old_origin = chosennode.refloc;
+					//pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
+					//pixel_newpos_point = ppos;
+					//pixel_click_offset = pixel_clicked_point - this.gridPointToPixelPoint(chosennode_old_origin);
+					//chosennode_new_origin = this.pixelPointToGridPoint(pixel_newpos_point - pixel_click_offset);
+					//chosennode_new_origin = this.quantizeGridPoint(chosennode_new_origin);
+
+					//if(this.forbidHorizontalNodeMove == true) {
+						//chosennode_new_origin.x = chosennode_old_origin.x;
+					//};
+
+					//chosennode.setLoc(chosennode_new_origin);
+					//grid_diff = chosennode_new_origin - chosennode_old_origin;
+
+					//selNodes.do { arg node;
+						//node.setLoc(node.refloc + grid_diff)
+					//};
+
+					//useSpecInConversions = false;
+					//norm_diff = this.gridPointToNormPoint(grid_diff);
+
+					////this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
+					////this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
+					//useSpecInConversions = true;
+
+					//// ----------debug algo
+					////pixel_clicked_point = this.gridPointToPixelPoint(refPoint);
+					////pixel_newpos_point = ppos;
+					////pixel_click_offset = pixel_clicked_point - this.gridPointToPixelPoint(chosennode_old_origin);
+					////chosennode_new_origin = this.pixelPointToGridPoint(pixel_newpos_point - pixel_click_offset);
+
+					////chosennode.setLoc(chosennode_new_origin);
+
+					////-----------
+
+
+					//this.changed(\nodeMoved);
+					////debug("======= selected nodes was moved!!!");
+					////selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes was moved!!!");
+					////model.print;  // debug
+					//this.refresh;
+				//} { // no node is selected
+					//if(isClickOnSelection == true ) {
+						//var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
+						//var norm_diff;
+						//debug("---------mouseMoveAction: move selection");
+						//// move whole selection, quantize on selection left edges
+						//grid_diff = (gpos - refPoint).trunc(this.quant.value);
+
+						//selNodes.do { arg node;
+							//node.setLoc(node.refloc + grid_diff)
+						//};
+
+						//useSpecInConversions = false; // FIXME: this doesn't work with exponential spec 
+						//norm_diff = this.gridPointToNormPoint(grid_diff); // TimelineEnvView use spec so can't go below zero, pass the flag to avoid this
+
+						//this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
+						//this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
+						//useSpecInConversions = true;
+
+						////Log(\Param).debug("sel %, prevsel %, normdif % gdiff %", this.startSelPoint, this.previousNormSelRect, norm_diff, grid_diff);
+						//this.changed(\nodeMoved);
+						//this.refresh;
+
+					//} {
+
+						//if( this.startSelPoint != nilSelectionPoint ) {
+							//if(quantizedSelection) {
+								//var realLeftTop = { arg rect;
+									//// the first point of the selection can be after the second point
+									//// in this case we reverse it
+									//var x = rect.origin.x;
+									//var y = rect.origin.y;
+									//if(rect.height < 0) {
+										//y = rect.origin.y + rect.height;
+									//};
+									//if(rect.width < 0) {
+										//x = rect.origin.x + rect.width;
+									//};
+									//Point(x,y)
+								//};
+								//var realRightBottom = { arg rect;
+									//var x = rect.rightBottom.x;
+									//var y = rect.rightBottom.y;
+									//if(rect.height < 0) {
+										//y = rect.rightBottom.y - rect.height;
+									//};
+									//if(rect.width < 0) {
+										//x = rect.rightBottom.x - rect.width;
+									//};
+									//Point(x,y)
+								//};
+								//var selrec = Rect.fromPoints(rawStartSelPoint, npos);
+								//var leftTop = realLeftTop.(selrec);
+								//var rightBottom = realRightBottom.(selrec);
+								//var qleftTop = leftTop.trunc(nquant);
+								//var qrightBottom = rightBottom.trunc(nquant) + nquant;
+								////Log(\Param).debug("rstart % rend % selrec % leftTop % % rightBottom % % ", rawStartSelPoint, npos, selrec, leftTop, qleftTop, rightBottom, qrightBottom);
+								//this.startSelPoint = qleftTop;
+								//this.endSelPoint = qrightBottom;
+								//rawEndSelPoint = npos;
+							//} {
+								//this.endSelPoint = npos;
+							//};
+							//this.refreshSelectionView;
+						//}
+					//};
+				//}
+			//}
 		};
 	}
 
@@ -1656,6 +1796,12 @@ TimelineView : SCViewHolder {
 		// deselect all but chosennode
 		// should use selNodes, but at least we are sure there are no more selected nodes
 		this.deselectNodes(paraNodes.reject({ arg x; x === chosennode }))
+	}
+
+	clearSelectionRect {
+		this.startSelPoint = nilSelectionPoint;
+		this.endSelPoint = nilSelectionPoint;
+		this.refreshSelectionView;
 	}
 	
 	clearSpace {
