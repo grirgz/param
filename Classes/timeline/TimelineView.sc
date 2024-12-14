@@ -78,7 +78,7 @@ TimelineView : SCViewHolder {
 
 	var <>changeCurveMode = false;
 
-	var useSpecInConversions = true;
+	var useSpecInConversions = true; // not used
 
 	//// keys
 
@@ -569,7 +569,7 @@ TimelineView : SCViewHolder {
 		var ppos = Point(px,py);
 		var npos = this.pixelPointToNormPoint(ppos);
 		var gpos = this.pixelPointToGridPoint(ppos);
-		var nquant = this.gridPointToNormPoint(quant.value);
+		var nquant = this.gridPointToNormPoint(this.quant.value);
 		var newpos;
 		var buttonNumber = mouseButtonNumber;
 		var clickCount = mouseClickCount;
@@ -639,31 +639,107 @@ TimelineView : SCViewHolder {
 
 
 		} {
-			////// move mode
+			////// moving
 
 			if( buttonNumber == 0 ) {
 
 				////// move selection
 				if(isClickOnSelection == true ) {
+					var freeze_position = false;
+					var lownode, clipped_npos, clipped_gpos, clipped_newpos;
 					var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
 					var norm_diff;
 					debug("---------mouseMoveAction: move selection");
-					// move whole selection, quantize on selection left edges
-					grid_diff = (gpos - refPoint).trunc(this.quant.value);
 
-					selNodes.do { arg node;
-						node.setLoc(node.refloc + grid_diff)
+					if(selNodes.size > 0) {
+
+						lownode = selNodes.asArray.first;
+						selNodes.do { arg node, idx;
+							if(node.refloc.y < lownode.refloc.y) {
+								lownode = node
+							};
+						};
+
+						if(freeze_position) {
+							// is freeze_position mode, low nodes will block whole selection from moving lower
+							// only low clip is implemented, need to do high clip value
+
+							clipped_npos = npos.clip(this.gridPointToNormPoint(refPoint) - this.gridPointToNormPoint(lownode.refloc),inf);
+							clipped_gpos = this.normPointToGridPoint(clipped_npos);
+
+							// move whole selection, quantize on selection left edges
+							grid_diff = (clipped_gpos - refPoint).trunc(this.quant.value);
+							norm_diff = (clipped_npos - this.gridPointToNormPoint(refPoint)).trunc(nquant);
+						} {
+							grid_diff = (gpos - refPoint).trunc(this.quant.value);
+							norm_diff = (npos - this.gridPointToNormPoint(refPoint)).trunc(nquant);
+
+						};
+
+						if(forbidHorizontalNodeMove) {
+							grid_diff.x = 0;
+							norm_diff.x = 0;
+						};
+
+						//useSpecInConversions = false; // FIXME: this doesn't work with exponential spec 
+						//norm_diff = this.gridPointToNormPoint(grid_diff); // TimelineEnvView use spec so can't go below zero, pass the flag to avoid this
+						//useSpecInConversions = true;
+
+						Log(\Param).debug("before grid_diff %", grid_diff);
+
+
+						Log(\Param).debug("lownode % y=% ny=%", lownode, lownode.refloc.y, this.gridPointToNormPoint(lownode.refloc).y);
+						Log(\Param).debug("norm_diff.y %", norm_diff.y);
+						//norm_diff.y = norm_diff.y.clip(this.gridPointToNormPoint(lownode.refloc).y.neg, inf);
+						//norm_diff.y.clip(this.gridPointToNormPoint(lownode.refloc).y.neg, inf).debug("norm_diff.y after");
+						//Log(\Param).debug("norm_diff.y afterk%", norm_diff.y);
+						//grid_diff.y = this.normPointToGridPoint(Point(0,norm_diff.y.neg)).y.neg;
+
+						//if( // a node is going out of frame, abort moving
+						//lownode = selNodes.detect { arg node;
+						//mpos = this.gridPointToNormPoint(node.refloc) + norm_diff;
+						//mpos.debug("mpos");
+						//mpos.y < 0; // FIXME: should use spec
+						//};
+						//lownode.notNil;
+						//) {
+						////grid_diff = Point(0,0)
+						////norm_diff.y.debug("normdiff before");
+						//Log(\Param).debug("lownode");
+
+						//Log(\Param).debug("Prevent out of bound node: %, mposy=%", lownode, mpos.y);
+						//grid_diff.y = grid_diff.y.clip(lownode.nodeloc.y, inf);
+						//////grid_diff.y = grid_diff.y - mpos.y
+						////this.gridPointToNormPoint(lownode.refloc).y.debug("refloc norm y");
+						////norm_diff.y = norm_diff.y.clip(0, this.gridPointToNormPoint(lownode.refloc).y);
+						////grid_diff = this.normPointToGridPoint(norm_diff);
+						////norm_diff.y.debug("normdiff after");
+						//};
+
+
+						Log(\Param).debug("after grid_diff %", grid_diff);
+
+						selNodes.do { arg node;
+							if(freeze_position) {
+								clipped_newpos = node.refloc + grid_diff
+							} {
+								clipped_newpos = this.gridPointToNormPoint(node.refloc) + norm_diff;
+								clipped_newpos = this.normPointToGridPoint(clipped_newpos);
+							};
+							node.debug("setLoc %".format(clipped_newpos));
+							node.setLoc(clipped_newpos)
+						};
+
+						this.changed(\nodeMoved);
+					} {
+
+						norm_diff = (npos - this.gridPointToNormPoint(refPoint)).trunc(nquant);
 					};
-
-					useSpecInConversions = false; // FIXME: this doesn't work with exponential spec 
-					norm_diff = this.gridPointToNormPoint(grid_diff); // TimelineEnvView use spec so can't go below zero, pass the flag to avoid this
 
 					this.startSelPoint = this.previousNormSelRect.origin + norm_diff;
 					this.endSelPoint = this.previousNormSelRect.rightBottom + norm_diff;
-					useSpecInConversions = true;
 
 					//Log(\Param).debug("sel %, prevsel %, normdif % gdiff %", this.startSelPoint, this.previousNormSelRect, norm_diff, grid_diff);
-					this.changed(\nodeMoved);
 					this.refresh;
 				} {
 					////// move node
@@ -725,7 +801,7 @@ TimelineView : SCViewHolder {
 						//model.print;  // debug
 						this.refresh;
 					} {
-						////// draw selection
+						////// draw selection rect
 						if( this.startSelPoint != nilSelectionPoint ) {
 							if(quantizedSelection) {
 								var realLeftTop = { arg rect;

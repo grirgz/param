@@ -1291,7 +1291,12 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 		self.bottomPanelSelectedTimelineView = self.velocityTimeline;
 		self.isBottomPanelVisible = true;
-		self.bottomPanelView.layout = HLayout(self.velocityTimeline).margins_(0);
+
+		self.notePropertyView = StackLayout(
+			self.velocityTimeline.selectionView,
+			self.velocityTimeline.view,
+		).mode_(1);
+		self.bottomPanelView.layout = HLayout(self.notePropertyView).margins_(0);
 		self.velocityTimeline.mapParam(param);
 		self.updateBottomPanel;
 		self.bottomPanelDescription.string = "Property: %".format(prop);
