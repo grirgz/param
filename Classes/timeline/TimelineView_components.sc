@@ -1097,6 +1097,7 @@ TimelineDrawer {
 	}
 	
 	*draw_piano_bar { arg timeline, roll_start_x_fac=(2/3), alpha=0.7;
+		// if roll_start_x_fac == 0, do not draw octave labels
 		var grid;
 		var bounds = timeline.bounds;
 		var piano_pattern = Pseq([0,1,0,1,0, 0,1,0,1,0,1,0],inf).asStream;
@@ -1135,19 +1136,21 @@ TimelineDrawer {
 			Pen.fillRect( pkey );
 
 
-			if((py)%12==0) {
-				var font;
-				Pen.color = Color.black;
-				font = Font('sans', 8);
+			if(roll_start_x_fac > 0) {
+				if((py)%12==0) {
+					var font;
+					Pen.color = Color.black;
+					font = Font('sans', 8);
 
-				// C4 should be midinote 60 in scientific pitch notation
-				Pen.stringInRect("C%   %".format((py/12).trunc.asInteger - 1, py.asInteger), Rect(next.x+5, next.y-10, timeline.bounds.width, 10), font);
-				Pen.line( start, end );
-				Pen.stroke;
-			} {
-				Pen.line(smallstart, end);
-				Pen.color = Color.black;
-				Pen.stroke;
+					// C4 should be midinote 60 in scientific pitch notation
+					Pen.stringInRect("C%   %".format((py/12).trunc.asInteger - 1, py.asInteger), Rect(next.x+5, next.y-10, timeline.bounds.width, 10), font);
+					Pen.line( start, end );
+					Pen.stroke;
+				} {
+					Pen.line(smallstart, end);
+					Pen.color = Color.black;
+					Pen.stroke;
+				};
 			};
 			//[start, end, pkey].debug("pianooooooooooooo");
 			//Pen.fill;
