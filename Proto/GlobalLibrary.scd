@@ -229,7 +229,7 @@ ProtoDef(\GlobalLibrary, (
 			},
 
 			redefineEventAsPlayerEvent: { arg self, ev, target;
-				// unless redefineClipAsPlayerEvent, it use target
+				// unlike redefineClipAsPlayerEvent, it use target
 				PlayerEvent.redefine(ev);
 				ev[\receiver] = PlayerWrapper(target);
 				//model.changed(\refresh);
@@ -379,6 +379,17 @@ ProtoDef(\GlobalLibrary, (
 
 			keylist: { arg self;
 				self.className.all.keys.asArray.sort;
+			},
+
+			redefineEventAsPlayerEvent: { arg self, ev, target;
+				// unlike redefineClipAsPlayerEvent, it use target
+				ev.putAll(target.asPlayerEvent);
+				superself.parent_model.changed(\refresh);
+			},
+
+			redefineEventAsPatternEvent: { arg self, ev, target;
+				ev.putAll(target.asPatternEvent);
+				superself.parent_model.changed(\refresh);
 			},
 
 		);

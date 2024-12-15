@@ -84,7 +84,7 @@ TimelinePreview : TimelineView {
 
 TimelinePreview_Env : TimelineEnvView {
 	drawFunc {
-		//Log(\Param).debug("preview drawFunc env");
+		Log(\Param).debug("preview drawFunc env");
 		this.drawNodes;
 		this.drawCurve;
 		this.drawEndLine;

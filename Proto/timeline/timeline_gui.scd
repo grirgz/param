@@ -724,7 +724,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 					BasicButton.new.label_("z")
 						.maxWidth_(10)
 						.action_({
-							self.zoom_fit;
+							self.zoomFitAction;
 						})
 				],
 				[
@@ -940,18 +940,22 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.update_track_header;
 	},
 
+	posyKey: { arg self;
+		\midinote;
+	},
+
 	zoomFitAction: { arg self;
 		// TODO: use timeline.spec to get initial maxy and miny
 		var timeline = self.timeline;
 		var maxy=0, miny=127;
 		var range;
+		var posyKey = self.posyKey;
 
 		if(timeline.model.size < 3) { // if empty
 			// NOOP
 		} {
-
 			timeline.model.do { arg ev, x;
-				var midi = ev.use { ev.midinote };
+				var midi = ev.use { ev[posyKey].value(ev) };
 				//[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
 				if(midi.notNil) {
 					//[x, midi].debug("zoom_fit, notnil");
@@ -993,11 +997,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 		//[self.areasize, self.timeline.areasize].debug("2");
 		self.areasize = self.timeline.areasize;
 		//[self.areasize, self.timeline.areasize].debug("4");
-	},
-
-	zoom_fit: { arg self;
-		// deprecated name
-		self.zoomFitAction;
 	},
 
 	copyAction_old: { arg self;
@@ -1865,6 +1864,69 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		self.timeline_model.param;
 	},
 
+	posyKey: { arg self;
+		\level;
+	},
+
+	zoomFitAction: { arg self;
+		// TODO: use timeline.spec to get initial maxy and miny
+		var timeline = self.timeline;
+		var spec;
+		var maxy, miny, margin;
+		var range;
+		var posyKey = self.posyKey;
+
+		spec = self.param.spec;
+		maxy = spec.minval;
+	   	miny = spec.maxval;
+
+		if(timeline.model.size < 3) { // if empty
+			// NOOP
+		} {
+			timeline.model.do { arg ev, x;
+				var midi = ev.use { ev[posyKey].value(ev) };
+				//[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
+				if(midi.notNil) {
+					//[x, midi].debug("zoom_fit, notnil");
+					if(midi > maxy) {
+						maxy = midi;
+					};
+					if(midi < miny) {
+						miny = midi;
+					};
+				}
+			};
+
+			if(( maxy * 1.1 ) > timeline.areasize.y) {
+				timeline.areasize.y = maxy * 1.1;
+			};
+
+			// add margin top and bottom
+			miny = miny * 0.9;
+			maxy = maxy * 1.1;
+
+			//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
+			//[timeline.areasize].debug("areasize");
+			range = (maxy-miny * 1.1)/timeline.areasize.y;
+			timeline.viewport.top = (miny/timeline.areasize.y);
+			timeline.viewport.height = range.clip(0.1,1);
+			//[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
+
+			//timeline.viewport.top = 42/128;
+			//timeline.viewport.height = ((54-42)/128);
+
+			//timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
+
+
+			timeline.changed(\viewport);
+			timeline.refresh;
+		};
+
+
+		//[self.areasize, self.timeline.areasize].debug("2");
+		self.areasize = self.timeline.areasize;
+		//[self.areasize, self.timeline.areasize].debug("4");
+	},
 	levelParam: { arg self;
 		self.timeline_model.levelParam;
 	},

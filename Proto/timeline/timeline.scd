@@ -322,14 +322,16 @@ ProtoClassDef(\EventTimeline, (
 
 	asPlayerEvent: { arg self;
 		PlayerEvent((
-			receiver: ( "{ " ++ self.refCompileString ++ " }" ).interpret; // to have closed compile string
+			receiver: ( "{ " ++ self.refCompileString ++ " }" ).interpret, // to have closed compile string
+			timeline: ( "{ " ++ self.refCompileString ++ " }" ).interpret,
+			label: { arg self; self.timeline.label },
 		))
 	},
 
 	asPatternEvent: { arg self;
 		PatternEvent((
 			//eventType: \timeline, // i want to get ride of this type system // done! 
-			timeline: ( "{ " ++ self.refCompileString ++ " }" ).interpret; // to have closed compile string
+			timeline: ( "{ " ++ self.refCompileString ++ " }" ).interpret, // to have closed compile string
 		))
 		
 	},

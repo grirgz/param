@@ -2296,7 +2296,7 @@ TimelineViewNode {
 		var node;
 		// FIXME: choose a better type system
 		type = event[\nodeType] ? event[\eventType] ? event[\type];
-		if(type == \pattern and:{  event[\timeline].notNil }) {
+		if(event[\timeline].notNil ) {
 			type = \timeline;
 		};
 
@@ -2564,16 +2564,21 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	}
 
 	initPreview {
+		Log(\Param).debug("TimelineViewEventListNode: initPreview %", model);
 		if(this.enablePreview == true) {
 			if(preview.isNil) {
 				preview = this.timelinePreviewClass.new;
 				preview.areasize.x = parent.areasize.x;
 				preview.parentTimeline = parent;
+				model.eventlist.debug("eventlist");
+				model.timeline.debug("timeline");
 				if(model[\eventlist].notNil) {
+					Log(\Param).debug("mapEventList");
 					preview.mapEventList(model.eventlist);
 				};
 
 				if(model.timeline.notNil) {
+					Log(\Param).debug("mapModel");
 					preview.mapModel(model)
 				};
 			}
@@ -2788,8 +2793,11 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 	drawPreview { arg previewrect;
 		var visiblebounds;
-		var cutOffset = this.startOffset ? 0;
+		var cutOffset;
 		var cutNormOffset;
+
+		// preview cut offset from event_dropdur and offset from timeine \start event
+		cutOffset = (this.startOffset ? 0) + ( preview.model !? _.startTime ? 0);
 
 		visiblebounds = parent.virtualBounds.sect(previewrect);
 		preview.virtualBounds = visiblebounds;
