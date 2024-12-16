@@ -852,29 +852,33 @@ ProtoTemplateDef(\SampleTimelineView, (
 	},
 
 	splitAction: { arg self;
-			var cursor = self.timeline_model.selection_cursor;
-			var startpos, endpos;
-			var buf = self.timeline_model.buffer;
-			var model = self.timeline_model;
-			var slice;
+		self.reverseAction;
+	},
 
-			buf.loadToFloatArray(action:{ arg arr;
-				startpos = cursor.startPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
-				startpos = startpos.round.asInteger;
-				endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
-				endpos = endpos.round.asInteger;
-				slice = arr[startpos..endpos];
-				slice = slice.reverse;
-				arr.overWrite(slice, startpos);
-				//"ém1".debug;
-				buf.loadCollection(arr, action:{
-					//model.bufferTempPath = nil;
-					//model.changed(\buffer);
-					//model.isModified = true;
-					model.refreshBufferData;
-					Log(\Param).info("reverse done");
-				})
+	reverseAction: { arg self;
+		var cursor = self.timeline_model.selection_cursor;
+		var startpos, endpos;
+		var buf = self.timeline_model.buffer;
+		var model = self.timeline_model;
+		var slice;
+
+		buf.loadToFloatArray(action:{ arg arr;
+			startpos = cursor.startPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+			startpos = startpos.round.asInteger;
+			endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+			endpos = endpos.round.asInteger;
+			slice = arr[startpos..endpos];
+			slice = slice.reverse;
+			arr.overWrite(slice, startpos);
+			//"ém1".debug;
+			buf.loadCollection(arr, action:{
+				//model.bufferTempPath = nil;
+				//model.changed(\buffer);
+				//model.isModified = true;
+				model.refreshBufferData;
+				Log(\Param).info("reverse done");
 			})
+		})
 	},
 
 	pasteAction: { arg self;

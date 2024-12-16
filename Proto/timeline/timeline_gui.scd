@@ -2497,10 +2497,6 @@ WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 	var params;
 	var refresh;
 
-	if(clip.type.isNil) {
-		// probably an empty event created when ClipList is empty
-		
-	};
 	libid = lib.eventToLibId(clip);
 	target = lib.libIdToTarget(libid);
 	wrapper = lib.libIdToWrapper(libid);

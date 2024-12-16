@@ -258,7 +258,8 @@ ProtoDef(\GlobalLibrary, (
 			redefineEventAsPatternEvent: { arg self, ev, target;
 				PatternEvent.redefine(ev);
 				// need a closed function to use eventList.asCompileString as preset
-				ev[\timeline] = "{ % }".format(( target ?? {self.getTarget} ).refCompileString).interpret; 
+				//ev[\timeline] = "{ % }".format(( target ?? {self.getTarget} ).asCompileString).interpret; 
+				ev[\pattern] = target;
 				//model.changed(\refresh);
 				superself.parent_model.changed(\refresh);
 			},
@@ -336,6 +337,10 @@ ProtoDef(\GlobalLibrary, (
 			key: 'pdef',
 			libIdKey: 'Pdef',
 
+			redefineEvent: { arg self, ev, target;
+				self.redefineEventAsPatternEvent(ev, target)
+			},
+
 			classObject: {
 				Pdef
 			},
@@ -350,6 +355,10 @@ ProtoDef(\GlobalLibrary, (
 
 			keylist: {
 				Pbindef.all.keys.asArray.sort; 
+			},
+
+			redefineEvent: { arg self, ev, target;
+				self.redefineEventAsPatternEvent(ev, target)
 			},
 
 			classObject: {
@@ -407,6 +416,10 @@ ProtoDef(\GlobalLibrary, (
 
 			keylist: { arg self;
 				self.className.all.keys.asArray.sort;
+			},
+
+			redefineEvent: { arg self, ev, target;
+				self.redefineEventAsPatternEvent(ev, target)
 			},
 
 			redefineEventAsPlayerEvent: { arg self, ev, target;
