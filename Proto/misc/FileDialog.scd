@@ -106,7 +106,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 
 	name_field = TextField.new;
 
-	preview.onClose({ if(proto.player.notNil) { proto.player.stop } });
+	preview.onClose_({ if(proto.player.notNil) { proto.player.stop } });
 
 	if(path.isNil) {
 		path = proto.cwd ?? { try { PathName(Document.current.path).pathOnly } ? "~" }
