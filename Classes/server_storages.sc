@@ -783,9 +783,17 @@ GroupDef {
 	*pattern { arg name, target, addaction='addToHead';
 		^Prout({ arg ev;
 			this.makePayload(ev, {
-				GroupDef(name, target, addaction);
+				var parentgroup;
+				if(target.isKindOf(Pattern)) {
+					// since you can't nest makePayload, i store args in pattern object
+					var args = target.args;
+					if(args.notNil) {
+						parentgroup = GroupDef(*args)
+					};
+				};
+				GroupDef(name, parentgroup ? target, addaction);
 			})
-		}).loop
+		}).loop.addUniqueMethod(\args, { [ name, target, addaction ] })
 	}
 }
 
