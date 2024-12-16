@@ -954,7 +954,11 @@ CursorTimelineView : TimelineView {
 				var start_beat;
 				var currentDur = 0;
 
-				start_beat = this.cursor.startTime ?? { TempoClock.default.beats };
+				if(this.cursor.startTime.notNil) {
+					start_beat = this.cursor.startTime + Server.default.latency;
+				} {
+					start_beat =  TempoClock.default.beats;
+				};
 
 				while({
 					currentDur < finalDur;
