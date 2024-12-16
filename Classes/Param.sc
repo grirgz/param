@@ -1055,8 +1055,8 @@ Param {
 						if(force or: {view.hasFocus.notNil and: {view.hasFocus.not}}) {
 
 							view.value = val;
-							view.debug("TextField updateAction view");
-							view.isClosed.debug("TextField updateAction closed");
+							//view.debug("TextField updateAction view");
+							//view.isClosed.debug("TextField updateAction closed");
 							view.stringColor = color;
 						} {
 							Log(\Param).debug("mapTextField: focus, no set, view %, val %", view, val);

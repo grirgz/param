@@ -85,7 +85,11 @@ PlayerEvent : Event {
 	}
 
 	embedInStream { arg inevent;
-		^super.embedInStream((parent: this.parent).putAll(inevent))
+		var ev = (parent: this.parent);
+		if(inevent.notNil) {
+			ev.putAll(inevent)
+		};
+		^super.embedInStream(ev)
 		//^super.embedInStream((parent: this.parent))
 	}
 
