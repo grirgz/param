@@ -15,48 +15,94 @@ GroupDef(\inner_group, GroupDef(\fx_group)); // a group inside the fx_group
 CLASSMETHODS::
 
 METHOD:: new
-(describe method here)
+Create and return a group with a given name, or return it if the group already exists.
+
 
 ARGUMENT:: name
+The symbol key under which the group is stored
 (describe argument here)
 
 ARGUMENT:: target
-(describe argument here)
+see link::Classes/Group#*new:: for more details.
 
 ARGUMENT:: addaction
+See link::Classes/Group#*new:: for more details.
+
+returns:: a Group
+
+METHOD:: pattern
+Same as link::#*new:: but return a pattern. This is useful because the group
+should be created when the pattern is played and not when it is defined.
+
+ARGUMENT:: name
+The symbol key under which the group is stored
 (describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: newGroup
-(describe method here)
 
 ARGUMENT:: target
-(describe argument here)
+see link::Classes/Group#*new:: for more details. Can be a GroupDef.pattern
 
 ARGUMENT:: addaction
-(describe argument here)
+See link::Classes/Group#*new:: for more details.
 
-returns:: (describe returnvalue here)
-
-METHOD:: groupdict
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: initClass
-(describe method here)
-
-returns:: (describe returnvalue here)
-
+returns:: a Pattern
 
 INSTANCEMETHODS::
 
 
 EXAMPLES::
 
+This example illustrate the need for GroupDef.pattern method.
+
+code::
+
+(
+// this correctly create a group and play the pattern inside
+Pdef(\help, 
+	Pbind(
+		\instrument, \default,
+		\degree, Pseq([0],inf),
+		\group, GroupDef(\group1),
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+);
+
+CmdPeriod.run; // stop the pattern and free the group
+
+Pdef(\help).play; // now the pattern fail with group not found error
+
+(
+// with GroupDef.pattern, the group is created at pattern play
+Pdef(\help, 
+	Pbind(
+		\instrument, \default,
+		\degree, Pseq([0],inf),
+		\group, GroupDef.pattern(\group1), 
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+);
+CmdPeriod.run; 
+Pdef(\help).play; 
+
+(
+// target group can use .pattern method too
+Pdef(\help, 
+	Pbind(
+		\instrument, \default,
+		\degree, Pseq([0],inf),
+		\group, GroupDef.pattern(\group1, GroupDef.pattern(\parentGroup)), 
+		\dur, 1,
+		\amp, 0.1,
+	)
+).play;
+);
+::
 
 In this example we create a chain of 3 groups and put a synth in it. Since the synth replace the bus content, the order of nodes is very important. The synth are using the audio input as a frequency modulation
+
 
 code::
 (
@@ -80,7 +126,7 @@ Pdef(\help1,
 	Pbind(
 		\instrument, \fmop_help,
 		\degree, Pseq([0,2,4],inf),
-		\group, GroupDef(\group1),
+		\group, GroupDef.pattern(\group1),
 \legato, 0.3,
 		\dur, 1/1,
 		\amp, 0.1,
@@ -94,7 +140,7 @@ Pdef(\help2,
 		\instrument, \fmop_help,
 		\degree, Pseq([2],inf),
 		\range, 1,
-		\group, GroupDef(\group2, GroupDef(\group1), \addAfter),
+		\group, GroupDef.pattern(\group2, GroupDef.pattern(\group1), \addAfter),
 		\dur, 1,
 		\amp, 0.1,
 	),
@@ -104,10 +150,10 @@ Pdef(\help2,
 (
 Pdef(\help3, 
 	Pbind(
-		\instrument, \fmop_help2,
+		\instrument, \fmop_help,
 		\degree, Pseq([4],inf),
 		\range, 1,
-		\group, GroupDef(\group3, GroupDef(\group2), \addAfter),
+		\group, GroupDef.pattern(\group3, GroupDef.pattern(\group2), \addAfter),
 		\legato, 0.8,
 		\dur, 1,
 		\amp, 0.1,
