@@ -143,12 +143,14 @@ TimelineEventList : List {
 	}
 
 	calcRelDurs {
-		this.doAdjacentPairs { |prev, next|
-			var newRelDur = next[\absTime] - prev[\absTime];
-			prev.put(\relDur, newRelDur);
-			prev.put(\dur, newRelDur);
+		if(this.size > 2) {
+			this.doAdjacentPairs { |prev, next|
+				var newRelDur = next[\absTime] - prev[\absTime];
+				prev.put(\relDur, newRelDur);
+				prev.put(\dur, newRelDur);
+			};
+			this.last.put(\relDur, 0).put(\dur, 0);
 		};
-		this.last.put(\relDur, 0).put(\dur, 0);
 	}
 
 	calcAbsTimes {
@@ -251,6 +253,15 @@ TimelineEventList : List {
 			if(ev[\type] == \end) {
 				endTime = ev[\absTime];
 			};
+		};
+
+		if(startTime.isNil) { 
+			// if empty list, set default value
+			// hope this doesn't break anything
+			startTime = 0;
+		};
+		if(endTime.isNil) {
+			endTime = 0;
 		};
 		this.calcRelDurs;
 		this.setPlayDursToRelDur;
@@ -497,6 +508,14 @@ TimelineEventLoop {
 
 	// check that it is an EventList?
 	list_ { |inList|
+		this.historyAddSnapshot;
+		list = inList;
+		this.changed(\list); // added by ggz
+		task.set(\list, list);
+	}
+
+	prSetList { arg inList;
+		// do not add history snapshot, used internally
 		list = inList;
 		this.changed(\list); // added by ggz
 		task.set(\list, list);
@@ -849,7 +868,7 @@ TimelineEventLoop {
 				historyBackup = list;
 			};
 			historyIndex = historyIndex + 1;
-			this.list = historyList[historyIndex].clone;
+			this.prSetList(historyList[historyIndex].clone);
 		}; 
 		this.changed(\inHistoryMode); // signal undo button can be enabled
 	}
@@ -860,9 +879,9 @@ TimelineEventLoop {
 			historyIndex = historyIndex - 1;
 			if(historyIndex == -1) {
 				inHistoryMode = false;
-				this.list = historyBackup;
+				this.prSetList(historyBackup);
 			} {
-				this.list = historyList[historyIndex].clone;
+				this.prSetList(historyList[historyIndex].clone);
 			};
 		}; 
 		this.changed(\inHistoryMode); // signal undo button can be enabled
