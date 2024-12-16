@@ -1079,6 +1079,15 @@ ProtoClassDef(\ParamTimeline, (
 		self.changed(\param);
 	},
 
+	inBusMode: { arg self;
+		self.param.inBusMode;
+	},
+
+	inBusMode_: { arg self, val;
+		self.param.inBusMode = val;
+		self.changed(\inBusMode);
+	},
+
 	init: { arg self, param, bus;
 		self.basicInit;
 		self.customBus = bus;
@@ -1109,12 +1118,17 @@ ProtoClassDef(\ParamTimeline, (
 			// FIXME: this should be an event
 			if(self.param.notNil and:{ self.param.target.isKindOf(Bus).not }) {
 				// FIXME: bus mode should be generic
-				if([EventPatternProxy, NodeProxy].any({ arg x; self.param.target.isKindOf(x) })) {
-					self.param.target.set(self.param.property, self.outBus.asMap);
-					self.param.changed(\inBusMode);
-				} {
-					self.param.set(self.outBus.asMap);
-				};
+				//if([EventPatternProxy, NodeProxy].any({ arg x; self.param.target.isKindOf(x) })) {
+					//self.param.target.set(self.param.property, self.outBus.asMap);
+					//self.param.changed(\inBusMode);
+				//} {
+					//self.param.set(self.outBus.asMap);
+				//};
+				self.param.setBus(self.outBus.asMap);
+				{
+					self.changed(\inBusMode);
+					//self.changed(\param);
+				}.defer;
 				//default = self.param.default;
 			};
 

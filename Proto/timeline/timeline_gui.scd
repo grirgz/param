@@ -182,7 +182,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 					).spacing_(0).margins_(2),
 					HLayout (
 						Param(Message(self.timeline_model.tracks[idx]), \recordBus, TagSpecDef(\BusDef_object)).asPopUpMenu.maxWidth_(100),
-						Param(Message(self.timeline_model.tracks[idx]), \recordArmed, XBoolSpec()).asButton("R").maxWidth_(20),
+						Param(Message(self.timeline_model.tracks[idx]), \recordArmed, XBoolSpec()).asButton(" ●").maxWidth_(20),
 						nil,
 					).spacing_(0).margins_(2),
 				).spacing_(0).margins_(0)
@@ -2040,7 +2040,7 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 			self.timeline.mapParam(self.levelParam);
 			self.ruler_y.refresh;
 			self.paramKnob.mapParam(self.param);
-			self.paramBusModeButton.mapParam(Param(Message(self.param), \inBusMode, XBoolSpec()));
+			self.paramBusModeButton.mapParam(Param(Message(self.timeline_model), \inBusMode, ParamBoolSpec()));
 			if(self.param.target.isKindOf(Bus) or: { self.param.target.isKindOf(Message) }) {
 				self.targetPlayerView.model = nil;
 				self.targetPlayerView.view.visible = false;
@@ -2096,7 +2096,6 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		).mode_(1)
 	},
 ));
-ProtoTemplateDef(\EnvTimelinePanelView, ProtoTemplateDef(\ParamTimelinePanelView)); // compat
 
 
 ProtoTemplateDef(\NoteTimelinePanelView, (
@@ -2492,11 +2491,20 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 
 WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 	var lib = ProtoDef(\GlobalLibrary);
-	var libid = lib.eventToLibId(clip);
-	var target = lib.libIdToTarget(libid);
-	var wrapper = lib.libIdToWrapper(libid);
+	var libid;
+	var target;
+	var wrapper;
 	var params;
 	var refresh;
+
+	if(clip.type.isNil) {
+		// probably an empty event created when ClipList is empty
+		
+	};
+	libid = lib.eventToLibId(clip);
+	target = lib.libIdToTarget(libid);
+	wrapper = lib.libIdToWrapper(libid);
+
 	params = [
 		Param(Message(clip), \label, ParamStringSpec()),
 		Param(clip, Pembed.startOffsetKey, ControlSpec(0,100,\lin)),
@@ -2525,7 +2533,9 @@ WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 			BasicButton.new.string_("Select target").action_({
 				WindowDef(\GlobalLibrary_select).front(target, { arg playerid;
 					//playerid.debug("playerid");
-					wrapper.redefineEvent(clip, playerid.last.value);
+					var wr = lib.libIdToWrapper(playerid);
+					wr.redefineEvent(clip, playerid.last.value);
+					eventlist.changed(\refresh);
 					def.front(clip, eventlist);
 					//clip.debug("new clip");
 				}, \Player)
@@ -3037,6 +3047,12 @@ WindowDef(\ClipTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 	inview.layout_(layout);
 	
 }).border_(false);
+
+
+
+////// backward compatibility
+
+ProtoTemplateDef(\EnvTimelinePanelView, ProtoTemplateDef(\ParamTimelinePanelView));
 
 if(currentEnvironment.isKindOf(ProxySpace).not) {
 

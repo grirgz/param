@@ -3,15 +3,9 @@
 // libId structure:
 // [TypeSymbol, (NameSymbol -> Object)]
 ProtoDef(\GlobalLibrary, (
-	edit: { arg self;
-		WindowDef(\GlobalLibrary).front;
-	},
-
-	libIdToTarget: { arg self, libid;
-		self.libIdToWrapper(libid).getTarget;
-	},
 
 	parent:(
+		// init code in parent, property is replaced by init func
 		clipFactories: { arg self;
 			self.init_default_clip_factories;
 		},
@@ -19,6 +13,22 @@ ProtoDef(\GlobalLibrary, (
 			self.init_default_clip_factories;
 		},
 	),
+
+	edit: { arg self;
+		WindowDef(\GlobalLibrary).front;
+	},
+
+	///// libId management
+
+	libIdToTarget: { arg self, libid;
+		var wr = self.libIdToWrapper(libid);
+		if(wr.notNil) {
+			wr.getTarget;
+		} {
+			Log(\Param).error("libIdToTarget: no wrapper for libid %", libid);
+			nil
+		};
+	},
 
 	targetToLibId: { arg self, target;
 		var libId;
@@ -79,8 +89,13 @@ ProtoDef(\GlobalLibrary, (
 		Log(\Param).debug("libIdToWrapper: libid:%", libid);
 		wrapper = self.libIdToFactory(libid).copy;
 		Log(\Param).debug("libIdToWrapper: wrapper:%", wrapper);
-		wrapper.libId =  libid;
-		wrapper;
+		if(wrapper.notNil) {
+			wrapper.libId =  libid;
+			wrapper;
+		} {
+			Log(\Param).error("libIdToWrapper: no wrapper for libid %", libid);
+			nil;
+		};
 	},
 
 	eventToLibId: { arg self, model;
@@ -163,6 +178,7 @@ ProtoDef(\GlobalLibrary, (
 		
 	},
 
+	//// tracklist deprecated
 
 	libIdToTrackInstrument: { arg self, libid, name;
 		ProtoDef(\trackInstrument).new(libid, name)
@@ -175,6 +191,9 @@ ProtoDef(\GlobalLibrary, (
 	setTrackInstrument: { arg self, target, trackinstr;
 		self.libIdToWrapper(self.targetToLibId(target)).setTrackInstrument(trackinstr)
 	},
+
+
+	//// clip factories
 
 	init_default_clip_factories: { arg superself;
 		var tl;
@@ -251,21 +270,30 @@ ProtoDef(\GlobalLibrary, (
 				// depends pattern event, player event
 				if(ev.type == \pattern) {
 					// pattern type
-					ev.pattern;
+					if(ev.timeline.notNil) {
+						ev.timeline
+					} {
+						ev.pattern;
+					}
 				} {
 					// player type
 					if(ev.type == \player) {
-						var tar = ev.receiver.value;
-						//tar.key; // PlayerWrapper has key wrapper
-						if(tar.isKindOf(PlayerWrapper)) {
-							tar = tar.target;
-						};
-						if(tar.notNil) {
-							tar;
+						if(ev.timeline.notNil) {
+							ev.timeline
 						} {
-							Log(\Param).error("clipFactories.parent: ERROR: getEventTarget: receiver is nil");
-							nil;
-						}; 
+							var tar;
+							tar = ev.receiver.value;
+							//tar.key; // PlayerWrapper has key wrapper
+							if(tar.isKindOf(PlayerWrapper)) {
+								tar = tar.target;
+							};
+							if(tar.notNil) {
+								tar;
+							} {
+								Log(\Param).error("clipFactories.parent: ERROR: getEventTarget: receiver is nil");
+								nil;
+							}; 
+						};
 					} {
 						Log.error("ERROR: can't find target of unknown type event %", ev);
 						nil;

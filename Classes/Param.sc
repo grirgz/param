@@ -640,7 +640,9 @@ Param {
 	makeSimpleController { arg slider, action, updateAction, initAction, customAction, cursorAction;
 		// define view action to update model and make a controller to update the view
 		var param = this;
-		slider.toolTip = this.fullLabel; // FIXME: not really a good place, but so it can quicly apply to every view
+		{
+			slider.toolTip = this.fullLabel; // FIXME: not really a good place, but so it can quicly apply to every view
+		}.defer;
 
 		if(action.isNil) {
 			action = { arg self;
@@ -4903,7 +4905,7 @@ DictionaryParamEnvSlot : DictionaryParamSlot {
 	
 }
 
-////////////////// Object property (message)
+////////////////// Object property (Message)
 
 MessageParam : BaseAccessorParam {
 	*new { arg obj, meth, sp;
@@ -4961,6 +4963,31 @@ MessageParam : BaseAccessorParam {
 			//action.(view, param);
 		//});
 	//}
+	
+	putListener { arg param, view, controller, action;
+		//Log(\Param).debug("BaseAccessorParam.putListener %", param);
+		controller.put(this.property, { arg ...args; 
+			// args: object, \set, keyval_list
+			//args.debug("args");
+
+			// update only if concerned key is set
+			// do not update if no key is specified
+			// FIXME: may break if property is an association :(
+			// FIXME: if a value is equal the key, this fire too, but it's a corner case bug
+
+			// debug variables
+			var property = param.property;
+			var target = param.target;
+			var spec = param.spec;
+
+			if(Param.trace == true) {
+				"%: % received update message: %, do update".format(this, view, args).postln;
+			};
+			// action
+			action.(view, param);
+
+		});
+	}
 
 	instrument {
 		^nil
