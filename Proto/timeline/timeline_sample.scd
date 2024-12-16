@@ -135,11 +135,15 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		self.postProxy.addHalo(\instrument, instr);
 	},
 
+	getEmptyBuffer: { arg self;
+		BufDef(\empty, Server.default.sampleRate, 2);
+	},
+
 	samplePattern: { arg self, startBeats=0, parentEvent, parentTimeline;
 		var pat;
 		[startBeats, startBeats / self.tempoClock.tempo].debug("samplePattern: startBeats, startSeconds");
 		pat = self.postProxy <> Pmono(self.playerSynthDef,
-			\bufnum, self.buffer ? 0,
+			\bufnum, self.buffer ?? { self.getEmptyBuffer },
 			\startSeconds, startBeats / self.tempoClock.tempo,
 			\legato, 1,
 			\dur, 1,
@@ -583,6 +587,8 @@ ProtoTemplateDef(\SampleTimelineView, (
 	param: { arg self;
 		self.timeline_model.param;
 	},
+
+	makeBottomPanelView: { },
 
 	make_main_context_menu: { arg self;
 		var model = self.timeline_model;
