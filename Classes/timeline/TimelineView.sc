@@ -257,19 +257,15 @@ TimelineView : SCViewHolder {
 	/////////////////
 
 	mapEventList { arg eventlist;
-		this.class.debug("mapEventList start --");
+		//this.class.debug("mapEventList start --");
 		//this.dumpBackTrace;
-		bench {
 
 		model = eventlist;
 		this.refreshEventList;
-		//paraNodes.debug("mapEventList2");
-
 		this.makeUpdater;
 		
 		//[areasize, viewport, paraNodes].debug("mapEventList3");
-		};
-		debug("mapEventList end");
+		//debug("mapEventList end");
 	}
 		
 	refreshEventList {
@@ -450,7 +446,7 @@ TimelineView : SCViewHolder {
 			if(this.changeCurveMode) {
 				var pair;
 				pair = this.findPreviousAndNextNode(gpos.x, { arg node;
-					[ node, node.visible == true and: { node.class != TimelineViewLocatorLineNode } ].debug("merde");
+					//[ node, node.visible == true and: { node.class != TimelineViewLocatorLineNode } ].debug("merde");
 					node.visible == true and: { node.class != TimelineViewLocatorLineNode }
 				});
 				//Log(\Param).debug("changeCurveMode: pair found %", pair);
@@ -782,7 +778,7 @@ TimelineView : SCViewHolder {
 					if(chosennode != nil) { // a node is selected
 						var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
 						var norm_diff;
-						debug("---------mouseMoveAction: move node");
+						//debug("---------mouseMoveAction: move node");
 						//Log(\Param).debug("---------mouseMoveAction: move mode");
 						//debug("======= selected nodes will be moved!!!");
 						//selNodes.collect({ arg x; [x.origin, x.extent, x.model] }).debug("======= selected nodes will be moved!!!");
@@ -2019,14 +2015,10 @@ TimelineView : SCViewHolder {
 	}
 
 	lazyRefresh { arg fun;
-		if(~debugLazyRefreshEnabled != false) {
-			if( refreshDeferred.not, {
-				AppClock.sched( ~lazyRefreshDelay ? 0.02, fun ? lazyRefreshFunc );
-				refreshDeferred = true;
-			});
-		} {
-			lazyRefreshFunc.()
-		};
+		if( refreshDeferred.not, {
+			AppClock.sched( 0.02, fun ? lazyRefreshFunc );
+			refreshDeferred = true;
+		});
 	}
 
 	findNodeHandle { arg x, y;
@@ -2626,21 +2618,21 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	}
 
 	initPreview {
-		Log(\Param).debug("TimelineViewEventListNode: initPreview %", model);
+		//Log(\Param).debug("TimelineViewEventListNode: initPreview %", model);
 		if(this.enablePreview == true) {
 			if(preview.isNil) {
 				preview = this.timelinePreviewClass.new;
 				preview.areasize.x = parent.areasize.x;
 				preview.parentTimeline = parent;
-				model.eventlist.debug("eventlist");
-				model.timeline.debug("timeline");
+				//model.eventlist.debug("eventlist");
+				//model.timeline.debug("timeline");
 				if(model[\eventlist].notNil) {
-					Log(\Param).debug("mapEventList");
+					//Log(\Param).debug("mapEventList");
 					preview.mapEventList(model.eventlist);
 				};
 
 				if(model.timeline.notNil) {
-					Log(\Param).debug("mapModel");
+					//Log(\Param).debug("mapModel");
 					preview.mapModel(model)
 				};
 			}

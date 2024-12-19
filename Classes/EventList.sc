@@ -851,7 +851,7 @@ TimelineEventLoop {
 	/// undo system
 	
 	historyAddSnapshot {
-		~debug = this;
+		//~debug = this;
 		if(list.notNil) {
 			if(inHistoryMode == true) {
 				inHistoryMode = false;
@@ -863,7 +863,7 @@ TimelineEventLoop {
 	}
 
 	historyUndo {
-		~debug = this;
+		//~debug = this;
 		if(this.historyCanUndo) {
 			if(inHistoryMode == false) {
 				inHistoryMode = true;
@@ -876,7 +876,7 @@ TimelineEventLoop {
 	}
 
 	historyRedo {
-		~debug = this;
+		//~debug = this;
 		if(this.historyCanRedo) {
 			historyIndex = historyIndex - 1;
 			if(historyIndex == -1) {
@@ -890,12 +890,12 @@ TimelineEventLoop {
 	}
 
 	historyCanUndo {
-		~debug = this;
+		//~debug = this;
 		^historyIndex < ( historyList.size-1 )
 	}
 
 	historyCanRedo {
-		~debug = this;
+		//~debug = this;
 		^historyIndex > -1
 	}
 
