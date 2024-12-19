@@ -682,7 +682,7 @@ TimelineView : SCViewHolder {
 					var lownode, clipped_npos, clipped_gpos, clipped_newpos;
 					var pixel_newpos_point, pixel_clicked_point, pixel_click_offset, grid_diff, chosennode_new_origin;
 					var norm_diff;
-					debug("---------mouseMoveAction: move selection");
+					//debug("---------mouseMoveAction: move selection");
 
 					if(selNodes.size > 0) {
 
@@ -718,11 +718,11 @@ TimelineView : SCViewHolder {
 						//norm_diff = this.gridPointToNormPoint(grid_diff); // TimelineEnvView use spec so can't go below zero, pass the flag to avoid this
 						//useSpecInConversions = true;
 
-						Log(\Param).debug("before grid_diff %", grid_diff);
+						//Log(\Param).debug("before grid_diff %", grid_diff);
 
 
-						Log(\Param).debug("lownode % y=% ny=%", lownode, lownode.refloc.y, this.gridPointToNormPoint(lownode.refloc).y);
-						Log(\Param).debug("norm_diff.y %", norm_diff.y);
+						//Log(\Param).debug("lownode % y=% ny=%", lownode, lownode.refloc.y, this.gridPointToNormPoint(lownode.refloc).y);
+						//Log(\Param).debug("norm_diff.y %", norm_diff.y);
 						//norm_diff.y = norm_diff.y.clip(this.gridPointToNormPoint(lownode.refloc).y.neg, inf);
 						//norm_diff.y.clip(this.gridPointToNormPoint(lownode.refloc).y.neg, inf).debug("norm_diff.y after");
 						//Log(\Param).debug("norm_diff.y afterk%", norm_diff.y);
@@ -750,18 +750,21 @@ TimelineView : SCViewHolder {
 						//};
 
 
-						Log(\Param).debug("after grid_diff %", grid_diff);
+						//Log(\Param).debug("after grid_diff %", grid_diff);
 
-						selNodes.do { arg node;
-							if(freeze_position) {
-								clipped_newpos = node.refloc + grid_diff
-							} {
-								clipped_newpos = this.gridPointToNormPoint(node.refloc) + norm_diff;
-								clipped_newpos = this.normPointToGridPoint(clipped_newpos);
+						this.noRefreshDo {
+							selNodes.do { arg node;
+								if(freeze_position) {
+									clipped_newpos = node.refloc + grid_diff
+								} {
+									clipped_newpos = this.gridPointToNormPoint(node.refloc) + norm_diff;
+									clipped_newpos = this.normPointToGridPoint(clipped_newpos);
+								};
+								//node.debug("setLoc %".format(clipped_newpos));
+								node.setLoc(clipped_newpos)
 							};
-							node.debug("setLoc %".format(clipped_newpos));
-							node.setLoc(clipped_newpos)
 						};
+						//Log(\Param).debug("end move");
 
 						this.changed(\nodeMoved);
 					} {
@@ -1408,7 +1411,7 @@ TimelineView : SCViewHolder {
 			// rendering is way faster with this function
 			node.rect.intersects(screen_gridrect)
 		};
-		this.class.debug("<<<<<<<<<<<< start drawing nodes");
+		//this.class.debug("<<<<<<<<<<<< start drawing nodes");
 		screen_gridrect = this.pixelRectToGridRect(this.virtualBounds);
 		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
 
@@ -1486,7 +1489,6 @@ TimelineView : SCViewHolder {
 				//"TimelineView get a refresh signal!".debug;
 				{
 					this.refreshEventList;
-					this.refresh;
 				}.defer
 			};
 		});
@@ -1990,7 +1992,7 @@ TimelineView : SCViewHolder {
 	refresh {
 		//Log(\Param).debug("refresh called %", this);
 		if( this.refreshEnabled, { {
-			Log(\Param).debug("refresh run %", this);
+			//Log(\Param).debug("refresh run %", this);
 			//this.dumpBackTrace;
 			userView.refresh;
 			selectionView.refresh;
@@ -2396,61 +2398,11 @@ TimelineViewNode {
 		//Log(\Param).debug("% %".format("TimelineViewNode: new: parent, nodeType/type",[ parent.class, type.asCompileString ]));
 		//Log(\Param).debug("TimelineViewNode: nodeType %".format([ event[\nodeType], event, event.parent ]));
 		//
-		if(~debugOpti != false) {
 
-			node = this.nodedict[type] ??  {
-				{ TimelineViewEventNode(parent, nodeidx, event) }
-			};
-			node = node.value(parent, nodeidx, event);
-		} {
-
-
-			node = switch(type,
-				\start, {
-					var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
-					res.alpha = 1;
-					res;
-				},
-				\end, {
-					var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
-					res.alpha = 1;
-					res;
-				},
-				\eventenv, {
-					TimelineViewEventEnvNode(parent, nodeidx, event)
-				},
-				\eventlist, {
-					TimelineViewEventListNode(parent, nodeidx, event)
-				},
-				\timeline, {
-					switch(event.timeline.eventType,
-						\paramTimeline, {
-							TimelineViewEventEnvNode(parent, nodeidx, event)
-						},
-						\sampleTimeline, {
-							TimelineViewEventSampleNode(parent, nodeidx, event)
-						}, {
-							TimelineViewEventListNode(parent, nodeidx, event)
-						}
-					)
-				},
-				\player, {
-					TimelineViewEventListNode(parent, nodeidx, event)
-				},
-				\pattern, {
-					TimelineViewEventListNode(parent, nodeidx, event)
-				},
-				\eventloop, {
-					TimelineViewEventLoopNode(parent, nodeidx, event)
-				},
-				\locator, {
-					TimelineViewLocatorLineNode(parent, nodeidx, event)
-				},
-				{
-					TimelineViewEventNode(parent, nodeidx, event)
-				}
-			);
+		node = this.nodedict[type] ??  {
+			{ TimelineViewEventNode(parent, nodeidx, event) }
 		};
+		node = node.value(parent, nodeidx, event);
 
 		//Log(\Param).debug("node created: % %".format(node.class, node));
 
@@ -2583,9 +2535,9 @@ TimelineViewEventNode : TimelineViewNodeBase {
 	setLoc { arg val;
 		origin = val;
 		this.action;
-		parent.action;
 		//parent.model.changed(\refresh);
 		this.refreshEnabledDo {
+			parent.action;
 			model.changed(\refresh);
 			parent.model.changed(\redraw);
 		}

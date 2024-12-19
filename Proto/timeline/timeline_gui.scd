@@ -352,14 +352,16 @@ ProtoTemplateDef(\TimelinePanelView, (
 			if(keycode == 65364) { // down key
 				self.timeline.selNodes.do{ arg node;
 					node.model[node.posyKey] = node.model[node.posyKey]-distance.y;
-					node.model.changed(\refresh);
-				}
+					//node.model.changed(\refresh);
+				};
+				reorderButKeepSelection.();
 			};
 			if(keycode == 65362) { // up key
 				self.timeline.selNodes.do{ arg node;
 					node.model[node.posyKey] = node.model[node.posyKey]+distance.y;
-					node.model.changed(\refresh);
-				}
+					//node.model.changed(\refresh);
+				};
+				reorderButKeepSelection.();
 			};
 			if(keycode == 65361) { // left key
 				self.timeline.selNodes.do{ arg node;

@@ -156,7 +156,7 @@ PlayerWrapperView {
 
 		button.getHalo(\followChangeController).remove;
 		button.followChange(target, \PlayerWrapper, { arg view, obj, changed, status;
-			[obj, changed, status].debug("follower: args");
+			//[obj, changed, status].debug("follower: args");
 			if(changed == \PlayerWrapper) {
 				defer {
 					var butval = button.value;
