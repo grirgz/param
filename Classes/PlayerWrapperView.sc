@@ -73,6 +73,7 @@ PlayerWrapperView {
 		lay.addUniqueMethod(\button, { button }); // compat
 		lay.addUniqueMethod(\model_, { arg view, val; this.model = val; });
 		lay.addUniqueMethod(\model, { this.model; });
+		lay.addUniqueMethod(\label_, { arg self, val; this.label = val; });
 		lay.addUniqueMethod(\parentView, { this }); 
 		if(rightClickEditorEnabled == true) {
 			// init state
@@ -159,7 +160,9 @@ PlayerWrapperView {
 			if(changed == \PlayerWrapper) {
 				defer {
 					var butval = button.value;
-					button.states = this.getStates(model.label);
+					var xlabel;
+					xlabel = label ?? { model.label };
+					button.states = this.getStates(xlabel);
 					button.value = switch(status,
 						\stopped, { 0 },
 						\playing, { 2 },
@@ -216,6 +219,7 @@ PlayerWrapperView {
 			skipjack.stop;
 		};
 		if(button.notNil) { // else fail when model is set before the layout in init
+			button.states = this.getStates(label ?? { model.label });
 			this.makeDependentListener;
 		};
 	}
@@ -342,6 +346,7 @@ RecordButton {
 			v;
 		});
 		lay.addUniqueMethod(\button, { button }); // FIXME: why is button wrapped in a layout ?
+		lay.addUniqueMethod(\label_, { arg self, val; this.label = val; });
 		lay.addUniqueMethod(\parentView, { this }); 
 		if(rightClickEditorEnabled == true) {
 			// init state
@@ -547,6 +552,7 @@ PlayerWrapperGridCellView : PlayerWrapperView {
 		view.addUniqueMethod(\selected_, { arg me, x; this.selected = x });
 		view.addUniqueMethod(\model_, { arg me, x; this.model = x });
 		view.addUniqueMethod(\model, { arg me; this.model });
+		view.addUniqueMethod(\label_, { arg self, val; this.label = val; });
 		view.addUniqueMethod(\parentView, { this });
 		this.makeUpdater;
 		this.update;

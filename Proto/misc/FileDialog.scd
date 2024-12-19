@@ -1,4 +1,30 @@
 (
+	8.do { arg numChannels;
+		numChannels = numChannels+1;
+		SynthDef("Param_buffer_player_%".format(numChannels).asSymbol, { arg out=0, amp=0.1, gate=1, pan=0, freq=200, bufnum, speed=1, pos=0, doneAction=2, loop=0, trigger=1, velamp=1;
+			// pos in seconds
+			var sig;
+			var sig1;
+			sig = PlayBuf.ar(numChannels, bufnum, BufRateScale.kr(bufnum) * speed, trigger, startPos: (pos*BufSampleRate.kr(bufnum)), doneAction:doneAction, loop: loop);
+			sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.001,0,1,0.01)),gate,doneAction:doneAction);
+			//sig = Pan2.ar(sig, pan, 1).sum;
+			sig = Splay.ar(sig, \spread.kr(1), amp, pan);
+			Out.ar(out, sig * \gain.kr(1) * velamp);
+		}, metadata:(specs:(
+			bufnum: ParamAudioBufferSpec()
+			.startParamName_(\pos)
+			.numChannels_(numChannels)
+			.startType_(\seconds)
+			.sustainType_(\beats)
+			.sustainParamName_(\sustain)
+			.speedParamName_(\speed),
+			pos: ControlSpec(0,20,\lin),
+			\velamp: \unipolar.asSpec,
+		))).add;
+	};
+);
+
+(
 ProtoTemplateDef(\filemanager_node, (
 	playable_extensions: [
 		"wav",
@@ -54,13 +80,46 @@ ProtoTemplateDef(\filemanager_node, (
 		}
 	},
 
+	player: { arg self;
+		self.player = Pdef(\FileDialogPreview).quant_(0);
+		self.player;
+	},
+
+	freeOldBuffers: { arg self;
+		ProtoTemplateDef(\filemanager_node).bufferToFree.do { arg item, idx;
+			item.free;
+		};
+		ProtoTemplateDef(\filemanager_node).bufferToFree = [];
+	},
+
 	play: { arg self;
 		if(self.isFile and: { self.playable_extensions.includesEqual(self.pathName.extension) }) {
 			// FIXME: need to write custom code to load file into buffer and play it on a proxy
 			// then free buffer
-			SoundFile(self.fullPath).play;
+			//SoundFile(self.fullPath).play;
+
+			self.freeOldBuffers;
+			Buffer.read(Server.default, self.fullPath, action: { arg buf;
+				ProtoTemplateDef(\filemanager_node).bufferToFree = ProtoTemplateDef(\filemanager_node).bufferToFree.add(buf);
+				self.player.stop;
+				self.player.source = Pfindur(buf.duration * thisThread.clock.tempo, Pmono(
+					"Param_buffer_player_%".format(buf.numChannels).asSymbol,
+					\bufnum, buf,
+					\dur, 1/8,
+				));
+				self.player.play;
+			})
+		}
+
+	},
+
+
+	numChannels: { arg self;
+		if(self.isFile and: { self.playable_extensions.includesEqual(self.pathName.extension) }) {
+			SoundFile(self.fullPath).info.numChannels;
 		}
 	},
+
 	typeLabel: { arg self;
 		File.type(self.pathName.fullPath).asString;
 	},
@@ -263,11 +322,16 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	var quicknodelist;
 	var defaultFilename;
 	var okLabel;
+	var baseProto = ProtoTemplateDef(\filemanager_node);
+	var quicklistProto = ProtoTemplateDef(\filemanager_quicklist);
 	nodeClass = nodeClass ?? { ProtoTemplateDef(\filemanager_node) };
 
 	name_field = TextField.new;
 
-	preview.onClose_({ if(proto.player.notNil) { proto.player.stop } });
+	preview.onClose_({ 
+		var p = baseProto.player;
+		if(p.notNil) { p.stop };
+	});
 
 	if(path.isNil) {
 		path = proto.cwd ?? { try { PathName(Document.current.path).pathOnly } ? "~" }
@@ -399,12 +463,12 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	});
 
 	proto.update_quicklistview = { arg self;
-		quicknodelist = ProtoTemplateDef(\filemanager_quicklist).new.children;
+		quicknodelist = quicklistProto.new.children;
 		quicklist.items = quicknodelist.collect(_.label).asArray;
 		[ quicknodelist, quicklist.items ].debug("gni ?");
 	};
 	proto.save_quicklist = { arg self;
-		ProtoTemplateDef(\filemanager_quicklist).save_quicklist;
+		quicklistProto.save_quicklist;
 		//File.use(self.config_file, "w", { arg file;
 			//file.write(
 				//"ProtoDef(%).quicklist = List[\n%];\n".format(
@@ -421,7 +485,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		//});
 	};
 	proto.load_quicklist = { arg self;
-		ProtoTemplateDef(\filemanager_quicklist).load_quicklist;
+		quicklistProto.load_quicklist;
 		//if(self.config_file.notNil) {
 			//self.config_file.load;
 		//};
@@ -438,10 +502,18 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	};
 
 	proto.chooseNode = { arg self, node, alsoPlay=false;
+		var numChannels;
+		var typeinfo;
 		self.current_file = node.fullPath;
 		self.choosedNode = node;
 		name_field.string = node.name;
-		self.filenameview.string = "[%] %".format(node.typeLabel, node.fullPath.asString);
+		numChannels = node.numChannels;
+		if(numChannels.notNil) {
+			typeinfo = "numChan: %".format(numChannels)
+		} {
+			typeinfo = node.typeLabel
+		};
+		self.filenameview.string = "[%] %".format(typeinfo, node.fullPath.asString);
 		if(alsoPlay == true) {
 			if(self.disable_play != true) {
 				proto.playNode(node);
@@ -450,14 +522,15 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	};
 
 	proto.playNode = { arg self, node;
-		Buffer.read(Server.default, node.fullPath, action: { arg buf;
-			self.player.stop;
-			self.player.source = Pmono( \playersec,
-				\bufnum, buf,
-				\dur, 1/8,
-			);
-			self.player.play;
-		})
+		node.play;
+		//Buffer.read(Server.default, node.fullPath, action: { arg buf;
+			//self.player.stop;
+			//self.player.source = Pmono( \playersec,
+				//\bufnum, buf,
+				//\dur, 1/8,
+			//);
+			//self.player.play;
+		//})
 		
 	};
 
@@ -487,7 +560,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		} {
 			filename = cwd;
 		};
-		ProtoTemplateDef(\filemanager_quicklist).addRecentFile(filename);
+		quicklistProto.addRecentFile(filename);
 	};
 
 	//proto.play_file = { arg self, file, node;
@@ -533,9 +606,9 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 			//"~/code/sc/seco/vlive/repeat/capsule/",
 		//].select(_.notNil);
 		proto.update_quicklistview;
-		self.player = self.player ?? { Pdef(\FileDialogPreview) };
-		self.player.quant = 0;
-		proto.playerwrapper = PlayerWrapper(proto.player);
+		//self.player = self.player ?? { Pdef(\FileDialogPreview) };
+		//self.player.quant = 0;
+		//proto.playerwrapper = PlayerWrapper(proto.player);
 		proto.auto_mode = proto.auto_mode ?? 0;
 		//proto.auto_mode.debug("auto_modexx");
 		changepath.(fileview, path);
@@ -558,9 +631,9 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	okLabel = if(isSaving) { "Save" } { "Open" };
 
 	preview.layout = HLayout (
-		Param(proto.player, \gain).asKnob.fixedHeight_(25),
-		proto.playerwrapper.asView,
-		Param(Message(proto), \auto_mode, ParamBoolSpec()).asButton("Auto"),
+		Param(baseProto.player, \gain).asKnob.fixedHeight_(25),
+		PlayerWrapper(ProtoTemplateDef(\filemanager_node).player).asView.label_("Preview"),
+		Param(Message(proto), \auto_mode, ParamBoolSpec()).asCheckBox("Auto play"),
 		[proto.filenameview.fixedHeight_(25), stretch:4],
 			BasicButton.new.string_(okLabel).action_({
 				if(isSaving) {
@@ -592,13 +665,13 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	VLayout (
 		HLayout (
 			BasicButton.new.string_("+").action_({
-				ProtoTemplateDef(\filemanager_quicklist).addQuickPath(node.fullPath);
+				quicklistProto.addQuickPath(node.fullPath);
 				proto.update_quicklistview;
 				//proto.save_quicklist;
 				//PathName("//bin").fullPath
 			}).maxWidth_(30),
 			BasicButton.new.string_("-").action_({
-				ProtoTemplateDef(\filemanager_quicklist).removeQuickPath(node.fullPath);
+				quicklistProto.removeQuickPath(node.fullPath);
 				proto.update_quicklistview;
 			}).maxWidth_(30),
 			BasicButton.new.string_("Up").action_({
