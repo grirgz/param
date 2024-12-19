@@ -377,29 +377,40 @@ TimelineEventList : List {
 	}
 
 	setEndPosition { arg time;
+		var tev;
 		block { arg break;
 			this.do { arg ev;
 				if(ev[\type] == \end) {
 					ev[\absTime] = time;
+					tev = ev;
 					break.value;
 				}
+				// FIXME: create end if not existing ?
 			}
 		};
 		// FIXME: changed signal ?
 		this.reorder;
+		if(tev.notNil) {
+			tev.changed(\refresh);
+		};
 	}
 
 	setStartPosition { arg time;
+		var tev;
 		block { arg break;
 			this.do { arg ev;
 				if(ev[\type] == \start) {
 					ev[\absTime] = time;
+					tev = ev;
 					break.value;
 				}
 			}
 		};
 		// FIXME: changed signal ?
 		this.reorder;
+		if(tev.notNil) {
+			tev.changed(\refresh);
+		};
 	}
 
 	presetCompileString {

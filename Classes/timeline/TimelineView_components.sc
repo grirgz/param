@@ -399,6 +399,7 @@ TimelineSecondRulerView : TimelineRulerView {
 
 TimelineLocatorBarView : TimelineView {
 	// this is the horizontal bar where are displayed the start and stop events and also the locators 
+	// and the grey band outside play loop
 
 	specialInit {
 		//"SPECIAL INIT".debug;
@@ -466,6 +467,8 @@ TimelineLocatorBarView : TimelineView {
 		var grid;
 		var nstart, nend;
 
+		//this.class.debug("drawFunc start");
+
 		pen.width = 1;
 		pen.color = background; // background color
 		backgrDrawFunc.value; // background draw function
@@ -480,6 +483,7 @@ TimelineLocatorBarView : TimelineView {
 				Pen.fill;
 			};
 			if(item.model.type == \end) {
+				//[item.origin, item.model].debug("end node");
 				nend = this.gridPointToPixelPoint(item.origin).x;
 				Pen.addRect(Rect(nend,bounds.origin.y, bounds.right - nstart, bounds.height ));
 				Pen.color = Color.black.alpha_(0.2);
@@ -488,7 +492,10 @@ TimelineLocatorBarView : TimelineView {
 			
 		};
 
+		//this.class.debug("drawFunc nodes");
+
 		this.drawNodes;
+		//this.class.debug("drawFunc end");
 		
 
 	}
@@ -511,14 +518,14 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
-			//[model, origin].debug("node action before");
+			//[this.class, model, origin].debug("node action before");
 			model[timeKey] = origin.x;
 			model[labelKey] = label;
 			//model[lenKey] = extent.x;
 		};
 
 		refresh = {
-			//"TimelineViewLocatorLineNode: refresh: 1".debug;
+			//[this.class, model, origin].debug("node refresh before");
 			origin = Point(model[timeKey], 0);
 			//"TimelineViewLocatorLineNode: refresh: 2".debug;
 			color = Color.black;
@@ -568,7 +575,7 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 
 		// FIXME: this lines are here because I need to freeze size and ypos
 		extent = parent.pixelExtentToGridExtent(Point(width,height)); 
-		origin = Point(model[timeKey], 0);
+		//origin = Point(model[timeKey], 0);
 
 		pos = this.origin;
 		point = Point(parent.gridPointToPixelPoint(pos).x, 1);

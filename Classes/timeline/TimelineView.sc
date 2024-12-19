@@ -1126,9 +1126,12 @@ TimelineView : SCViewHolder {
 	}
 
 	setEndPosition { arg time;
+		//this.class.debug("setEndPosition start --");
 		model.setEndPosition(time);
 		//model.print;
+		//this.class.debug("setEndPosition done, now refresh");
 		this.refreshEventList;
+		//this.class.debug("setEndPosition end");
 	}
 
 	setStartPosition { arg time;
