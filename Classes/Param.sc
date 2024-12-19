@@ -1600,6 +1600,27 @@ Param {
 		}, update, nil, action, cursorAction: cursorAction)
 	}
 
+	mapCheckBox { arg view, action;
+		var update = { arg view, param;
+			var size;
+			{
+				var val;
+				// FIXME: not sure why default is not used (in stepseqitem)
+				// setting it in GUI for the moment
+				if(param.get.isNil) {
+					val = false;
+				} {
+					val = param.normGet;
+				};
+				view.value = val.asBoolean;
+			}.defer
+		};
+		this.makeSimpleController(view, { arg view, param;
+			var size;
+			param.normSet(view.value.asInteger);
+		}, update, nil, action)
+	}
+
 	mapMenuAction { arg view, label, action;
 		// support only boolean for the moment
 		// no need for update, menus are temporary (and there is no .onClose method)
@@ -1730,6 +1751,14 @@ Param {
 		var but;
 		label = label ?? { this.propertyLabel ?? { "" }};
 		but = BoolButton.new.string_(label).minWidth_(10);
+		but.mapParam(this);
+		^but;
+	}
+
+	asCheckBox { arg label;
+		var but;
+		label = label ?? { this.propertyLabel ?? { "" }};
+		but = CheckBox.new.string_(label).minWidth_(10);
 		but.mapParam(this);
 		^but;
 	}

@@ -545,6 +545,21 @@
 	}
 }
 
++CheckBox {
+	unmapParam {
+		Param.unmapView(this);
+		this.value = false;
+	}
+
+	mapParam { arg param;
+		if(param.isNil) {
+			this.unmapParam
+		} {
+			param.mapCheckBox(this);
+		}
+	}
+}
+
 +EZKnob {
 	unmapParam { arg mapLabel=true;
 		Param.unmapEZKnob(this, mapLabel);
