@@ -62,19 +62,28 @@ ParamGroup : List {
 		this.reject({ arg p; p.isSet.not })
     }
 
-	rejectByKey { arg keylist;
+	rejectByProperty { arg keylist;
 		if(keylist.isSequenceableCollection.not) {
 			keylist = [keylist]
 		};
 		^this.reject({ arg x; keylist.includes(x.propertyRoot) })
 	}
 
-	selectByKey { arg keylist;
+	selectByProperty { arg keylist;
 		if(keylist.isSequenceableCollection.not) {
 			keylist = [keylist]
 		};
 		^this.select({ arg x; keylist.includes(x.propertyRoot) })
 	}
+
+	rejectByKey { arg keylist; // deprecated
+		^this.rejectByProperty(keylist)
+	}
+
+	selectByKey { arg keylist; // deprecated
+		^this.selectByProperty(keylist)
+	}
+
 
 	rejectSystemParams {
 		^this.rejectByKey([ \gate, \doneAction, \trig ])
@@ -145,7 +154,7 @@ ParamGroup : List {
 		// TODO: write asPresetCompileStringNdef and Pdef and each other Param type
 		^"\nPbind(\n\t%\n)\n".format(
 			this.collect({ arg p; 
-				"%, %,".format(p.property.asCompileString, p.get.asCompileString)
+				"%, %,".format(p.property.asCompileString, p.getRaw.asCompileString)
 			}).join("\n\t")
 		)
 	}
@@ -209,7 +218,7 @@ ParamGroup : List {
     getEventCompileString { arg onlySet=true;
 		var ev = ();
 		this.do { arg p, idx;
-			if(p.isSet != false) {
+			if(onlySet.not or: {p.isSet != false}) {
 				ev[p.property] = p.get
 			} 
 		};

@@ -79,6 +79,10 @@ WindowDef(\PdefEditor, { arg me, key=\default;
 									me.closeWindow;
 								})
 							},
+							MenuAction("Refresh", {
+								me.front(key);
+							})
+
 						].reject(_.isNil)
 				).front;
 				//WindowDef(\PdefEditorOverlayMenu, { arg def, model, view, x=0, y=0;

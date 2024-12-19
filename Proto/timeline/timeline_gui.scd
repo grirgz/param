@@ -2805,9 +2805,6 @@ WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 			]),
 		),
 		HLayout(
-			BasicButton.new.string_("Cancel").action_({
-				def.closeWindow;
-			}),
 			BasicButton.new.string_("OK").action_({
 				var label;
 				def.closeWindow;
@@ -2816,7 +2813,10 @@ WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 				};
 				Log(\Param).debug("okhook itemId:%, str:%", selectedLibId, label);
 				okHook.(def, selectedLibId, label);
-			})
+			}),
+			BasicButton.new.string_("Cancel").action_({
+				def.closeWindow;
+			}),
 		)
 	)
 
@@ -2882,9 +2882,6 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook, tagSpec;
 			//]),
 		),
 		HLayout(
-			BasicButton.new.string_("Cancel").action_({
-				def.closeWindow;
-			}),
 			BasicButton.new.string_("OK").action_({
 				var label;
 				if(namefield.string.trim != "") {
@@ -2896,7 +2893,10 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook, tagSpec;
 					Log(\Param).error("Please provide a name");
 					WindowDef(\OkDialog).front("Please provide a name, it will be used a the key to store the object");
 				};
-			})
+			}),
+			BasicButton.new.string_("Cancel").action_({
+				def.closeWindow;
+			}),
 		)
 	)
 });

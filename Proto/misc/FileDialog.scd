@@ -9,11 +9,15 @@ ProtoTemplateDef(\filemanager_node, (
 	new: { arg self, name;
 		self = self.copy;
 		//[name, name.class].debug("new name");
-		if(name.isKindOf(String)) {
-			name = PathName(name);
+		if(name == "recent://") {
+			ProtoTemplateDef(\filemanager_recent_files).new(name);
+		} {
+			if(name.isKindOf(String)) {
+				name = PathName(name);
+			};
+			self.pathName = name;
+			self;
 		};
-		self.pathName = name;
-		self;
 	},
 
 	extension: { arg self;
@@ -86,8 +90,163 @@ ProtoTemplateDef(\filemanager_node, (
 	asString: { arg self;
 		self.pathName.fullPath;
 	},
+));
+ProtoTemplateDef(\filemanager_special_node, (
+	parent: ProtoTemplateDef(\filemanager_node),
+
+	play: { arg self; },
+
+	typeLabel: { arg self;
+		\special
+	},
+
+	isFile: { arg self;
+		false
+	},
+
+	isFolder: { arg self;
+		true
+	},
+
+	isChoosable: { arg self;
+		false
+	},
+
+	splitPath: { arg self;
+		[ self  ]
+	},
+
+	asString: { arg self;
+		self.fullPath;
+	},
+));
+ProtoTemplateDef(\filemanager_quicklist, (
+	parent: ProtoTemplateDef(\filemanager_special_node),
+
+	config_file: Platform.userConfigDir +/+ "filemanager_quicklist.sc",
+
+	className: { arg self;
+		ProtoTemplateDef(\filemanager_quicklist);
+	},
+
+	new: { arg self, name;
+		self = self.copy;
+		//[name, name.class].debug("new name");
+		self;
+	},
+
+	currentWorkingDir: { arg self;
+		try { PathName(Document.current.path).pathOnly } ? "~"
+	},
+
+	children: { arg self;
+		[
+			ProtoTemplateDef(\filemanager_node).new("/").name_("Root /"),
+			ProtoTemplateDef(\filemanager_node).new("~").name_("Home ~"),
+			ProtoTemplateDef(\filemanager_recent_files).new,
+			ProtoTemplateDef(\filemanager_node).new(self.currentWorkingDir).name_("Cwd %".format(self.currentWorkingDir)),
+
+		] ++ self.quicklist.collect { arg path, idx;
+			ProtoTemplateDef(\filemanager_node).new(path)
+		};
+	},
+
+	quicklist: { arg self;
+		self[\quicklist] = List.new;
+		self[\quicklist];
+	},
+
+	addRecentFile: { arg self, path;
+		if(self.recent_files_list.includesEqual(path).not) {
+			self.recent_files_list = self.recent_files_list.add(path);
+			self.save_quicklist;
+		}
+	},
+
+	addQuickPath: { arg self, path;
+		if(self.quicklist.includesEqual(path).not) {
+			self.quicklist = self.quicklist.add(path);
+			self.save_quicklist;
+		}
+	},
+
+	removeQuickPath: { arg self, path;
+		var idx = self.quicklist.detectIndex{ arg x; x == path };
+		if(idx.notNil) {
+			self.quicklist.removeAt(idx);
+			self.save_quicklist;
+		};
+	},
+
+	save_quicklist: { arg self;
+		File.use(self.config_file, "w", { arg file;
+			file.write("// FileDialog configuration from Param quark\n");
+			file.write(
+				"ProtoTemplateDef(%).quicklist = List[\n%];\n".format(
+					self.key.asCompileString,
+					self.quicklist.collect({ arg x; "\t%,\n".format(x.asCompileString)}).join
+				)
+			);
+			file.write(
+				"ProtoTemplateDef(%).recent_files_list = List[\n%];\n".format(
+					self.key.asCompileString,
+					self.recent_files_list.collect({ arg x; "\t%,\n".format(x.asCompileString)}).join
+				)
+			)
+		});
+	},
+
+	load_quicklist: { arg self;
+		if(self.config_file.notNil) {
+			self.config_file.load;
+		};
+	},
+
+	name: { arg self;
+		"Quicklist";
+	},
+
+	fullPath: { arg self;
+		"quicklist://"
+	},
+
+	parentNode: { arg self;
+		self
+	},
 
 ));
+ProtoTemplateDef(\filemanager_recent_files, (
+	parent: ProtoTemplateDef(\filemanager_special_node),
+
+	new: { arg self, name;
+		self = self.copy;
+		//[name, name.class].debug("new name");
+		self;
+	},
+
+	children: { arg self;
+		ProtoTemplateDef(\filemanager_quicklist).recent_files_list.collect { arg path, idx;
+			ProtoTemplateDef(\filemanager_node).new(path);
+		};
+	},
+
+	className: { arg self;
+		ProtoTemplateDef(\filemanager_recent_files);
+	},
+
+	name: { arg self;
+		"Recent files"
+	},
+
+	fullPath: { arg self;
+		"recent://"
+	},
+
+	parentNode: { arg self;
+		ProtoTemplateDef(\filemanager_quicklist).new;
+	},
+));
+		ProtoTemplateDef(\filemanager_quicklist)[\parent][\parent];
 
 WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=false;
 	// callback(file_full_path_to_open)
@@ -101,7 +260,9 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	var proto = ProtoDef(\filemanager_player);
 	var name_field;
 	var nodelist;
+	var quicknodelist;
 	var defaultFilename;
+	var okLabel;
 	nodeClass = nodeClass ?? { ProtoTemplateDef(\filemanager_node) };
 
 	name_field = TextField.new;
@@ -132,7 +293,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	fileview = ListView.new;
 	changepath = { arg view, path; // called with double click
 		var newnode;
-		//[path, nodeClass.keys].debug("changepath: ");
+		[path, nodeClass.keys].debug("changepath: ");
 		newnode = nodeClass.new(path);
 		if(newnode.isFolder) {
 			node = newnode;
@@ -227,38 +388,43 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		
 		//[view.value, view.items].debug("double click select: ");
 		if(clickCount == 2 and: {view.items.size > 0}) {
-			item = view.items[view.value];
-			if(item == "Recent files") {
-				proto.show_recent_files
-			} {
-				changepath.(fileview, item)
-			};
+			item = quicknodelist[view.value];
+			changepath.(fileview, item.fullPath);
+			//if(item == "Recent files") {
+				//changepath.(fileview, "recents://")
+			//} {
+				//changepath.(fileview, item)
+			//};
 		}
 	});
 
 	proto.update_quicklistview = { arg self;
-		quicklist.items = proto.quicklist.select(_.notNil);	
+		quicknodelist = ProtoTemplateDef(\filemanager_quicklist).new.children;
+		quicklist.items = quicknodelist.collect(_.label).asArray;
+		[ quicknodelist, quicklist.items ].debug("gni ?");
 	};
 	proto.save_quicklist = { arg self;
-		File.use(self.config_file, "w", { arg file;
-			file.write(
-				"ProtoDef(%).quicklist = List[\n%];\n".format(
-					self.key.asCompileString,
-					self.quicklist.collect(_.asCompileString).join(",\n")
-				)
-			);
-			file.write(
-				"ProtoDef(%).recent_files_list = List[\n%];\n".format(
-					self.key.asCompileString,
-					self.recent_files_list.collect(_.asCompileString).join(",\n")
-				)
-			)
-		});
+		ProtoTemplateDef(\filemanager_quicklist).save_quicklist;
+		//File.use(self.config_file, "w", { arg file;
+			//file.write(
+				//"ProtoDef(%).quicklist = List[\n%];\n".format(
+					//self.key.asCompileString,
+					//self.quicklist.collect(_.asCompileString).join(",\n")
+				//)
+			//);
+			//file.write(
+				//"ProtoDef(%).recent_files_list = List[\n%];\n".format(
+					//self.key.asCompileString,
+					//self.recent_files_list.collect(_.asCompileString).join(",\n")
+				//)
+			//)
+		//});
 	};
 	proto.load_quicklist = { arg self;
-		if(self.config_file.notNil) {
-			self.config_file.load;
-		};
+		ProtoTemplateDef(\filemanager_quicklist).load_quicklist;
+		//if(self.config_file.notNil) {
+			//self.config_file.load;
+		//};
 	};
 
 	proto.check_name_field = { arg self, callback;
@@ -321,8 +487,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		} {
 			filename = cwd;
 		};
-		proto.recent_files_list.add(filename);
-		proto.save_quicklist;
+		ProtoTemplateDef(\filemanager_quicklist).addRecentFile(filename);
 	};
 
 	//proto.play_file = { arg self, file, node;
@@ -354,19 +519,19 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		//"wtf".debug;
 		proto.config_file = Platform.userConfigDir +/+ "filemanager_quicklist.sc";
 		proto.load_quicklist;
-		proto.quicklist = proto.quicklist ? [
-			"Recent files",
-			path, 
-			"/", 
-			"~", 
-			"~/Musique/",
-			"~/Musique/sc/samplekit/",
-			"~/Musique/sc/reckit/",
-			"~/Musique/sc/samplekit/com/",
-			"~/code/sc/seco/vlive/",
-			"~/code/sc/seco/vlive/repeat/",
-			"~/code/sc/seco/vlive/repeat/capsule/",
-		].select(_.notNil);
+		//proto.quicklist = proto.quicklist ? [
+			//"Recent files",
+			//path, 
+			//"/", 
+			//"~", 
+			//"~/Musique/",
+			//"~/Musique/sc/samplekit/",
+			//"~/Musique/sc/reckit/",
+			//"~/Musique/sc/samplekit/com/",
+			//"~/code/sc/seco/vlive/",
+			//"~/code/sc/seco/vlive/repeat/",
+			//"~/code/sc/seco/vlive/repeat/capsule/",
+		//].select(_.notNil);
 		proto.update_quicklistview;
 		self.player = self.player ?? { Pdef(\FileDialogPreview) };
 		self.player.quant = 0;
@@ -390,12 +555,14 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	proto.filenameview = StaticText.new.string_("...");
 	proto.init;
 
+	okLabel = if(isSaving) { "Save" } { "Open" };
+
 	preview.layout = HLayout (
-		Param(proto.player, \gain).asKnob,
+		Param(proto.player, \gain).asKnob.fixedHeight_(25),
 		proto.playerwrapper.asView,
-		Param(Message(proto), \auto_mode, XBoolSpec()).asButton("Auto"),
-		[proto.filenameview, stretch:4],
-			BasicButton.new.string_("OK").action_({
+		Param(Message(proto), \auto_mode, ParamBoolSpec()).asButton("Auto"),
+		[proto.filenameview.fixedHeight_(25), stretch:4],
+			BasicButton.new.string_(okLabel).action_({
 				if(isSaving) {
 					var fpath = proto.cwd+/+name_field.value;
 					if(File.exists(fpath)) { // FIXME: should use .exists from node proto to not break the API
@@ -425,17 +592,14 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	VLayout (
 		HLayout (
 			BasicButton.new.string_("+").action_({
-				if(proto.quicklist.includesEqual(node.fullPath).not) {
-					proto.quicklist = proto.quicklist.add(node.fullPath);
-					proto.update_quicklistview;
-					proto.save_quicklist;
-					PathName("//bin").fullPath
-				}
+				ProtoTemplateDef(\filemanager_quicklist).addQuickPath(node.fullPath);
+				proto.update_quicklistview;
+				//proto.save_quicklist;
+				//PathName("//bin").fullPath
 			}).maxWidth_(30),
 			BasicButton.new.string_("-").action_({
-				proto.quicklist.removeAt(quicklist.value ? 0);
+				ProtoTemplateDef(\filemanager_quicklist).removeQuickPath(node.fullPath);
 				proto.update_quicklistview;
-				proto.save_quicklist;
 			}).maxWidth_(30),
 			BasicButton.new.string_("Up").action_({
 				changepath.(fileview, node.parentNode.fullPath)
