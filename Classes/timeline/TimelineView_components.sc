@@ -10,6 +10,18 @@ TimelineRulerView : TimelineView {
 	//var <>mygrid; // debug, already in parentclass
 	var <>cursor;
 
+	specialInit { 
+		this.view.mouseDownAction = nil;
+		this.view.mouseMoveAction = nil;
+		this.view.mouseUpAction = nil;
+		this.view.drawFunc = { this.drawFunc };
+		this.virtualBoundsOffsetY = 0;
+	}
+
+	refreshEventList {
+		// this view draw no nodes
+	}
+
 	mapCursor { arg curs;
 		cursor = curs;
 		this.view.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
@@ -30,14 +42,6 @@ TimelineRulerView : TimelineView {
 			this.refresh;
 			mouseDownAction.(me, px, py, mod, buttonNumber, clickCount);
 		}
-	}
-
-	specialInit { 
-		this.view.mouseDownAction = nil;
-		this.view.mouseMoveAction = nil;
-		this.view.mouseUpAction = nil;
-		this.view.drawFunc = { this.drawFunc };
-		this.virtualBoundsOffsetY = 0;
 	}
 
 	drawCursor {
@@ -527,7 +531,9 @@ TimelineViewLocatorNode : TimelineViewEventNode {
 			//"TimelineViewLocatorLineNode: refresh: 5".debug;
 			//extent.debug("---------extent");
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
-			parent.model.changed(\redraw);
+			this.refreshEnabledDo {
+				parent.model.changed(\redraw);
+			};
 			//"TimelineViewLocatorLineNode: refresh: 6".debug;
 			//[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
@@ -733,7 +739,7 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 ////// y rulers
 // the ruler is a small bar, the grid under the timeline is drawn by TimelineView.drawGridY
 
-MidinoteTimelineRulerView : TimelineView {
+MidinoteTimelineRulerView : TimelineRulerView {
 	// the piano roll!
 	var <>mygrid; // debug
 	//var >virtualBounds;
@@ -793,7 +799,7 @@ MidinoteTimelineRulerView : TimelineView {
 
 }
 
-KitTimelineRulerView : TimelineView {
+KitTimelineRulerView : TimelineRulerView {
 	// simple y ruler for KitTimeline
 	var <>mygrid; // debug
 	var <>wrapper;
@@ -811,7 +817,7 @@ KitTimelineRulerView : TimelineView {
 	}
 }
 
-ParamTimelineRulerView : TimelineView {
+ParamTimelineRulerView : TimelineRulerView {
 	// simple y ruler for ParamTimeline
 	var <>mygrid; // debug
 	var <>paramTimeline;
@@ -888,6 +894,10 @@ CursorTimelineView : TimelineView {
 			//"cursorisnil:::!!!!".debug;
 		};
 
+	}
+
+	refreshEventList {
+		// this view draw no nodes
 	}
 
 	mapCursor { arg cur;
@@ -1087,7 +1097,6 @@ CursorTimelineView : TimelineView {
 		};
 		
 	}
-	
 }
 
 
@@ -1344,7 +1353,6 @@ TimelineDrawer {
 			}
 		}
 	}
-
 }
 
 
@@ -1377,24 +1385,30 @@ TimelineScroller : SCViewHolder {
 				if(timeline.viewport.left != slider.lo or: { timeline.viewport.width != range }) {
 					timeline.viewport.left = slider.lo;
 					timeline.viewport.width = range;
-					timeline.changed(\viewport);
 					//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("hrange action");
-					timeline.refresh;
+					timeline.lazyRefresh {
+						timeline.refresh;
+						timeline.changed(\viewport);
+						timeline.refreshDeferred = false;
+					};
 				};
 			} {
 				if(timeline.viewport.top != slider.lo or: { timeline.viewport.height != range }) {
 					timeline.viewport.top = slider.lo;
 					timeline.viewport.height = range;
-					timeline.changed(\viewport);
 					//[timeline.viewport, slider.hi, slider.lo, slider.range].debug("vrange action");
-					timeline.refresh;
+					timeline.lazyRefresh {
+						timeline.refresh;
+						timeline.changed(\viewport);
+						timeline.refreshDeferred = false;
+					};
 				};
 			}
 
 		};
 
 		// make updater
-		this.view.onChange(timeline, 'viewport', { arg caller, receiver, morearg;
+		this.view.followChange(timeline, 'viewport', { arg caller, receiver, morearg;
 			//[caller, receiver, morearg].debug("onChange args");
 			this.refresh(timeline);
 		});

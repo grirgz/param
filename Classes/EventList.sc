@@ -205,11 +205,13 @@ TimelineEventList : List {
 
 	//////////// added by ggz
 
-	removeEvent { arg event;
+	removeEvent { arg event, refresh=true;
 		this.remove(event);
-		this.calcRelDurs;
-		this.setPlayDursToRelDur;
-		this.changed(\refresh);
+		if(refresh == true) {
+			this.calcRelDurs;
+			this.setPlayDursToRelDur;
+			this.changed(\refresh);
+		}
 	}
 
 	splitEvent { arg event, durFromEventStart;
@@ -306,7 +308,7 @@ TimelineEventList : List {
 			var absTime = 0;
 			var ev, prev;
 			var first = true;
-			Log(\Param).debug("XEventList.newfrom start");
+			//Log(\Param).debug("XEventList.newfrom start");
 			str = pat.asStream;
 			ins.start(absTime);
 			inval = inval ? Event.default;
@@ -321,7 +323,7 @@ TimelineEventList : List {
 						//ins[0].absTime = ev;
 						if(ev.isKindOf(Number)) {
 							absTime = ev;
-							Log(\Param).debug("starting rest");
+							//Log(\Param).debug("starting rest");
 						} {
 							if( ev.isRest == true or: { ev.use { ~midinote.value } == \rest }) {
 								absTime = ev.use{~delta.value} ? ev.use{~dur.value};
@@ -329,9 +331,9 @@ TimelineEventList : List {
 						}
 					};
 					if(ev.notNil) {
-						Log(\Param).debug("ev %", ev);
+						//Log(\Param).debug("ev %", ev);
 						ev[\absTime] = absTime;
-						Log(\Param).debug("XEventList.newFrom: absTime: %, evdur: %", absTime, ev[\dur]);
+						//Log(\Param).debug("XEventList.newFrom: absTime: %, evdur: %", absTime, ev[\dur]);
 						absTime = absTime + ( ev.use{~delta.value} ? ev.use{~dur.value} );
 						// FIXME: hardcode sustain because it's in function of \dur which is overwritten in calcRelDurs
 						// 		should maybe use \delta in calcRelDurs, but this can break everything!
@@ -341,7 +343,7 @@ TimelineEventList : List {
 						ev[\delta] = nil; 
 						ins.addEvent(ev);
 						//ev.debug("endev");
-						Log(\Param).debug("endev:%", ev);
+						//Log(\Param).debug("endev:%", ev);
 					} {
 						break.value;
 					};
@@ -349,7 +351,7 @@ TimelineEventList : List {
 				}
 			};
 			//endtime = absTime + prev.use({ ~sustain.value(prev) }); // this is wrong
-			Log(\Param).debug("XEventList.newfrom end 1");
+			//Log(\Param).debug("XEventList.newfrom end 1");
 			endtime = absTime;
 
 			// remove rests because not handled by timeline (should display them transparent)

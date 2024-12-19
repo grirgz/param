@@ -16,11 +16,15 @@
 	editorInsert { arg inblock=true;
 		//this.pbcopy;
 		var str = this;
+		var filename = "/tmp/scclipboard";
 		if(inblock) {
 			str = "(\n%\n);\n".format(str)
 		};
 
-		"cat > /tmp/scclipboard <<EOD\n%\nEOD".format(str).unixCmd; // bug with xsel + vim + big buffer
-		"vim --servername scvim --remote-send '<Esc>:read /tmp/scclipboard<Enter>'".unixCmd;
+		//"cat > % <<EOD\n%\nEOD".format(filename, str).unixCmd; // bug with xsel + vim + big buffer
+		File.use(filename, "w") { arg file;
+			file.write(str)
+		};
+		"vim --servername scvim --remote-send '<Esc>:read %<Enter>'".format(filename).unixCmd;
 	}
 }

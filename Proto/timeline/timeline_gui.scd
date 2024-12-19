@@ -586,6 +586,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		var cursor_timeline;
 		
 		cursor_timeline = CursorTimelineView.new;
+		cursor_timeline.refreshEnabled = self.refreshEnabled;
 
 		//~cursor_timeline = cursor_timeline;
 		self.cursor_timeline = cursor_timeline;
@@ -604,10 +605,12 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.makeCursorTimelineView;
 
 		ruler_x_beat = TimelineRulerView.new;
+		ruler_x_beat.refreshEnabled = self.refreshEnabled;
 		ruler_x_beat.mapCursor(self.cursor);
 		ruler_x_beat.quant = self.quant_ref;
 		self.ruler_x_beat = ruler_x_beat;
 		locatorbar = TimelineLocatorBarView.new;
+		locatorbar.refreshEnabled = self.refreshEnabled;
 		self.locatorbar = locatorbar;
 		self.locatorbar.mouseDownAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
 			if(clickCount == 2) {
@@ -699,6 +702,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		var track_header;
 		var track_header_view;
 		var quant_popup;
+		self.refreshEnabled = false;
 		layout = HLayout.new;
 		self.layout = layout;
 		vlayout = VLayout.new;
@@ -706,6 +710,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 		self.save_timeline_properties;
 		timeline = self.makeTimelineView;
+		timeline.refreshEnabled = self.refreshEnabled;
 		self.timeline = timeline;
 		self.load_timeline_properties;
 		self.initTimelineView;
@@ -795,7 +800,18 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.layout = layout;
 		//self.zoom_fit;
 
+		self.refreshEnabled = true;
 		layout;
+	},
+
+	refreshEnabled_: { arg self, val;
+		self[\refreshEnabled] = val;
+		[self.timeline, self.ruler_x, self.ruler_x_beat, self.ruler_y, self.cursor_timeline, self.locatorbar].do { arg item, idx;
+			if(item.notNil and: {item.isKindOf(TimelineView)}) {
+				item.refreshEnabled = val;
+			};
+		};
+		
 	},
 
 	showTimelineContextMenu: { arg self, chosennode;
@@ -1157,6 +1173,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 	doubleScoreAction: { arg self;
 		self.timeline_model.addHistorySnapshot;
 		self.eventList = self.eventList.clone.double;
+		self.timeline.refresh;
 	},
 
 	deleteAction: { arg self;
@@ -2234,6 +2251,7 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 		//self.track_header = View.new;
 		var oldnote;
 		self.ruler_y = MidinoteTimelineRulerView.new;
+		self.ruler_y.refreshEnabled = self.refreshEnabled;
 		self.track_header = self.ruler_y;
 		self.ruler_y.mimicTimeline(timeline);
 		self.ruler_y.view.minWidth_(50);
@@ -2269,7 +2287,7 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 		//"noteTimelinePanelView.makeLayout af".debug;
 		self.timeline.view.followChange(self.eventloop, \list, { 
 			self.refresh;
-		});
+		}, false);
 		// not needed because of default event factory of TimelineView
 		//if(self.timeline_model.eventFactory.notNil) {
 		//	self.timeline.eventFactory = { arg pos, nodesize;

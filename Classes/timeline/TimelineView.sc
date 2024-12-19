@@ -5,7 +5,6 @@
 
 TimelineView : SCViewHolder {
 
-	var <>mygrid; // debug;
 
 	var <userView;
 	var <selectionView;
@@ -24,6 +23,7 @@ TimelineView : SCViewHolder {
 	var <>quant;
 	var <>enableQuant = true;
 	var win;
+	// virtualBounds because it may draw on a sub rectangle of a parent UserView
 	var >virtualBounds, <>virtualBoundsOffsetX = 5, <>virtualBoundsOffsetY = 5;
 	var downAction, upAction, trackAction, keyDownAction, rightDownAction, overAction, connAction;
 	var <>mouseDownAction;
@@ -79,6 +79,9 @@ TimelineView : SCViewHolder {
 	var <>changeCurveMode = false;
 
 	var useSpecInConversions = true; // not used
+	// debug
+	
+	var <>mygrid;
 
 	//// keys
 
@@ -109,7 +112,6 @@ TimelineView : SCViewHolder {
 
 		this.refreshEnabled = false; // should disable refresh because not initialzed yet
 		this.valueKey = xposyKey ? \midinote;
-		this.refreshEnabled = true;
 
 		//if((win= w).isNil, {
 		//	win = GUI.window.new("ParaSpace",
@@ -160,6 +162,11 @@ TimelineView : SCViewHolder {
 		previousNormSelRect = Rect(0,0,1,1);
 
 		selectionView.drawFunc_({ this.drawSelection });
+
+		lazyRefreshFunc = {
+			this.refresh;
+			refreshDeferred = false;
+		};
 
 		userView
 			//.canFocus_(true)
@@ -236,6 +243,7 @@ TimelineView : SCViewHolder {
 		;
 
 		this.specialInit;
+		this.refreshEnabled = true;
 	}
 
 	specialInit {
@@ -249,7 +257,10 @@ TimelineView : SCViewHolder {
 	/////////////////
 
 	mapEventList { arg eventlist;
-		//paraNodes.debug("mapEventList");
+		this.class.debug("mapEventList start --");
+		//this.dumpBackTrace;
+		bench {
+
 		model = eventlist;
 		this.refreshEventList;
 		//paraNodes.debug("mapEventList2");
@@ -257,14 +268,19 @@ TimelineView : SCViewHolder {
 		this.makeUpdater;
 		
 		//[areasize, viewport, paraNodes].debug("mapEventList3");
+		};
+		debug("mapEventList end");
 	}
 		
 	refreshEventList {
 		//model.debug("refreshEventList");
-		this.clearSpace;
-		model.do { arg event;
-			this.addEvent(event)
+		this.noRefreshDo {
+			this.clearSpace;
+			model.do { arg event;
+				this.addEvent(event)
+			};
 		};
+		this.refresh;
 	}
 
 	addEventListSnapshot {
@@ -1021,6 +1037,7 @@ TimelineView : SCViewHolder {
 		selNodes.copy.do({arg node; 
 			this.deleteNode(node, false)
 		});
+		this.refresh;
 	}
 
 	keyDownActionBase { |me, key, modifiers, unicode, keycode |
@@ -1050,7 +1067,7 @@ TimelineView : SCViewHolder {
 		// hook
 
 		keyDownAction.value(me, key, modifiers, unicode, keycode);
-		this.refresh;
+		//this.refresh;
 	}
 
 	keyUpActionBase { |me, key, modifiers, unicode |
@@ -1386,11 +1403,17 @@ TimelineView : SCViewHolder {
 
 		var defered_nodes = List.new;
 		var first = true;
-		//debug("<<<<<<<<<<<< start drawing nodes");
+		var screen_gridrect;
+		var onScreen = { arg node;
+			// rendering is way faster with this function
+			node.rect.intersects(screen_gridrect)
+		};
+		this.class.debug("<<<<<<<<<<<< start drawing nodes");
+		screen_gridrect = this.pixelRectToGridRect(this.virtualBounds);
 		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
 
 		//[this.viewport, this.bounds, this.virtualBounds, this.areasize].debug("drawNodes:bounds");
-		paraNodes.do({arg node;
+		paraNodes.select(onScreen).do({arg node;
 			//[this.class, node, node.spritenum, node.origin, node.extent, node.rect, node.model].debug("drawing node");
 			//[node.rect, this.gridRectToNormRect(node.rect), this.gridRectToPixelRect(node.rect)].debug("drawNodes:rect, norm, pixel");
 
@@ -1458,7 +1481,6 @@ TimelineView : SCViewHolder {
 		if(controller.notNil) {controller.remove};
 		controller = SimpleController(model).put(\refresh, {
 			if(this.view.isNil) {
-				//"COOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOSLCLOCLOCLOSED".debug;
 				controller.remove;
 			} {
 				//"TimelineView get a refresh signal!".debug;
@@ -1805,28 +1827,29 @@ TimelineView : SCViewHolder {
 
 	addEvent { arg event;
 		var node;
-		switch(event[\type],
-			\xxx, {
+		^this.addEventRaw(event);
+		//switch(event[\type],
+			//\xxx, {
 
-			},
-			//\start, {
-			//	"start".debug;
-			//	^nil;
 			//},
-			////\locator, {
-			////	event.debug("label");
+			////\start, {
+			////	"start".debug;
 			////	^nil;
 			////},
-			//\end, {
-			//	"end".debug;
-			//	endEvent = event;
-			//	^nil;
-			//},
-			// else
-			{
-				^this.addEventRaw(event);
-			}
-		)
+			//////\locator, {
+			//////	event.debug("label");
+			//////	^nil;
+			//////},
+			////\end, {
+			////	"end".debug;
+			////	endEvent = event;
+			////	^nil;
+			////},
+			//// else
+			//{
+				//^this.addEventRaw(event);
+			//}
+		//)
 	}
 
 	addEventRaw { arg event;
@@ -1953,11 +1976,11 @@ TimelineView : SCViewHolder {
 		deleteNodeHook.(node, nodenr);
 		if(paraNodes.size > 0, {paraNodes.remove(node)});
 		node.free;
-		model.removeEvent(node.model);
+		model.removeEvent(node.model, refresh);
 		if(refresh == true, {this.refresh});
 	}
 	
-	reconstruct { arg aFunc;
+	reconstruct { arg aFunc; // deprecated for noRefreshDo
 		refreshEnabled = false;
 		aFunc.value( this );
 		refreshEnabled = true;
@@ -1965,10 +1988,22 @@ TimelineView : SCViewHolder {
 	}
 
 	refresh {
+		//Log(\Param).debug("refresh called %", this);
 		if( this.refreshEnabled, { {
+			Log(\Param).debug("refresh run %", this);
+			//this.dumpBackTrace;
 			userView.refresh;
 			selectionView.refresh;
 		}.defer; });
+	}
+
+	noRefreshDo { arg fun;
+		var oldrefresh = this.refreshEnabled;
+		var ret;
+		this.refreshEnabled = false;
+		ret = fun.();
+		this.refreshEnabled = oldrefresh;
+		^ret;
 	}
 
 	refreshSelection {
@@ -1981,11 +2016,15 @@ TimelineView : SCViewHolder {
 		}.defer; });
 	}
 
-	lazyRefresh {
-		if( refreshDeferred.not, {
-			AppClock.sched( 0.02, lazyRefreshFunc );
-			refreshDeferred = true;
-		});
+	lazyRefresh { arg fun;
+		if(~debugLazyRefreshEnabled != false) {
+			if( refreshDeferred.not, {
+				AppClock.sched( ~lazyRefreshDelay ? 0.02, fun ? lazyRefreshFunc );
+				refreshDeferred = true;
+			});
+		} {
+			lazyRefreshFunc.()
+		};
 	}
 
 	findNodeHandle { arg x, y;
@@ -2298,36 +2337,26 @@ ClipTimelineView : TimelineView {
 //// dispatcher
 
 TimelineViewNode {
-	*new { arg parent, nodeidx, event;
-		var type;
-		var node;
-		// FIXME: choose a better type system
-		type = event[\nodeType] ? event[\eventType] ? event[\type];
-		if(event[\timeline].notNil ) {
-			type = \timeline;
-		};
-
-		//Log(\Param).debug("% %".format("TimelineViewNode: new: parent, nodeType/type",[ parent.class, type.asCompileString ]));
-		//Log(\Param).debug("TimelineViewNode: nodeType %".format([ event[\nodeType], event, event.parent ]));
-		node = switch(type,
-			\start, {
+	classvar <>nodedict;
+	*initClass {
+		nodedict = [
+			\start, { arg parent, nodeidx, event;
 				var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
 				res.alpha = 1;
 				res;
 			},
-			\end, {
+			\end, { arg parent, nodeidx, event;
 				var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
 				res.alpha = 1;
 				res;
 			},
-			\eventenv, {
+			\eventenv, { arg parent, nodeidx, event;
 				TimelineViewEventEnvNode(parent, nodeidx, event)
 			},
-			\eventlist, {
+			\eventlist, { arg parent, nodeidx, event;
 				TimelineViewEventListNode(parent, nodeidx, event)
 			},
-			\timeline, {
-				//if(event.timeline.isKindOf(EnvTimeline)) {
+			\timeline, { arg parent, nodeidx, event;
 				switch(event.timeline.eventType,
 					\paramTimeline, {
 						TimelineViewEventEnvNode(parent, nodeidx, event)
@@ -2339,23 +2368,89 @@ TimelineViewNode {
 					}
 				)
 			},
-			\player, {
+			\player, { arg parent, nodeidx, event;
 				TimelineViewEventListNode(parent, nodeidx, event)
 			},
-			\pattern, {
+			\pattern, { arg parent, nodeidx, event;
 				TimelineViewEventListNode(parent, nodeidx, event)
 			},
-			\eventloop, {
+			\eventloop, { arg parent, nodeidx, event;
 				TimelineViewEventLoopNode(parent, nodeidx, event)
 			},
-			\locator, {
+			\locator, { arg parent, nodeidx, event;
 				TimelineViewLocatorLineNode(parent, nodeidx, event)
 			},
-			{
-				//type.asCompileString.debug("mais pourquoi ?? :(");
-				TimelineViewEventNode(parent, nodeidx, event)
-			}
-		);
+		].asDict;
+		
+	}
+	*new { arg parent, nodeidx, event;
+		var type;
+		var node;
+		var nodedict;
+		// FIXME: choose a better type system
+		type = event[\nodeType] ? event[\eventType] ? event[\type];
+		if(event[\timeline].notNil ) {
+			type = \timeline;
+		};
+
+		//Log(\Param).debug("% %".format("TimelineViewNode: new: parent, nodeType/type",[ parent.class, type.asCompileString ]));
+		//Log(\Param).debug("TimelineViewNode: nodeType %".format([ event[\nodeType], event, event.parent ]));
+		//
+		if(~debugOpti != false) {
+
+			node = this.nodedict[type] ??  {
+				{ TimelineViewEventNode(parent, nodeidx, event) }
+			};
+			node = node.value(parent, nodeidx, event);
+		} {
+
+
+			node = switch(type,
+				\start, {
+					var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
+					res.alpha = 1;
+					res;
+				},
+				\end, {
+					var res = TimelineViewLocatorLineNode(parent, nodeidx, event);
+					res.alpha = 1;
+					res;
+				},
+				\eventenv, {
+					TimelineViewEventEnvNode(parent, nodeidx, event)
+				},
+				\eventlist, {
+					TimelineViewEventListNode(parent, nodeidx, event)
+				},
+				\timeline, {
+					switch(event.timeline.eventType,
+						\paramTimeline, {
+							TimelineViewEventEnvNode(parent, nodeidx, event)
+						},
+						\sampleTimeline, {
+							TimelineViewEventSampleNode(parent, nodeidx, event)
+						}, {
+							TimelineViewEventListNode(parent, nodeidx, event)
+						}
+					)
+				},
+				\player, {
+					TimelineViewEventListNode(parent, nodeidx, event)
+				},
+				\pattern, {
+					TimelineViewEventListNode(parent, nodeidx, event)
+				},
+				\eventloop, {
+					TimelineViewEventLoopNode(parent, nodeidx, event)
+				},
+				\locator, {
+					TimelineViewLocatorLineNode(parent, nodeidx, event)
+				},
+				{
+					TimelineViewEventNode(parent, nodeidx, event)
+				}
+			);
+		};
 
 		//Log(\Param).debug("node created: % %".format(node.class, node));
 
@@ -2427,14 +2522,14 @@ TimelineViewEventNode : TimelineViewNodeBase {
 
 		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
-		action = {
+		action = { // change model according to graphical state
 			//[model, origin, extent].debug("node action before");
 			model[timeKey] = origin.x;
 			model[this.posyKey] = origin.y;
 			model[lenKey] = extent.x;
 		};
 
-		refresh = {
+		refresh = { // refresh graphical state from model
 			origin = Point(model[timeKey], model[this.posyKey] ? this.defaultPosyValue);
 			color = ParamViewToolBox.color_ligth;
 			outlineColor = outlineColor ? Color.black;
@@ -2444,7 +2539,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 
 		this.makeUpdater;
 		this.refresh;
-		this.action;
+		//this.action; // FIXME: why calling action ?
 	}
 
 	enablePreview {
@@ -2490,8 +2585,17 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		this.action;
 		parent.action;
 		//parent.model.changed(\refresh);
-		model.changed(\refresh);
-		parent.model.changed(\redraw);
+		this.refreshEnabledDo {
+			model.changed(\refresh);
+			parent.model.changed(\redraw);
+		}
+	}
+
+	refreshEnabledDo { arg fun;
+		if(parent.notNil and: { parent.refreshEnabled == true}) {
+			^fun.()
+		};
+		^nil
 	}
 
 	action {
@@ -2506,7 +2610,6 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		if(controller.notNil) {controller.remove};
 		controller = SimpleController(model).put(\refresh, {
 			if(parent.view.isNil) {
-				//"YOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOo".debug;
 				this.free;
 			} {
 				{
