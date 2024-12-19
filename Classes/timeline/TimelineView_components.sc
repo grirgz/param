@@ -6,7 +6,7 @@
 TimelineRulerView : TimelineView {
 	// this is a X ruler with graduated bars to measure time in beats
 	// you can define start and stop of timeline interactively
-	// also draw the red rectangle for current position (useful for pasting)
+	// also draw the red triangle for current position (useful for pasting)
 	//var <>mygrid; // debug, already in parentclass
 	var <>cursor;
 

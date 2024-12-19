@@ -1033,7 +1033,8 @@ ProtoTemplateDef(\TimelinePanelView, (
 		};
 	},
 
-	pasteAction: { arg self;
+	pasteAction: { arg self, useSameRows=true;
+		// useSameRows: paste on same row it was copied
 		if(self.clipboard.notNil) {
 			var delta;
 			var newnodes;
@@ -1051,6 +1052,9 @@ ProtoTemplateDef(\TimelinePanelView, (
 			//first.debug("first");
 			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
 			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - self.selection_rect.origin;
+			if(useSameRows == true) {
+				delta.y = 0
+			};
 			//self.clipboard.debug("clipboard");
 			self.timeline_model.addHistorySnapshot;
 			self.clipboard.do({ arg event;
@@ -1071,10 +1075,10 @@ ProtoTemplateDef(\TimelinePanelView, (
 			//Log(\Param).debug("new nodes %".format(newnodes));
 			self.timeline.selectNodes(newnodes);
 			//self.timeline.model.changed(\refresh);
+			self.timeline.lastGridPos = Point(self.timeline.lastGridPos.x + self.selection_cursor.rect.extent.x, self.timeline.lastGridPos.y);
 			self.timeline.model.reorder;
 		}
 	},
-
 
 	deleteSelectedNodesHook: { arg self;
 		{ arg tl;

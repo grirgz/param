@@ -44,7 +44,7 @@ TimelineView : SCViewHolder {
 	var gridRulerOffset = 5; // put the 0 mark at start event time
 
 	var <>lastPixelPos;
-	var <>lastGridPos;
+	var <lastGridPos;
 	var <selNodes, outlinecolor, selectFillColor, selectStrokeColor;
 	var keytracker, conFlag; // experimental
 	var nodeSize, swapNode;
@@ -271,7 +271,22 @@ TimelineView : SCViewHolder {
 		model.addList;
 	}
 
-	//////////////////////////
+	////////////////////////// properties
+	
+	areasize_ { arg val;
+		areasize = val;
+		this.changed(\areasize);
+	}
+
+	viewport_ { arg val;
+		viewport = val;
+		this.changed(\viewport);
+	}
+
+	lastGridPos_ { arg val;
+		lastGridPos = val;
+		this.changed(\lastGridPos);
+	}
 
 	startSelPoint_ { arg npoint; // in norm units
 		if(this.selectionCursor.notNil) {
@@ -318,6 +333,8 @@ TimelineView : SCViewHolder {
 			^endSelPoint;
 		}
 	}
+
+
 	///////////////////////////////////////////////////////// input events handling
 	
 	createNode { arg gpos;
@@ -1583,16 +1600,6 @@ TimelineView : SCViewHolder {
 		;
 		// init
 		timeline.changed(\selectedNodes);
-	}
-
-	areasize_ { arg val;
-		areasize = val;
-		this.changed(\areasize);
-	}
-
-	viewport_ { arg val;
-		viewport = val;
-		this.changed(\viewport);
 	}
 
 	///////////////// coordinates conversion
