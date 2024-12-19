@@ -344,6 +344,9 @@ ProtoClassDef(\EventTimeline, (
 		var str = List.new;
 		str = str.add("%.param = %;".format(self.refCompileString(self.key.asCompileString), self.param.asCompileString));
 		str = str.add("%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString));
+		if(self.automationRack.notNil and: { self.automationRack.isEmpty.not }) {
+			str = str.add(self.automationRack.presetCompileString("%.automationRack".format(self.refCompileString)))
+		};
 		str.join($\n);
 	},
 

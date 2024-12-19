@@ -287,6 +287,14 @@ ProtoTemplateDef(\TimelinePanelView, (
 					"split!".debug;
 					self.splitAction;
 				};
+				if(keycode == $z.ascii) { // ^s
+					"undo!".debug;
+					self.undoAction;
+				};
+				if(keycode == $y.ascii) { // ^s
+					"redo!".debug;
+					self.redoAction;
+				};
 				if(keycode == $ .ascii) { // ^s
 					"stop!".debug;
 					self.timeline_model.stopNow;
