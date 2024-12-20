@@ -665,13 +665,13 @@ ProtoClassDef(\ClipTimeline, (
 	keepSamplesInUse: { arg self;
 		self.recordedEvents.do({ arg ev;
 			var tl;
-			Log(\Param).debug("recorded ev: %".format(ev));
+			//Log(\Param).debug("recorded ev: %".format(ev));
 			tl = ev.timeline;
 			if(self.eventList.any{ arg xev; 
-				Log(\Param).debug("eventList ev: %".format(xev));
+				//Log(\Param).debug("eventList ev: %".format(xev));
 				xev.timeline.value === tl 
 		   	}) {
-				Log(\Param).debug("yep i keep: %".format(tl));
+				//Log(\Param).debug("yep i keep: %".format(tl));
 				tl.keepRecordedFile;
 			}
 		})
@@ -726,7 +726,7 @@ ProtoClassDef(\TrackTimeline, (
 		var eventfac;
 		// FIXME: i removed support for PlayerWrapperGroup, think to add it back
 		self.basicInit;
-		Log(\Param).debug("TrackTimeline init 1");
+		//Log(\Param).debug("TrackTimeline init 1");
 		//if(tracks.isKindOf(TrackDef)) {
 			//var trackdef = tracks;
 			////tracks = PlayerWrapperGroup(tracks.children);
@@ -736,7 +736,7 @@ ProtoClassDef(\TrackTimeline, (
 			////}
 		//};
 		//self.eventloop = (list: el, key: { self.key }); // fake eventloop for the moment
-		Log(\Param).debug("TrackTimeline init 2");
+		//Log(\Param).debug("TrackTimeline init 2");
 		//eventfac = ~class_track_event_factory.new(tracks);
 		//self.eventFactory = { eventfac };
 		//self.eventFactory.eventLoop = self.eventloop;
@@ -748,14 +748,14 @@ ProtoClassDef(\TrackTimeline, (
 
 		self.tracks_bypassed = Set.new;
 		//self.wrapper = ProtoTemplateDef(\ParPlayerGroup).new(tracks) !? { arg x; {x} };
-		Log(\Param).debug("TrackTimeline init 3");
+		//Log(\Param).debug("TrackTimeline init 3");
 
 		self.clipList = ProtoClassDef(\ClipTimelineClipList).new(self) !? { arg x; {x} };
 
 		self.updateClipList;
 
 		//"=============trackTimeline: end init".debug;
-		Log(\Param).debug("TrackTimeline init 4");
+		//Log(\Param).debug("TrackTimeline init 4");
 
 		self;
 	},
@@ -784,7 +784,7 @@ ProtoClassDef(\TrackTimeline, (
 				var id;
 				if(clip.isEmpty.not) {
 					id = ProtoDef(\GlobalLibrary).targetToLibId(clip);
-					Log(\Param).debug("id %", id);
+					//Log(\Param).debug("id %", id);
 					self.clipList.addClipIdToClipList(id);
 					id;
 				}
@@ -843,7 +843,7 @@ ProtoClassDef(\NoteTimeline, (
 	},
 
 	trackInstrument_: { arg self, instr;
-		Log(\Param).debug("NoteTimeline % trackInstrument_: %", self.key, [instr.hash, instr.target, instr.libId]);
+		//Log(\Param).debug("NoteTimeline % trackInstrument_: %", self.key, [instr.hash, instr.target, instr.libId]);
 		self[\trackInstrument] = instr;
 		self.param = instr.target;
 	},
@@ -1682,7 +1682,7 @@ ProtoClassDef(\ClipTimelineClipList, (
 
 	eventToClipId: { arg self, ev;
 		var libId;
-		Log(\Param).debug("eventToClipId: ev: %".format(ev));
+		//Log(\Param).debug("eventToClipId: ev: %".format(ev));
 		if([\rest, \start,\end].includes(ev.type)) {
 			nil
 		} {
@@ -1690,7 +1690,7 @@ ProtoClassDef(\ClipTimelineClipList, (
 			if(libId.notNil) {
 				libId
 			} {
-				Log(\Param).debug("eventToClipId: no libId: ev:%", ev);
+				//Log(\Param).debug("eventToClipId: no libId: ev:%", ev);
 				nil;
 			};
 		}
@@ -2039,7 +2039,7 @@ ProtoClassDef(\LoopMaster, (
 
 		});
 		if(parallelPat.notNil) {
-			parallelPat.debug("parallelPat");
+			//parallelPat.debug("parallelPat");
 			pat = Ppar([
 				pat,
 				parallelPat

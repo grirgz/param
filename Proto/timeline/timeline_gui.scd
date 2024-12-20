@@ -644,7 +644,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 			self.timeline = timeline;
 		};
 		self.timeline.mouseDownAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
-			if(clickCount == 2) {
+			if(buttonNumber == 0 and: { clickCount == 2 }) {
 				if(chosennode.notNil) {
 					self.showClipEditor(chosennode.model, self.eventloop.list)
 				};
@@ -885,7 +885,10 @@ ProtoTemplateDef(\TimelinePanelView, (
 					self.zoomFitAction;
 				}),
 
-				MenuAction("Zoom full", {
+				MenuAction("Zoom in selection", {
+					self.zoomSelectionAction;
+				}),
+				MenuAction("Zoom out completely", {
 					self.zoomFullAction;
 				}),
 				MenuAction.separator,
@@ -1191,6 +1194,14 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.refresh;
 	},
 
+	zoomSelectionAction: { arg self;
+		if(self.selection_cursor.rect.extent != Point(0,0)) {
+			self.timeline.viewport = self.timeline.gridRectToNormRect(self.selection_cursor.rect);
+			self.selection_cursor.rect = Rect(0,0,0,0); // erase selection because it take all screen
+			self.refresh;
+		};
+	},
+
 
 	////// bottom panel
 
@@ -1218,7 +1229,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
 		self.bottomPanelHeaderView.removeAll;
 		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg view, obj, msg, arg1;
-			[view, obj, msg, arg1].debug("showAutomation cursor");
+			//[view, obj, msg, arg1].debug("showAutomation cursor");
 			if(arg1 == \play) {
 				//ptview.cursor_timeline.play; // already sent by loopMaster
 			} {
@@ -2259,7 +2270,7 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 		self.ruler_y.view.minWidth_(50);
 		self.ruler_y.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			var noteidx = self.ruler_y.pixelPointToGridPoint(Point(x,y)).y.asInteger;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 
 			Log(\Param).debug("noteidx %", noteidx);
 			if(oldnote.notNil) {
@@ -2270,7 +2281,7 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 		});
 		self.ruler_y.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			var noteidx = self.ruler_y.pixelPointToGridPoint(Point(x,y)).y.asInteger;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
 			self.timeline_model.wrapper.elAt(oldnote ? noteidx).stop;
 		});
 	},
@@ -2441,7 +2452,7 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 		self.ruler_y.mapWrapper(self.timeline_model.wrapper);
 		self.ruler_y.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			var noteidx = self.ruler_y.pixelPointToGridPoint(Point(x,y)).y.asInteger;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 
 			Log(\Param).debug("noteidx %", noteidx);
 			if(oldnote.notNil) {
@@ -2452,7 +2463,7 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 		});
 		self.ruler_y.mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			var noteidx = self.ruler_y.pixelPointToGridPoint(Point(x,y)).y.asInteger;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseUpAction");
 			self.timeline_model.wrapper.elAt(oldnote ? noteidx).stop;
 		});
 		self.ruler_y.followChange(self.timeline_model, \kit, {
@@ -2542,7 +2553,7 @@ WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 		Param(clip, Pembed.sustainKey),
 	];
 	refresh = {
-		debug("refresh from ClipTimeline_ClipEditor");
+		//debug("refresh from ClipTimeline_ClipEditor");
 		eventlist.changed(\refresh);
 	};
 	VLayout (

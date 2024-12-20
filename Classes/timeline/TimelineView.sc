@@ -505,8 +505,11 @@ TimelineView : SCViewHolder {
 					selectionRefloc = this.startSelPoint;
 					refPoint = gpos; // to know where mouse clicked before moving
 				} {
+					var oldsel;
 					// no node is selected
 					//Log(\Param).debug("---------mouseDownAction: deselect all and draw selrecti");
+					
+					oldsel = this.selectedNodes.size;
 					this.deselectAllNodes;
 					if(quantizedSelection) {
 						rawStartSelPoint = npos;
@@ -518,7 +521,9 @@ TimelineView : SCViewHolder {
 						this.endSelPoint = npos;
 					};
 					//Log(\Param).debug("sel:% %", this.startSelPoint, this.endSelPoint);
-					this.refresh;
+					if(oldsel > 0) {
+						this.refresh;
+					};
 				};
 			});
 		};
@@ -542,7 +547,7 @@ TimelineView : SCViewHolder {
 			});
 			//this.refresh;
 		},{ // no node is selected
-			// find which nodes are selected
+			// find which nodes are inside selection rect
 			var rect;
 			var wasSelected = false;
 			var ppos = Point(x,y);
@@ -562,12 +567,14 @@ TimelineView : SCViewHolder {
 					wasSelected = selNodes.size > 0;
 					//selNodes = IdentitySet.new;
 					this.deselectAllNodes;
+					//Log(\Param).debug("find nodes in selection rect");
 					this.selectNodes(this.findNodes(rect));
 					if(stayingSelection.not) {
 						this.startSelPoint = nilSelectionPoint;
 						this.endSelPoint = nilSelectionPoint;
 						this.refreshSelectionView;
 					};
+					//Log(\Param).debug("end find");
 				}
 			} {
 				// click on blank and no selection: unselect
@@ -1016,12 +1023,38 @@ TimelineView : SCViewHolder {
 		var newport;
 		var oldport;
 		var top;
-		oldport = this.viewport;
-		top = ( oldport.top + ( yDelta/this.virtualBounds.height ) ).clip(0,1-oldport.height);
-		newport = Rect(oldport.left, top, oldport.width, oldport.height);
-		//[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
-		this.viewport = newport;
-		this.refresh;
+		var minport = ( 1/this.virtualBounds.extent ).clip(0,0.5);
+		//[ view, x, y, modifiers, xDelta, yDelta ].debug("mouseWheelAction");
+		if(modifiers.isCtrl) { // zoom horizontally
+			oldport = this.viewport;
+			newport = oldport.insetBy( ( oldport.extent.x * ( yDelta.clip2(150)/300 + 1 ) ) - oldport.extent.x, 0).sect(Rect(0,0,1,1));
+			if(newport.extent.x >= minport.x) {
+				
+				this.viewport = newport;
+				//this.viewport.debug("end viewport");
+				this.refresh;
+			};
+			//newport.extent = Point(newport.extent.x.clip(minport.x,1), newport.extent.y.clip(minport.y,1));
+		};
+		if(modifiers.isShift) { // zoom horizontally
+			oldport = this.viewport;
+			newport = oldport.insetBy(0, ( oldport.extent.y * ( yDelta.clip2(150)/300 + 1 ) ) - oldport.extent.y).sect(Rect(0,0,1,1));
+			if(newport.extent.y >= minport.y) {
+				
+				this.viewport = newport;
+				//this.viewport.debug("end viewport");
+				this.refresh;
+			};
+			
+		};
+		if(modifiers.isCtrl.not and: { modifiers.isShift.not }) {
+			oldport = this.viewport;
+			top = ( oldport.top + ( yDelta/this.virtualBounds.height ) ).clip(0,1-oldport.height);
+			newport = Rect(oldport.left, top, oldport.width, oldport.height);
+			//[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
+			this.viewport = newport;
+			this.refresh;
+		};
 	}
 
 	mouseOverActionBase {arg me, x, y;
@@ -1989,9 +2022,9 @@ TimelineView : SCViewHolder {
 	}
 
 	refresh {
-		//Log(\Param).debug("refresh called %", this);
+		Log(\Param).debug("refresh called %", this);
 		if( this.refreshEnabled, { {
-			//Log(\Param).debug("refresh run %", this);
+			Log(\Param).debug("refresh run %", this);
 			//this.dumpBackTrace;
 			userView.refresh;
 			selectionView.refresh;
@@ -2040,46 +2073,77 @@ TimelineView : SCViewHolder {
 			// priority to the already selected node
 			^chosennode;
 		};
-		paraNodes.reverse.do({arg node;  // reverse because topmost is last
-			//node.spritenum.debug("spritnum");
-			//[node.rect, point].debug("findNode");
-			//Log(\Param).debug("findNode: test node % node.selectable % node.rect %", node, node.selectable, node.rect);
-			if(node.selectable and: {node.rect.containsPoint(point)}, {
-				//[node.rect, point].debug("findNode: found!!");
-				//Log(\Param).debug("findNode: found node %", node);
-				^node;
-			});
-		});
+		found = this.getNodesNearPosx(point.x).reverse.detect { arg node;
+			node.selectable and: {node.rect.containsPoint(point)}
+		};
+		//found.debug("findNode: found");
+		if(found.notNil) {
+			^found
+		};
 		//Log(\Param).debug("findNode: not found");
 		^nil;
 	}
 
 	findCrossedNodes { arg startPoint, endPoint, nodes;
-		^(nodes ? paraNodes).collect({arg node; 
+		var rect = Rect.fromPoints(startPoint, endPoint);
+		^this.getNodesNearRange(rect.left, rect.right, nodes).select({arg node; 
 			var point = node.origin;
 			//node.spritenum.debug("spritnum");
 			//[rect, point].debug("findNodes");
-			if(node.selectable and: {Rect.fromPoints(startPoint, endPoint).intersects(node.rect)}, {
-				//[node.rect, point].debug("findNode: found!!");
-				node;
-			});
-		}).select(_.notNil);
+			node.selectable and: {Rect.fromPoints(startPoint, endPoint).intersects(node.rect)}
+		});
+	}
+
+	getNodeSliceIndex { arg x, nodes, startIdx=0;
+		// cut the paraNodes in slices and return start and end indexes of the slice containing x
+		// x is in grid coordinates
+		var step, cidx;
+		var upperidx;
+		var loweridx;
+		var psize;
+		nodes = nodes ? paraNodes;
+		psize = nodes.size;
+		cidx = startIdx;
+		if(psize > 1000) {
+			step = ( psize / 100 ).asInteger.clip(1, inf);
+		} {
+			step = ( psize / 10 ).asInteger.clip(1, inf);
+		};
+		while { 
+			cidx < psize and:{
+				nodes[cidx].origin.x < x 
+			}
+		} {
+			cidx = cidx + step;
+		};
+		cidx = cidx;
+		upperidx = cidx.clip(0, psize-1).asInteger;
+		loweridx = ( cidx - step ).clip(0, psize-1).asInteger;
+		//[loweridx, upperidx, step, psize].debug("findNode: node is between, step, total");
+		^[loweridx, upperidx]
+	}
+
+	getNodesNearRange { arg left, right, nodes;
+		var startidx, endidx;
+		startidx = this.getNodeSliceIndex(left, nodes).first;
+		endidx = this.getNodeSliceIndex(right, nodes, startIdx:startidx).last;
+		^( nodes ? paraNodes )[startidx..endidx]
+	}
+
+	getNodesNearPosx { arg x, nodes;
+		var range;
+		range = this.getNodeSliceIndex(x, nodes);
+		^( nodes ? paraNodes )[range.first..range.last]
 	}
 
 	findNodes { arg rect, nodes;
-		^(nodes ? paraNodes).collect({arg node; 
-			var point = node.origin;
-			//node.spritenum.debug("spritnum");
-			//[rect, point].debug("findNodes");
-			if(node.selectable and: {rect.containsPoint(point)}, {
-				//[node.rect, point].debug("findNode: found!!");
-				node;
-			});
-		}).select(_.notNil);
+		^this.getNodesNearRange(rect.left, rect.right, nodes).select { arg node;
+			node.selectable and: {rect.containsPoint(node.origin)};
+		};
 	}
 
 	findPreviousNode { arg gposx;
-		^paraNodes.reverse.detect { arg node;
+		^this.getNodesNearPosx(gposx).reverse.detect { arg node;
 			//Log(\Param).debug("findPreviousNode gposx %, origin %, %", gposx, node.origin, node.origin.x >= gposx);
 			node.origin.x <= gposx
 		};
@@ -2087,7 +2151,8 @@ TimelineView : SCViewHolder {
 
 	findPreviousAndNextNode { arg gposx, includeFilter;
 		var idx;
-		var revnodes = paraNodes.reverse;
+		var revnodes;
+		revnodes = this.getNodesNearPosx(gposx).reverse;
 		idx = revnodes.detectIndex { arg node;
 			//Log(\Param).debug("findPreviousAndNextNode gposx %, origin %, %", gposx, node.origin, node.origin.x >= gposx);
 			( includeFilter.isNil or: { includeFilter.value(node) == true } ) and: {node.origin.x <= gposx }
@@ -2100,15 +2165,11 @@ TimelineView : SCViewHolder {
 	}
 
 	findContainedNodes { arg rect, nodes;
-		^(nodes ? paraNodes).collect({arg node; 
-			var point = node.origin;
+		^this.getNodesNearRange(rect.left, rect.right, nodes).select({arg node; 
 			//node.spritenum.debug("spritnum");
 			//[rect, point].debug("findNodes");
-			if(node.selectable and: {rect.contains(node.rect)}, {
-				//[node.rect, point].debug("findNode: found!!");
-				node;
-			});
-		}).select(_.notNil);
+			node.selectable and: {rect.contains(node.rect)}
+		});
 	}
 
 	free {

@@ -1413,6 +1413,85 @@ TimelineScroller : SCViewHolder {
 			}
 
 		};
+		this.view.mouseWheelAction = { arg view, x, y, modifiers, xDelta, yDelta;
+			var newport;
+			var oldport;
+			var top;
+			var minport = ( 1/timeline.virtualBounds.extent ).clip(0,0.5);
+			//[ view, x, y, modifiers, xDelta, yDelta ].debug("mouseWheelAction");
+			if(modifiers.isCtrl) { // zoom horizontally
+				oldport = timeline.viewport;
+				newport = oldport.insetBy( ( oldport.extent.x * ( yDelta.clip2(150)/300 + 1 ) ) - oldport.extent.x, 0).sect(Rect(0,0,1,1));
+				if(newport.extent.x >= minport.x) {
+
+					timeline.viewport = newport;
+					//timeline.viewport.debug("end viewport");
+					timeline.refresh;
+				};
+				//newport.extent = Point(newport.extent.x.clip(minport.x,1), newport.extent.y.clip(minport.y,1));
+			};
+			if(modifiers.isShift) { // zoom horizontally
+				oldport = timeline.viewport;
+				newport = oldport.insetBy(0, ( oldport.extent.y * ( yDelta.clip2(150)/300 + 1 ) ) - oldport.extent.y).sect(Rect(0,0,1,1));
+				if(newport.extent.y >= minport.y) {
+
+					timeline.viewport = newport;
+					//timeline.viewport.debug("end viewport");
+					timeline.refresh;
+				};
+
+			};
+			if(modifiers.isCtrl.not and: { modifiers.isShift.not }) {
+				if(this.orientation == \horizontal) {
+					var left;
+					oldport = timeline.viewport;
+					left = ( oldport.left + ( yDelta/timeline.virtualBounds.width ) ).clip(0,1-oldport.width);
+					newport = Rect(left, oldport.top, oldport.width, oldport.height);
+					//[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
+					timeline.viewport = newport;
+					timeline.refresh;
+				} {
+					oldport = timeline.viewport;
+					top = ( oldport.top + ( yDelta/timeline.virtualBounds.height ) ).clip(0,1-oldport.height);
+					newport = Rect(oldport.left, top, oldport.width, oldport.height);
+					//[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
+					timeline.viewport = newport;
+					timeline.refresh;
+				};
+			};
+		};
+
+		this.view.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			if(this.orientation == \horizontal) {
+				var npos = x/view.bounds.width;
+				//[npos, view.lo, view.hi].debug("npos");
+				if(npos < ( view.lo-0.01 ) or: { npos > ( view.hi+0.02 ) }) {
+					var range = view.range;
+					var lo;
+					lo = ( npos - ( view.range/2 ) ).clip(0,1-range);
+					view.setSpanActive(lo, lo+range);
+					//view.activeLo = lo;
+					//dd
+					//view.setSpan(npos - ( view.range/2 ), npos);
+					//view.action.(view);
+				};
+			} {
+				var npos = 1- ( y/view.bounds.height );
+				//[npos, view.lo, view.hi].debug("npos");
+				if(npos < ( view.lo-0.02 ) or: { npos > ( view.hi+0.01 ) }) {
+					var range = view.range;
+					var lo;
+					lo = ( npos - ( view.range/2 ) ).clip(0,1-range);
+					view.setSpanActive(lo, lo+range);
+					//view.activeLo = lo;
+					//dd
+					//view.setSpan(npos - ( view.range/2 ), npos);
+					//view.action.(view);
+				};
+
+			};
+		});
 
 		// make updater
 		this.view.followChange(timeline, 'viewport', { arg caller, receiver, morearg;
