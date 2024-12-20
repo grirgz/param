@@ -828,15 +828,21 @@ ParamTimelineRulerView : TimelineRulerView {
 	// simple y ruler for ParamTimeline
 	var <>mygrid; // debug
 	var <>paramTimeline;
+	var <>targetParam; // function returning param
 
-	*new { arg paramTimeline; 
-		^super.new.specialInit(paramTimeline);
+	*new { arg paramTimeline, param; 
+		^super.new.initParamTimelineRulerView(paramTimeline, param);
 	}
 
-	specialInit { arg ptimeline;
-		//Log(\Param).debug("ParamTimelineRulerView init");
+	initParamTimelineRulerView { arg ptimeline, param;
+		//Log(\Param).debug("ParamTimelineRulerView init %", [ptimeline, param]);
 		paramTimeline = ptimeline;
-		this.view.drawFunc = { TimelineDrawer.draw_param_values(this, this.paramTimeline.param) };
+		targetParam = if(param.notNil) { { param } } ?? { { 
+			//[ this, this.paramTimeline ].debug("targetParam run");
+			this.paramTimeline.param;
+		} };
+		//[ ptimeline, paramTimeline, this.paramTimeline, this.paramTimeline.param, targetParam, param ].debug("targetParam");
+		this.view.drawFunc = { TimelineDrawer.draw_param_values(this, targetParam.()) };
 	}
 }
 

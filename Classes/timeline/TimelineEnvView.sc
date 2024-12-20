@@ -203,14 +203,13 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		parent = xparent;
 		spritenum = nodeidx;
 		model = event;
-		extent = Point(1/4,1);
+		extent = Point(0,0);
 
 		//[spritenum, model].debug(this.class.debug("CREATE EVENT NODE !"));
 
 		action = {
 			//[model, origin].debug("node action before");
 			model[timeKey] = origin.x;
-			model[this.posyKey] = origin.y;
 			model[this.posyKey] = origin.y;
 			model[\curve] = curve;
 			//model[lenKey] = extent.x;
@@ -350,7 +349,7 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		^rect;
 	}
 
-	rect {
+	handleRect {
 		var point;
 		var rect;
 		rect = parent.pixelRectToGridRect(this.pixelRect);

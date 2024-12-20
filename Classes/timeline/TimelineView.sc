@@ -563,12 +563,17 @@ TimelineView : SCViewHolder {
 					this.endSelPoint = nilSelectionPoint;
 					this.refreshSelectionView;
 				} {
-					rect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint)).insetAll(0,0,0.1,0.1);
+					var found;
+					rect = this.normRectToPixelRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
+					rect = rect.insetAll(0,0,1,1); // prevent selecting next nodes in grid
+					rect = this.pixelRectToGridRect(rect);
 					wasSelected = selNodes.size > 0;
 					//selNodes = IdentitySet.new;
 					this.deselectAllNodes;
 					//Log(\Param).debug("find nodes in selection rect");
-					this.selectNodes(this.findNodes(rect));
+					found = this.findNodes(rect);
+					found.debug("found notes in selection rect");
+					this.selectNodes(found);
 					if(stayingSelection.not) {
 						this.startSelPoint = nilSelectionPoint;
 						this.endSelPoint = nilSelectionPoint;
@@ -1198,6 +1203,9 @@ TimelineView : SCViewHolder {
 			this.copySplitNode(el, node, selrect.right)
 		};
 		nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
+		nodes.do({  arg nn; // debug
+			[nn.rect, nn.model].debug("copyAtSelectionEdges3 nodes");
+		});
 		^this.findContainedNodes(selrect, nodes).collect(_.model);
 		//^noel.select { arg ev;
 			//var node = this.nodeClass.new(this, 0, ev);
@@ -2022,13 +2030,15 @@ TimelineView : SCViewHolder {
 	}
 
 	refresh {
-		Log(\Param).debug("refresh called %", this);
-		if( this.refreshEnabled, { {
-			Log(\Param).debug("refresh run %", this);
-			//this.dumpBackTrace;
-			userView.refresh;
-			selectionView.refresh;
-		}.defer; });
+		//Log(\Param).debug("refresh called %", this);
+		if(this.refreshEnabled != false) {
+			{
+				//Log(\Param).debug("refresh run %", this);
+				//this.dumpBackTrace;
+				userView.refresh;
+				selectionView.refresh;
+			}.defer; 
+		};
 	}
 
 	noRefreshDo { arg fun;
@@ -2060,21 +2070,23 @@ TimelineView : SCViewHolder {
 	findNodeHandle { arg x, y;
 		// this return only node if clicked on the label part
 		// this allow to start dragged selection even when screen is crowded by nodes
-		// only useful in ClipTimelineView
+		// useful in ClipTimelineView and ParamTimeline
 		^this.findNode(x,y)
 	}
 	
 	// local function
 	findNode {arg x, y;
 		// findNode take x and y in grid coordinates, because TimelineNode.rect is in grid coordinates
+		// this use .handleRect instead of .rect because it is used when clicking on a node
 		var point = Point.new(x,y);
+		var found;
 		//Log(\Param).debug("::: findNode: %", point);
-		if(chosennode.notNil and: {chosennode.rect.containsPoint(point)}) {
+		if(chosennode.notNil and: {chosennode.handleRect.containsPoint(point)}) {
 			// priority to the already selected node
 			^chosennode;
 		};
 		found = this.getNodesNearPosx(point.x).reverse.detect { arg node;
-			node.selectable and: {node.rect.containsPoint(point)}
+			node.selectable and: {node.handleRect.containsPoint(point)}
 		};
 		//found.debug("findNode: found");
 		if(found.notNil) {
@@ -2104,6 +2116,9 @@ TimelineView : SCViewHolder {
 		nodes = nodes ? paraNodes;
 		psize = nodes.size;
 		cidx = startIdx;
+		if(psize < 50) {
+			^[0,psize-1]
+		};
 		if(psize > 1000) {
 			step = ( psize / 100 ).asInteger.clip(1, inf);
 		} {
@@ -2119,7 +2134,7 @@ TimelineView : SCViewHolder {
 		cidx = cidx;
 		upperidx = cidx.clip(0, psize-1).asInteger;
 		loweridx = ( cidx - step ).clip(0, psize-1).asInteger;
-		//[loweridx, upperidx, step, psize].debug("findNode: node is between, step, total");
+		[loweridx, upperidx, step, psize].debug("findNode: node is between, step, total");
 		^[loweridx, upperidx]
 	}
 
@@ -2137,8 +2152,18 @@ TimelineView : SCViewHolder {
 	}
 
 	findNodes { arg rect, nodes;
-		^this.getNodesNearRange(rect.left, rect.right, nodes).select { arg node;
+		if(~debugfind == true) {
+			
+		^paraNodes.select { arg node;
+			[node, node.origin, node.selectable, rect.containsPoint(node.origin),rect].debug("findNodes: node");
 			node.selectable and: {rect.containsPoint(node.origin)};
+		};
+		} {
+
+		^this.getNodesNearRange(rect.left, rect.right, nodes).select { arg node;
+			[node, node.origin, node.selectable, rect.containsPoint(node.origin), rect].debug("findNodes: node");
+			node.selectable and: {rect.containsPoint(node.origin)};
+		};
 		};
 	}
 
@@ -2165,10 +2190,21 @@ TimelineView : SCViewHolder {
 	}
 
 	findContainedNodes { arg rect, nodes;
+		var contains = { arg rect, smallrect; 
+			rect.left <= smallrect.left or: {
+				rect.left.equalWithPrecision(smallrect.left)
+			} and: {
+				rect.top <= smallrect.top
+			} and: {
+				rect.containsPoint(smallrect.rightBottom)
+			};
+		};
 		^this.getNodesNearRange(rect.left, rect.right, nodes).select({arg node; 
 			//node.spritenum.debug("spritnum");
 			//[rect, point].debug("findNodes");
-			node.selectable and: {rect.contains(node.rect)}
+
+			[node.class, node.rect, node.selectable,  contains.(rect, node.rect), rect.contains(node.rect), rect ].debug("findContainedNodes");
+			node.selectable and: { contains.(rect, node.rect)}
 		});
 	}
 
@@ -2363,25 +2399,25 @@ PdefTimelineView : TimelineView { // deprecated name
 }
 
 ClipTimelineView : TimelineView {
-	findNodeHandle { arg x, y;
-		// this return only node if clicked on the label part
-		// this allow to start dragged selection even when screen is crowded by nodes
-		// findNode take x and y in grid coordinates, because TimelineNode.rect is in grid coordinates
-		var point = Point.new(x,y);
-		if(chosennode.notNil and: {chosennode.handleRect.containsPoint(point)}) {
-			// priority to the already selected node
-			^chosennode;
-		};
-		paraNodes.reverse.do({arg node;  // reverse because topmost is last
-			//node.spritenum.debug("spritnum");
-			//[node.rect, point].debug("findNode");
-			if(node.selectable and: {node.handleRect.containsPoint(point)}, {
-				//[node.rect, point].debug("findNode: found!!");
-				^node;
-			});
-		});
-		^nil;
-	}
+	//findNodeHandle { arg x, y;
+		//// this return only node if clicked on the label part
+		//// this allow to start dragged selection even when screen is crowded by nodes
+		//// findNode take x and y in grid coordinates, because TimelineNode.rect is in grid coordinates
+		//var point = Point.new(x,y);
+		//if(chosennode.notNil and: {chosennode.handleRect.containsPoint(point)}) {
+			//// priority to the already selected node
+			//^chosennode;
+		//};
+		//paraNodes.reverse.do({arg node;  // reverse because topmost is last
+			////node.spritenum.debug("spritnum");
+			////[node.rect, point].debug("findNode");
+			//if(node.selectable and: {node.handleRect.containsPoint(point)}, {
+				////[node.rect, point].debug("findNode: found!!");
+				//^node;
+			//});
+		//});
+		//^nil;
+	//}
 	
 
 }

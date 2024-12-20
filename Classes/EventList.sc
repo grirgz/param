@@ -217,17 +217,19 @@ TimelineEventList : List {
 	splitEvent { arg event, durFromEventStart;
 		var ev1 = event;
 		var ev2 = event.copy;
-		var osus = event.use{ ~sustain.value };
-		if(durFromEventStart < osus) {
+		var osus = event.use{ ~sustain.value } ? 0;
+		if(durFromEventStart > 0 and: {durFromEventStart < osus}) {
 			ev1[\sustain] = durFromEventStart;
 			ev2[\sustain] = osus-durFromEventStart;
 			ev2[\absTime] = ev1[\absTime] + durFromEventStart;
 			ev2[\event_dropdur] = durFromEventStart + ( ev2[\event_dropdur] ? 0 );
+			this.addEvent(ev2);
+			this.reorder;
+			this.changed(\refresh);
+			^ev2;
+		} {
+			^ev1
 		};
-		this.addEvent(ev2);
-		this.reorder;
-		this.changed(\refresh);
-		^ev2;
 	}
 
 	reorder {
@@ -388,7 +390,6 @@ TimelineEventList : List {
 				// FIXME: create end if not existing ?
 			}
 		};
-		// FIXME: changed signal ?
 		this.reorder;
 		if(tev.notNil) {
 			tev.changed(\refresh);
@@ -406,7 +407,6 @@ TimelineEventList : List {
 				}
 			}
 		};
-		// FIXME: changed signal ?
 		this.reorder;
 		if(tev.notNil) {
 			tev.changed(\refresh);

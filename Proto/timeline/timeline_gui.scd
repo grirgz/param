@@ -1219,7 +1219,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 			//self.timeline_model.automationEnabled = true;
 		//};
 		self.timeline_model.automationRack.addParam(selectedParam);
-		self.bottomPanelView.removeAll;
 		ptline = rack.getParamTimeline(selectedParam);
 		self.automationRackView = self.timeline_model.automationRack.getParamTimeline(selectedParam);
 
@@ -1227,7 +1226,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 		ptview.makeAutomationLayout;
 		ptview.timeline.mimicTimeline(self.timeline, \horizontal);
 		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
-		self.bottomPanelHeaderView.removeAll;
 		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg view, obj, msg, arg1;
 			//[view, obj, msg, arg1].debug("showAutomation cursor");
 			if(arg1 == \play) {
@@ -1246,10 +1244,13 @@ ProtoTemplateDef(\TimelinePanelView, (
 			ptview.cursor_timeline.play;
 		};
 		self.bottomPanelSelectedTimelineView = ptview.timeline;
+
+		self.bottomPanelHeaderView.removeAll;
 		self.bottomPanelHeaderView.layout = HLayout(
 			ptview.track_header
 		).margins_(0);
 
+		self.bottomPanelView.removeAll;
 		self.bottomPanelView.layout = HLayout(ptview.timelineStack).margins_(0);
 		self.isBottomPanelVisible = true;
 		self.bottomPanelDescription.string = "Automation: %".format(prop);
@@ -1333,10 +1334,20 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.bottomPanelSelectedTimelineView = self.velocityTimeline;
 		self.isBottomPanelVisible = true;
 
+		self.velocityRuler_y = ParamTimelineRulerView.new(self.velocityTimeline, param);
+		self.velocityRuler_y.mimicTimeline(self.velocityTimeline);
+		//self.ruler_y.view.minWidth_(50);
+		//self.track_header;
+		self.bottomPanelHeaderView.removeAll;
+		self.bottomPanelHeaderView.layout = HLayout(
+			self.velocityRuler_y
+		).margins_(0);
+
 		self.notePropertyView = StackLayout(
 			self.velocityTimeline.selectionView,
 			self.velocityTimeline.view,
 		).mode_(1);
+		self.bottomPanelView.removeAll;
 		self.bottomPanelView.layout = HLayout(self.notePropertyView).margins_(0);
 		self.velocityTimeline.mapParam(param);
 		self.updateBottomPanel;
@@ -1661,18 +1672,6 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		self.timeline.deleteSelectedNodesHook = self.deleteSelectedNodesHook;
 
 		self.layout;
-	},
-
-	copyAction: { arg self;
-		var selevents;
-		var cursor = self.timeline_model.cursor;
-		var startpos, endpos;
-		selevents = self.timeline.copyAtSelectionEdges;
-		Log(\Param).debug("clipTimeline.copyAction: selevents: %", selevents);
-		if(selevents.size > 0) {
-			self.clipboard = selevents;
-			self.selection_rect = self.selection_cursor.rect;
-		};
 	},
 
 	clipboard: { arg self;
