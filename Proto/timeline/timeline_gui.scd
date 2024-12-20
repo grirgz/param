@@ -26,9 +26,12 @@ ProtoTemplateDef(\TimelinePanelView, (
 		} {
 			target = self.param.target;
 			target.asParamGroup
+				.rejectByProperty([
+					\out, \gate, \doneAction, \trig,
+					\legato, \dur, \stretch, \instrument 
+				])
 				.add( Param(target, \velocity, ControlSpec(0,127,\lin,0,64)) )
 				.add( Param(target, \sustain) )
-				.reject({ arg x; x.property == \legato })
 			;
 		}
 	},

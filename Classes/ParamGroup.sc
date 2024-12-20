@@ -94,7 +94,7 @@ ParamGroup : List {
 	}
 
 	selectCustomParams {
-		^this.rejectByKey([ \out, \gate, \doneAction, \amp, \out, \freq, \trig ])
+		^this.rejectByKey([ \out, \gate, \doneAction, \amp, \freq, \trig ])
 	}
 
 	selectByType { arg type;
