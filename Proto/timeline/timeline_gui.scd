@@ -11,7 +11,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 		self.eventloop = eventloop;
 		self.areasize = 10@1;
-		self.quant_ref = Ref(Point(1/8,1));
 
 		//self.definePattern;
 
@@ -100,8 +99,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 	node_move_multiplier_x: 8,
 	node_move_multiplier_y: 8,
 
+	quant_ref: { arg self; self.timeline_model.quant_ref },
+
 	set_xquant: { arg self, quant;
 		self.quant_ref.value = Point(quant, self.quant_ref.value.y);
+		self.updateAutomationQuant;
 	},
 
 	get_xquant: { arg self;
@@ -110,6 +112,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 	set_yquant: { arg self, quant;
 		self.quant_ref.value = Point(self.quant_ref.value.x, quant);
+		self.updateAutomationQuant;
 	},
 
 	get_yquant: { arg self;
@@ -600,6 +603,17 @@ ProtoTemplateDef(\TimelinePanelView, (
 		};
 	},
 
+	mimicCursor: { arg self, cursorModel;
+		self.cursor_timeline.debug("mimicCursor");
+		self.cursor_timeline.mapCursor(cursorModel);
+		[\ruler_x_beat, \ruler_x].do { arg key;
+			self[key].debug("mimicCursor");
+			if(self[key].notNil) {
+				self[key].value.mapCursor(cursorModel);
+			};
+		};
+	},
+
 	makeXRuler: { arg self;
 		var locatorbar;
 		var ruler_x_beat;
@@ -619,8 +633,13 @@ ProtoTemplateDef(\TimelinePanelView, (
 				if(chosennode.notNil) {
 					TimelineLocatorPropertiesView.new(chosennode.model);
 				};
+			} {
+				if(buttonNumber == 1) {
+					self.showLocatorBarContextMenu(me, px, py)
+				};
 			}
 		};
+		self.locatorbar.deleteSelectedNodesHook = self.deleteSelectedNodesHook;
 
 		locatorbar.quant = self.quant_ref;
 
@@ -637,6 +656,42 @@ ProtoTemplateDef(\TimelinePanelView, (
 			locatorbar.view,
 			self.ruler_x_beat.view,
 		);
+	},
+
+	showLocatorBarContextMenu: { arg self, view, x, y;
+		Menu(
+			MenuAction("Add locator", {
+				self.locatorbar.createNode
+			}),
+			MenuAction("Delete locator", {
+				self.deleteSelectedNodesHook.value(self.locatorbar);
+			}).enabled_(self.locatorbar.chosennode != nil),
+			MenuAction("Rename locator", {
+				TimelineLocatorPropertiesView.new(self.locatorbar.chosennode.model);
+			}).enabled_(self.locatorbar.chosennode != nil),
+
+			MenuAction.separator,
+			MenuAction("Set clip start here", {
+				self.timeline.lastGridPos = Point(self.timeline.pixelPointToGridPoint(Point(x, 0)).x, self.timeline.lastGridPos !? _.y ?? 0);
+				self.setStartAction;
+			}),
+			MenuAction("Set clip end here", {
+				self.timeline.lastGridPos = Point(self.timeline.pixelPointToGridPoint(Point(x, 0)).x, self.timeline.lastGridPos !? _.y ?? 0);
+				self.setEndAction;
+			}),
+			MenuAction("Set preview loop start here", {
+				self.timeline.lastGridPos = Point(self.timeline.pixelPointToGridPoint(Point(x, 0)).x, self.timeline.lastGridPos !? _.y ?? 0);
+				self.setPreviewStartAction;
+			}),
+			MenuAction("Set preview loop end here", {
+				self.timeline.lastGridPos = Point(self.timeline.pixelPointToGridPoint(Point(x, 0)).x, self.timeline.lastGridPos !? _.y ?? 0);
+				self.setPreviewEndAction;
+			}),
+			MenuAction("Reset preview loop", {
+				self.resetPreviewLoopAction;
+			}),
+		).front
+		
 	},
 
 	initTimelineView: { arg self, timeline;
@@ -736,11 +791,18 @@ ProtoTemplateDef(\TimelinePanelView, (
 				[
 					nil,
 					self.ruler_x,
-					BasicButton.new.label_("z")
-						.maxWidth_(10)
-						.action_({
-							self.zoomFitAction;
-						})
+					HLayout (
+						BasicButton.new.label_("v")
+							.maxWidth_(10)
+							.action_({
+								self.zoomFitAction;
+							}),
+						BasicButton.new.label_("h")
+							.maxWidth_(10)
+							.action_({
+								self.showAllNodesAction;
+							}),
+					).margins_(0).spacing_(0)
 				],
 				[
 					if(self.disable_track_header != true) {track_header},
@@ -859,14 +921,23 @@ ProtoTemplateDef(\TimelinePanelView, (
 				},
 				MenuAction("Split", {
 					self.splitAction;
-				}),
+				}).enabled_(self.timeline.selectionHasCrossingNodes),
 
 				MenuAction.separator,
-				MenuAction("Set start", {
+				MenuAction("Set clip start here", {
 					self.setStartAction;
 				}),
-				MenuAction("Set end", {
+				MenuAction("Set clip end here", {
 					self.setEndAction;
+				}),
+				MenuAction("Set preview loop start here", {
+					self.setPreviewStartAction;
+				}),
+				MenuAction("Set preview loop end here", {
+					self.setPreviewEndAction;
+				}),
+				MenuAction("Reset preview loop", {
+					self.resetPreviewLoopAction;
 				}),
 
 				MenuAction.separator,
@@ -881,15 +952,16 @@ ProtoTemplateDef(\TimelinePanelView, (
 				}),
 
 				MenuAction.separator,
-				MenuAction("Zoom fit", {
+				MenuAction("Zoom out completely", {
+					self.showAllNodesAction;
+					self.zoomFullAction;
+				}),
+				MenuAction("Zoom fit vertically", {
 					self.zoomFitAction;
 				}),
 
 				MenuAction("Zoom in selection", {
 					self.zoomSelectionAction;
-				}),
-				MenuAction("Zoom out completely", {
-					self.zoomFullAction;
 				}),
 				MenuAction.separator,
 				MenuAction("Undo", {
@@ -973,6 +1045,26 @@ ProtoTemplateDef(\TimelinePanelView, (
 		\midinote;
 	},
 
+	showAllNodesAction: { arg self;
+		var last = self.eventList.last;
+		var maxdur;
+		maxdur = last.absTime + ( last.sustain ? 0 ) + 2;
+		//self.areasize.debug("showAllNodesAction");
+		if(self.bottomPanelSelectedTimelineView.notNil) {
+			var localdur;
+			last = self.bottomPanelSelectedTimeline.eventList.last;
+			localdur = last.absTime + ( last.sustain ? 0 ) + 2;
+			maxdur = max(maxdur, localdur);
+			self.bottomPanelSelectedTimelineView.areasize = Point(maxdur, self.areasize.y);
+			self.bottomPanelSelectedTimelinePanelView.areasize = Point(maxdur, self.areasize.y);
+		};
+		self.timeline.areasize = Point(maxdur, self.areasize.y);
+		self.areasize = self.timeline.areasize;
+		self.timeline.viewport = Rect(0, self.timeline.viewport.origin.y, 1, self.timeline.viewport.height);
+		self.timeline.refresh;
+	},
+
+
 	zoomFitAction: { arg self;
 		// TODO: use timeline.spec to get initial maxy and miny
 		var timeline = self.timeline;
@@ -1026,28 +1118,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 		//[self.areasize, self.timeline.areasize].debug("2");
 		self.areasize = self.timeline.areasize;
 		//[self.areasize, self.timeline.areasize].debug("4");
-	},
-
-	copyAction_old: { arg self;
-		var selnodes;
-		var cursor = self.timeline_model.cursor;
-		var startpos, endpos;
-		selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
-		if(selnodes.size == 0) {
-			startpos = cursor.startPosition ? self.eventList.startTime;
-			endpos = cursor.endPosition ? self.eventList.endTime;
-			self.timeline.nodes.collect({ arg node;
-				var at = node.model[\absTime];
-				if(at >= startpos and: { at < endpos and: { node.selectable }} ) {
-					self.timeline.selectNode(node)
-				}
-			});
-			selnodes = self.timeline.selNodes.as(Array).collect({ arg x; x.model });
-		};
-		if(selnodes.size > 0) {
-			self.clipboard = selnodes;
-			self.selection_rect = self.selection_cursor.rect;
-		};
 	},
 
 	copyAction: { arg self;
@@ -1115,6 +1185,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 			//self.timeline_model.eventLoop.cloneAndPushList;
 			//Log(\Param).debug("hook qui foire");
 			self.timeline.deleteSelectedNodes;
+			tl.deleteSelectedNodes;
 			//self.timeline_model.eventLoop.pushList;
 		}
 	},
@@ -1161,6 +1232,23 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.refresh;
 	},
 
+	setPreviewStartAction: { arg self;
+		self.cursor.startPosition = self.timeline.lastGridPos.x.trunc(self.quant_ref.value.x);
+		self.refresh;
+	},
+
+	setPreviewEndAction: { arg self;
+		self.cursor.endPosition = self.timeline.lastGridPos.x.trunc(self.quant_ref.value.x);
+		self.refresh;
+	},
+
+	resetPreviewLoopAction: { arg self;
+		self.cursor.startPosition = nil;
+		self.cursor.endPosition = nil;
+		self.refresh;
+	},
+
+
 	newScoreAction: { arg self;
 		self.eventLoop.pushList;
 		self.timeline_model.addHistorySnapshot;
@@ -1197,7 +1285,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 	zoomSelectionAction: { arg self;
 		if(self.selection_cursor.rect.extent != Point(0,0)) {
 			self.timeline.viewport = self.timeline.gridRectToNormRect(self.selection_cursor.rect);
-			self.selection_cursor.rect = Rect(0,0,0,0); // erase selection because it take all screen
+			self.selection_cursor.rect = Rect(0,0,0,0); // clear selection because it take all screen
 			self.refresh;
 		};
 	},
@@ -1225,6 +1313,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		ptview = ProtoTemplateDef(\ParamTimelinePanelView).newView(ptline);
 		ptview.makeAutomationLayout;
 		ptview.timeline.mimicTimeline(self.timeline, \horizontal);
+		ptview.mimicCursor(self.timeline_model.cursor);
 		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
 		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg view, obj, msg, arg1;
 			//[view, obj, msg, arg1].debug("showAutomation cursor");
@@ -1243,6 +1332,8 @@ ProtoTemplateDef(\TimelinePanelView, (
 		if(self.timeline_model.isPlaying) {
 			ptview.cursor_timeline.play;
 		};
+		self.bottomPanelSelectedTimeline = ptline;
+		self.bottomPanelSelectedTimelinePanelView = ptview;
 		self.bottomPanelSelectedTimelineView = ptview.timeline;
 
 		self.bottomPanelHeaderView.removeAll;
@@ -1254,7 +1345,17 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.bottomPanelView.layout = HLayout(ptview.timelineStack).margins_(0);
 		self.isBottomPanelVisible = true;
 		self.bottomPanelDescription.string = "Automation: %".format(prop);
-		self.updateBottomPanel;
+		self.updateBottomPanelToolbar;
+	},
+
+	updateAutomationQuant: { arg self;
+		debug("updateAutomationQuant");
+		if(self.bottomPanelSelectedTimeline.notNil) {
+			self.quant_ref.value.x.debug("updateAutomationQuant");
+			self.bottomPanelSelectedTimelinePanelView.set_xquant(self.quant_ref.value.x);
+			self.bottomPanelSelectedTimeline[\set_xquant].asCompileString.debug("comp");
+			[ self.bottomPanelSelectedTimeline.quant_ref, self.bottomPanelSelectedTimeline ].debug("done quant");
+		};
 	},
 
 	showAllAutomations: { arg self;
@@ -1350,7 +1451,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.bottomPanelView.removeAll;
 		self.bottomPanelView.layout = HLayout(self.notePropertyView).margins_(0);
 		self.velocityTimeline.mapParam(param);
-		self.updateBottomPanel;
+		self.updateBottomPanelToolbar;
 		self.bottomPanelDescription.string = "Property: %".format(prop);
 		self.refresh; // required for mapping EventList to velocityTimeline
 	},
@@ -1464,7 +1565,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		};
 	},
 
-	updateBottomPanel: { arg self;
+	updateBottomPanelToolbar: { arg self;
 		var con;
 		con = self.bottomPanelValueText.getHalo(\followChangeController);
 		if(con.notNil) {
@@ -1683,7 +1784,8 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 	},
 
 	selection_rect: { arg self;
-		//ParamViewToolBox.clipboard.clipTimeline_selectionRect
+		// FIXME: this is misleading as it doesn't use timeline selectionRect but the clipboard one
+		// used to persist selection rect when reopening the window
 		ParamViewToolBox.clipboard.clipTimeline_selectionRect ?? { Rect(0,0,1,1) };
 	},
 
@@ -1946,17 +2048,14 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 			miny = miny * 0.9;
 			maxy = maxy * 1.1;
 
-			//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport before");
-			//[timeline.areasize].debug("areasize");
+			[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM paramtimeline ZOOOOOOOOOOOOOOOOOOOOM viewport before");
+			[timeline.areasize].debug("areasize");
 			range = (maxy-miny * 1.1)/timeline.areasize.y;
 			timeline.viewport.top = (miny/timeline.areasize.y);
 			timeline.viewport.height = range.clip(0.1,1);
-			//[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
+			[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
 
-			//timeline.viewport.top = 42/128;
-			//timeline.viewport.height = ((54-42)/128);
-
-			//timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
+			timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
 
 
 			timeline.changed(\viewport);
@@ -2010,6 +2109,7 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		self.targetPlayerView = PlayerWrapperView.new;
 		HLayout(
 			PlayerWrapperView(self.timeline_model).view,
+			self.make_stop_button,
 			//if(self.param.target.isKindOf(Bus) or: { self.param.target.isKindOf(Message) }) {
 				//nil;
 			//} {

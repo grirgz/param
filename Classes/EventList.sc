@@ -233,6 +233,7 @@ TimelineEventList : List {
 	}
 
 	reorder {
+		var startEv, endEv;
 		//"eventlist reordering".debug;
 		this.sort({ arg a,b; 
 			switch(a[\type],
@@ -252,9 +253,24 @@ TimelineEventList : List {
 		});
 		this.do { arg ev;
 			if(ev[\type] == \start) {
+				startEv = ev;
 				startTime = ev[\absTime];
+				if(endEv.notNil) {
+					// end before start, swap them
+					var tmp = endEv.copy;
+					//endEv.debug("swap!");
+					endEv[\type] = startEv[\type];
+					endEv[\label] = startEv[\label];
+					startEv[\type] = tmp[\type];
+					startEv[\label] = tmp[\label];
+					startTime = endEv[\absTime];
+					endTime = startEv[\absTime];
+					//[ev, startEv, endEv, this].debug("end swap");
+				};
 			};
 			if(ev[\type] == \end) {
+				//ev.debug("type end");
+				endEv = ev;
 				endTime = ev[\absTime];
 			};
 		};

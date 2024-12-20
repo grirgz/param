@@ -331,8 +331,12 @@ Param {
 	}
 
 	== { arg param;
-		^( this.wrapper.property == param.wrapper.property)
-		and: { this.wrapper.target == param.wrapper.target } 
+		if(param.isKindOf(Param)) {
+			^( this.wrapper.property == param.wrapper.property)
+			and: { this.wrapper.target == param.wrapper.target } 
+		} {
+			^false;
+		};
 	}
 
 	asParam {

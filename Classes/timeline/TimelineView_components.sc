@@ -5,7 +5,7 @@
 
 TimelineRulerView : TimelineView {
 	// this is a X ruler with graduated bars to measure time in beats
-	// you can define start and stop of timeline interactively
+	// you can define start and stop of preview loop interactively
 	// also draw the red triangle for current position (useful for pasting)
 	//var <>mygrid; // debug, already in parentclass
 	var <>cursor;
@@ -227,7 +227,8 @@ TimelineRulerView : TimelineView {
 
 TimelineSecondRulerView : TimelineRulerView {
 	// this is a X ruler with graduated bars to measure time in *seconds*
-	// you can define start and stop of timeline interactively
+	// you can define start and stop of preview loop interactively
+	// also draw the red triangle for current position (useful for pasting)
 	//var <>mygrid; // debug, already in parentclass
 	var <>cursor;
 
@@ -424,7 +425,6 @@ TimelineLocatorBarView : TimelineView {
 			^eventFactory.(pos);
 		}
 	}
-
 
 	addEvent { arg event;
 		var node;
@@ -641,8 +641,13 @@ TimelineLocatorPropertiesView {
 	init { arg model;
 		var window = Window.new("Locator edit", Rect(550,550,200,60));
 		var layout;
+		var field;
+		var ok = {
+			model[\label] = field.value;
+			model.changed(\refresh);
+		};
 		layout = VLayout(
-			TextField.new
+			field = TextField.new
 			.string_(model[\label] ? "unnamed")
 			.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
 				//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
@@ -656,9 +661,17 @@ TimelineLocatorPropertiesView {
 				
 			})
 			.action_({ arg view;
-				model[\label] = view.value;
-				model.changed(\refresh);
-			})
+				ok.();
+			}),
+			HLayout (
+				BasicButton.new.string_("Ok").action_({
+					ok.();
+					window.close;
+				}),
+				BasicButton.new.string_("Cancel").action_({
+					window.close;
+				}),
+			)
 		);
 		window.layout = layout;
 		//window.alwaysOnTop = true;

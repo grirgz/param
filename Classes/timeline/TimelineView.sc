@@ -346,6 +346,15 @@ TimelineView : SCViewHolder {
 		}
 	}
 
+	hasSelection {
+		^this.startSelPoint != nilSelectionPoint and: {
+			this.endSelPoint != nilSelectionPoint
+		};
+	}
+
+	selectionRect { arg defaultVal;
+		^Rect.fromPoints(this.startSelPoint ? defaultVal.copy, this.endSelPoint ? defaultVal.copy)
+	}
 
 	///////////////////////////////////////////////////////// input events handling
 	
@@ -419,10 +428,8 @@ TimelineView : SCViewHolder {
 		//Log(\Param).debug("mouseDownAction_ px %,py %, npos %, gpos %", px, py, npos, gpos);
 
 		chosennode = this.findNodeHandle(gpos.x, gpos.y);
-		isClickOnSelection = this.startSelPoint != nilSelectionPoint and: {
-			this.endSelPoint != nilSelectionPoint and: {
-				Rect.fromPoints(this.startSelPoint, this.endSelPoint).contains(npos)
-			}
+		isClickOnSelection = this.hasSelection and: {
+			this.selectionRect.contains(npos)
 		};
 		//[chosennode, chosennode !? {chosennode.model}].debug("mouseDownAction: chosennode");
 		//[px, py, npos, gpos].debug("amouseDownAction_ px,py, npos, gpos");
@@ -564,7 +571,7 @@ TimelineView : SCViewHolder {
 					this.refreshSelectionView;
 				} {
 					var found;
-					rect = this.normRectToPixelRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
+					rect = this.normRectToPixelRect(this.selectionRect);
 					rect = rect.insetAll(0,0,1,1); // prevent selecting next nodes in grid
 					rect = this.pixelRectToGridRect(rect);
 					wasSelected = selNodes.size > 0;
@@ -599,7 +606,7 @@ TimelineView : SCViewHolder {
 	}
 
 	updatePreviousNormSelRect {
-		this.previousNormSelRect = Rect.fromPoints(this.startSelPoint ? Point(0,0), this.endSelPoint ? Point(0,0));
+		this.previousNormSelRect = this.selectionRect(Point(0,0));
 	}
 
 	mouseMoveActionBase {|me, px, py, mod|
@@ -1192,7 +1199,7 @@ TimelineView : SCViewHolder {
 	}
 
 	copyAtSelectionEdges {
-		var selrect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
+		var selrect = this.normRectToGridRect(this.selectionRect);
 		var el = this.model.clone;
 		var nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
 		this.findCrossedNodes(selrect.leftTop, selrect.leftBottom, nodes).do { arg node;
@@ -1216,13 +1223,25 @@ TimelineView : SCViewHolder {
 	}
 
 	splitAtSelectionEdges {
-		var selrect = this.normRectToGridRect(Rect.fromPoints(this.startSelPoint, this.endSelPoint));
+		var selrect = this.normRectToGridRect(this.selectionRect);
 		this.findCrossedNodes(selrect.leftTop, selrect.leftBottom).do { arg node;
 			this.splitNode(node, selrect.left)
 		};
 		this.findCrossedNodes(selrect.rightTop, selrect.rightBottom).do { arg node;
 			this.splitNode(node, selrect.right)
 		};
+	}
+
+	selectionHasCrossingNodes {
+		if(this.hasSelection) {
+			var selrect = this.normRectToGridRect(this.selectionRect);
+			if(selrect.notNil) {
+				^this.findCrossedNodes(selrect.leftTop, selrect.leftBottom).size > 0 or: {
+					this.findCrossedNodes(selrect.rightTop, selrect.rightBottom).size > 0
+				};
+			};
+		};
+		^false;
 	}
 
 	splitNode { arg node, gridY;
