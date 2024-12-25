@@ -804,6 +804,7 @@ WindowDef(\RenameDialog, { arg me, question, defaultValue="", savefun, cancelfun
 
 (
 WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue, label;
+	// okHook args: name string
 	var lay;
 	var savefun;
 	var listview = ListView.new;
@@ -873,6 +874,7 @@ WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue, label;
 });
 
 WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue, label;
+	// okHook args: name string, list association, index
 	var listview = ListView.new;
 	var textfield;
 	var selectedView = StaticText.new;
@@ -926,7 +928,7 @@ WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue, label;
 				var name = selectedView.string;
 				if(name != "") {
 					name = name.asSymbol;
-					okHook.(name, filteredList[listview.value]);
+					okHook.(name, filteredList[listview.value], listview.value);
 					def.closeWindow;
 				} {
 					"invalid name".debug;

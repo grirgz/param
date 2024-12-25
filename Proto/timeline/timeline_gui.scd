@@ -30,6 +30,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 					\out, \gate, \doneAction, \trig,
 					\legato, \dur, \stretch, \instrument 
 				])
+				.selectByType(\scalar)
 				.add( Param(target, \velocity, ControlSpec(0,127,\lin,0,64)) )
 				.add( Param(target, \sustain) )
 			;
@@ -647,7 +648,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		locatorbar.quant = self.quant_ref;
 
 		ruler_x_beat.mimicTimeline(self.timeline);
-		locatorbar.mimicTimeline(self.timeline);
+		locatorbar.mimicTimeline(self.timeline, \horizontal);
 
 		self.locatorbar.view.minSize = Point(10,15);
 		self.ruler_x_beat.view.minSize = Point(10,10);
@@ -792,7 +793,15 @@ ProtoTemplateDef(\TimelinePanelView, (
 		tl_layout = GridLayout.rows(*
 			[
 				[
-					nil,
+					HLayout (
+						BasicButton.new.string_("m").maxWidth_(20).action_({
+							self.timeline.currentBrush = \move;
+						}).toolTip_("Set move mode"),
+						BasicButton.new.string_("w").maxWidth_(20).action_({
+							self.timeline.currentBrush = \pen;
+						}).toolTip_("Set write mode"),
+						//nil,
+					).margins_(0).spacing_(0),
 					self.ruler_x,
 					HLayout (
 						BasicButton.new.label_("v")
@@ -1187,7 +1196,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 			self.timeline_model.addHistorySnapshot;
 			//self.timeline_model.eventLoop.cloneAndPushList;
 			//Log(\Param).debug("hook qui foire");
-			self.timeline.deleteSelectedNodes;
+			//self.timeline.deleteSelectedNodes;
 			tl.deleteSelectedNodes;
 			//self.timeline_model.eventLoop.pushList;
 		}
@@ -1309,13 +1318,14 @@ ProtoTemplateDef(\TimelinePanelView, (
 			//// automatically enable automation if new automation is created
 			//self.timeline_model.automationEnabled = true;
 		//};
-		self.timeline_model.automationRack.addParam(selectedParam);
+		self.timeline_model.automationRack.addAutomation(selectedParam);
 		ptline = rack.getParamTimeline(selectedParam);
 		self.automationRackView = self.timeline_model.automationRack.getParamTimeline(selectedParam);
 
 		ptview = ProtoTemplateDef(\ParamTimelinePanelView).newView(ptline);
 		ptview.makeAutomationLayout;
 		ptview.timeline.mimicTimeline(self.timeline, \horizontal);
+		self.timeline.mimicTimeline(ptview.timeline, \horizontal);
 		ptview.mimicCursor(self.timeline_model.cursor);
 		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
 		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg view, obj, msg, arg1;
@@ -1392,14 +1402,18 @@ ProtoTemplateDef(\TimelinePanelView, (
 				},
 
 				if(self.selectedAutomationParam.notNil) {
+					var am = rack.getAutomation(self.selectedAutomationParam);
 					[
 						MenuAction.separator,
 						Menu(
+							MenuAction("Bypassed", {
+								am.paramTimeline.bypassed = am.paramTimeline.bypassed.not;
+							}).checkable_(true).checked_(am.paramTimeline.bypassed),
 							MenuAction("Edit", {
-								rack.getParamTimeline(self.selectedAutomationParam).edit;
+								am.paramTimeline.edit;
 							}),
 							MenuAction("Remove", {
-								rack.removeParam(self.selectedAutomationParam)
+								rack.removeAutomation(self.selectedAutomationParam)
 							}),
 						).title_("Current: %".format(self.selectedAutomationParam.propertyRoot)),
 					]

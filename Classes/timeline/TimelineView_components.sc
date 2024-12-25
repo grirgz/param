@@ -703,7 +703,7 @@ TimelineViewLocatorLineNode : TimelineViewEventNode {
 
 		refresh = {
 			origin = Point(model[timeKey], 0);
-			extent = Point(1,1);
+			extent = Point(1,parent.areasize.y);
 			//[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
 

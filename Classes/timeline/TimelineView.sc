@@ -79,6 +79,9 @@ TimelineView : SCViewHolder {
 	var <>changeCurveMode = false;
 
 	var useSpecInConversions = true; // not used
+	
+	var <>currentBrush = \move;
+	
 	// debug
 	
 	var <>mygrid;
@@ -286,13 +289,22 @@ TimelineView : SCViewHolder {
 	////////////////////////// properties
 	
 	areasize_ { arg val;
-		areasize = val;
-		this.changed(\areasize);
+		//[this, areasize, val].debug("set areasize");
+		if(val != areasize) {
+			// copy else there is no changed msg sent because already sync
+			areasize = val.copy;
+			//[this, areasize, val].debug("send changed areasize");
+			this.changed(\areasize);
+		};
 	}
 
 	viewport_ { arg val;
-		viewport = val;
-		this.changed(\viewport);
+		//[this, viewport, val].debug("set viewport");
+		if(val != viewport) {
+			viewport = val.copy;
+			//[this, viewport, val].debug("send changed viewport");
+			this.changed(\viewport);
+		};
 	}
 
 	lastGridPos_ { arg val;
@@ -439,9 +451,11 @@ TimelineView : SCViewHolder {
 		{ mod.isCtrl and: { buttonNumber == 1 } } {
 			this.setEndPosition(gpos.x.trunc(quant.value.x));
 		}
-		{ mod.isCtrl and: { buttonNumber == 0 } } {
+		{ buttonNumber == 0 and: { currentBrush == \eraser } } {
+			// TODO
+		}
+		{ buttonNumber == 0 and: { mod.isCtrl or: { currentBrush == \pen } } } {
 			// create node mode
-
 			this.createNode(gpos);
 		}
 		{ mod.isShift and: { buttonNumber == 0 } } {
@@ -579,7 +593,7 @@ TimelineView : SCViewHolder {
 					this.deselectAllNodes;
 					//Log(\Param).debug("find nodes in selection rect");
 					found = this.findNodes(rect);
-					found.debug("found notes in selection rect");
+					//found.debug("found notes in selection rect");
 					this.selectNodes(found);
 					if(stayingSelection.not) {
 						this.startSelPoint = nilSelectionPoint;
@@ -644,7 +658,7 @@ TimelineView : SCViewHolder {
 		mouseMoveAction.(me, px, py, mod);
 
 		case
-		{ (mod.isShift or: mod.isCtrl)  and: { buttonNumber == 0 } } {
+		{ (mod.isShift or: mod.isCtrl or:{ currentBrush == \pen })  and: { buttonNumber == 0 } } {
 			// resize mode
 			if(chosennode != nil) { // a node is selected
 				var newwidth;
@@ -1061,7 +1075,7 @@ TimelineView : SCViewHolder {
 		};
 		if(modifiers.isCtrl.not and: { modifiers.isShift.not }) {
 			oldport = this.viewport;
-			top = ( oldport.top + ( yDelta/this.virtualBounds.height ) ).clip(0,1-oldport.height);
+			top = ( oldport.top + ( yDelta/this.virtualBounds.height/4 ) ).clip(0,1-oldport.height);
 			newport = Rect(oldport.left, top, oldport.width, oldport.height);
 			//[oldport, newport, oldport.height, oldport.top, oldport.bottom].debug("oldport, newport");
 			this.viewport = newport;
@@ -1468,11 +1482,13 @@ TimelineView : SCViewHolder {
 		var screen_gridrect;
 		var onScreen = { arg node;
 			// rendering is way faster with this function
+			//[ this.class, node.class, node.rect, screen_gridrect, node.rect.intersects(screen_gridrect) ].debug("onScreen node");
 			node.rect.intersects(screen_gridrect)
 		};
 		//this.class.debug("<<<<<<<<<<<< start drawing nodes");
 		screen_gridrect = this.pixelRectToGridRect(this.virtualBounds);
 		//[this.bounds, this.virtualBounds].debug("bounds, virtualBounds");
+		//[this.class, paraNodes.size, paraNodes.select(onScreen).size].debug("drawNodes onScreen filter result");
 
 		//[this.viewport, this.bounds, this.virtualBounds, this.areasize].debug("drawNodes:bounds");
 		paraNodes.select(onScreen).do({arg node;
@@ -1567,11 +1583,13 @@ TimelineView : SCViewHolder {
 	mimicTimeline { arg timeline, orientation;
 		// FIXME: why no changed signal ? ("this.viewport =" instead of "viewport =")
 		var rect_copy_horizontal = { arg me, rect;
+			me = me.copy;
 			me.width = rect.width;
 			me.origin = Point(rect.origin.x, me.origin.y);
 			me;
 		};
 		var rect_copy_vertical = { arg me, rect;
+			me = me.copy;
 			me.height = rect.height;
 			me.origin = Point(me.origin.x, rect.origin.y);
 			me;
@@ -1593,7 +1611,7 @@ TimelineView : SCViewHolder {
 						},
 						// else
 						{
-							this.viewport = timeline.viewport;
+							this.viewport = timeline.viewport; 
 						}
 					);
 					this.refresh;
@@ -1621,7 +1639,8 @@ TimelineView : SCViewHolder {
 			})
 			.put(\lastGridPos, {
 				lastGridPos = timeline.lastGridPos;
-				this.view.refresh;
+				//this.view.refresh;
+				this.refresh;
 			})
 		;
 		// init
@@ -2153,7 +2172,7 @@ TimelineView : SCViewHolder {
 		cidx = cidx;
 		upperidx = cidx.clip(0, psize-1).asInteger;
 		loweridx = ( cidx - step ).clip(0, psize-1).asInteger;
-		[loweridx, upperidx, step, psize].debug("findNode: node is between, step, total");
+		//[loweridx, upperidx, step, psize].debug("findNode: node is between, step, total");
 		^[loweridx, upperidx]
 	}
 
@@ -2174,13 +2193,13 @@ TimelineView : SCViewHolder {
 		if(~debugfind == true) {
 			
 		^paraNodes.select { arg node;
-			[node, node.origin, node.selectable, rect.containsPoint(node.origin),rect].debug("findNodes: node");
+			//[node, node.origin, node.selectable, rect.containsPoint(node.origin),rect].debug("findNodes: node");
 			node.selectable and: {rect.containsPoint(node.origin)};
 		};
 		} {
 
 		^this.getNodesNearRange(rect.left, rect.right, nodes).select { arg node;
-			[node, node.origin, node.selectable, rect.containsPoint(node.origin), rect].debug("findNodes: node");
+			//[node, node.origin, node.selectable, rect.containsPoint(node.origin), rect].debug("findNodes: node");
 			node.selectable and: {rect.containsPoint(node.origin)};
 		};
 		};
@@ -2222,7 +2241,7 @@ TimelineView : SCViewHolder {
 			//node.spritenum.debug("spritnum");
 			//[rect, point].debug("findNodes");
 
-			[node.class, node.rect, node.selectable,  contains.(rect, node.rect), rect.contains(node.rect), rect ].debug("findContainedNodes");
+			//[node.class, node.rect, node.selectable,  contains.(rect, node.rect), rect.contains(node.rect), rect ].debug("findContainedNodes");
 			node.selectable and: { contains.(rect, node.rect)}
 		});
 	}

@@ -152,6 +152,10 @@ ProtoTemplateDef(\NotePlayer, (
 		self;
 	},
 
+	muted: { arg self;
+		self.parent_self.muted ? false
+	},
+
 	strippedEventKeys: [\dur, \legato, \delta, \velocity, \kitIndex, \midinote],
 
 	play: { arg self, local_pre_event, local_post_event;
@@ -169,9 +173,8 @@ ProtoTemplateDef(\NotePlayer, (
 		self.ev = self.ev.copy.putAll(local_pre_event ?? {()});
 		//self.ev.debug("play: before next: ev");
 		//Log(\Param).debug("NotePlayer: play: ev 2: %", self.ev);
-		// FIXME: next should take Event.default
 		self.ev = self.stream.next(self.ev);
-		//self.ev.debug("play: ev");
+		//[self.ev, self.stream].debug("play: ev");
 
 		// processing
 		//Log(\Param).debug("NotePlayer: play: ev 3: %", self.ev);
@@ -213,7 +216,9 @@ ProtoTemplateDef(\NotePlayer, (
 			};
 		};
 		//Log(\Param).debug("NotePlayer: play: ev 8: %", self.ev);
-		self.cur_ev = self.play_ev.play;
+		if(self.muted != true) {
+			self.cur_ev = self.play_ev.play;
+		};
 		//Log(\Param).debug("NotePlayer: play: ev 9: %", self.ev);
 		self.changed(\play);
 		//Log(\Param).debug("play: raw_ev:%, idx:%, h:%", self.raw_ev, self.index, self.hash);
@@ -432,6 +437,10 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 			fun.(self.elAt(args[0]), msg, *args);
 		};
 		SimpleController.new(self).put(\play, listenfun).put(\stop, listenfun)
+	},
+
+	stopAll: { arg self;
+		self.children.do(_.stop);
 	},
 
 	chainingMode: \pre, 

@@ -111,6 +111,15 @@ ParamGroup : List {
 		}
 	}
 
+	asPropertyDict {
+		// note: params with same property will be hidden
+		var dict = IdentityDictionary.new;
+		this.do { arg param, idx;
+			dict[param.propertyRoot] = param;
+		};
+		^dict;
+	}
+
 	erase { arg key=\default;
 		presets[key] = nil;
 		this.changed(\presets);

@@ -1402,9 +1402,10 @@ Param {
 					var listlabel = "% %".format(this.fullLabel, speclist.tryPerform(\key) ?? { "" });
 					ParamProto.init;
 					//speclist.debug("speclist");
-					WindowDef(\ListSelectDialog).front(speclist, { arg selected, asso;
+					WindowDef(\ListSelectDialog).front(speclist, { arg selected, asso, idx;
 						//selected.asCompileString.debug("selected");
-						this.set(asso.value)
+						//this.set(asso.value)
+						view.valueAction = idx; // trigger user custom addAction on PopUp
 					}, this.get, listlabel);
 				}
 			}
@@ -2074,6 +2075,10 @@ BaseParam {
 	propertyRoot {
 		^property
 	}
+
+    propertyArray {
+		^BaseAccessorParam.associationToArray(this.property)
+    }
 
 	targetLabel {
 		^target.asString
@@ -3766,6 +3771,27 @@ PdefParam : BaseAccessorParam {
 		}
 	}
 
+	initPstepSeq { arg size=8, forcePbindef=true;
+		var getpstepseq = {
+			var val;
+			var def = this.default;
+			if(this.propertyArray.last == \stepseq) {
+				val = PstepSeq(def.extend(size, def.first))
+			} {
+				val = PstepSeq(def!size)
+			};
+			val;
+		};
+		if(this.target.source.isKindOf(PbindProxy)) {
+			if(this.target.source.at(this.propertyRoot).source.isKindOf(PstepSeq).not) {
+				this.target.source.set(this.propertyRoot, getpstepseq.())
+			};
+		} {
+			if(forcePbindef and: { this.target.isKindOf(Pdef) }) {
+				Pbindef(this.target.key, this.propertyRoot, getpstepseq.())
+			};
+		};
+	}
 }
 
 EventPatternProxyParam : PdefParam {

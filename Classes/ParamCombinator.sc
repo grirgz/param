@@ -328,7 +328,7 @@ ParamCombinator : Pattern {
 		} {
 			//Log(\Param).debug("asPattern value");
 			Pfunc({ 
-				this.playAll;
+				//this.playAll;
 				this.resultParam.get 
 			});
 		}
@@ -336,7 +336,7 @@ ParamCombinator : Pattern {
 
 
 	playAll {
-		Log(\Param).debug("ParamCombinator: play all");
+		//Log(\Param).debug("ParamCombinator: play all");
 		if(this.inBusMode) {
 			proxy.wakeUp;
 		};

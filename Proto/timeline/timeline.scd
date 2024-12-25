@@ -129,7 +129,7 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	asPattern: { arg self, startEventOffset, totalDur, repeatCount, parentEvent, parentTimeline;
-		self.loopMaster.getClipLoopPattern(self.cutPatternFunction(parentEvent, parentTimeline), startEventOffset, totalDur, repeatCount ? self.repeatCount);
+		self.loopMaster.getClipLoopPattern(self.cutPatternFunction(parentEvent, parentTimeline), startEventOffset, totalDur, repeatCount ? self.repeatCount, self.automationPattern);
 	},
 
 	previewPattern: { arg self, absStart, absEnd, repeatCount;
@@ -137,11 +137,11 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	asPatternSlice: { arg self, startLocator, endLocator, repeatCount=1;
-		self.loopMaster.getPatternSlice(self.cutPatternFunction, startLocator, endLocator, repeatCount ? self.repeatCount);
+		self.loopMaster.getPatternSlice(self.cutPatternFunction, startLocator, endLocator, repeatCount ? self.repeatCount, self.automationPattern);
 	},
 
 	asPatternSlices: { arg self, repeatCount=1;
-		self.loopMaster.getPatternSlices(self.cutPatternFunction, repeatCount ? self.repeatCount);
+		self.loopMaster.getPatternSlices(self.cutPatternFunction, repeatCount ? self.repeatCount, self.automationPattern);
 	},
 
 	asSelectedPattern: { arg self, repeatCount;
@@ -344,7 +344,7 @@ ProtoClassDef(\EventTimeline, (
 		var str = List.new;
 		str = str.add("%.param = %;".format(self.refCompileString(self.key.asCompileString), self.param.asCompileString));
 		str = str.add("%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString));
-		if(self.automationRack.notNil and: { self.automationRack.isEmpty != true }) {
+		if(self.automationRack.notNil and: { self.automationRack.isEmpty == false }) {
 			str = str.add(self.automationRack.presetCompileString("%.automationRack".format(self.refCompileString)))
 		};
 		str.join($\n);
@@ -466,7 +466,7 @@ ProtoClassDef(\EventTimeline, (
 
 	automationRack: { arg self;
 		var arkey = "AutomationRack_%_%".format(self.eventType, self.key);
-		self[\automationRack] = TrackDef(arkey, \ParamTimelineRack);
+		self[\automationRack] = TrackDef(arkey, \AutomationRack);
 		self[\automationRack];
 	},
 
@@ -1114,6 +1114,21 @@ ProtoClassDef(\ParamTimeline, (
 		
 	},
 
+	bypassed_: { arg self, val;
+		self[\bypassed_val] = val;
+		if(val == true) {
+			self.param.unset;
+		} {
+			self.param.setBus(self.outBus.asMap);
+		};
+		self.changed(\bypassed);
+		self.changed(\inBusMode);
+	},
+
+	bypassed: { arg self;
+		self.param.getBus != self.outBus.asMap;
+	},
+
 	cutPatternFunction: { arg self;
 		{ arg sloop, offset, dur;
 			var postpat, prepat;
@@ -1127,7 +1142,11 @@ ProtoClassDef(\ParamTimeline, (
 				//} {
 					//self.param.set(self.outBus.asMap);
 				//};
-				self.param.setBus(self.outBus.asMap);
+				if(self.bypassed_val == true) { // can't this be unsynced with self.bypassed ?
+					self.param.unset;
+				} {
+					self.param.setBus(self.outBus.asMap);
+				};
 				{
 					self.changed(\inBusMode);
 					//self.changed(\param);
@@ -1955,7 +1974,7 @@ ProtoClassDef(\LoopMaster, (
 		cutFunction.(self, firstEventOffset, dur);
 	},
 
-	getClipLoopPattern: { arg self, cutFunction, customStartEventOffset, customTotalDur, customRepeatCount;
+	getClipLoopPattern: { arg self, cutFunction, customStartEventOffset, customTotalDur, customRepeatCount, parallelPat;
 		// customTotalDur is not the duration of the final pattern. totalDur = endEvent - startEvent. A customTotalDur is just like changing the endEvent position. Then customStartEventOffset is applied
 		// repeat pattern when outside clip loop
 		// we want to give time since start event
@@ -1963,7 +1982,7 @@ ProtoClassDef(\LoopMaster, (
 		// 		it is provided by the timeline because the timeline know better how to cut the pattern
 		//		it generally call sloop.cutPattern but can do other things
 		//		for example this allow to start inside a sample without having to fast forward events manually
-		Prout({
+		var pat = Prout({
 			var sloop = self;
 			var ret;
 			var repeatCount = customRepeatCount ? sloop.repeatCount;
@@ -1986,7 +2005,15 @@ ProtoClassDef(\LoopMaster, (
 			// Prout return value is important, if we do not return ret, repeatCount is returned and this cause bug when using Pseq([ thisPat, Event.silent(1) ]); 
 			ret; 
 
-		})
+		});
+		if(parallelPat.notNil) {
+			//parallelPat.debug("parallelPat");
+			pat = Ppar([
+				pat,
+				parallelPat
+			])
+		};
+		pat;
 	},
 
 	enablePreviewLoopToClipStart: true,
@@ -2144,7 +2171,7 @@ ProtoClassDef(\LoopMaster, (
 		}
 	},
 
-	getPatternSlice: { arg self, cutFunction, marker_start, marker_end, repeatCount;
+	getPatternSlice: { arg self, cutFunction, marker_start, marker_end, repeatCount, parallelPat;
 		var start, end;
 		var loclist = self.eventList.select({arg x; self.isLocator(x)});
 		marker_start = self.locatorLabelToIndex(loclist, marker_start);
@@ -2156,13 +2183,14 @@ ProtoClassDef(\LoopMaster, (
 
 		start = loclist[marker_start].absTime;
 		end = loclist[marker_end].absTime;
-		self.getPreviewLoopPattern(cutFunction, start, end, repeatCount)
+		// FIXME: the parallelPat is not sliced
+		self.getPreviewLoopPattern(cutFunction, start, end, repeatCount, parallelPat)
 	},
 
-	getPatternSlices: { arg self, cutFunction, repeatCount=1;
+	getPatternSlices: { arg self, cutFunction, repeatCount=1, parallelPat;
 		var loclist = self.eventList.select({arg x; self.isLocator(x)});
 		loclist.drop(-1).collect({ arg loc, idx;
-			self.getPreviewLoopPattern(cutFunction, loclist[idx].absTime, loclist[idx+1].absTime, repeatCount)
+			self.getPreviewLoopPattern(cutFunction, loclist[idx].absTime, loclist[idx+1].absTime, repeatCount, parallelPat)
 		});
 	},
 ));

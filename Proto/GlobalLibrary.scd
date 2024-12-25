@@ -961,16 +961,35 @@ TagSpecDef(\SynthDef_all, {
 });
 
 TagSpecDef(\SynthDef_keys, {
+	var blocklist = TagSpecDef(\SynthDef_blocklist).valueList.collect({ arg x; Constraint(x) });
+	blocklist = blocklist.reduce('or');
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.keys.as(Array) }).flat.reject({ arg item;
-		item.asString.beginsWith("system_")
+		blocklist.value(item)
 	}).sort;
 });
 
 TagSpecDef(\SynthDef, {
+	var blocklist = TagSpecDef(\SynthDef_blocklist).valueList.collect({ arg x; Constraint(x) });
+	blocklist = blocklist.reduce('or');
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat.reject({ arg item;
-		item.key.asString.beginsWith("system_")
+		blocklist.value(item.key)
 	});
 });
+
+TagSpecDef(\SynthDef_blocklist, 
+	[
+		\system_, 
+		\CTKMeta_, 
+		\Param_buffer_player, 
+		\PmodEnv_,
+		\PnoteEnv_,
+		\ParamTimeline_segment,
+		\Pmod_constant,
+	].collect { arg item, idx;
+		var itemstr = item.asString;
+		item -> { arg key; key.asString.beginsWith(itemstr) };
+	}
+);
 
 TagSpecDef(\Pdef, {
 	Pdef.all.asAssociations;

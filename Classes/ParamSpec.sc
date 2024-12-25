@@ -97,7 +97,7 @@ ParamArraySpec : ParamBaseSpec {
     }
 
     array_ { arg val;
-		val.debug("array_ val");
+		//val.debug("array_ val");
 		if(val.isSequenceableCollection.not) {
 			if(val.isNil) {
 				^Error("ParamArraySpec: spec is nil or not in Spec library: "++array.asCompileString).throw
