@@ -6,7 +6,6 @@
 	[
 
 		"default_specs.scd",
-		"misc/pdemul.scd",
 		"misc/selector.scd",
 		"misc/overlayMenu.scd",
 		//"experimental/eventFactory.scd", // deprecated by player_group
@@ -14,14 +13,16 @@
 		"GlobalLibrary.scd",
 		"editors.scd",
 		"misc/FileDialog.scd",
+		"misc/ParamSelectDialog.scd",
 		"timeline/timeline_utils.scd",
 		"timeline/timeline.scd",
 		"timeline/timeline_gui.scd",
 		"timeline/timeline_sample.scd",
 		"timeline/timeline_recorders.scd",
-		"experimental/drumrack.scd",
-		"experimental/sequencer_score_manager.scd",
-		"experimental/StepEventView.scd",
+		"timeline/AutomationRack.scd",
+		//"experimental/drumrack.scd",
+		//"experimental/sequencer_score_manager.scd",
+		//"experimental/StepEventView.scd",
 		"misc/PresetSelectorView.scd",
 		"experimental/PresetSelectorView_compat.scd",
 		//"experimental/steptimeline.scd", // fail with ProxySpace
