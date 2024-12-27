@@ -1387,6 +1387,87 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.bottomPanelHeaderView.removeAll;
 	},
 
+	showParamPanel: { arg self, prop;
+		var param = Param(self.timeline_model.param.target, prop);
+		self.selectedAutomationParam = param;
+		if(self.isParamAutomated(param)) {
+			self.showAutomation(prop);
+		} {
+			self.showVelocityView(prop);
+		};
+	},
+
+	isParamAutomated: { arg self, property;
+		// property can be a param
+		var rack = self.timeline_model.automationRack;
+		var ptline;
+		var param;
+		if(property.isKindOf(Param)) {
+			param = property;
+		} {
+			param = Param(self.timeline_model.param.target, property)
+		};
+		ptline = rack.getParamTimeline(param);
+		(ptline.isNil or: { rack.getAutomation(param).disabled == true }).not;
+	},
+
+	makeParamsMenu: { arg self;
+		var rack = self.timeline_model.automationRack;
+		Menu(
+			*[
+				if(rack.isEmpty.not) {
+					[
+						//Param(Message(self), \isBottomPanelVisible, ParamBoolSpec()).asMenuAction("Show automation panel"),
+						Param(Message(self.timeline_model), \automationEnabled, ParamBoolSpec()).asMenuAction("Enable automation"),
+						MenuAction("Preview all automations", {
+							self.showAllAutomations;
+						}),
+					]
+				},
+
+				if(self.selectedAutomationParam.notNil) {
+					var am = rack.getAutomation(self.selectedAutomationParam);
+					if(am.notNil) {
+						[
+							MenuAction.separator,
+							Menu(
+								MenuAction("Disabled", {
+									am.disabled = (am.disabled ? false).not;
+									self.showParamPanel(self.selectedAutomationParam.property); // refresh
+								}).checkable_(true).checked_(am.disabled),
+								MenuAction("Edit", {
+									am.paramTimeline.edit;
+								}),
+								MenuAction("Remove", {
+									rack.removeAutomation(self.selectedAutomationParam);
+									self.showParamPanel(self.selectedAutomationParam.property); // refresh
+								}),
+							).title_("Automation: %".format(self.selectedAutomationParam.propertyRoot)),
+						]
+					} {
+						[
+							MenuAction.separator,
+							MenuAction("Create automation for %".format(self.selectedAutomationParam.propertyRoot), {
+								self.showAutomation(self.selectedAutomationParam.property);
+							})
+						]
+
+					};
+				},
+
+				MenuAction.separator,
+				self.timelineInstrumentParamGroup.rejectByKey([\dur, \legato, \sustain]).selectByType(\scalar).asArray.collect { arg param, idx;
+					var ptline = self.timeline_model.automationRack.getParamTimeline(param);
+
+					MenuAction(param.propertyRoot, {
+						self.showParamPanel(param.property);
+					}).checkable_(true).checked_(ptline.notNil)
+				}
+			].flat.reject(_.isNil)
+		).front;
+		
+	},
+
 	makeAutomationMenu: { arg self;
 		var rack = self.timeline_model.automationRack;
 		Menu(
@@ -1614,18 +1695,18 @@ ProtoTemplateDef(\TimelinePanelView, (
 			})
 		;
 		self.bottomPanelDescription = StaticText.new;
-		self.velocityButton = BasicButton.new.string_("Notes prop").fixedWidth_(80).action_({
-			self.makeVelocityMenu;
+		self.velocityButton = BasicButton.new.string_("Params").fixedWidth_(80).action_({
+			self.makeParamsMenu;
 		});
-		self.automationButton = BasicButton.new.string_("Automate").fixedWidth_(80).action_({
-			self.makeAutomationMenu;
-		});
+		//self.automationButton = BasicButton.new.string_("Automate").fixedWidth_(80).action_({
+			//self.makeAutomationMenu;
+		//});
 		self.makeBottomPanelValueText;
 		self.bottomPanelToolbar.layout = HLayout (
 			self.bottomPanelShowButton,
 			//self.automationPopup,
 			self.velocityButton,
-			self.automationButton,
+			//self.automationButton,
 			self.bottomPanelDescription,
 			self.bottomPanelValueText,
 			nil,

@@ -473,7 +473,7 @@ ProtoClassDef(\EventTimeline, (
 	automationEnabled: true,
 
 	automationPattern: { arg self;
-		if(self.automationEnabled == true) {
+		if(self.automationEnabled == true and: { self.automationRack.hasAnyTrackEnabled }) {
 			self.automationRack.asPattern
 		} {
 			nil

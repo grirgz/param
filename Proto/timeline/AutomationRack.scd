@@ -10,7 +10,7 @@ ProtoTemplateDef(\AutomationItem, (
 	new: { arg self, parent, param;
 		self = ProtoClass((parent: self));
 		// FIXME: if two param have same proprerty, names will clash
-		self.paramTimeline = ParamTimeline("%_%".format(parent.trackKey, param.propertyRoot).asSymbol, param);
+		self.paramTimeline = ParamTimeline("%_%".format(parent.automationKey, param.propertyRoot).asSymbol, param);
 		self.param = param;
 		self.parentRack = parent;
 		self;
@@ -52,6 +52,14 @@ TrackTemplateDef(\AutomationRack, (
 
 	isEmpty: { arg self;
 		self.automationList.size == 0
+	},
+
+	automationKey: { arg self;
+		self.trackKey ?? { self.key };
+	},
+
+	hasAnyTrackEnabled: { arg self;
+		self.automationList.select({ arg x; x.disabled != true }).size > 0
 	},
 
 	isPlaying: { arg self;
