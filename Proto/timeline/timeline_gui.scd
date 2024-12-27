@@ -1728,6 +1728,9 @@ ProtoTemplateDef(\TimelinePanelView, (
 			self.bottomPanelView.visible = true;
 			self.bottomPanelVerticalScroller.visible = true;
 			self.bottomPanelHeaderView.visible = true;
+			if(self.selectedAutomationParam.isNil) {
+				self.showParamPanel(\velocity);
+			};
 		} {
 			self.bottomPanelView.visible = false;
 			self.bottomPanelVerticalScroller.visible = false;
@@ -2404,7 +2407,7 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 				Menu(
 					* [
-						MenuAction("Edit", { 
+						MenuAction("Edit source", { 
 							PlayerWrapper(model.param.target).edit;
 						}),
 						MenuAction("Select source", { 
