@@ -19,6 +19,7 @@
 		"editors/FileDialog.scd",
 		"editors/ParamSelectDialog.scd",
 		"editors/PatKitDefEditor.scd",
+		"editors/PbindefEditor.scd",
 
 		//// timelines
 

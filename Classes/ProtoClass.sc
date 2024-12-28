@@ -255,7 +255,7 @@ ProtoDef : ProtoClass {
 			var ret = this.all[key];
 			if(val.notNil) {
 				if(templateClasses.includes(val.class.name) and: { instanceClasses.includes(this.name) } ) {
-					Log(\Param).debug("replace parent!!! %", val);
+					//Log(\Param).debug("replace parent!!! %", val);
 					ret[\parent] = val;
 				} {
 					ret.putAll(val);

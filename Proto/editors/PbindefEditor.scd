@@ -15,7 +15,7 @@ WindowDef(\PbindefEditor, (
 				if(param.parent.type == \scalar) {
 					// can change only scalar parameter
 					var curform = self.getParamForm(param);
-					"hello1.1".debug;
+					//"hello1.1".debug;
 					Menu(*
 						self.paramForms.collect { arg form, idx;
 							MenuAction(form, {
@@ -23,7 +23,7 @@ WindowDef(\PbindefEditor, (
 								if(textView.notNil) {
 									textView.unmapParam;
 								};
-								Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
+								//Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
 								if(editorView.layout.innerView.notNil) {
 									editorView.layout.innerView.unmapParam;
 								};
@@ -39,7 +39,7 @@ WindowDef(\PbindefEditor, (
 					var forms = self.paramForms.reject({ arg x;
 						[].includes(x)
 					});
-					"hello1.1".debug;
+					//"hello1.1".debug;
 					Menu(*
 						self.paramForms.collect { arg form, idx;
 							MenuAction(form, {
@@ -47,7 +47,7 @@ WindowDef(\PbindefEditor, (
 								if(textView.notNil) {
 									textView.unmapParam;
 								};
-								Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
+								//Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
 								if(editorView.layout.innerView.notNil) {
 									editorView.layout.innerView.unmapParam;
 								};
@@ -118,7 +118,7 @@ WindowDef(\PbindefEditor, (
 				if(param.parent.type == \scalar) {
 					// can change only scalar parameter
 					var curform = self.getParamForm(param);
-					"hello1.1".debug;
+					//"hello1.1".debug;
 					Menu(*
 						self.paramForms.collect { arg form, idx;
 							MenuAction(form, {
@@ -126,7 +126,7 @@ WindowDef(\PbindefEditor, (
 								if(textView.notNil) {
 									textView.unmapParam;
 								};
-								Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
+								//Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
 								if(editorView.layout.innerView.notNil) {
 									editorView.layout.innerView.unmapParam;
 								};
@@ -142,7 +142,7 @@ WindowDef(\PbindefEditor, (
 					var forms = self.paramForms.reject({ arg x;
 						[].includes(x)
 					});
-					"hello1.1".debug;
+					//"hello1.1".debug;
 					Menu(*
 						self.paramForms.collect { arg form, idx;
 							MenuAction(form, {
@@ -150,7 +150,7 @@ WindowDef(\PbindefEditor, (
 								if(textView.notNil) {
 									textView.unmapParam;
 								};
-								Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
+								//Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
 								if(editorView.layout.innerView.notNil) {
 									editorView.layout.innerView.unmapParam;
 								};
@@ -270,29 +270,29 @@ WindowDef(\PbindefEditor, (
 						//)
 					//},
 					TextField.new.mapParam(param),
-					"hello1".debug;
+					//"hello1".debug;
 					if(param.parent.type == \scalar) {
 						// can change only scalar parameter
-					"hello1.1".debug;
+					//"hello1.1".debug;
 						typePopup = PopUpMenu.new.items_(self.paramForms).action_({ arg view;
 							// why unmapping params ?
 							if(textView.notNil) {
 								textView.unmapParam;
 							};
-							Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
+							//Log(\Param).debug("editorView.layout.innerView %", editorView.layout.innerView);
 							if(editorView.layout.innerView.notNil) {
 								editorView.layout.innerView.unmapParam;
 							};
 							self.setParamForm(param, self.paramForms[view.value], editorView);
 							def.closeWindow;
 						}).value_(self.paramForms.indexOf(self.getParamForm(param)));
-					"hello1.2".debug;
+					//"hello1.2".debug;
 						HLayout (
 							StaticText.new.string_("Param form"),
 							typePopup,
 						);
 					},
-					"hello2".debug;
+					//"hello2".debug;
 					if(self.sustainKeys.includes(param.propertyRoot)) {
 						HLayout (
 							StaticText.new.string_("Mode:"),
@@ -318,7 +318,7 @@ WindowDef(\PbindefEditor, (
 								//"2".debug;
 								//WindowDef(( \ParamCombinator_++param.fullLabel ).asSymbol, WindowDef(\ParamCombinatorEditor)).front(combi);
 								//param.set(param.default)
-								[param, param.wrapper, combi].debug("param");
+								//[param, param.wrapper, combi].debug("param");
 								param.set(combi);
 								//"3".debug;
 								inputidx = self.combinatorNextInputIndex(combi);
@@ -653,7 +653,7 @@ WindowDef(\PbindefEditor, (
 			};
 			true;
 		});
-		Log(\Param).debug("makeParamView: %", param);
+		//Log(\Param).debug("makeParamView: %", param);
 		editorView = View.new;
 		editorView.followChange(self.proxy, \keyForm, { arg view, model, msg, cparam ...args;
 			var val;
@@ -663,7 +663,7 @@ WindowDef(\PbindefEditor, (
 			//[view, model, msg, args].debug("args");
 			//[param, cparam].debug("followChange test");
 			if(param === cparam) {
-				Log(\Param).debug("editorView: followChange: %, %", param.property, param.spec);
+				//Log(\Param).debug("editorView: followChange: %, %", param.property, param.spec);
 				editorView.removeAll;
 				editorView.maxHeight_(bigheight);
 				val = param.getRaw;
@@ -673,7 +673,7 @@ WindowDef(\PbindefEditor, (
 						//// param removed, do nothing
 					//},
 					{ param.propertyRoot == \dur and: {self.isNoteTimelineModeEnabled} }, {
-						val.debug("makeParamView: dur NoteTimeline");
+						//val.debug("makeParamView: dur NoteTimeline");
 						editorView.layout = HLayout([ innerView = self.noteTimeline.asPreview, stretch:10 ]).margins_(0).spacing_(0);
 						textView.visible = false;
 					},
@@ -700,7 +700,7 @@ WindowDef(\PbindefEditor, (
 
 							})
 						});
-						val.debug("makeParamView: buffer");
+						//val.debug("makeParamView: buffer");
 						~param = param;
 						if(param.spec.isKindOf(ParamAudioBufferSpec)) {
 							if(param.spec.startParamName.notNil) {
@@ -732,14 +732,14 @@ WindowDef(\PbindefEditor, (
 						textView.visible = false;
 					},
 					{ param.spec.isKindOf(TagSpec) }, {
-						val.debug("makeParamView: bus");
+						//val.debug("makeParamView: bus");
 						editorView.layout = HLayout(
 							[param.asPopUpMenu, stretch:10],
 						).margins_(0);
 						textView.visible = false;
 					},
 					{ param.spec.isKindOf(ParamBusSpec) }, {
-						val.debug("makeParamView: bus");
+						//val.debug("makeParamView: bus");
 						if(param.propertyRoot == \out) {
 							editorView.layout = HLayout(
 								if(self.isMixerEnabled) {
@@ -759,7 +759,7 @@ WindowDef(\PbindefEditor, (
 									[param.asPopUpMenu, stretch:10];
 								},
 								BasicButton.new.string_("...").maxWidth_(60).mouseUpAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-									[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+									//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 									self.showMixerOverlayMenu(view, x, y);
 
 								})
@@ -771,16 +771,16 @@ WindowDef(\PbindefEditor, (
 						textView.visible = false;
 					},
 					{ val.value.isKindOf(ProtoClass) and: { val.value.eventType == \inlineEnv } }, {
-						[val, val.value].debug("makeParamView: inlineEnv");
+						//[val, val.value].debug("makeParamView: inlineEnv");
 						innerView = val.value.asView;
-						Log(\Param).debug("innerView %", innerView);
+						//Log(\Param).debug("innerView %", innerView);
 						editorView.layout = HLayout([ innerView, stretch:10 ]).margins_(0).spacing_(0);
-						Log(\Param).debug("xxx");
+						//Log(\Param).debug("xxx");
 						innerView.addUniqueMethod(\unmapParam, {}); // no param to unmap
 						textView.visible = false;
 					},
 					{ val.value.isKindOf(ProtoClass) and: { val.value.eventType == \paramTimeline } }, {
-						[val, val.value].debug("makeParamView: ParamTimeline");
+						//[val, val.value].debug("makeParamView: ParamTimeline");
 						editorView.layout = HLayout([ innerView = val.value.asPreview, stretch:10 ]).margins_(0).spacing_(0);
 						innerView.addUniqueMethod(\unmapParam, {}); // no param to unmap
 						textView.visible = false;
@@ -791,7 +791,7 @@ WindowDef(\PbindefEditor, (
 						var layoutList = List.new;
 						var xtextView;
 						var combi = param.getCombinator;
-						[combi, val].debug("makeParamView: ParamCombinator");
+						//[combi, val].debug("makeParamView: ParamCombinator");
 						self.modulators = self.modulators ?? { List.new };
 						//[self.combinatorInputCount(combi)].debug("makeParamView: ParamCombinator: count");
 						knobs = combi.size.collect { arg idx;
@@ -800,7 +800,7 @@ WindowDef(\PbindefEditor, (
 
 								combiObject = combi.inputObjects[idx];
 
-								self.modulators.debug("WTF modulators");
+								//self.modulators.debug("WTF modulators");
 								if(combiObject.isKindOf(ProtoClass) and: { combiObject.eventType == \paramTimeline }) {
 									layoutList.add(
 										//innerView = View.new.layout_(VLayout(combiObject.asPreview)).minHeight_(100);
@@ -820,7 +820,7 @@ WindowDef(\PbindefEditor, (
 
 								//maxSize_(20)
 								combi.rangeParam.at(idx).asKnob.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-									[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+									//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 									if(buttonNumber == 1) {
 										self.showCombinatorOverlayMenu(param, combi, idx, view, x, y);
 										false;
@@ -848,7 +848,7 @@ WindowDef(\PbindefEditor, (
 
 					}, 
 					{ val.isKindOf(Pattern) }, {
-						val.debug("makeParamView: pattern");
+						//val.debug("makeParamView: pattern");
 						editorView.layout = HLayout(innerView = param.asTextField).margins_(0).spacing_(0);
 						textView.visible = false;
 
@@ -868,19 +868,19 @@ WindowDef(\PbindefEditor, (
 						//		Note that PstepSeq also fall in this switch case
 						// should be placed after param.type==\env else envs will be treated as chords
 						innerView = param.asMultiSlider.attachContextMenu;
-						val.debug("makeParamView: chord");
+						//val.debug("makeParamView: chord");
 						editorView.layout = HLayout(innerView).margins_(0).spacing_(0);
 						textView.visible = false;
 
 					}, 
 					{ param.type == \scalar }, {
-						val.debug("makeParamView: scalar");
+						//val.debug("makeParamView: scalar");
 						editorView.layout = HLayout(innerView = param.asSlider.orientation_(\horizontal)).margins_(0).spacing_(0);
 						//textView.visible = true;
 
 					}, 
 					{
-						val.debug("makeParamView: default");
+						//val.debug("makeParamView: default");
 						editorView.layout = HLayout(innerView = param.asSlider.orientation_(\horizontal)).margins_(0).spacing_(0);
 						//textView.visible = true;
 
@@ -889,15 +889,15 @@ WindowDef(\PbindefEditor, (
 				if(editorView.layout.notNil) {
 					editorView.layout.addUniqueMethod(\innerView, { innerView });
 				};
-				Log(\Param).debug("editorView: END followChange: %, %", param.property, param.spec);
+				//Log(\Param).debug("editorView: END followChange: %, %", param.property, param.spec);
 			}
 		}, false);
 		self.proxy.changed(\keyForm, param);
 		if(self.hiddenParamList.includes(param.propertyRoot)) {
-			"lay1".debug;
+			//"lay1".debug;
 			HLayout()
 		} {
-			"lay2".debug;
+			//"lay2".debug;
 			if(textView.notNil) {
 				HLayout (
 					labelView,
@@ -985,21 +985,21 @@ WindowDef(\PbindefEditor, (
 
 	makeParamGroupView: { arg self, pgroup;
 		var lay;
-		pgroup.collect { arg param, idx;
-			param.debug("makeParamGroupView: pgroup item: %");
-		};
+		//pgroup.do { arg param, idx;
+			//param.debug("makeParamGroupView: pgroup item: %");
+		//};
 		lay	= VLayout(
 			* pgroup.collect { arg param, idx;
 				var res;
-				Log(\Param).debug("makeParamGroupView % %", param, idx);
+				//Log(\Param).debug("makeParamGroupView % %", param, idx);
 				res = self.makeParamView(param);
-				Log(\Param).debug("makeParamGroupView END % %", param, idx);
+				//Log(\Param).debug("makeParamGroupView END % %", param, idx);
 				res;
 			} ++ [nil];
 		);
-		Log(\Param).debug("makeParamGroupView2");
+		//Log(\Param).debug("makeParamGroupView2");
 		self.updateModulatorView;
-		Log(\Param).debug("makeParamGroupView3");
+		//Log(\Param).debug("makeParamGroupView3");
 		lay;
 	},
 
@@ -1181,7 +1181,7 @@ WindowDef(\PbindefEditor, (
 	paramForms: [\scalar, \stepseq, \chord, \text, \timeline, \modTimeline, \inlineEnv],
 
 	getParamForm: { arg self, param;
-		Log(\Param).debug("getParamForm %", param);
+		//Log(\Param).debug("getParamForm %", param);
 		case(
 			{ param.parent.at(\source).get.isKindOf(PstepSeq) }, {
 				\stepseq
@@ -1283,7 +1283,7 @@ WindowDef(\PbindefEditor, (
 			\inlineEnv, {
 				var pt, busparam;
 				editorView.removeAll;
-				Log(\Param).debug("create inlineEnv %", param);
+				//Log(\Param).debug("create inlineEnv %", param);
 				pt = ProtoTemplateDef(\PdefEditor_InlineEnv).new("Pbindef_%_%".format(self.proxy.key, param.propertyRoot).asSymbol, param.spec);
 				param.parent.at(\source).setRaw( pt );
 				self.updateParamGroupView; 
@@ -1335,14 +1335,14 @@ WindowDef(\PbindefEditor, (
 			self.proxy.source.set(\NoteTimeline, { self.noteTimeline });
 			// TODO: move Prout to NoteTimeline().asDurPattern
 			self.proxy.source.set(\dur, Prout({ arg ev;
-				ev.debug("PbindefEditor NoteTimeline dur Prout");
+				//ev.debug("PbindefEditor NoteTimeline dur Prout");
 				if(ev[\disableNoteTimeline] == true) {
 					loop {
 						ev = ev[\dur].yield;
 					}
 				} {
 					var pat;
-					ev.debug("PbindefEditor NoteTimeline dur now in pattern mode");
+					//ev.debug("PbindefEditor NoteTimeline dur now in pattern mode");
 					pat = ev[\NoteTimeline].value.asPattern;
 					pat.do { arg val;
 						ev.putAll(val);
@@ -1639,7 +1639,7 @@ ProtoTemplateDef(\PdefEditor_InlineEnv, (
 				envev[\out] = self.bus;
 				envev[\levelScale] = spec.range * ( self.baseEvent.levelScale ? 1 );
 				envev[\levelBias] = spec.minval + ( self.baseEvent.levelBias ? 0 );
-				envev.debug("envev");
+				//envev.debug("envev");
 				ev[\finish] = ev[\finish].addFunc({
 					envev.play;
 				});
@@ -1655,20 +1655,20 @@ ProtoTemplateDef(\PdefEditor_InlineEnv, (
 			var lay;
 			var fpgroup;
 			var exkeys = [\out, \gate];
-			Log(\Param).debug("PdefEditor_InlineEnv in, pgroup: %", pgroup);
+			//Log(\Param).debug("PdefEditor_InlineEnv in, pgroup: %", pgroup);
 			// can't use block{} because interpreter bug
 			[\adsr, \asr, \env].collect { arg ekey;
 				pgroup.detect { arg param; param.propertyRoot == ekey  } !? { arg sel;
 					envparam = sel
 				}
 			};
-			envparam.debug("envparam");
+			//envparam.debug("envparam");
 			if(envparam.notNil) {
 				exkeys = exkeys ++ [ envparam.propertyRoot ];
 			};
 			fpgroup = pgroup.reject({ arg x; exkeys.includes(x.propertyRoot) });
-			fpgroup.debug("fpgroup");
-			fpgroup.debug("fpgroup2");
+			//fpgroup.debug("fpgroup");
+			//fpgroup.debug("fpgroup2");
 			lay = VLayout (
 				//VLayout(BasicButton.new.string_("Tu me soule"))
 				if(envparam.notNil) {
