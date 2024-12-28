@@ -842,6 +842,14 @@ ProtoClassDef(\NoteTimeline, (
 
 	},
 
+	clone: { arg self, newname;
+		var pt = NoteTimeline(newname, self.param.copy);
+		pt.eventList = self.eventList.clone;
+		self.automationRack.cloneTo(pt.automationRack);
+		pt;
+	},
+
+
 	trackInstrument_: { arg self, instr;
 		//Log(\Param).debug("NoteTimeline % trackInstrument_: %", self.key, [instr.hash, instr.target, instr.libId]);
 		self[\trackInstrument] = instr;
@@ -1033,6 +1041,12 @@ ProtoClassDef(\ParamTimeline, (
 		//param.debug("envTimeline: newInstance: param");
 		//"xx".debug;
 		self.init(param)
+	},
+
+	clone: { arg self, newname;
+		var pt = ParamTimeline(newname, self.param.copy);
+		pt.eventList = self.eventList.clone;
+		pt;
 	},
 
 	levelParam: { arg self;

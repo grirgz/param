@@ -229,7 +229,7 @@ CompactServerMeterView : SimpleServerMeterView {
 		var layout;
 		var fixedSetter, minSetter;
 		ticksView = ticks;
-		orientation.debug("CompactServerMeterView.makeLayout orientation");
+		//orientation.debug("CompactServerMeterView.makeLayout orientation");
 		if(orientation == \vertical) {
 			ticks.fixedWidth_(minViewWidth);
 			fixedSetter = \fixedWidth_;
@@ -292,7 +292,7 @@ CompactServerMeterView : SimpleServerMeterView {
 
 	orientation_ { arg val;
 		orientation = val;
-		orientation.debug("CompactServerMeterView set orientation");
+		//orientation.debug("CompactServerMeterView set orientation");
 		this.makeLayout;
 		this.view.onClose = { this.stop }; // cleanup
 

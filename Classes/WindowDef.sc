@@ -20,6 +20,7 @@ WindowDef {
 	classvar <>all;
 	classvar <>useWindowViewRecallQuark = true;
 	classvar <>tryModeEnabled = true; // debugging tool
+	classvar <>trace = false;
 	var <>key;
 	var <source;
 	var <>proto;
@@ -49,6 +50,10 @@ WindowDef {
 			if(val.notNil) {
 				^super.new.init(val).prAdd(key)
 			} {
+				if(trace == true) {
+					"ERROR when accessing WindowDef(%): do not exist. (val=%)".format(key.asCompileString, val.asCompileString).postln;
+					
+				};
 				^nil
 			}
 		} {

@@ -1300,8 +1300,8 @@ ProtoTemplateDef(\NdefTrackMixer, (
 
 );
 
-/////////////
 // END
+/////////////
 
 TrackMixerDef(\mixer)
 

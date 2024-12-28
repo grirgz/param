@@ -14,12 +14,23 @@
 		"editors.scd",
 		"misc/FileDialog.scd",
 		"misc/ParamSelectDialog.scd",
+
+		//// timelines
+
 		"timeline/timeline_utils.scd",
 		"timeline/timeline.scd",
 		"timeline/timeline_gui.scd",
 		"timeline/timeline_sample.scd",
 		"timeline/timeline_recorders.scd",
-		"timeline/AutomationRack.scd",
+
+		//// tracks
+		"tracks/PlayerGrid.scd",
+		"tracks/TrackList.scd",
+		"tracks/TrackList_base_tracks.scd",
+		"tracks/TrackList_gui.scd",
+		"tracks/AutomationRack.scd",
+
+		//// others
 		//"experimental/drumrack.scd",
 		//"experimental/sequencer_score_manager.scd",
 		//"experimental/StepEventView.scd",

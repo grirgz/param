@@ -2,8 +2,8 @@
 //FileSystemProject.load("libdef/ParamSelectDialog.scd");
 //FileSystemProject.load("libdef/CustomTrackList.scd");
 TrackTemplateDef(\AutomationRackTrack, (
-	parent: TrackTemplateDef(\CustomInstrumentTrack),
-	childClass: { TrackTemplateDef(\ParamTimelineRack) },
+	parent: TrackTemplateDef(\CustomTrack),
+	childClass: { TrackTemplateDef(\AutomationRack) },
 
 ));
 ProtoTemplateDef(\AutomationItem, (
@@ -21,9 +21,17 @@ ProtoTemplateDef(\AutomationItem, (
 		self.changed(\disabled);
 	},
 
+	clone: { arg oldself, newparent;
+		var self;
+		self = oldself.copy;
+		self.paramTimeline = oldself.paramTimeline.clone("%_%".format(newparent.automationKey, self.param.propertyRoot).asSymbol);
+		self.parentRack = newparent;
+		
+	},
+
 ));
 TrackTemplateDef(\AutomationRack, (
-	parent: TrackTemplateDef(\CustomInstrumentTrackPart),
+	parent: TrackTemplateDef(\CustomTrackPart),
 	//paramList
 	edit: { arg self;
 		WindowDef(\AutomationRack).edit(self)
@@ -124,6 +132,28 @@ TrackTemplateDef(\AutomationRack, (
 		self.addParamDialog
 	},
 
+	clone: { arg oldself, parent, index;
+		// WIP
+		var self;
+		self = oldself.copy;
+
+		self.parentTrack = {parent};
+		self.index = index.asInteger;
+		//self.score = self.cloneScore;
+		self.automationList = oldself.cloneAutomationList(self);
+		self;
+	},
+
+	cloneTo: { arg self, part;
+		part.automationList = self.cloneAutomationList(part);
+	},
+
+	cloneAutomationList: { arg self, newparent;
+		self.automationList.collect { arg item, idx;
+			item.clone(newparent);
+		};
+	},
+
 	asPattern: { arg self;
 		if(self.automationList.size > 0) {
 			Ppar(
@@ -140,6 +170,13 @@ TrackTemplateDef(\AutomationRack, (
 	paramList: { arg self;
 		self.automationList = self.automationList ?? { List.new };
 		self.automationList.collect(_.param);
+	},
+
+	paramList_: { arg self, plist;
+		self.automationList = List.new;
+		plist.do { arg param, idx;
+			self.addAutomation(param)
+		};
 	},
 
 	presetCompileString: { arg self, refCompileString;
