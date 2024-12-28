@@ -982,11 +982,6 @@ WindowDef(\help, { arg def, model;
 
 
 
-// little trick to have your editor with you everywhere
-~model[\edit] = { arg self; WindowDef(\help).front(self) }; // add an edit method to the model
-Pbindef(\help).setModel(~model); // set it (extension method)
-
-Pbindef(\help).edit; // now you can access the custom editor from your Pbindef
 ::
 
 

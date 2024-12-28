@@ -1,5 +1,6 @@
 
 // not the best place for theses useful additions
+// FIXME: should work with all editors
 + String {
 	pbcopy {
 		"xsel -ib <<EOD\n%\nEOD".format(this).unixCmd

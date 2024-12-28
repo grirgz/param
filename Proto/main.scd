@@ -35,7 +35,7 @@
 		//"experimental/sequencer_score_manager.scd",
 		//"experimental/StepEventView.scd",
 		"misc/PresetSelectorView.scd",
-		"experimental/PresetSelectorView_compat.scd",
+		//"experimental/PresetSelectorView_compat.scd",
 		//"experimental/steptimeline.scd", // fail with ProxySpace
 		////"experimental/old_track.scd", // deprecated
 		"TrackMixerDef.scd",
