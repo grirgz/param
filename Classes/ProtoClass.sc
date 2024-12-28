@@ -240,7 +240,7 @@ ProtoDef : ProtoClass {
 				// if value is a template class
 				//Log(\Param).debug("ProtoDef % %", this.class.name.asCompileString, val.class.name.asCompileString);
 				if(templateClasses.includes(val.class.name) and: { instanceClasses.includes(this.name) } ) {
-					Log(\Param).debug("use parent!!! %", val);
+					//Log(\Param).debug("use parent!!! %", val);
 					inst = super.new(()).protoDef_prAdd(key);
 					inst[\parent] = val;
 					inst.initProto; // constructor
