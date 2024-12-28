@@ -8,12 +8,17 @@
 		"default_specs.scd",
 		"misc/selector.scd",
 		"misc/overlayMenu.scd",
+		"misc/SoundFileView.scd",
 		//"experimental/eventFactory.scd", // deprecated by player_group
 		"player_groups.scd",
 		"GlobalLibrary.scd",
-		"editors.scd",
-		"misc/FileDialog.scd",
-		"misc/ParamSelectDialog.scd",
+
+		//// editors
+
+		"editors/base_editors.scd",
+		"editors/FileDialog.scd",
+		"editors/ParamSelectDialog.scd",
+		"editors/PatKitDefEditor.scd",
 
 		//// timelines
 
@@ -41,9 +46,9 @@
 		"TrackMixerDef.scd",
 
 		//"experimental/drumrack_synth.scd", // wip and maybe deprecated
-	].do({ arg file;
+	].do({ arg file, idx;
 		var path = (ParamProto.base_path +/+ file);
-		("loading " ++ path).debug;
+		"-------- loading % (%)".format(path, idx).debug;
 		FileSystemProject.load(path);
 		//RandDelayNetwork(\deldefault).define_specs[\posthpf].debug(">>> ");
 	});

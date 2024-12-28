@@ -41,6 +41,6 @@ Pdef(\help).edit; // try it
 
 
 // load back the original PdefEditor in Param quark Proto folder
-FileSystemProject.load( ParamProto.path +/+ "editors.scd")
+FileSystemProject.load( ParamProto.path +/+ "editors/base_editors.scd")
 ::
 

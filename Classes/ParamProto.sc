@@ -18,8 +18,8 @@ ParamProto {
 
 	*init { arg force=false;
 		if(initialized.not or: {force == true}) {
-			(base_path +/+ "main.scd").load;
 			initialized = true;
+			(base_path +/+ "main.scd").load;
 		}
 	}
 }

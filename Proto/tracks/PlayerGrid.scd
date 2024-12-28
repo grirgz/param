@@ -717,24 +717,6 @@ TrackTemplateDef(\PlayerGrid, (
 		self.controllerList;
 	},
 
-	///////// archive saving system
-
-	saveArchiveData: { arg self;
-		FileSystemProjectDictionary(\TrackDef, self)[self.key] = self.asArchiveData;
-	},
-
-	fromArchiveData: { arg self, data;
-		data.children.do({ arg child, idx; 
-			self.children[idx] = child
-		})
-	},
-
-	asArchiveData: { arg self;
-		var data = ();
-		data.children = self.children.collect { arg child;
-			child.asArchiveData
-		};
-	},
 
 	///////// presetCompileString saving system
 
