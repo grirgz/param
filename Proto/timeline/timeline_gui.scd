@@ -447,11 +447,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 		var el = self.timeline_model.eventLoop;
 		var undobut, redobut;
 
-		undobut = BasicButton.new.string_("<Undo").action_({
+		undobut = BasicButton.new.string_("↶").action_({
 			self.undoAction;
 		}).enabled_(el.historyCanUndo).fixedWidth_(50).toolTip_("Undo");
 
-		redobut = BasicButton.new.string_("->").action_({ arg but;
+		redobut = BasicButton.new.string_("↷").action_({ arg but;
 			self.redoAction;
 		}).enabled_(el.historyCanRedo).fixedWidth_(30).toolTip_("Redo");
 
@@ -794,22 +794,22 @@ ProtoTemplateDef(\TimelinePanelView, (
 			[
 				[
 					HLayout (
-						BasicButton.new.string_("m").maxWidth_(20).action_({
+						BasicButton.new.string_("👆").maxWidth_(20).action_({
 							self.timeline.currentBrush = \move;
 						}).toolTip_("Set move mode"),
-						BasicButton.new.string_("w").maxWidth_(20).action_({
+						BasicButton.new.string_("✎").maxWidth_(20).action_({
 							self.timeline.currentBrush = \pen;
 						}).toolTip_("Set write mode"),
 						//nil,
 					).margins_(0).spacing_(0),
 					self.ruler_x,
 					HLayout (
-						BasicButton.new.label_("v")
+						BasicButton.new.label_("↕")
 							.maxWidth_(10)
 							.action_({
 								self.zoomFitAction;
 							}),
-						BasicButton.new.label_("h")
+						BasicButton.new.label_("↔")
 							.maxWidth_(10)
 							.action_({
 								self.showAllNodesAction;
