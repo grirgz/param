@@ -462,6 +462,12 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 		self.startControl;
 	},
 
+	arp: { arg self;
+		if(self[\arp_obj].isNil) {
+			self[\arp_obj] = ProtoTemplateDef(\Arpegiator).new(self);
+		};
+		self[\arp_obj];
+	},
 
 	arpTarget: { arg self;
 		if(self[\arpTarget_obj].isNil) {

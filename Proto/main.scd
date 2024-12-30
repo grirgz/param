@@ -13,6 +13,7 @@
 		"CombinatorSlot.scd",
 		"player_groups.scd",
 		"GlobalLibrary.scd",
+		"arpegiator.scd",
 
 		//// editors
 
