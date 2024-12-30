@@ -482,7 +482,10 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 					//// Timeline need sustain key already computed
 					subself[\asPlayerEvent][\clockTime] = thisThread.clock.beats;
 					subself[\asPlayerEvent][\sustain] = subself.asPlayerEvent.use { ~sustain.value };
-					subself.changed(\play);
+					fork {
+						Server.default.latency.wait;
+						subself.changed(\play);
+					}
 					
 				},
 
