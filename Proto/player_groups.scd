@@ -168,24 +168,24 @@ ProtoTemplateDef(\NotePlayer, (
 		if(self.ev.isNil) {
 			self.ev = Event.default;
 		};
-		Log(\Param).debug("NotePlayer: play: ev 1: %", self.ev);
+		//Log(\Param).debug("NotePlayer: play: ev 1: %", self.ev);
 		self.ev = self.ev.copy.putAll(self.pre_event ?? {()});
 		self.ev = self.ev.copy.putAll(local_pre_event ?? {()});
 		//self.ev.debug("play: before next: ev");
-		Log(\Param).debug("NotePlayer: play: ev 2: %", self.ev);
+		//Log(\Param).debug("NotePlayer: play: ev 2: %", self.ev);
 		self.ev = self.stream.next(self.ev);
 		//[self.ev, self.stream].debug("play: ev");
 
 		// processing
-		Log(\Param).debug("NotePlayer: play: ev 3: %", self.ev);
+		//Log(\Param).debug("NotePlayer: play: ev 3: %", self.ev);
 		self.ev.putAll(self.post_event ?? {()});
 		self.ev.putAll(local_post_event ?? { () });
-		Log(\Param).debug("NotePlayer: play: ev 4: %", self.ev);
+		//Log(\Param).debug("NotePlayer: play: ev 4: %", self.ev);
 
 		// recording
 		self.raw_ev = self.ev.copy; // for recording, find better property name
 		self.raw_ev[\kitIndex] = self.index;
-		Log(\Param).debug("NotePlayer: play: ev 5: %", self.ev);
+		//Log(\Param).debug("NotePlayer: play: ev 5: %", self.ev);
 
 		self.strippedEvent = ();
 		self.strippedEventKeys.do { arg key;
@@ -194,11 +194,11 @@ ProtoTemplateDef(\NotePlayer, (
 
 		// playing
 		self.play_ev = self.ev.copy;
-		Log(\Param).debug("NotePlayer: play: ev 6: %", self.ev);
+		//Log(\Param).debug("NotePlayer: play: ev 6: %", self.ev);
 		self.play_ev[\isRest] = false;
 		self.play_ev[\sustain] = inf;
 		self.play_ev[\latency] = Ref(0);
-		Log(\Param).debug("NotePlayer: play: ev 7: %", self.ev);
+		//Log(\Param).debug("NotePlayer: play: ev 7: %", self.ev);
 		self.play_ev.releaseServerNode = #{ |releaseTime|
 			var sendGate, msg;
 			~latency = 0;
@@ -215,13 +215,13 @@ ProtoTemplateDef(\NotePlayer, (
 				~isPlaying = false;
 			};
 		};
-		Log(\Param).debug("NotePlayer: play: ev 8: %", self.ev);
+		//Log(\Param).debug("NotePlayer: play: ev 8: %", self.ev);
 		if(self.muted != true) {
 			self.cur_ev = self.play_ev.play;
 		};
-		Log(\Param).debug("NotePlayer: play: ev 9: %", self.ev);
+		//Log(\Param).debug("NotePlayer: play: ev 9: %", self.ev);
 		self.changed(\play);
-		Log(\Param).debug("NotePlayer: play: ev 10: %", [ self.play_ev, self.cur_ev ]);
+		//Log(\Param).debug("NotePlayer: play: ev 10: %", [ self.play_ev, self.cur_ev ]);
 		self.parent_self.changed(\play, self.index);
 	},
 
@@ -709,7 +709,7 @@ ProtoClassDef(\PatKitDef, (
 		//[idx,val, proxy.envir].debug("setTargetData");
 		proxy.envir.clear;
 		if(val.isNil) {
-			Log(\Param).debug("setTargetData %: val is nil, clearing child".format(idx));
+			//Log(\Param).debug("setTargetData %: val is nil, clearing child".format(idx));
 			val = self.defaultTargetDataProxy.envir;
 		};
 		val.keys.do { arg key, idx;
