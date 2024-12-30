@@ -4,6 +4,7 @@ ControllerDef {
 	var <>key;
 	var <>source;
 	var <tags;
+	var <>lastUse;
 
 	*initClass {
 		Class.initClassTree(PresetDictionary);
@@ -74,7 +75,16 @@ ControllerDef {
 	}
 
 	startControl { arg ... args;
+		var oldLastUse = lastUse;
+		lastUse = args;
+		//[oldLastUse, lastUse].debug("startControl: old new");
+		oldLastUse.first.changed(\hasControl); // if lastUse is SeqPlayerGroup, this update hasControl views
+		this.changed(\hasControl);
 		source.value(this, *args)
+	}
+
+	hasControl { arg ... args;
+		^lastUse == args;
 	}
 
 	// make printOn return the same than storeOn

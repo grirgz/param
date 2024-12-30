@@ -1605,6 +1605,32 @@ Param {
 		}, update, nil, action, cursorAction: cursorAction)
 	}
 
+	mapLED { arg view, action;
+		var color_on = Color.green;
+		var color_off = Color.black;
+		var update = { arg view, param;
+			var size;
+			{
+				var val;
+				// FIXME: not sure why default is not used (in stepseqitem)
+				// setting it in GUI for the moment
+				if(param.get.isNil) {
+					val = 0;
+				} {
+					val = param.normGet;
+				};
+				view.stringColor = if(val.round == 1) {
+					color_on;
+				} {
+					color_off;
+				};
+			}.defer
+		};
+		this.makeSimpleController(view, { arg view, param;
+			// no action
+		}, update, nil, action)
+	}
+
 	mapCheckBox { arg view, action;
 		var update = { arg view, param;
 			var size;
@@ -1757,6 +1783,14 @@ Param {
 		label = label ?? { this.propertyLabel ?? { "" }};
 		but = BoolButton.new.string_(label).minWidth_(10);
 		but.mapParam(this);
+		^but;
+	}
+
+	asLED { arg label;
+		var but;
+		label = label ?? { "◉" };
+		but = StaticText.new.string_(label).fixedSize_(10@10).font_(Font.default.size_(9));
+		this.mapLED(but);
 		^but;
 	}
 
@@ -1998,7 +2032,8 @@ Param {
 
 	/////////////
 	
-	*isSynthDefParameter { arg argName, defname;
+	*isSynthDefParameter { arg argName, defname, else_return=false;
+		// else_return: return value if not found
 		var desc;
 		var val;
 		desc = SynthDescLib.global.synthDescs[defname];
@@ -2006,11 +2041,12 @@ Param {
 			var con = desc.controlDict[argName];
 			^con.notNil
 		};
-		^false; // no synthdesc found
+		^else_return; // no synthdesc found
 	}
 	
-	isSynthDefParameter {
-		^this.class.isSynthDefParameter(wrapper.propertyRoot, wrapper.instrument)
+	isSynthDefParameter { arg else_return=false;
+		// TODO: for Ndef check if part of definition
+		^this.class.isSynthDefParameter(wrapper.propertyRoot, wrapper.instrument, else_return)
 	}
 
 	//////////////////////
@@ -4793,7 +4829,7 @@ ListParamSlot : BaseParam {
 	putListener { arg param, view, controller, action;
 		controller.put(\set, { arg ...args; 
 			// TODO: update only the slot changed ?
-			Log(\Param).debug("ListParamSlot: putListener: set %".format(args));
+			//Log(\Param).debug("ListParamSlot: putListener: set %".format(args));
 			action.(view, param);
 		});
 	}
@@ -5750,7 +5786,7 @@ PdefParam_old : BaseParam {
 	}
 }
 
-PdefParamSlot : PdefParam {
+PdefParamSlot : PdefParam { // deprecated by accessor
 	var <index;
 
 	*new { arg obj, meth, sp, index;

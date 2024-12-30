@@ -732,7 +732,7 @@ TimelineEventLoop {
 		} {
 			recStartTime = recStartTime ? now;
 		};
-		//recStartTime.debug("recStartTime: debug after");
+		//[now, recStartTime].debug("recStartTime: debug after");
 		^( now - recStartTime );
 	}
 

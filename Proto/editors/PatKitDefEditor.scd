@@ -134,7 +134,7 @@ WindowDef(\PatKitDefEditor, (
 		keyDownAction = { arg me, key, modifiers, unicode, keycode;
 			var group = self.pgroup;
 			var selected = self.selected;
-			[me, key.asCompileString, modifiers, unicode, keycode].debug("samplekit keyDownAction");
+			//[me, key.asCompileString, modifiers, unicode, keycode].debug("samplekit keyDownAction");
 			case
 			{ modifiers.isCtrl and: { keycode == 99 } } { // ^c
 				"copy!".debug;
@@ -157,7 +157,7 @@ WindowDef(\PatKitDefEditor, (
 		};
 		keyUpAction = { arg me, key, modifiers, unicode, keycode;
 			var group = self.pgroup;
-			[me, key.asCompileString, modifiers, unicode, keycode].debug("samplekit keyUpAction");
+			//[me, key.asCompileString, modifiers, unicode, keycode].debug("samplekit keyUpAction");
 			case
 			{ modifiers == 0 and:{ padkeys.includes(key) }} {
 				var idx = padkeys.indexOf(key);
@@ -177,9 +177,9 @@ WindowDef(\PatKitDefEditor, (
 
 	editCell: { arg self, idx;
 		var drum = self.pgroup.elAt(idx);
-		"ed1".debug;
+		//"ed1".debug;
 		self.selectCell(idx);
-		"ed2".debug;
+		//"ed2".debug;
 		self.editlayout.removeAll;
 		self.editlayout.layout = VLayout(
 			//WindowDef(\vertical_paramgroup).asView(drum.target.asParamGroup)
@@ -233,7 +233,7 @@ WindowDef(\PatKitDefEditor, (
 						//"2.3".debug;
 						button = BasicButton.new.string_(idx).fixedSize_(50@50)
 						.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-							[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+							//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 							//"3".debug;
 							if(buttonNumber == 0) {
 								self.pgroup.elAt(idx).play;
@@ -280,7 +280,7 @@ WindowDef(\PatKitDefChildEditor, { arg def, child, show_buttons=true, player;
 	var loadbutton;
 	var bufcontroller;
 
-	child.targetData.debug("targetData!!!!!");
+	//child.targetData.debug("targetData!!!!!");
 
 	if(child.isEmpty) {
 		//child.targetData.addHalo(\instrument, \playersec);
@@ -396,7 +396,7 @@ WindowDef(\PatKitDefChildEditor, { arg def, child, show_buttons=true, player;
 				buf = BufDef(path)
 			}
 		};
-		buf.debug("buf");
+		//buf.debug("buf");
 		if(buf != 0 and: buf.notNil and: {oldbuf != buf}) {
 			sndfileview.removeAll;
 			sndfileview.layout = VLayout(WindowDef(\SoundFileView).asView(

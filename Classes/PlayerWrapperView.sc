@@ -281,12 +281,15 @@ RecordButton {
 	var <rightClickCapturerEnabled = false;
 	var <>rightClickEditorEnabled = false; // not implemented, here for having same interface than PlayerWrapperView
 
-	*new { arg model, label="";
-		^super.new.init(model, label);
+	var <recorderContainer, <>methodName, recorderContainerController; // dynamic recorder retrieving
+	*new { arg obj, key, label="";
+		^super.new.init(obj, key, label);
 	}
 
-	init { arg xmodel, xlabel;
-		this.model = xmodel;
+	init { arg xobj, xkey, xlabel;
+		this.recorderContainer = xobj;
+		this.methodName = xkey;
+		this.updateModel;
 		this.label = xlabel;
 	}
 
@@ -407,6 +410,23 @@ RecordButton {
 		
 	}
 
+	recorderContainer_ { arg val;
+		recorderContainer = val;
+		recorderContainerController.remove;
+		recorderContainerController = SimpleController.new(recorderContainer).put(\recorder, {
+			this.updateModel;
+		});
+	}
+
+	updateModel {
+		if(this.methodName.isNil) {
+			// first arg is the recorder
+			this.model = this.recorderContainer;
+		} {
+			// retrieve new recorder from timeline
+			this.model = this.recorderContainer.perform(this.methodName); 
+		};
+	}
 
 	model_ { arg val;
 		if(val.notNil) {

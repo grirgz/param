@@ -1555,7 +1555,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 			rlist = TagSpecDef("GlobalLibrary.type.%".format(superkey).asSymbol).keyList;
 
 			// allow types in categoryWhitelist
-			rlist.debug("rlist");
+			//rlist.debug("rlist");
 			if(rlist.size == 0) {
 				if(TagSpecDef(\GlobalLibraryType).keyList.includes(superkey)) {
 					rlist = [ superkey ];
@@ -1605,13 +1605,13 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 				// allow types in categoryWhitelist
 				categoryWhitelist.do({ arg item;
-					item.debug("item");
-					[typelist.includes(item), typelist].debug("typelist");
+					//item.debug("item");
+					//[typelist.includes(item), typelist].debug("typelist");
 					if(catlist.includes(item).not and: { typelist.includes(item) }) {
 						rlist = rlist.add(item);
 					};
 				});
-				rlist.debug("rlist");
+				//rlist.debug("rlist");
 
 				rlist;
 				

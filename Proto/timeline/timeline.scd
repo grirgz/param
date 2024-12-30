@@ -74,7 +74,7 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	makeDefaultEventLoop: { arg self;
-		var loop = XEventLoop.newInstance;
+		var loop = TimelineEventLoop.newInstance;
 		loop.list = self.makeDefaultEventList;
 		//loop.setList(0);
 		loop;
@@ -302,6 +302,11 @@ ProtoClassDef(\EventTimeline, (
 
 	stopRecording: { arg self;
 		self.isRecording = false;
+	},
+
+	recorder_: { arg self, val;
+		self[\recorder] = val;
+		self.changed(\recorder);
 	},
 
 	isRecording: { arg self;
@@ -864,13 +869,9 @@ ProtoClassDef(\NoteTimeline, (
 			param = Param(param, \midinote);
 		};
 		self[\param] = param;
-		self.wrapper = ProtoTemplateDef(\SeqPlayerGroup).new(param.target) !? { arg x; {x} };
-		self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.wrapper) !? { arg x; {x} };
-		self.recorder.eventLoop = self.eventLoop;
-		self.recorder.startRecordingHook = { arg iself; self.startControl };
-		self.changed(\param);
-		self.changed(\recorder);
+		self.playerGroup = ProtoTemplateDef(\SeqPlayerGroup).new(param.target);
 
+		self.changed(\param);
 		//self.eventFactory = ~class_event_factory.new(self.param.target);
 		//self.eventFactory.eventLoop = self.eventloop;
 		//self.eventFactory.mode = \note;
@@ -888,6 +889,21 @@ ProtoClassDef(\NoteTimeline, (
 		//self.recorder.eventLoop = self.eventLoop;
 	},
 
+	wrapper: { arg self;
+		self.playerGroup;
+	},
+
+	playerGroup_: { arg self, pg;
+		if(pg.notNil) {
+			self[\playerGroup] = {pg};
+			self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.playerGroup) !? { arg x; {x} };
+			self.recorder.eventLoop = self.eventLoop;
+			self.recorder.startRecordingHook = { arg iself; self.startControl };
+			self.changed(\recorder);
+		} {
+			"%: set playerGroup is nil".format(self.refCompileString).error;
+		};
+	},
 
 	cutPatternFunction: { arg self, parentEvent, parentTimeline;
 		{ arg sloop, offset, dur;

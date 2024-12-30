@@ -449,11 +449,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 		undobut = BasicButton.new.string_("↶").action_({
 			self.undoAction;
-		}).enabled_(el.historyCanUndo).fixedWidth_(50).toolTip_("Undo");
+		}).enabled_(el.historyCanUndo).fixedWidth_(20).toolTip_("Undo");
 
 		redobut = BasicButton.new.string_("↷").action_({ arg but;
 			self.redoAction;
-		}).enabled_(el.historyCanRedo).fixedWidth_(30).toolTip_("Redo");
+		}).enabled_(el.historyCanRedo).fixedWidth_(20).toolTip_("Redo");
 
 		redobut.followChange(el, \inHistoryMode, {
 			var el = self.timeline_model.eventLoop;
@@ -608,10 +608,10 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	mimicCursor: { arg self, cursorModel;
-		self.cursor_timeline.debug("mimicCursor");
+		//self.cursor_timeline.debug("mimicCursor");
 		self.cursor_timeline.mapCursor(cursorModel);
 		[\ruler_x_beat, \ruler_x].do { arg key;
-			self[key].debug("mimicCursor");
+			//self[key].debug("mimicCursor");
 			if(self[key].notNil) {
 				self[key].value.mapCursor(cursorModel);
 			};
@@ -730,12 +730,12 @@ ProtoTemplateDef(\TimelinePanelView, (
 				//self.areasize = self.areasize - point;
 				self.areasize = self.areasize / point;
 				self.timeline.refresh;
-			}).fixedSize_(Point(10,20)),
+			}).fixedSize_(Point(10,20)).toolTip_("Decrease area width"),
 			BasicButton.new.label_(">").action_({
 				var point = Point(2,1);
 				self.areasize = self.areasize * point;
 				self.timeline.refresh;
-			}).fixedSize_(Point(10,20)),
+			}).fixedSize_(Point(10,20)).toolTip_("Increase area width"),
 		).spacing_(0) ;
 		self.sizerButton = sizer;
 		sizer;
@@ -794,10 +794,10 @@ ProtoTemplateDef(\TimelinePanelView, (
 			[
 				[
 					HLayout (
-						BasicButton.new.string_("👆").maxWidth_(20).action_({
+						BasicButton.new.string_("👆").fixedSize_(20@20).action_({
 							self.timeline.currentBrush = \move;
 						}).toolTip_("Set move mode"),
-						BasicButton.new.string_("✎").maxWidth_(20).action_({
+						BasicButton.new.string_("✎").maxSize_(20@20).action_({
 							self.timeline.currentBrush = \pen;
 						}).toolTip_("Set write mode"),
 						//nil,
@@ -806,11 +806,13 @@ ProtoTemplateDef(\TimelinePanelView, (
 					HLayout (
 						BasicButton.new.label_("↕")
 							.maxWidth_(10)
+							.toolTip_("Zoom to notes vertically")
 							.action_({
 								self.zoomFitAction;
 							}),
 						BasicButton.new.label_("↔")
 							.maxWidth_(10)
+							.toolTip_("Zoom to notes horizontally")
 							.action_({
 								self.showAllNodesAction;
 							}),
@@ -1362,12 +1364,12 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	updateAutomationQuant: { arg self;
-		debug("updateAutomationQuant");
+		//debug("updateAutomationQuant");
 		if(self.bottomPanelSelectedTimeline.notNil) {
-			self.quant_ref.value.x.debug("updateAutomationQuant");
+			//self.quant_ref.value.x.debug("updateAutomationQuant");
 			self.bottomPanelSelectedTimelinePanelView.set_xquant(self.quant_ref.value.x);
 			self.bottomPanelSelectedTimeline[\set_xquant].asCompileString.debug("comp");
-			[ self.bottomPanelSelectedTimeline.quant_ref, self.bottomPanelSelectedTimeline ].debug("done quant");
+			//[ self.bottomPanelSelectedTimeline.quant_ref, self.bottomPanelSelectedTimeline ].debug("done quant");
 		};
 	},
 
@@ -1805,7 +1807,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			self.make_undo_system_buttons,
 			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			//Param(Message(self.timeline_model), \isRecording, XBoolSpec()).asButton("Rec"),
-			RecordButton(self.timeline_model.recorder, "Rec"),
+			RecordButton(self.timeline_model, \recorder, "Rec"),
 			//Param(Message(self.timeline_model), \bindPlayWithRecord, XBoolSpec()).asButton("PlayRec"),
 			//BasicButton.new.label_("Samples").action_({
 				//WindowDef("%_SampleManager".format(self.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(self.timeline_model);
@@ -2149,14 +2151,13 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 			miny = miny * 0.9;
 			maxy = maxy * 1.1;
 
-			[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM paramtimeline ZOOOOOOOOOOOOOOOOOOOOM viewport before");
-			[timeline.areasize].debug("areasize");
+			//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM viewport before");
+			//[timeline.areasize].debug("areasize");
 			range = (maxy-miny * 1.1)/timeline.areasize.y;
 			timeline.viewport.top = (miny/timeline.areasize.y);
 			timeline.viewport.height = range.clip(0.1,1);
-			[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
+			//[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
 
-			timeline.viewport.debug("ZOOM ZOOOOOOOOOOOOOOOOOOOOM viewport");
 
 
 			timeline.changed(\viewport);
@@ -2225,7 +2226,7 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 			self.make_quant_popup,
 			self.make_undo_system_buttons,
 			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			RecordButton(self.timeline_model.recorder, "Rec"),
+			RecordButton(self.timeline_model, \recorder, "Rec"),
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
 			//Button.new.mapParam(Param(Message(self.timeline_model), \isRecording, XBoolSpec())).states_([
 				//["Rec", Color.black, Color.white],
@@ -2388,7 +2389,7 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 
 
 	make_header: { arg self;
-		self.recordButton = RecordButton(self.timeline_model.recorder, "Rec");
+		self.recordButton = RecordButton(self.timeline_model, \recorder, "Rec");
 		self.recordButton.followChange(self.timeline_model, \recorder, {
 			self.recordButton.model = self.timeline_model.recorder;
 		});
@@ -2566,7 +2567,7 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 	},
 
 	make_header: { arg self;
-		self.recordButton = RecordButton(self.timeline_model.recorder, "Rec");
+		self.recordButton = RecordButton(self.timeline_model, \recorder, "Rec");
 		self.recordButton.followChange(self.timeline_model, \kit, {
 			self.recordButton.model = self.timeline_model.recorder;
 		});

@@ -1224,9 +1224,9 @@ TimelineView : SCViewHolder {
 			this.copySplitNode(el, node, selrect.right)
 		};
 		nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
-		nodes.do({  arg nn; // debug
-			[nn.rect, nn.model].debug("copyAtSelectionEdges3 nodes");
-		});
+		//nodes.do({  arg nn; // debug
+			//[nn.rect, nn.model].debug("copyAtSelectionEdges3 nodes");
+		//});
 		^this.findContainedNodes(selrect, nodes).collect(_.model);
 		//^noel.select { arg ev;
 			//var node = this.nodeClass.new(this, 0, ev);
@@ -2190,19 +2190,19 @@ TimelineView : SCViewHolder {
 	}
 
 	findNodes { arg rect, nodes;
-		if(~debugfind == true) {
+		//if(~debugfind == true) {
 			
-		^paraNodes.select { arg node;
-			//[node, node.origin, node.selectable, rect.containsPoint(node.origin),rect].debug("findNodes: node");
-			node.selectable and: {rect.containsPoint(node.origin)};
-		};
-		} {
+		//^paraNodes.select { arg node;
+			////[node, node.origin, node.selectable, rect.containsPoint(node.origin),rect].debug("findNodes: node");
+			//node.selectable and: {rect.containsPoint(node.origin)};
+		//};
+		//} {
 
 		^this.getNodesNearRange(rect.left, rect.right, nodes).select { arg node;
 			//[node, node.origin, node.selectable, rect.containsPoint(node.origin), rect].debug("findNodes: node");
 			node.selectable and: {rect.containsPoint(node.origin)};
 		};
-		};
+		//};
 	}
 
 	findPreviousNode { arg gposx;

@@ -20,7 +20,7 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 
 	eventLoop: { arg self;
 		if(self[\priv_eventLoop].isNil) {
-			self[\priv_eventLoop] = XEventLoop.newInstance; // will be overwritten by timeline eventloop
+			self[\priv_eventLoop] = TimelineEventLoop.newInstance; // will be overwritten by timeline eventloop
 		};
 		self[\priv_eventLoop];
 	},
@@ -37,8 +37,55 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 		self.eventLoop.list = val;
 	},
 
+	arpTarget: { arg self;
+		self.target.arpTarget;
+	},
+
+	emitterPattern: { arg self;
+		Pbind(
+			// does it override finish function ?
+			\finish, { arg ev;
+				if(ev.type != \rest and: {ev.midinote != \rest}) {
+
+					//thisThread.clock.beats.debug("emitterPattern: catched ev beats");
+					self.arpTarget.asPlayerEvent = ev;
+				}
+			}
+		);
+	},
+
 	startRecording: { arg self;
-		var startRecordingTime = self.tempoClock.beats;
+		self.startRecordingTime = self.tempoClock.beats;
+		self.installlListener;
+		self.eventLoop.startRec(false, self.quant ? Pdef.defaultQuant, if(self.inQuantMode ) { 0 });
+		self.changed(\startedRecording);
+		self.changed(\isRecording);
+		self.startRecordingHook;
+	},
+
+	inArpMode: false,
+	inArpMode_: { arg self, val;
+		self[\inArpMode] = val;
+		if(self.isRecording == true) {
+			if(self.inArpMode) {
+				self.installArpListener;
+			} {
+				self.installNormalListener;
+			};
+		};
+	},
+
+	installlListener: { arg self;
+		
+		if(self.inArpMode) {
+			self.installArpListener
+		} {
+			self.installNormalListener;
+		};
+		
+	},
+
+	installNormalListener: { arg self;
 		self.controller.remove;
 		self.controller = self.target.makeListener({ arg player, status, status2;
 			var playStatus, stopStatus;
@@ -52,14 +99,15 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 				playStatus = \play;
 				stopStatus = \stop;
 			};
-			Log(\Param).debug("startRecording: listener: status: %", status);
+			//Log(\Param).debug("startRecording: listener: status: %", status);
 			if(status == playStatus) {
 				if(player.recordedEvent.notNil and: {
-					player.recordedEvent.clockTime > startRecordingTime
+					//player.recordedEvent.debug("rec ev");
+					player.recordedEvent.clockTime > self.startRecordingTime;
 				}) {
 					// this player is already recording an event, ignore duplicate signals
 					// FIXME: how to prevent breaking recording by skipping to nil the recordedEvent ?
-					Log(\Param).debug("listener: playStatus: already recording event for player %", player);
+					//Log(\Param).debug("listener: playStatus: already recording event for player %", player);
 				} {
 					//Log(\Param).debug("listener xxx");
 					//Log(\Param).debug("listener xx : %", player);
@@ -85,10 +133,35 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 				}
 			}
 		});
-		self.eventLoop.startRec(false, self.quant ? Pdef.defaultQuant, if(self.inQuantMode ) { 0 });
-		self.changed(\startedRecording);
-		self.changed(\isRecording);
-		self.startRecordingHook;
+		
+	},
+
+	installArpListener: { arg self;
+		self.controller.remove;
+		self.controller = self.arpTarget.makeListener({ arg player, status, status2;
+			var playStatus, stopStatus;
+			if(status == \PlayerWrapper) {
+				status = status2;
+			};
+			if(self.inQuantMode) {
+				playStatus = \playing;
+				stopStatus = \stopped;
+			} {
+				playStatus = \play;
+				stopStatus = \stop;
+			};
+			//Log(\Param).debug("startRecording: listener: status: %", status);
+			if(status == playStatus) {
+				var recev;
+				//Log(\Param).debug("listener xxx");
+				//Log(\Param).debug("listener xx : %, clock:%", player, self.tempoClock.beats);
+				//Log(\Param).debug("listener : %", player.asPlayerEvent);
+				recev = self.eventLoop.recordEvent(player.asPlayerEvent);
+				//recev.debug("recorded this event");
+				//Log(\Param).debug("listener xxx2");
+				//Log(\Param).debug("listener: start: player:%, recordedEvent:%", player, player.recordedEvent);
+			};
+		});
 	},
 
 	isRecording: { arg self;

@@ -10,6 +10,7 @@
 		"misc/overlayMenu.scd",
 		"misc/SoundFileView.scd",
 		//"experimental/eventFactory.scd", // deprecated by player_group
+		"CombinatorSlot.scd",
 		"player_groups.scd",
 		"GlobalLibrary.scd",
 

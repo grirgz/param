@@ -10,6 +10,7 @@ ParamCombinator : Pattern {
 
     // resultParam = inputParam * rangeParam + baseParam
     // targetParam: this point to the param to be combinated, first argument of ParamCombinator
+	// baseParam: the param to be controlled by GUI that should replace the old one
 	var <ranges, <inputs, <base, <result;
 	var <baseParam, <rangeParam, <inputParam, <targetParam, <resultParam;
 	var <controllers; 
@@ -22,16 +23,18 @@ ParamCombinator : Pattern {
     var <>inputObjects; // to store pointers to modulators objects for editing and such
 
 	*new { arg param, size=3;
-		var halokey = \ParamCombinator_+++param.property;
-		Class.initClassTree(ParamGroupLayout); // FIXME: why ?
+		var halokey = ( \ParamCombinator_++param.property ).asSymbol;
+		//Class.initClassTree(ParamGroupLayout); // FIXME: why ?
 		//if(param.getRaw.isKindOf(ParamCombinator).not) {
-		if(param.target.getHalo(halokey).isNil) {
+		if(param.hasCombinator.not) {
 			var inst = super.new.init(param, size);
 			param.target.addHalo(halokey, inst);
 			param.target.changed(\combinator, param.property);
 			^inst;
 		} {
-			^param.target.getHalo(halokey)
+			param.debug("ParamCombinator already exist, use it");
+			//^param.target.getHalo(halokey)
+			^param.getCombinator;
 			//^param.getRaw
 		}
 	}
@@ -62,7 +65,11 @@ ParamCombinator : Pattern {
         if(param.target.isKindOf(Pdef) and: { param.target.source.isKindOf(PbindProxy) }) {
 			// can only redirect with Pbindef
 			// todo: test with Ndef
-			param.at(\source).set(this);
+			if(param.propertyArray.last == \source) {
+				param.set(this);
+			} {
+				param.at(\source).set(this);
+			};
 		} {
 			param.set(this);
 		};
@@ -148,6 +155,9 @@ ParamCombinator : Pattern {
 		var bus;
 		var rawVal;
 		var val, inputtab, rangetab;
+		if(busMode == bool) {
+			^this
+		};
 		busMode = bool;
 		if(bool == true) {
 			name = name ? key;
@@ -317,53 +327,149 @@ ParamCombinator : Pattern {
 		^this.asStream;
 	}
 
+	mapPatternKeyToInput { arg patkey, idx, spec;
+		var obj;
+		if(idx.isNil) {
+			idx = this.nextFreeInput;
+		};
+		if(idx.isNil) {
+			"ParamCombinator: No more slot available for %".format(this.targetParam).error;
+			^nil;
+		};
+		if(this.inputObjects.select(_.notNil).any { arg obj;
+			obj.patKey.notNil and: {
+				obj.patKey == patkey;
+			}
+		}) {
+			Log(\Param).info("Already connected");
+			^nil;
+		};
+		obj = ProtoTemplateDef(\PatternCombinatorSlot).new(this, idx, patkey, spec);
+		this.inputObjects[idx] = obj;
+		^idx
+	}
+
+	mapNodeProxyToInput { arg proxy, idx, spec;
+		if(idx.isNil) {
+			idx = this.nextFreeInput;
+		};
+		if(idx.isNil) {
+			"ParamCombinator: No more slot available for %".format(this.targetParam).error;
+			^nil;
+		};
+		if(this.inputObjects.select(_.notNil).any { arg obj;
+			obj.proxy.notNil and: {
+				obj.proxy == proxy;
+			}
+		}) {
+			Log(\Param).info("Already connected");
+			^nil;
+		};
+		this.inBusMode = true;
+		//[proxy, idx, spec].debug("mapNodeProxyToInput: proxy, idx, spec");
+		this.inputParam.at(idx).setBus(proxy.asMap);
+		this.inputObjects[idx] = ProtoTemplateDef(\NodeProxyCombinatorSlot).new(this, idx, proxy, spec);
+	}
+
+	mapProtoClassToInput { arg proto, idx, spec;
+		if(idx.isNil) {
+			idx = this.nextFreeInput;
+		};
+		if(idx.isNil) {
+			"ParamCombinator: No more slot available for %".format(this.targetParam).error;
+			^nil;
+		};
+		if(this.inputObjects.select(_.notNil).any { arg obj;
+			obj.proxy == proto;
+		}) {
+			Log(\Param).info("Already connected");
+			^nil;
+		};
+		this.inBusMode = true;
+		//[proxy, idx, spec].debug("mapNodeProxyToInput: proxy, idx, spec");
+		this.inputParam.at(idx).setBus(proto.outBus.asMap);
+		this.inputObjects[idx] = ProtoTemplateDef(\ProtoClassCombinatorSlot).new(this, idx, proto, spec);
+	}
+
+	mapObjectToInput { arg obj, idx, spec;
+		if(obj.isKindOf(Symbol)) {
+			this.mapPatternKeyToInput(obj, idx, spec);
+		} {
+			if(obj.isKindOf(NodeProxy)) {
+				this.mapNodeProxyToInput(obj, idx, spec);
+			} {
+				if(obj.isKindOf(ProtoClass)) {
+					this.mapProtoClassToInput(obj, idx, spec);
+				};
+			};
+		};
+	}
+
 	asPattern { 
 		//Log(\Param).debug("asPattern");
 		^if(this.inBusMode) {
 			//Log(\Param).debug("asPattern busmode");
-			Pfunc({
-				this.playAll;
+			Pfunc({ arg ev;
+				this.playAll(ev);
 				proxy.asMap.asSymbol
 			});
 		} {
 			//Log(\Param).debug("asPattern value");
-			Pfunc({ 
-				//this.playAll;
+			Pfunc({ arg ev;
+				this.playAll(ev);
 				this.resultParam.get 
 			});
 		}
 	}
 
+	clearInput { arg idx;
+		this.rangeParam.at(idx).set(0);
+		this.inputParam.at(idx).setBus(0);
+		this.inputObjects[idx] = nil;
+	}
 
-	playAll {
+	playAll { arg ev;
 		//Log(\Param).debug("ParamCombinator: play all");
 		if(this.inBusMode) {
 			proxy.wakeUp;
 		};
-		this.inputParam.do { arg param, idx;
-			var val = param.get;
-			//[val.asCompileString, idx, param, proxy].debug("playAll: val");
-			if(val.isKindOf(Symbol) or: { val.isKindOf(String) }) {
-				var nkey = TagSpecDef(\ParamCombinatorInput_asMap).unmapKey(val);
-				//Log(\Param).debug("ParamCombinator.playAll: nkey %", nkey);
-				if(nkey.notNil) {
-					Ndef(nkey).wakeUp;
-				} {
-					Log(\Param).debug("ParamCombinator.playAll: key not found for %", val);
-				}
-			}
-		};
+		//this.inputParam.do { arg param, idx;
+			//var val = param.get;
+			////[val.asCompileString, idx, param, proxy].debug("playAll: val");
+			//if(val.isKindOf(Symbol) or: { val.isKindOf(String) }) {
+				//var nkey = TagSpecDef(\ParamCombinatorInput_asMap).unmapKey(val);
+				////Log(\Param).debug("ParamCombinator.playAll: nkey %", nkey);
+				//if(nkey.notNil) {
+					//Ndef(nkey).wakeUp;
+				//} {
+					//Log(\Param).debug("ParamCombinator.playAll: key not found for %", val);
+				//}
+			//}
+		//};
         this.inputObjects.do { arg obj, idx;
-			obj = PlayerWrapper(obj);
 			if(obj.notNil and: { obj.isPlaying != true }) {
-				obj.play;
+				obj.play(ev);
 			}
         };
 	}
 
     nextFreeInput {
-		^this.inputParam.as(Array).detectIndex { arg p; p.getBus == 0 }
+		^this.inputParam.as(Array).detectIndex { arg p, pidx; 
+			( p.getBus != 0 or: { this.inputObjects[pidx].notNil } ).not 
+		}
     }
+
+	existingInputRanges {
+		var res = List.new;
+		this.inputParam.as(Array).do { arg p, pidx; 
+			if(
+				p.getBus != 0 or: { this.inputObjects[pidx].notNil }
+			) {
+				res.add(this.rangeParam.at(pidx))
+			};
+		};
+		^res;
+	}
 
 	/// interface of CachedBus
 

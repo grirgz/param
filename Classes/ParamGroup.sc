@@ -102,7 +102,7 @@ ParamGroup : List {
 	}
 
 	selectSynthDefParams {
-		^this.select({ arg x; x.isSynthDefParameter })
+		^this.select({ arg x; x.isSynthDefParameter(true) })
 	}
 
 	valueList {

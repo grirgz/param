@@ -418,6 +418,7 @@ ParamGroupLayout {
 			lay = if(param.isNil) {
 				nil;
 			} {
+				var control;
 				VLayout(
 					if(label_mode == \full) {
 						param.asStaticTextLabel(\full).attachContextMenu;
@@ -427,9 +428,9 @@ ParamGroupLayout {
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					},
-					param.asMultiSlider.minHeight_(minHeight).attachContextMenu,
+					control = param.asMultiSlider.minHeight_(minHeight).attachContextMenu,
 					param.asTextField,
-				)
+				).addUniqueMethod(\slider, { control })
 			};
 			lay;
 		};

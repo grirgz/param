@@ -556,7 +556,7 @@ WindowDef(\ParamControlSpecEditor, { arg def, spec;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 				if(buttonNumber == 1) {
 					WindowDef(\ListSelectDialog).front(speclist, { arg selected, asso;
-						[view, selected, asso].debug("ListSelectDialog");
+						//[view, selected, asso].debug("ListSelectDialog");
 						defer {
 							setspec.(asso.value);
 						};
@@ -800,8 +800,8 @@ WindowDef(\ParamCombinatorModulatorEditor, { arg def, param;
 					player.asView,
 					inputp.asPopUpMenu.addAction({
 						obj = combi.inputObjects[idx];
-						[ obj].debug("obj");
-						[ PlayerWrapper(obj).outBus.asMap ].debug("bus");
+						//[ obj].debug("obj");
+						//[ PlayerWrapper(obj).outBus.asMap ].debug("bus");
 						player.mapPlayer(obj);
 						combi.inputParam.at(idx).setBus(PlayerWrapper(obj).outBus.asMap);
 						param.target.changed(\keyForm, param); // for PbindefEditor
@@ -819,7 +819,7 @@ WindowDef(\ParamCombinatorModulatorEditor, { arg def, param;
 	} {
 		BasicButton.new.string_("Add Combinator").action_({
 			var combi = ParamCombinator(param).setBusMode(true);
-			"add it now!".debug;
+			//"add it now!".debug;
 			def.front(param);
 		})
 	}

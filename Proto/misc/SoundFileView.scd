@@ -47,7 +47,7 @@ WindowDef(\SoundFileView, (
 				1
 			};
 			sustain = if(sustainParam.notNil) {
-				[conv.sustain.get, clock.tempo, sampleRate].debug("xxx");
+				//[conv.sustain.get, clock.tempo, sampleRate].debug("xxx");
 				conv.sustain.get * sampleRate * speed.abs;
 			} {
 				//"1".debug("xxx");

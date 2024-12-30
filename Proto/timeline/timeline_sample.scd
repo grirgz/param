@@ -664,7 +664,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 					self.timeline_model.keepRecordedFile;
 				});
 			},
-			RecordButton(self.timeline_model.recorder, "Rec"),
+			RecordButton(self.timeline_model, \recorder, "Rec"),
 			Param(Message(self.timeline_model.recorder), \recBus, TagSpecDef(\BusDef)).asPopUpMenu,
 			BasicButton.new.label_("Edit").action_({
 				WindowDef(\EventPatternProxyEditor_ +++ self.timeline_model.key, { arg me, target, label, group;

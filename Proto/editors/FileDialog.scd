@@ -357,7 +357,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	fileview = ListView.new;
 	changepath = { arg view, path; // called with double click
 		var newnode;
-		[path, nodeClass.keys].debug("changepath: ");
+		//[path, nodeClass.keys].debug("changepath: ");
 		newnode = nodeClass.new(path);
 		if(newnode.isFolder) {
 			node = newnode;
@@ -465,7 +465,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	proto.update_quicklistview = { arg self;
 		quicknodelist = quicklistProto.new.children;
 		quicklist.items = quicknodelist.collect(_.label).asArray;
-		[ quicknodelist, quicklist.items ].debug("gni ?");
+		//[ quicknodelist, quicklist.items ].debug("gni ?");
 	};
 	proto.save_quicklist = { arg self;
 		quicklistProto.save_quicklist;
@@ -810,7 +810,7 @@ WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue, label;
 	var listview = ListView.new;
 	var textfield = TextField.new;
 	var selectAction = { arg view, x, y, modifiers, buttonNumber, clickCount;
-		[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+		//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 
 		//[view.value, view.items].debug("double click select: ");
 		//if(clickCount == 1 and: {view.items.size > 0}) {
@@ -852,7 +852,7 @@ WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue, label;
 		};
 	};
 	textfield.keyDownAction_({ arg me, key, modifiers, unicode, keycode;
-		[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+		//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
 		if(key == $\r) {
 			savefun.();
 		};
@@ -879,7 +879,7 @@ WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue, label;
 	var textfield;
 	var selectedView = StaticText.new;
 	var selectAction = { arg view, x, y, modifiers, buttonNumber, clickCount;
-		[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+		//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 
 		//[view.value, view.items].debug("double click select: ");
 		if(view.items.size > 0 and: {view.value.notNil}) {
@@ -910,7 +910,7 @@ WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue, label;
 		HLayout (
 			StaticText.new.string_("Search: "),
 			textfield = TextField.new.keyUpAction_({ arg me, key, modifiers, unicode, keycode;
-				[me, key.asCompileString, modifiers, unicode, keycode].debug("keyUpAction");
+				//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyUpAction");
 				if(me.string.trim != "") {
 					filteredList = listitems.select({ arg item, idx;
 						item.key.asString.toLower.contains(me.string.toLower)

@@ -24,12 +24,12 @@ WindowDef(\ParamSelectDialog,{ arg def, selectedHook, okHook, defaultValue;
 	var localOkHook;
 	var lay;
 	var selectedCallback = { arg libid, strings;
-		libid.asCompileString.debug("selectedCallback");
+		//libid.asCompileString.debug("selectedCallback");
 		paramTargetField.string = libid[1].value.asCompileString;
 		selectedParamGroup = libid[1].value.asParamGroup;
 		paramList.items = selectedParamGroup
 			.collect { arg item, idx;
-				item.debug("item");
+				//item.debug("item");
 				item.property;
 			}
 		;
@@ -37,7 +37,7 @@ WindowDef(\ParamSelectDialog,{ arg def, selectedHook, okHook, defaultValue;
 
 	localOkHook = {
 		var label;
-		"okHook".debug;
+		//"okHook".debug;
 		def.closeWindow;
 		if(namefield.string.trim != "") {
 			label = namefield.name;
@@ -62,7 +62,7 @@ WindowDef(\ParamSelectDialog,{ arg def, selectedHook, okHook, defaultValue;
 	};
 
 	paramCompileStringField.keyUpAction_({ arg me, key, modifiers, unicode, keycode;
-		[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
+		//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyDownAction");
 		if(key == $\r) {
 			localOkHook.()
 		};

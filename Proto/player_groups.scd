@@ -168,24 +168,24 @@ ProtoTemplateDef(\NotePlayer, (
 		if(self.ev.isNil) {
 			self.ev = Event.default;
 		};
-		//Log(\Param).debug("NotePlayer: play: ev 1: %", self.ev);
-		self.ev = self.ev.copy.putAll(self.pre_event);
+		Log(\Param).debug("NotePlayer: play: ev 1: %", self.ev);
+		self.ev = self.ev.copy.putAll(self.pre_event ?? {()});
 		self.ev = self.ev.copy.putAll(local_pre_event ?? {()});
 		//self.ev.debug("play: before next: ev");
-		//Log(\Param).debug("NotePlayer: play: ev 2: %", self.ev);
+		Log(\Param).debug("NotePlayer: play: ev 2: %", self.ev);
 		self.ev = self.stream.next(self.ev);
 		//[self.ev, self.stream].debug("play: ev");
 
 		// processing
-		//Log(\Param).debug("NotePlayer: play: ev 3: %", self.ev);
-		self.ev.putAll(self.post_event);
+		Log(\Param).debug("NotePlayer: play: ev 3: %", self.ev);
+		self.ev.putAll(self.post_event ?? {()});
 		self.ev.putAll(local_post_event ?? { () });
-		//Log(\Param).debug("NotePlayer: play: ev 4: %", self.ev);
+		Log(\Param).debug("NotePlayer: play: ev 4: %", self.ev);
 
 		// recording
 		self.raw_ev = self.ev.copy; // for recording, find better property name
 		self.raw_ev[\kitIndex] = self.index;
-		//Log(\Param).debug("NotePlayer: play: ev 5: %", self.ev);
+		Log(\Param).debug("NotePlayer: play: ev 5: %", self.ev);
 
 		self.strippedEvent = ();
 		self.strippedEventKeys.do { arg key;
@@ -194,11 +194,11 @@ ProtoTemplateDef(\NotePlayer, (
 
 		// playing
 		self.play_ev = self.ev.copy;
-		//Log(\Param).debug("NotePlayer: play: ev 6: %", self.ev);
+		Log(\Param).debug("NotePlayer: play: ev 6: %", self.ev);
 		self.play_ev[\isRest] = false;
 		self.play_ev[\sustain] = inf;
 		self.play_ev[\latency] = Ref(0);
-		//Log(\Param).debug("NotePlayer: play: ev 7: %", self.ev);
+		Log(\Param).debug("NotePlayer: play: ev 7: %", self.ev);
 		self.play_ev.releaseServerNode = #{ |releaseTime|
 			var sendGate, msg;
 			~latency = 0;
@@ -215,14 +215,13 @@ ProtoTemplateDef(\NotePlayer, (
 				~isPlaying = false;
 			};
 		};
-		//Log(\Param).debug("NotePlayer: play: ev 8: %", self.ev);
+		Log(\Param).debug("NotePlayer: play: ev 8: %", self.ev);
 		if(self.muted != true) {
 			self.cur_ev = self.play_ev.play;
 		};
-		//Log(\Param).debug("NotePlayer: play: ev 9: %", self.ev);
+		Log(\Param).debug("NotePlayer: play: ev 9: %", self.ev);
 		self.changed(\play);
-		//Log(\Param).debug("play: raw_ev:%, idx:%, h:%", self.raw_ev, self.index, self.hash);
-		//Log(\Param).debug("NotePlayer: play: ev 10: %", [ self.play_ev, self.cur_ev ]);
+		Log(\Param).debug("NotePlayer: play: ev 10: %", [ self.play_ev, self.cur_ev ]);
 		self.parent_self.changed(\play, self.index);
 	},
 
@@ -444,6 +443,53 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 	},
 
 	chainingMode: \pre, 
+
+	startControl: { arg self;
+		if(self.controller.notNil) {
+			self.controller.startControl(self);
+			self.changed(\hasControl);
+		}
+	},
+
+	hasControl: { arg self;
+		self.controller.notNil and: {
+			self.controller.hasControl(self);
+		}
+	},
+
+	controller_: { arg self, val;
+		self[\controller] = val;
+		self.startControl;
+	},
+
+
+	arpTarget: { arg self;
+		if(self[\arpTarget_obj].isNil) {
+			self[\arpTarget_obj] = ProtoClass((
+				makeListener: { arg subself, fun;
+					subself.msgcontroller.remove;
+					subself.msgcontroller = SimpleController(subself).put(\play, {
+						//debug("play ev");
+						fun.(subself, \play);
+					});
+					// no stop event, sustain is already set
+					subself.msgcontroller;
+				},
+
+				asPlayerEvent_: { arg subself, ev;
+					//self.target.childAt(ev.midinote).play(ev);
+					subself[\asPlayerEvent] = ev.copy;
+					//// Timeline need sustain key already computed
+					subself[\asPlayerEvent][\clockTime] = thisThread.clock.beats;
+					subself[\asPlayerEvent][\sustain] = subself.asPlayerEvent.use { ~sustain.value };
+					subself.changed(\play);
+					
+				},
+
+			));
+		};
+		self[\arpTarget_obj];
+	},
 
 	stream: { arg self;
 		var targ;

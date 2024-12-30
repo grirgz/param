@@ -198,7 +198,7 @@ PlayerWrapper  {
 		if(this.recorderMode != true) {
 			^PlayerWrapperView.new(this).view;
 		} {
-			^RecordButton.new(this.target, this.label).view;
+			^RecordButton.new(this.target, nil, this.label).view;
 		}
 	}
 
