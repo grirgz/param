@@ -234,6 +234,19 @@ ParamGroup : List {
 		^"%\n".format(ev.asCompileString)
     }
 
+	getCombinatorCompileString {
+		var res = "";
+		this.do { arg param, idx;
+			var combi = param.getCombinator;
+			if(combi.notNil) {
+				combi.existingInputObjects.do { arg item, idx;
+					res = res ++ item.presetCompileString;
+				};
+			};
+		};
+		^res;
+	}
+
 	presetCompileString {
 		var ret;
 		var params, presets;

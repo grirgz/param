@@ -29,7 +29,7 @@ ParamCombinator : Pattern {
 		if(param.hasCombinator.not) {
 			var inst = super.new.init(param, size);
 			param.target.addHalo(halokey, inst);
-			param.target.changed(\combinator, param.property);
+			param.target.changed(\combinator, param.propertyRoot);
 			^inst;
 		} {
 			param.debug("ParamCombinator already exist, use it");
@@ -327,7 +327,7 @@ ParamCombinator : Pattern {
 		^this.asStream;
 	}
 
-	mapPatternKeyToInput { arg patkey, idx, spec;
+	mapPatternKeyToInput { arg patkey, idx, spec, range;
 		var obj;
 		if(idx.isNil) {
 			idx = this.nextFreeInput;
@@ -346,10 +346,14 @@ ParamCombinator : Pattern {
 		};
 		obj = ProtoTemplateDef(\PatternCombinatorSlot).new(this, idx, patkey, spec);
 		this.inputObjects[idx] = obj;
+		if(range.notNil) {
+			this.rangeParam.at(idx).set(range)
+		};
+		targetParam.target.changed(\combinator, targetParam.propertyRoot);
 		^idx
 	}
 
-	mapNodeProxyToInput { arg proxy, idx, spec;
+	mapNodeProxyToInput { arg proxy, idx, spec, range;
 		if(idx.isNil) {
 			idx = this.nextFreeInput;
 		};
@@ -369,9 +373,14 @@ ParamCombinator : Pattern {
 		//[proxy, idx, spec].debug("mapNodeProxyToInput: proxy, idx, spec");
 		this.inputParam.at(idx).setBus(proxy.asMap);
 		this.inputObjects[idx] = ProtoTemplateDef(\NodeProxyCombinatorSlot).new(this, idx, proxy, spec);
+		if(range.notNil) {
+			this.rangeParam.at(idx).set(range)
+		};
+		targetParam.target.changed(\combinator, targetParam.propertyRoot);
+		^idx
 	}
 
-	mapProtoClassToInput { arg proto, idx, spec;
+	mapProtoClassToInput { arg proto, idx, spec, range;
 		if(idx.isNil) {
 			idx = this.nextFreeInput;
 		};
@@ -389,17 +398,22 @@ ParamCombinator : Pattern {
 		//[proxy, idx, spec].debug("mapNodeProxyToInput: proxy, idx, spec");
 		this.inputParam.at(idx).setBus(proto.outBus.asMap);
 		this.inputObjects[idx] = ProtoTemplateDef(\ProtoClassCombinatorSlot).new(this, idx, proto, spec);
+		if(range.notNil) {
+			this.rangeParam.at(idx).set(range)
+		};
+		targetParam.target.changed(\combinator, targetParam.propertyRoot);
+		^idx
 	}
 
-	mapObjectToInput { arg obj, idx, spec;
-		if(obj.isKindOf(Symbol)) {
-			this.mapPatternKeyToInput(obj, idx, spec);
+	mapObjectToInput { arg obj, idx, spec, range;
+		^if(obj.isKindOf(Symbol)) {
+			this.mapPatternKeyToInput(obj, idx, spec, range);
 		} {
 			if(obj.isKindOf(NodeProxy)) {
-				this.mapNodeProxyToInput(obj, idx, spec);
+				this.mapNodeProxyToInput(obj, idx, spec, range);
 			} {
 				if(obj.isKindOf(ProtoClass)) {
-					this.mapProtoClassToInput(obj, idx, spec);
+					this.mapProtoClassToInput(obj, idx, spec, range);
 				};
 			};
 		};
@@ -426,6 +440,7 @@ ParamCombinator : Pattern {
 		this.rangeParam.at(idx).set(0);
 		this.inputParam.at(idx).setBus(0);
 		this.inputObjects[idx] = nil;
+		targetParam.target.changed(\combinator, targetParam.propertyRoot);
 	}
 
 	playAll { arg ev;
@@ -466,6 +481,18 @@ ParamCombinator : Pattern {
 				p.getBus != 0 or: { this.inputObjects[pidx].notNil }
 			) {
 				res.add(this.rangeParam.at(pidx))
+			};
+		};
+		^res;
+	}
+
+	existingInputObjects {
+		var res = List.new;
+		this.inputParam.as(Array).do { arg p, pidx; 
+			if(
+				p.getBus != 0 or: { this.inputObjects[pidx].notNil }
+			) {
+				res.add(this.inputObjects.at(pidx))
 			};
 		};
 		^res;

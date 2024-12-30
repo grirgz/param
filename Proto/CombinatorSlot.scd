@@ -14,6 +14,7 @@ ProtoTemplateDef(\PatternCombinatorSlot, (
 	parent: ProtoTemplateDef(\CombinatorSlot),
 
 	new: { arg self, combinator, idx, patKey, spec;
+		self = ProtoClass((parent: self));
 		
 		self.combinator = combinator;
 		self.patKey = patKey;
@@ -42,15 +43,20 @@ ProtoTemplateDef(\PatternCombinatorSlot, (
 		};
 		normval = spec.unmap(val);
 		//[val, normval, spec].debug("val normval spec");
-		this.inputParam.at(index).set(normval);
-		this.computeAndSetTargetValue;
-	}
+		self.combinator.inputParam.at(index).set(normval);
+		self.combinator.computeAndSetTargetValue;
+	},
+
+	presetCompileString: { arg self;
+		"ParamCombinator(%).mapObjectToInput(%, range: %);\n".format(self.combinator.targetParam, self.patKey.asCompileString, self.combinator.rangeParam.at(self.index).get)
+	},
 ));
 
 ProtoTemplateDef(\NodeProxyCombinatorSlot, (
 	parent: ProtoTemplateDef(\CombinatorSlot),
 
 	new: { arg self, combinator, idx, proxy, spec;
+		self = ProtoClass((parent: self));
 		
 		self.combinator = combinator;
 		self.proxy = proxy;
@@ -75,12 +81,16 @@ ProtoTemplateDef(\NodeProxyCombinatorSlot, (
 		PlayerWrapper(self.proxy).isPlaying;
 	},
 
+	presetCompileString: { arg self;
+		"ParamCombinator(%).mapObjectToInput(%, range: %);\n".format(self.combinator.targetParam, self.proxy.asCompileString, self.combinator.rangeParam.at(self.index).get)
+	},
 ));
 
 ProtoTemplateDef(\ProtoClassCombinatorSlot, (
 	parent: ProtoTemplateDef(\CombinatorSlot),
 
 	new: { arg self, combinator, idx, target, spec;
+		self = ProtoClass((parent: self));
 		
 		self.combinator = combinator;
 		self.proxy = target;
@@ -102,6 +112,10 @@ ProtoTemplateDef(\ProtoClassCombinatorSlot, (
 
 	isPlaying: { arg self;
 		PlayerWrapper(self.proxy).isPlaying;
+	},
+
+	presetCompileString: { arg self;
+		"ParamCombinator(%).mapObjectToInput(%, range: %);\n".format(self.combinator.targetParam, self.proxy.refCompileString ?? { self.proxy.asCompileString }, self.combinator.rangeParam.at(self.index).get)
 	},
 
 ));
