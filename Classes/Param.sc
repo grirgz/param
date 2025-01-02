@@ -5030,9 +5030,7 @@ MessageParam : BaseAccessorParam {
 	}
 
 	controllerTarget {
-		// design decision: target is not unref regarding to signaling
-		// Param(Message(obj, \proxy), \lpfr)
-		^target.receiver;
+		^this.target.receiver;
 	}
 
 	targetLabel {
@@ -5065,24 +5063,16 @@ MessageParam : BaseAccessorParam {
 		if(Param.trace == true) {
 			"%: setVal: %".format(this, val).postln;
 		};
-		//this.controllerTarget.changed(\set, property, val);
-	}
-
-	unrefTarget {
-		if(target.selector.notNil) {
-			^target.value;	
-		} {
-			^target.receiver;	
-		};
+		target.changed(\set, property, val);
 	}
 
 	setRaw { arg val;
-		this.unrefTarget.perform(property.asSetter, val);	
+		target.receiver.perform((property++"_").asSymbol, val);	
 		this.controllerTarget.changed(\set, property); // FIXME: may update two times when pointed object already send changed signal
 	}
 
 	getRaw { 
-		this.unrefTarget.perform(property);
+		^target.receiver.perform(property);	
 	}
 
 	//putListener { arg param, view, controller, action;
