@@ -447,6 +447,10 @@ Param {
 		^wrapper.getCombinator
 	}
 
+	clearCombinator {
+		^wrapper.clearCombinator
+	}
+
     //
 
 	//inCombinatorMode_ { arg val;
@@ -996,8 +1000,11 @@ Param {
                 };
 				if(val.isKindOf(Number)) {
 					{
-						self.value = val;
-						self.background = color;
+						if(self.isClosed.not) {
+
+							self.value = val;
+							self.background = color;
+						};
 					}.defer;
 				}
 			},
@@ -2104,6 +2111,12 @@ BaseParam {
 		^target.getHalo(( \ParamCombinator_++this.propertyRoot ).asSymbol)
 	}
 
+	clearCombinator { arg fullyRemove=false;
+		if(this.hasCombinator) {
+			this.getCombinator.clear(fullyRemove);
+		};
+	}
+
 	propertyLabel {
 		^property.asString
 	}
@@ -2766,6 +2779,7 @@ ParamAccessor {
 	*pbindef_source { arg selector;
 		// access Pbindef key source directly
 		// build with Param( Pbindef(\bla), \rq -> \source)
+		// selector is propertyRoot
 		// TODO: not updated when set from code with Pbindef, should listen to \source
 		// TODO: default value is not from the SynthDef
 		^(
@@ -2871,7 +2885,8 @@ ParamAccessor {
 
 			unset: { arg self;
 				if(self.obj.target.source.at(selector).notNil) { // Pbindef recreate key if not defined
-					self.obj.target.source.set(selector, nil)
+					self.obj.target.source.set(selector, nil);
+					self.obj.target.changed(\set, [selector]); // no changed msg when setting PbindProxy
 				}
 			},
 
@@ -3683,8 +3698,9 @@ PdefParam : BaseAccessorParam {
 		if(accessor[\unset].notNil) {
 			^accessor.unset
 		} {
-			^target.unset(property);
-		}
+			target.unset(property);
+			target.changed(\set, [property]);
+		};
 	}
 
 	isSet {
@@ -3696,12 +3712,18 @@ PdefParam : BaseAccessorParam {
 			^this.target.source.at(this.propertyRoot).notNil
 		} {
 			// Pdef
-			var envir = this.target.envir;
-			if(envir.isNil) {
-				^false
+			if(this.hasCombinator) {
+				// we can't unset a param with a combinator
+				// upstream pattern value will always be replaced by ParamCombinator
+				^true
 			} {
-				^envir.keys.includes(this.propertyRoot)
-			}
+				var envir = this.target.envir;
+				if(envir.isNil) {
+					^false
+				} {
+					^envir.keys.includes(this.propertyRoot)
+				}
+			};
 		}
 	}
 
@@ -5008,7 +5030,9 @@ MessageParam : BaseAccessorParam {
 	}
 
 	controllerTarget {
-		^this.target.receiver;
+		// design decision: target is not unref regarding to signaling
+		// Param(Message(obj, \proxy), \lpfr)
+		^target.receiver;
 	}
 
 	targetLabel {
@@ -5041,16 +5065,24 @@ MessageParam : BaseAccessorParam {
 		if(Param.trace == true) {
 			"%: setVal: %".format(this, val).postln;
 		};
-		target.changed(\set, property, val);
+		//this.controllerTarget.changed(\set, property, val);
+	}
+
+	unrefTarget {
+		if(target.selector.notNil) {
+			^target.value;	
+		} {
+			^target.receiver;	
+		};
 	}
 
 	setRaw { arg val;
-		target.receiver.perform((property++"_").asSymbol, val);	
+		this.unrefTarget.perform(property.asSetter, val);	
 		this.controllerTarget.changed(\set, property); // FIXME: may update two times when pointed object already send changed signal
 	}
 
 	getRaw { 
-		^target.receiver.perform(property);	
+		this.unrefTarget.perform(property);
 	}
 
 	//putListener { arg param, view, controller, action;

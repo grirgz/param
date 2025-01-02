@@ -42,7 +42,7 @@ ProtoDef(\GlobalLibrary, (
 				};
 				if(self.clipFactories_keys.includes(ttype)) {
 					fac = self.clipFactories[ttype];
-					Log(\Param).debug("fac.libIdKey: %", fac.libIdKey);
+					//Log(\Param).debug("fac.libIdKey: %", fac.libIdKey);
 					//libId = [fac.libIdKey, target.key -> target]
 					// TODO: find a way to address anonymous track children
 					//	for the moment, i use track.trackKey but no addressing is done
@@ -86,9 +86,9 @@ ProtoDef(\GlobalLibrary, (
 
 	libIdToWrapper: { arg self, libid;
 		var wrapper;
-		Log(\Param).debug("libIdToWrapper: libid:%", libid);
+		//Log(\Param).debug("libIdToWrapper: libid:%", libid);
 		wrapper = self.libIdToFactory(libid).copy;
-		Log(\Param).debug("libIdToWrapper: wrapper:%", wrapper);
+		//Log(\Param).debug("libIdToWrapper: wrapper:%", wrapper);
 		if(wrapper.notNil) {
 			wrapper.libId =  libid;
 			wrapper;
@@ -157,10 +157,10 @@ ProtoDef(\GlobalLibrary, (
 				if(clipkey.notNil) {
 					fac = self.clipFactories[clipkey];
 					if(fac.notNil) {
-						Log(\Param).debug("GlobalLibrary.eventToLibId: found fac: fackey: %, ev:%, fac:%", clipkey, model, fac);
-						Log(\Param).debug("fac.eventToLibId %: %", fac.key, fac[\eventToLibId].asCompileString);
+						//Log(\Param).debug("GlobalLibrary.eventToLibId: found fac: fackey: %, ev:%, fac:%", clipkey, model, fac);
+						//Log(\Param).debug("fac.eventToLibId %: %", fac.key, fac[\eventToLibId].asCompileString);
 						libId = fac.eventToLibId(model);
-						Log(\Param).debug("GlobalLibrary.eventToLibId: found libId: %", libId);
+						//Log(\Param).debug("GlobalLibrary.eventToLibId: found libId: %", libId);
 					} {
 						Log(\Param).debug("GlobalLibrary.eventToLibId: no factory for %, key:%", model, clipkey);
 					}
@@ -215,9 +215,9 @@ ProtoDef(\GlobalLibrary, (
 
 			eventToLibId: { arg self, ev;
 				var tar;
-				Log(\Param).debug("clipFactories.%.eventToLibId: getEventTarget: %", self.key, self[\getEventTarget].asCompileString);
+				//Log(\Param).debug("clipFactories.%.eventToLibId: getEventTarget: %", self.key, self[\getEventTarget].asCompileString);
 				tar = self.getEventTarget(ev);
-				Log(\Param).debug("clipFactories.%.eventToLibId: target: %", self.key, tar);
+				//Log(\Param).debug("clipFactories.%.eventToLibId: target: %", self.key, tar);
 				self.targetToLibId(tar)
 			},
 
@@ -1459,7 +1459,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		var selectedCategories;
 		var filteredTypes;
 
-		Log(\Param).debug("updateItems");
+		//Log(\Param).debug("updateItems");
 
 		//// type filtering
 		selectedTypes = typeView.selection.collect({ arg idx; typeView.items[idx] });
@@ -1542,7 +1542,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		var filteredTypes;
 		var allTypes;
 		var tmpAction;
-		Log(\Param).debug("updateTypes");
+		//Log(\Param).debug("updateTypes");
 
 		selectedTypes = typeView.selection.collect({ arg idx; typeView.items[idx] });
 		selectedCategories = categoryView.selection.collect({ arg idx; categoryView.items[idx] });
@@ -1647,9 +1647,9 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		.setColumnWidth(0,300)
 		.itemPressedAction_({ arg view;
 			var itemId = treeViewItemToLibId.(view.currentItem);
-			Log(\Param).debug("itemPressedAction_ itemIds:%, idx:%", itemIds.size, view.currentItem.index);
+			//Log(\Param).debug("itemPressedAction_ itemIds:%, idx:%", itemIds.size, view.currentItem.index);
 			//Log(\Param).debug("itemPressedAction_ itemId:%, str:%", itemIds[view.currentItem.index], view.currentItem.strings);
-			Log(\Param).debug("itemPressedAction_ real itemId:%, str:%", treeViewItemToLibId.(view.currentItem), view.currentItem.strings);
+			//Log(\Param).debug("itemPressedAction_ real itemId:%, str:%", treeViewItemToLibId.(view.currentItem), view.currentItem.strings);
 			selectedCallback.(itemId.libId, view.currentItem.strings)
 		})
 		.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
@@ -1701,15 +1701,21 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 });
 
-WindowDef(\GlobalLibrary_select, { arg def, defaultValue, okHook, categories;
+WindowDef(\GlobalLibrary_select, { arg def, defaultValue, okHook, categories, doubleClickHook;
 	var selected;
 	//categories = [ \AudioBuffer ];
 	if(categories.isKindOf(Symbol)) {
 		categories = [categories]
 	};
 	VLayout (
-		WindowDef(\GlobalLibrary).asView(nil, { arg val; 
+		WindowDef(\GlobalLibrary).asView(nil, { arg val, str, double; 
 			selected = val;
+			//[selected, val, str, double].debug("GlobalLibrary_select");
+			if(double == \double) {
+				var fun = doubleClickHook ?? { okHook };
+				fun = okHook;
+				fun.(selected);
+			};
 		}, categories, defaultValue),
 		HLayout (
 			BasicButton.new.string_("Ok").action_({

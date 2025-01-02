@@ -13,16 +13,16 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 			var preset_name_field, preset_list_view;
 			var save_button;
 			preset_name_field = TextField.new;
-			save_button = XSimpleButton.new
+			save_button = BasicButton.new
 				.label_("Save preset")
 				.action_({
 					if(preset_name_field.string != "") {
-						pg.save(preset_name_field.string.asSymbol);
+						pg.savePreset(preset_name_field.string.asSymbol);
 						save_callback.(preset_name_field.string.asSymbol);
 					};
 				});
 			preset_list_view = ListView.new;
-			preset_list_view.items = pg.presets.keys.asArray.sort;
+			preset_list_view.items = pg.presetDict.keys.asArray.sort;
 			preset_list_view.action = { arg view;
 				preset_name_field.string_(view.items[view.value])
 			};
@@ -49,7 +49,7 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 
 		refresh_menu = {
 			var index = popup_menu.value ? 1;
-			preset_list =  pg.presets.keys.asArray.sort;
+			preset_list =  pg.presetDict.keys.asArray.sort;
 			popup_menu.items = [
 				"Save preset",
 				"-----------",
@@ -57,7 +57,7 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 			popup_menu.value = index;
 		};
 
-		left_button = XSimpleButton.new
+		left_button = BasicButton.new
 			.action_({
 				if( menu_previous_index <= 2) {
 					popup_menu.value = popup_menu.items.size - 1;
@@ -65,7 +65,7 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 					popup_menu.value = popup_menu.value - 1;
 				};
 				menu_previous_index = popup_menu.value;
-				pg.load(preset_list[popup_menu.value-2]);
+				pg.loadPreset(preset_list[popup_menu.value-2]);
 			})
 			.label_("<");
 
@@ -75,7 +75,7 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 			refresh_menu.();
 		});
 
-		right_button = XSimpleButton.new
+		right_button = BasicButton.new
 			.action_({
 				if( menu_previous_index == ( popup_menu.items.size - 1 )) {
 					popup_menu.value = 2;
@@ -83,7 +83,7 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 					popup_menu.value = popup_menu.value + 1;
 				};
 				menu_previous_index = popup_menu.value;
-				pg.load(preset_list[popup_menu.value-2]);
+				pg.loadPreset(preset_list[popup_menu.value-2]);
 			})
 			.label_(">");
 
@@ -104,7 +104,7 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 					popup_menu.value = menu_previous_index;
 				};
 			} {
-				pg.load(preset_list[menu.value-2]);
+				pg.loadPreset(preset_list[menu.value-2]);
 			};
 			menu_previous_index = menu.value;
 		};
@@ -143,14 +143,14 @@ WindowDef(\PresetListMorpherView, { arg def, pg, size=8, features;
 		features = features ? [\load, \disable, \save, \erase, \morph];
 
 		save_buttons = morpher.size.collect { arg i;
-			var but = XSimpleButton.new.label_(i).minWidth_(15).action_({ arg but;
+			var but = BasicButton.new.label_(i).minWidth_(15).action_({ arg but;
 				morpher.save(i);
 				refresh_button.(load_buttons[i], i);
 			});
 			but;
 		};
 		load_buttons = morpher.size.collect { arg i;
-			var but = XSimpleButton.new.label_(i).minWidth_(15).action_({ arg but;
+			var but = BasicButton.new.label_(i).minWidth_(15).action_({ arg but;
 				morpher.load(i);
 				refresh_button.(load_buttons[i], i);
 			});
@@ -158,7 +158,7 @@ WindowDef(\PresetListMorpherView, { arg def, pg, size=8, features;
 			but;
 		};
 		disable_buttons = morpher.size.collect { arg i;
-			var but = XSimpleButton.new.label_(i).minWidth_(15).action_({ arg but;
+			var but = BasicButton.new.label_(i).minWidth_(15).action_({ arg but;
 				morpher.toggleEnablePreset(i);
 				refresh_disable_button.(disable_buttons[i], i);
 			});
@@ -166,7 +166,7 @@ WindowDef(\PresetListMorpherView, { arg def, pg, size=8, features;
 			but;
 		};
 		delete_buttons = morpher.size.collect { arg i;
-			var but = XSimpleButton.new.label_(i).minWidth_(15).action_({ arg but;
+			var but = BasicButton.new.label_(i).minWidth_(15).action_({ arg but;
 				morpher.erase(i);
 				refresh_button.(load_buttons[i], i);
 			});

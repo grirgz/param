@@ -41,6 +41,8 @@ WindowDef(\PdefEditor, { arg me, key=\default;
 			PlayerWrapper(target).asView,
 
 			BasicButton.new.string_("...").maxWidth_(20).action_({ arg view;
+				var instr, pgkey;
+				var bank = ProtoTemplateDef(\SynthDefPresetBank).new(target);
 				Menu(
 						* [
 							MenuAction("Load from Pdef", {
@@ -52,17 +54,17 @@ WindowDef(\PdefEditor, { arg me, key=\default;
 								}, \Pdef)
 							}),
 							MenuAction("Save preset", {
-								var group = ParamGroupDef.update(target.key, target.asParamGroup);
-								WindowDef(\ListSaveDialog).front(group.presets.keys.asArray, { arg name;
-									group.save(name)
+								//var group = ProtoT.update(pgkey, target.asParamGroup);
+								WindowDef(\ListSaveDialog).front(bank.presetDict.keys.asArray, { arg name;
+									bank.savePreset(name);
 								}, "preset1", "Choose preset name")
 							}),
-							if(ParamGroupDef.hasSavedPresets(target.key)) {
-								var group = ParamGroupDef.update(target.key, target.asParamGroup);
+							if(bank.hasSavedPresets) {
+								//var group = ParamGroupDef.update(pgkey, target.asParamGroup);
 								Menu(
-									* ParamGroupDef(target.key).presets.keys.asArray.collect { arg prekey;
+									* bank.presetDict.keys.asArray.collect { arg prekey;
 										MenuAction(prekey, {
-											ParamGroupDef(target.key).load(prekey)
+											bank.loadPreset(prekey)
 										})
 									}
 								).title_("Load preset")
@@ -372,11 +374,19 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 			//})
 		},
 		if(param.hasCombinator) {
-			Menu(
-				CustomViewAction(
-					View.new.layout_(WindowDef(\ParamCombinatorModulatorEditor).asView(param))
-				)
-			).title_("Modulator panel")
+			[
+				Menu(
+					CustomViewAction(
+						View.new.layout_(WindowDef(\ParamCombinatorModulatorEditor).asView(param))
+					)
+				).title_("Modulator panel"),
+				MenuAction("Clear combinator inputs", {
+					param.getCombinator.clear(false);
+				}),
+				MenuAction("Fully remove combinator", {
+					param.getCombinator.clear(true);
+				}),
+			]
 		},
 		MenuAction("Combinator editor", {
 			var combi;
@@ -412,7 +422,7 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 		MenuAction("Spec editor", {
 			WindowDef(\ParamSpecEditor).front(param)
 		})
-	].select(_.notNil)
+	].flat.select(_.notNil)
 });
 
 WindowDef(\ParamEditor, { arg def, param;
@@ -916,7 +926,12 @@ WindowDef(\ParamDebugView, { arg def, param;
 			[
 				StaticText.new.string_("source"),
 				if(param.target.isKindOf(Pbindef)) {
-					TextField.new.string_(param.target.source.at(param.propertyRoot).source)
+					TextField.new.string_(param.target.source.at(param.propertyRoot).source.asCompileString)
+				} {
+					HLayout (
+						StaticText.new.string_("no pbindef"),
+						TextField.new.string_(param.target.source.asCompileString)
+					)
 				} 
 			],
 			[
@@ -941,6 +956,9 @@ WindowDef(\ParamDebugView, { arg def, param;
 				BasicButton.new.string_("copy param in ~param").action_({
 					~param = param;
 				}),
+				BasicButton.new.string_("combinator debug").action_({
+					WindowDef(\ParamCombinatorDebugView).front(param.getCombinator)
+				}).enabled_(param.hasCombinator),
 				BasicButton.new.string_("refresh").action_({
 					def.front(param);
 				}),
@@ -949,4 +967,88 @@ WindowDef(\ParamDebugView, { arg def, param;
 		)
 	};
 });
+
+WindowDef(\ParamCombinatorDebugView, { arg def, combi;
+	var grid = GridLayout.rows(
+		[
+			StaticText.new.string_("param (targetParam)"),
+			TextField.new.string_(combi.targetParam.asCompileString),
+		],
+		[
+			StaticText.new.string_("baseParam"),
+			TextField.new.string_(combi.baseParam.asCompileString),
+		],
+		[
+			StaticText.new.string_("resultParam"),
+			TextField.new.string_(combi.resultParam.asCompileString),
+		],
+		[
+			StaticText.new.string_("targetParam get"),
+			TextField.new.string_(combi.targetParam.get.asCompileString),
+		],
+		[
+			StaticText.new.string_("targetParam getRaw"),
+			TextField.new.string_(combi.targetParam.getRaw.asCompileString),
+		],
+		[
+			StaticText.new.string_("baseParam get"),
+			TextField.new.string_(combi.baseParam.get.asCompileString),
+		],
+		[
+			StaticText.new.string_("baseParam getRaw"),
+			TextField.new.string_(combi.baseParam.getRaw.asCompileString),
+		],
+		[
+			StaticText.new.string_("asMap"),
+			TextField.new.string_(combi.asMap.asCompileString),
+		],
+		[
+			StaticText.new.string_("size"),
+			TextField.new.string_(combi.size),
+		],
+		[
+			StaticText.new.string_("inBusMode"),
+			TextField.new.string_(combi.inBusMode),
+		],
+		[
+			StaticText.new.string_("existingInputObjects size"),
+			TextField.new.string_(combi.existingInputObjects.size),
+		],
+		[
+			StaticText.new.string_("ranges"),
+			VLayout(*combi.rangeParam.collect { arg p, idx;
+				p.asView
+			});
+		],
+		[
+			StaticText.new.string_("inputs"),
+			VLayout(*combi.inputParam.collect { arg p, idx;
+				TextField.new.string_(p.getBus.asCompileString)
+			});
+		],
+		[
+			StaticText.new.string_("inputs"),
+			VLayout(*combi.inputObjects.collect { arg obj, idx;
+				if(obj.isNil) {
+					TextField.new.string_(obj.asCompileString)
+				} {
+					HLayout (
+						TextField.new.string_(obj.key),
+						TextField.new.string_(obj.presetCompileString),
+						TextField.new.string_(obj.asCompileString),
+					)
+				};
+			});
+		],
+		[
+			nil
+		],
+	);
+	VLayout (
+		BasicButton.new.string_("Refres").action_({ def.front(combi) }),
+		grid
+	)
+	
+});
 );
+

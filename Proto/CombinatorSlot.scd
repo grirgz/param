@@ -20,6 +20,7 @@ ProtoTemplateDef(\PatternCombinatorSlot, (
 		self.patKey = patKey;
 		self.spec = spec;
 		self.index = idx;
+		self;
 	},
 
 	label: { arg self; "Mod: %".format(self.patKey) },
@@ -48,7 +49,8 @@ ProtoTemplateDef(\PatternCombinatorSlot, (
 	},
 
 	presetCompileString: { arg self;
-		"ParamCombinator(%).mapObjectToInput(%, range: %);\n".format(self.combinator.targetParam, self.patKey.asCompileString, self.combinator.rangeParam.at(self.index).get)
+		self.patKey.asCompileString
+		//"ParamCombinator(%).mapObjectToInput(%, range: %);\n".format(self.combinator.targetParam, self.patKey.asCompileString, self.combinator.rangeParam.at(self.index).get)
 	},
 ));
 
@@ -67,6 +69,7 @@ ProtoTemplateDef(\NodeProxyCombinatorSlot, (
 		};
 		self.spec = spec;
 		self.index = idx;
+		self;
 	},
 
 	play: { arg self, ev;
@@ -82,7 +85,8 @@ ProtoTemplateDef(\NodeProxyCombinatorSlot, (
 	},
 
 	presetCompileString: { arg self;
-		"ParamCombinator(%).mapObjectToInput(%, range: %);\n".format(self.combinator.targetParam, self.proxy.asCompileString, self.combinator.rangeParam.at(self.index).get)
+		self.proxy.asCompileString
+		//"ParamCombinator(%).mapObjectToInput(%, range: %);\n".format(self.combinator.targetParam, self.proxy.asCompileString, self.combinator.rangeParam.at(self.index).get)
 	},
 ));
 
@@ -96,6 +100,7 @@ ProtoTemplateDef(\ProtoClassCombinatorSlot, (
 		self.proxy = target;
 		self.spec = spec;
 		self.index = idx;
+		self;
 	},
 
 	label: { arg self;
@@ -115,7 +120,8 @@ ProtoTemplateDef(\ProtoClassCombinatorSlot, (
 	},
 
 	presetCompileString: { arg self;
-		"ParamCombinator(%).mapObjectToInput(%, range: %);\n".format(self.combinator.targetParam, self.proxy.refCompileString ?? { self.proxy.asCompileString }, self.combinator.rangeParam.at(self.index).get)
+		self.proxy.refCompileString ?? { self.proxy.asCompileString }
+		//"ParamCombinator(%).mapObjectToInput(%, range: %);\n".format(self.combinator.targetParam, self.proxy.refCompileString ?? { self.proxy.asCompileString }, self.combinator.rangeParam.at(self.index).get)
 	},
 
 ));

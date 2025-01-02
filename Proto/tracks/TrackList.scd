@@ -635,11 +635,6 @@ TrackTemplateDef(\CustomTrackPart, (
 
 	presetCompileString: { arg self;
 		// FIXME: need to clarify the difference between source and score
-		// in tracklist, source is the current score and score is the list of all potential sources
-		// when setting score, updateSource is called which select the right score and put it in source
-		// logically, we should save score and not source
-		// the selected score is inside the score data structure
-		// i will remove it, unnecessary complication
 		if(self.isEmpty) {
 			nil
 		} {

@@ -23,7 +23,7 @@ ParamGroup : List {
 		presets = IdentityDictionary.new;
 	}
 
-	save { arg key=\default; 
+	savePreset { arg key=\default; 
 		presets[key] = super.array.collect { arg param;
 			var val;
 			if(param.isSet) {
@@ -40,9 +40,21 @@ ParamGroup : List {
 		this.changed(\presets);
 	}
 
+	load { arg ...args;
+		^this.loadPreset(*args);
+	}
+	save { arg name=\default;
+		^this.savePreset(name)
+	}
+
+
 	presets_ { arg val;
 		presets = val.deepCopy;
 		this.changed(\presets);
+	}
+
+	presetDict {
+		presets;
 	}
 
 	getPreset { arg key=\default;
@@ -125,7 +137,7 @@ ParamGroup : List {
 		this.changed(\presets);
 	}
 
-	load { arg key=\default; 
+	loadPreset { arg key=\default; 
 		if(presets[key].notNil) {
 			presets[key].do { arg val, x;
 				if(val.notNil) {
@@ -235,13 +247,15 @@ ParamGroup : List {
     }
 
 	getCombinatorCompileString {
-		var res = "";
+		^this.getCombinatorList.collect(_.presetCompileString).join("\n");
+	}
+
+	getCombinatorList {
+		var res = List.new;
 		this.do { arg param, idx;
 			var combi = param.getCombinator;
 			if(combi.notNil) {
-				combi.existingInputObjects.do { arg item, idx;
-					res = res ++ item.presetCompileString;
-				};
+				res.add(param -> combi);
 			};
 		};
 		^res;
@@ -481,13 +495,13 @@ ParamGroupDef {
 		lib[key] = nil;
 	}
 
-	save { arg name=\default;
+	savePreset { arg name=\default;
 		group.save(name);
 		this.saveArchive;
 		this.changed(\presets);
 	}
 
-	load { arg name;
+	loadPreset { arg name;
 		group.presets[name] = this.getArchive[\presets][name];
 		group.load(name);
 	}

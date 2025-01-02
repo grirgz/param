@@ -62,17 +62,6 @@ ParamCombinator : Pattern {
 		//resultParam = targetParam; // this make infinite loop when targetParam is a combinator
 
 		baseParam.set(targetParam.get); // if already redirected, return baseParam.get
-        if(param.target.isKindOf(Pdef) and: { param.target.source.isKindOf(PbindProxy) }) {
-			// can only redirect with Pbindef
-			// todo: test with Ndef
-			if(param.propertyArray.last == \source) {
-				param.set(this);
-			} {
-				param.at(\source).set(this);
-			};
-		} {
-			param.set(this);
-		};
 
 		baseParam.label = targetParam.asLabel; 
 		baseParam.shortLabel = targetParam.shortLabel;
@@ -99,6 +88,20 @@ ParamCombinator : Pattern {
 		];
 
 		TagSpecDef(\ParamCombinator).add(this);
+
+        if(param.target.isKindOf(Pdef) and: { param.target.source.isKindOf(PbindProxy) }) {
+			// can only redirect with Pbindef
+			// todo: test with Ndef
+			if(param.propertyArray.last == \source) {
+				param.set(this);
+			} {
+				param.at(\source).set(this);
+			};
+		} {
+			this.inBusMode = true;
+			param.set(this); // in envir, Pdef will call .asControlInput
+		};
+		
 
 	}
 	//*force { arg param, size=3;
@@ -139,10 +142,28 @@ ParamCombinator : Pattern {
 		^inst;
 	}
 
-	clear {
-		Ndef(key).clear;
-		targetParam.target.addHalo(halokey, nil);
-		^nil;
+	clear { arg fullyRemove=true;
+		var oldval = targetParam.get;
+		oldval.debug("ParamCombinator.clear");
+		this.size.do { arg idx;
+			this.clearInput(idx)
+		};
+		if(fullyRemove == true) {
+			Ndef(key).clear;
+			targetParam.target.addHalo(halokey, nil);
+			if(targetParam.target.source.isKindOf(PbindProxy)) {
+				targetParam.at(\source).getRaw.debug("ParamCombinator.clear set source");
+				targetParam.at(\source).unset;
+				targetParam.setRaw(oldval);
+				targetParam.at(\source).getRaw.debug("ParamCombinator.clear set source after");
+			} {
+				targetParam.debug("ParamCombinator.clear set");
+				targetParam.setRaw(oldval);
+			};
+			targetParam.target.changed(\combinator, targetParam.propertyRoot);
+			targetParam.target.changed(\set, [ targetParam.propertyRoot ]);
+			^nil;
+		};
 	}
 
 
@@ -406,17 +427,22 @@ ParamCombinator : Pattern {
 	}
 
 	mapObjectToInput { arg obj, idx, spec, range;
-		^if(obj.isKindOf(Symbol)) {
-			this.mapPatternKeyToInput(obj, idx, spec, range);
-		} {
-			if(obj.isKindOf(NodeProxy)) {
+		case(
+			{ obj.isNil }, {
+				this.clearInput(idx);
+			},
+			{ obj.isKindOf(Symbol) }, {
+				this.mapPatternKeyToInput(obj, idx, spec, range);
+			},
+			{ obj.isKindOf(ProtoClass) }, {
+				this.mapProtoClassToInput(obj, idx, spec, range);
+			},
+			{ obj.isKindOf(NodeProxy) }, {
 				this.mapNodeProxyToInput(obj, idx, spec, range);
-			} {
-				if(obj.isKindOf(ProtoClass)) {
-					this.mapProtoClassToInput(obj, idx, spec, range);
-				};
-			};
-		};
+			}, {
+				"ParamCombinator: don't know what to do with %".format(obj).error;
+			}
+		)
 	}
 
 	asPattern { 
@@ -498,6 +524,10 @@ ParamCombinator : Pattern {
 		^res;
 	}
 
+	asMap {
+		^proxy.asMap.asSymbol;
+	}
+
 	/// interface of CachedBus
 
 	asCachedBus {
@@ -515,6 +545,30 @@ ParamCombinator : Pattern {
 	set { arg val;
 		Log(\Param).debug("ParamCombinator set val %".format(val));
 		this.baseParam.set(val);
+	}
+
+	mapAllInputs { arg objlist, rangelist;
+		this.size.do { arg idx;
+			this.mapObjectToInput(objlist[idx], idx, range:rangelist[idx]);
+		};
+	}
+
+	presetCompileString {
+		var inlist = "[%]".format(this.inputObjects.collect({ arg obj, idx;
+			if(obj.isNil) {
+				nil
+			} {
+				obj.presetCompileString;
+			};	
+		}).join(", "));
+		var rlist = "[%]".format(this.rangeParam.collect({ arg subp, idx;
+			if(subp.isNil) {
+				0
+			} {
+				subp.get.asCompileString;
+			};	
+		}).join(", "));
+		^"ParamCombinator(%).mapAllInputs(%, %);\n".format(this.targetParam.asCompileString, inlist, rlist);
 	}
 }
 
