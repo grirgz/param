@@ -1713,7 +1713,7 @@ Param {
 	}
 
 	asKnob {
-		^Knob.new.mapParam(this);
+		^Knob.new.mode_(\vert).mapParam(this);
 	}
 
 	//asEZKnob {

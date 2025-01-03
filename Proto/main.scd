@@ -18,6 +18,7 @@
 		//// editors
 
 		"editors/base_editors.scd",
+		"editors/base_dialogs.scd",
 		"editors/FileDialog.scd",
 		"editors/ParamSelectDialog.scd",
 		"editors/PatKitDefEditor.scd",

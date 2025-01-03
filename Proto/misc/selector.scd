@@ -1,7 +1,8 @@
 
 ProtoTemplateDef(\ViewSelector, (
-	// this view selector is based 
 	// this selector version added possibility to regenere the views if they have been removed
+	// not usable if not using internal buttons or custom makeViews
+	//		because select_item will want to regenerate the views and self.views will call select_item
 	selected_color: ParamViewToolBox.color_ligth,
 	deselected_color: Color.white,
 	new: { arg self, selector_count=8, action, viewInit;
@@ -65,14 +66,15 @@ ProtoTemplateDef(\ViewSelector, (
 	},
 
 	select_item: { arg self, x, views;
+		"select_item".debug;
 		views = views ?? {self.views};
-		//[self.selected_index, x, views].debug("selector.select_item: old selected_index, new one, views");
+		[self.selected_index, x, views].debug("selector.select_item: old selected_index, new one, views");
 		x = x.clip(0, views.size-1);
 		if(views.size > 0) {
 			self.old_selected_index = self.selected_index;
 			self.selected_index = x;
 			self.changed(\selected_index);
-			if(views[self.selected_index].notNil) {
+			if(self.old_selected_index.notNil and: { self.old_selected_index != self.selected_index } and: { views[self.old_selected_index].notNil }) {
 				if(self[\deselect_action].notNil) {
 					self.deselect_action(views[self.old_selected_index], self.old_selected_index);
 				} {
@@ -138,6 +140,35 @@ ProtoTemplateDef(\SelectorGroup, (
 		};
 		view;
 	}
+));
+
+
+ProtoTemplateDef(\SimpleViewSelector, (
+	
+	new: { arg self;
+		self = ProtoClass((parent:self));
+	
+		
+	
+		self;
+	},
+
+	addView: { arg self, view;
+		self.views = self.views.add(view)
+	},
+
+	selectIndex: { arg self, idx;
+		idx.debug("selectIndex");
+		self.oldSelectedIndex = self.selectedIndex;
+		self.selectedIndex = idx;
+		self.changed(\selectedIndex, idx);
+		self.selectAction(idx);
+		if(idx != self.oldSelectedIndex and: { self.oldSelectedIndex.notNil }) {
+			self.changed(\selectedIndex, self.oldSelectedIndex);
+			self.deselectAction(self.oldSelectedIndex);
+		};
+		
+	},
 ));
 
 

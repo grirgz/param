@@ -37,10 +37,6 @@ ProtoTemplateDef(\TimelinePanelView, (
 		}
 	},
 
-	asPattern: { arg self;
-		// TODO
-		Pfunc({})
-	},
 
 	////// properties
 
@@ -496,7 +492,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		};
 		self.tracks_controller = SimpleController(self.timeline_model)
 		.put(\tracks, {
-			//"update_track_header_size: areasize".debug;
+			"update_track_header_size: areasize".debug;
 			if(self.track_header.isNil or: {self.track_header.isClosed}) {
 				self.tracks_controller.remove;
 			} {
@@ -1794,7 +1790,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			//self.track_selector.viewInit.(self.track_selector.selected_view, self.track_selector.selected_index);
 		//});
 
-		Log(\Param).debug("recorder %", self.timeline_model.recorder);
+		//Log(\Param).debug("recorder %", self.timeline_model.recorder);
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,

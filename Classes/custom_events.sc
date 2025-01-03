@@ -64,6 +64,10 @@ PlayerEvent : Event {
 		);
 
 		Event.addEventType(\player, playfun, defaultParent);
+
+		Event.addEventType(\start, {});
+		Event.addEventType(\end, {});
+		Event.addEventType(\locator, {});
 		//Event.addEventType(\player, playfun);
 	}
 
