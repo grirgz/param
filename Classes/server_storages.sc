@@ -781,17 +781,36 @@ GroupDef {
 
 
 	*pattern { arg name, target, addaction='addToHead';
+		var unref = { arg group;
+			var ret;
+			if(group.isKindOf(Pattern)) {
+				// since you can't nest makePayload, i store args in pattern object
+				var args = group.args;
+				//"parent group is pattern %, %, %".format(*args).debug;
+				if(args.notNil) {
+					//"parent group pattern unref".debug;
+					args[1] = unref.(args[1]);
+					ret = GroupDef(*args)
+				};
+			};
+			if(ret.isNil) {
+				//group.debug("passing group as is");
+				group
+			} {
+				ret
+			};
+		};
 		^Prout({ arg ev;
 			this.makePayload(ev, {
-				var parentgroup;
-				if(target.isKindOf(Pattern)) {
-					// since you can't nest makePayload, i store args in pattern object
-					var args = target.args;
-					if(args.notNil) {
-						parentgroup = GroupDef(*args)
-					};
-				};
-				GroupDef(name, parentgroup ? target, addaction);
+				try {
+					var parentgroup;
+					parentgroup = unref.(target);
+					//"create group %, %, %".format(name, parentgroup ? target, addaction).debug;
+					GroupDef(name, parentgroup ? target, addaction);
+				} { arg error;
+					error.reportError;
+					error.throw;
+				}
 			})
 		}).loop.addUniqueMethod(\args, { [ name, target, addaction ] })
 	}
