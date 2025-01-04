@@ -1481,11 +1481,13 @@ TimelineScroller : SCViewHolder {
 		};
 
 		this.view.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			var os = 0.04; // offset 
+			// without offset, clicking on resize handle activate scrolling
 			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			if(this.orientation == \horizontal) {
 				var npos = x/view.bounds.width;
 				//[npos, view.lo, view.hi].debug("npos");
-				if(npos < ( view.lo-0.01 ) or: { npos > ( view.hi+0.02 ) }) {
+				if(npos < ( view.lo-os ) or: { npos > ( view.hi+( os*2 ) ) }) {
 					var range = view.range;
 					var lo;
 					lo = ( npos - ( view.range/2 ) ).clip(0,1-range);
@@ -1498,7 +1500,7 @@ TimelineScroller : SCViewHolder {
 			} {
 				var npos = 1- ( y/view.bounds.height );
 				//[npos, view.lo, view.hi].debug("npos");
-				if(npos < ( view.lo-0.02 ) or: { npos > ( view.hi+0.01 ) }) {
+				if(npos < ( view.lo-(os*2) ) or: { npos > ( view.hi+os ) }) {
 					var range = view.range;
 					var lo;
 					lo = ( npos - ( view.range/2 ) ).clip(0,1-range);

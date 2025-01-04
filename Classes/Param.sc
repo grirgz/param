@@ -2083,6 +2083,8 @@ BaseParam {
 	var >default;
 	var >label; 
 	var <>subIndex;
+	var <>parent;
+	var <>accessor;
 
 	/////// labels
 
@@ -3076,8 +3078,6 @@ ParamAccessor {
 }
 
 BaseAccessorParam : BaseParam {
-	var <>accessor;
-	var <>parent;
 	
 
 	// to be overriden

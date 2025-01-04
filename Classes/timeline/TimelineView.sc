@@ -1581,7 +1581,6 @@ TimelineView : SCViewHolder {
 	}
 
 	mimicTimeline { arg timeline, orientation;
-		// FIXME: why no changed signal ? ("this.viewport =" instead of "viewport =")
 		var rect_copy_horizontal = { arg me, rect;
 			me = me.copy;
 			me.width = rect.width;

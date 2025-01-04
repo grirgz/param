@@ -790,12 +790,14 @@ ProtoTemplateDef(\TimelinePanelView, (
 			[
 				[
 					HLayout (
-						BasicButton.new.string_("👆").fixedSize_(20@20).action_({
-							self.timeline.currentBrush = \move;
-						}).toolTip_("Set move mode"),
-						BasicButton.new.string_("✎").maxSize_(20@20).action_({
-							self.timeline.currentBrush = \pen;
-						}).toolTip_("Set write mode"),
+						HLayout (
+							BasicButton.new.string_("👆").fixedSize_(20@20).action_({
+								self.timeline.currentBrush = \move;
+							}).toolTip_("Set move mode"),
+							BasicButton.new.string_("✎").maxSize_(20@20).action_({
+								self.timeline.currentBrush = \pen;
+							}).toolTip_("Set write mode"),
+						).spacing_(3)
 						//nil,
 					).margins_(0).spacing_(0),
 					self.ruler_x,
