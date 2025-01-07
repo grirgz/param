@@ -749,6 +749,20 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.verticalScroller.mapTimeline(self.timeline);
 	},
 
+	makeBrushSelectorView: { arg self;
+		HLayout (
+			HLayout (
+				BasicButton.new.string_("👆").fixedSize_(20@20).action_({
+					self.timeline.currentBrush = \move;
+				}).toolTip_("Set move mode"),
+				BasicButton.new.string_("✎").maxSize_(20@20).action_({
+					self.timeline.currentBrush = \pen;
+				}).toolTip_("Set write mode"),
+			).spacing_(3)
+			//nil,
+		).margins_(0).spacing_(0)
+	},
+
 	makeLayout: { arg self;
 		var layout;
 		var tl_layout;
@@ -789,17 +803,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		tl_layout = GridLayout.rows(*
 			[
 				[
-					HLayout (
-						HLayout (
-							BasicButton.new.string_("👆").fixedSize_(20@20).action_({
-								self.timeline.currentBrush = \move;
-							}).toolTip_("Set move mode"),
-							BasicButton.new.string_("✎").maxSize_(20@20).action_({
-								self.timeline.currentBrush = \pen;
-							}).toolTip_("Set write mode"),
-						).spacing_(3)
-						//nil,
-					).margins_(0).spacing_(0),
+					self.makeBrushSelectorView,
 					self.ruler_x,
 					HLayout (
 						BasicButton.new.label_("↕")

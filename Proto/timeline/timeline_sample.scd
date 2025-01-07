@@ -768,6 +768,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 		//"clipTimelinePanelView.makeLayout: start init".debug;
 
 		self[\makeVelocityView] = {}; // disable velocity view
+		self[\makeBrushSelectorView] = {}; // disable
 		self.layout = VLayout(
 			//HLayout(
 			//	PlayerWrapperView(Pdef(self.eventloop.key)).view,

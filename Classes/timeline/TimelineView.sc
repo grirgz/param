@@ -1199,10 +1199,10 @@ TimelineView : SCViewHolder {
 		this.refreshEventList;
 	}
 
-	eventFactory { arg pos;
-		var nodesize = Point(1,1);
+	eventFactory { arg pos, len;
+		var nodesize = Point(len ?? { this.quant.value.x },1);
 		// why nodesize is in normalized form ???
-		nodesize = this.gridPointToNormPoint(nodesize);
+		//nodesize = this.gridPointToNormPoint(nodesize);
 		if(eventFactory.isNil) {
 			//Log(\Param).debug("TimelineView: eventFactory is nil");
 			^(absTime: pos.x, midinote: pos.y, sustain:nodesize.x);
@@ -2564,6 +2564,7 @@ TimelineViewNodeBase {
 	var <>refresh;
 	var <>controller;
 	var <>selectable = true; // to be or not ignored by findNode
+	var <>selected = false;
 	var <>deletable = true;
 	var <>visible = true;
 	var <>enablePreview = true;
@@ -2585,7 +2586,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 
 	baseInit {
 		this.colorDeselected = Color.black;
-		this.colorSelected = Color.red;
+		this.colorSelected = ParamViewToolBox.color_ligth.complementary;
 	}
 
 	posyKey {
@@ -2708,26 +2709,60 @@ TimelineViewEventNode : TimelineViewNodeBase {
 		refresh = fun;
 	}
 
+	//draw {
+		//var myrect;
+		//var pos;
+		//Pen.color = this.color;
+		//pos = this.origin;
+		//myrect = parent.gridRectToPixelRect(this.rect);
+		////[spritenum, rect, this.class].debug("draw");
+		//Pen.fillRect(myrect);
+		//Pen.color = this.outlineColor;
+		//Pen.strokeRect(myrect);
+		////Pen.stroke;
+	//}
+	
 	draw {
 		var myrect;
 		var pos;
-		Pen.color = this.color;
+		//Pen.color = this.color;
 		pos = this.origin;
 		myrect = parent.gridRectToPixelRect(this.rect);
-		//[spritenum, rect, this.class].debug("draw");
-		Pen.fillRect(myrect);
+		////[spritenum, rect, this.class].debug("draw");
+		//Pen.fillRect(myrect);
+		//Pen.color = this.outlineColor;
+		//Pen.strokeRect(myrect);
+		////Pen.stroke;
+		Pen.addRect(myrect.insetBy(2));
+		Pen.width = 4;
 		Pen.color = this.outlineColor;
-		Pen.strokeRect(myrect);
-		//Pen.stroke;
+		Pen.stroke;
+
+		Pen.addRect(myrect.insetBy(2));
+		Pen.width = 3;
+		Pen.color = this.color;
+		Pen.stroke;
+
+		Pen.width = 1;
+		Pen.addRect(myrect.insetBy(2));
+		if(selected) {
+			Pen.color = this.colorSelected;
+		} {
+			Pen.color = this.color;
+		};
+		Pen.fill;
+
 	}
 
 	selectNode {
+		selected = true;
 		this.refloc = this.nodeloc;
-		outlineColor = this.colorSelected;
+		//outlineColor = this.colorSelected;
 	}
 
 	deselectNode {
-		outlineColor = this.colorDeselected;
+		selected = false;
+		//outlineColor = this.colorDeselected;
 	}
 
 	free {
@@ -2865,90 +2900,96 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		var preview_background = ParamViewToolBox.color_pale;
 		var label_background = ParamViewToolBox.color_ligth;
 		var font = Font.default.copy;
-
-		if(parent.parentTimeline.notNil) {
-			// we are drawing a node preview inside a node preview
-			labelheight = parent.gridRectToPixelRect(this.rect).height;
-			label_background = Color.white.lighten(ParamViewToolBox.color_pale, 0.2);
-			font.size = 9;
-			this.enablePreview = false;
-		};
-
-		pos = this.origin;
-
-		rect = parent.gridRectToPixelRect(this.rect);
-		rect = rect.insetAll(0,0,1,1); // cleaner drawing
-		// now rect is in screen coordinates
-		previewrect = rect.insetAll(0,labelheight,0,0);
-		labelrect = rect.insetAll(0,0,0,rect.height-labelheight); // should be same as handleRect but in pixel
-		//Log(\Param).debug("label px rect:%", labelrect);
-
-		//labelrect.debug("labelrect");
-		//previewrect.debug("previewrect");
-		//rect.debug("rect");
-
-		//[spritenum, rect].debug("draw");
-
-		Pen.color = label_background;
-		Pen.fillRect(rect);
-		Pen.color = preview_background;
-		Pen.fillRect(previewrect);
-
-		//Pen.color = Color.red;
-		//Pen.fillRect(labelrect);
-
-		// outline
-
-		Pen.color = this.outlineColor;
-		Pen.strokeRect(rect);
-
-		// top left triangle
-		if(startOffset.notNil and: { startOffset > 0 }) {
-			Pen.color = this.outlineColor;
+		if(~drawDebug.notNil) {
+			~drawDebug.(this)
 		} {
+
+
+			if(parent.parentTimeline.notNil) {
+				// we are drawing a node preview inside a node preview
+				labelheight = parent.gridRectToPixelRect(this.rect).height;
+				label_background = Color.white.lighten(ParamViewToolBox.color_pale, 0.2);
+				font.size = 9;
+				this.enablePreview = false;
+			};
+
+			pos = this.origin;
+
+			rect = parent.gridRectToPixelRect(this.rect);
+			rect = rect.insetAll(0,0,1,1); // cleaner drawing
+			// now rect is in screen coordinates
+			previewrect = rect.insetAll(0,labelheight,0,0);
+			labelrect = rect.insetAll(0,0,0,rect.height-labelheight); // should be same as handleRect but in pixel
+			//Log(\Param).debug("label px rect:%", labelrect);
+
+			//labelrect.debug("labelrect");
+			//previewrect.debug("previewrect");
+			//rect.debug("rect");
+
+			//[spritenum, rect].debug("draw");
+
+			Pen.color = label_background;
+			Pen.fillRect(rect);
+			Pen.color = preview_background;
+			Pen.fillRect(previewrect);
+
+			//Pen.color = Color.red;
+			//Pen.fillRect(labelrect);
+
+			// outline
+
+			Pen.color = this.outlineColor;
+			Pen.strokeRect(rect);
+
+			// top left triangle
+			if(startOffset.notNil and: { startOffset > 0 }) {
+				Pen.color = this.outlineColor;
+			} {
+				Pen.color = Color.white;
+			};
+
+			this.drawRectTriangle(
+				Rect(labelrect.origin.x, labelrect.origin.y, labelheight/4, labelheight/4),
+				'leftTop'
+			);
+			Pen.fill;
+
+			this.drawRectDiagonal(
+				Rect(labelrect.origin.x, labelrect.origin.y, labelheight/4, labelheight/4),
+				'leftTop'
+			);
+			Pen.color = this.outlineColor;
+			Pen.stroke;
+
+			// top right triangle
 			Pen.color = Color.white;
+
+			this.drawRectTriangle(
+				Rect(labelrect.rightTop.x, labelrect.rightTop.y, labelheight.neg/4, labelheight/4),
+				'leftTop'
+			);
+			Pen.fill;
+
+			this.drawRectDiagonal(
+				Rect(labelrect.rightTop.x, labelrect.rightTop.y, labelheight.neg/4, labelheight/4),
+				'leftTop'
+			);
+			Pen.color = this.outlineColor;
+			Pen.stroke;
+
+			// label
+			Pen.color = Color.black;
+			Pen.stringLeftJustIn(" "++label, labelrect, font);
+
+			// preview
+
+			if(this.enablePreview) {
+				this.initPreview;
+				this.drawPreview(previewrect);
+			}
+			//Pen.stroke;
+
 		};
-
-		this.drawRectTriangle(
-			Rect(labelrect.origin.x, labelrect.origin.y, labelheight/4, labelheight/4),
-			'leftTop'
-		);
-		Pen.fill;
-
-		this.drawRectDiagonal(
-			Rect(labelrect.origin.x, labelrect.origin.y, labelheight/4, labelheight/4),
-			'leftTop'
-		);
-		Pen.color = this.outlineColor;
-		Pen.stroke;
-
-		// top right triangle
-		Pen.color = Color.white;
-
-		this.drawRectTriangle(
-			Rect(labelrect.rightTop.x, labelrect.rightTop.y, labelheight.neg/4, labelheight/4),
-			'leftTop'
-		);
-		Pen.fill;
-
-		this.drawRectDiagonal(
-			Rect(labelrect.rightTop.x, labelrect.rightTop.y, labelheight.neg/4, labelheight/4),
-			'leftTop'
-		);
-		Pen.color = this.outlineColor;
-		Pen.stroke;
-
-		// label
-		Pen.color = Color.black;
-		Pen.stringLeftJustIn(" "++label, labelrect, font);
-
-		// preview
-
-		if(this.enablePreview) {
-			this.initPreview;
-			this.drawPreview(previewrect);
-		}
-		//Pen.stroke;
 	}
 
 	//drawPreview_orig { arg previewrect;

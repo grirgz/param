@@ -68,6 +68,21 @@ ProtoTemplateDef(\filemanager_node, (
 			}
 		}
 	},
+	icon_:{ arg self, val;
+		self[\icon] = val;
+		self;
+	},
+	icon: { arg self;
+		if(self.isFolder) {
+			self.iconPath +/+ "places/32/folder.png"
+		} {
+			self.iconPath +/+ "mimes/32/gtk-file.png"
+		};
+	},
+	iconPath: { arg self;
+		// FIXME: hardcoded
+		"/usr/share/icons/elementary-xfce/";
+	},
 	label: { arg self;
 		self.name;
 	},
@@ -199,11 +214,15 @@ ProtoTemplateDef(\filemanager_quicklist, (
 	},
 
 	children: { arg self;
+		var iconpath = "/usr/share/icons/elementary-xfce/";
+		var iconsize = "64";
 		[
-			ProtoTemplateDef(\filemanager_node).new("/").name_("Root /"),
-			ProtoTemplateDef(\filemanager_node).new("~").name_("Home ~"),
-			ProtoTemplateDef(\filemanager_recent_files).new,
+			ProtoTemplateDef(\filemanager_node).new("/").name_("Root /").icon_(iconpath+/+"devices/48/drive-harddisk-root.png"),
+			ProtoTemplateDef(\filemanager_node).new("~").name_("Home ~").icon_(iconpath+/+"/places/24/folder-home.png"),
+			ProtoTemplateDef(\filemanager_recent_files).new.icon_(iconpath+/+"places/32/folder-recent.png"),
+			\separator,
 			ProtoTemplateDef(\filemanager_node).new(self.currentWorkingDir).name_("Cwd %".format(self.currentWorkingDir)),
+			\separator,
 
 		] ++ self.quicklist.collect { arg path, idx;
 			ProtoTemplateDef(\filemanager_node).new(path)
@@ -312,7 +331,8 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 
 	var fileview, changepath, select_file;
 	var pathview = View.new;
-	var quicklist = ListView.new;
+	//var quicklist = ListView.new;
+	var quicklist = Menu();
 	var node;
 	var update_pathview;
 	var preview = View.new;
@@ -446,25 +466,44 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 		pathview.layout.add(nil)
 	};
 
-	quicklist.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-		var item;
-		//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+	//quicklist.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+		//var item;
+		////[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 		
-		//[view.value, view.items].debug("double click select: ");
-		if(clickCount == 2 and: {view.items.size > 0}) {
-			item = quicknodelist[view.value];
-			changepath.(fileview, item.fullPath);
-			//if(item == "Recent files") {
-				//changepath.(fileview, "recents://")
-			//} {
-				//changepath.(fileview, item)
-			//};
-		}
-	});
+		////[view.value, view.items].debug("double click select: ");
+		//if(clickCount == 2 and: {view.items.size > 0}) {
+			//item = quicknodelist[view.value];
+			//changepath.(fileview, item.fullPath);
+			////if(item == "Recent files") {
+				////changepath.(fileview, "recents://")
+			////} {
+				////changepath.(fileview, item)
+			////};
+		//}
+	//});
 
 	proto.update_quicklistview = { arg self;
 		quicknodelist = quicklistProto.new.children;
-		quicklist.items = quicknodelist.collect(_.label).asArray;
+		//quicklist.items = quicknodelist.collect(_.label).asArray;
+		quicklist.clear;
+		quicknodelist.asArray.do { arg item, idx;
+			var action;
+			if(item == \separator) {
+				action = MenuAction.separator;
+			} {
+				action = MenuAction(item.label, {
+					changepath.(fileview, item.fullPath);
+				});
+				if(item.icon.notNil) {
+					if(File.exists(item.icon)) {
+						action.icon = Image(item.icon);
+					} {
+
+					}
+				};
+			};
+			quicklist.addAction(action)
+		};
 		//[ quicknodelist, quicklist.items ].debug("gni ?");
 	};
 	proto.save_quicklist = { arg self;
@@ -664,16 +703,18 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 
 	VLayout (
 		HLayout (
-			BasicButton.new.string_("+").action_({
-				quicklistProto.addQuickPath(node.fullPath);
-				proto.update_quicklistview;
-				//proto.save_quicklist;
-				//PathName("//bin").fullPath
-			}).maxWidth_(30),
-			BasicButton.new.string_("-").action_({
-				quicklistProto.removeQuickPath(node.fullPath);
-				proto.update_quicklistview;
-			}).maxWidth_(30),
+			HLayout (
+				BasicButton.new.string_("+").action_({
+					quicklistProto.addQuickPath(node.fullPath);
+					proto.update_quicklistview;
+					//proto.save_quicklist;
+					//PathName("//bin").fullPath
+				}).maxWidth_(30),
+				BasicButton.new.string_("-").action_({
+					quicklistProto.removeQuickPath(node.fullPath);
+					proto.update_quicklistview;
+				}).maxWidth_(30),
+			).spacing_(0),
 			BasicButton.new.string_("Up").action_({
 				changepath.(fileview, node.parentNode.fullPath)
 			}).maxWidth_(50),

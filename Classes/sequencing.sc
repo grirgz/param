@@ -27,6 +27,11 @@ PstepSeq : ListPattern {
 		^super.new(list, repeats).offset_(offset)
 	}
 
+	list_ { arg val;
+		list = val;
+		this.changed(\list); // for update in gui
+	}
+
 	embedInStream {  arg ev;
 		var item, offsetValue;
 		var i;
