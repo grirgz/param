@@ -558,7 +558,7 @@ ParamCombinator : Pattern {
 			if(obj.isNil) {
 				nil
 			} {
-				obj.presetCompileString;
+				obj.refCompileString;
 			};	
 		}).join(", "));
 		var rlist = "[%]".format(this.rangeParam.collect({ arg subp, idx;

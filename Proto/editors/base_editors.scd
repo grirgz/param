@@ -36,6 +36,10 @@ WindowDef(\PdefEditor, { arg me, key=\default;
 	} {
 		target = Pdef(key);
 	};
+	if(target.source.isKindOf(PbindProxy)) {
+		WindowDef(\PbindefEditor).front(target);
+		me.closeWindow;
+	};
 	VLayout(
 		HLayout (
 			PlayerWrapper(target).asView,

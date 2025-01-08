@@ -978,6 +978,8 @@ Param {
 			updateAction: { arg self, param;
 				var val;
 				var color;
+				var isCentered = false;
+				var spe = this.spec;
 				//"start executing".debug;
 				try {
 					if(param.get.isKindOf(Number)) {
@@ -993,17 +995,24 @@ Param {
 					};
 					//error.throw;
 				};
+
+				if(spe.isKindOf(ControlSpec) and: { spe.minval == spe.maxval.neg }) {
+					isCentered = true;
+				};
+
                 color = if(param.isSet) {
 					Color.white; // default color
                 } {
 					Color.clear;
                 };
+
 				if(val.isKindOf(Number)) {
 					{
 						if(self.isClosed.not) {
 
 							self.value = val;
 							self.background = color;
+							self.centered = isCentered;
 						};
 					}.defer;
 				}

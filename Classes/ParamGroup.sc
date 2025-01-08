@@ -247,7 +247,7 @@ ParamGroup : List {
     }
 
 	getCombinatorCompileString {
-		^this.getCombinatorList.collect(_.presetCompileString).join("\n");
+		^this.getCombinatorList.collect({ arg asso; asso.value.presetCompileString }).join("\n");
 	}
 
 	getCombinatorList {
