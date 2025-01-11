@@ -50,6 +50,9 @@ PlayerWrapper  {
 			{ target.isKindOf(TaskProxy) } {
 				PlayerWrapper_TaskProxy(target, this)
 			}
+			{ target.isKindOf(Fdef) } {
+				PlayerWrapper_Fdef(target, this)
+			}
 			{ target.isKindOf(Node) } {
 				PlayerWrapper_Node(target, this)
 			}
@@ -483,11 +486,7 @@ PlayerWrapper_Param : PlayerWrapper_Base {
 
 PlayerWrapper_NodeProxy : PlayerWrapper_Base {
 	label {
-		if(target.isKindOf(Ndef)) {
-			^target.key
-		} {
-			^( "NodeProxy<%>".format(target.index) )
-		}
+		^target.key ?? { "NodeProxy<%>".format(target.index) }
 	}
 
 	outBus_ { arg val;
@@ -638,6 +637,38 @@ PlayerWrapper_TaskProxy : PlayerWrapper_Base {
 
 	label {
 		if(target.isKindOf(Tdef)) {
+			^target.key
+		} {
+			^target.getHalo(\label) ? ""
+		}
+	}
+
+	isEmpty { 
+		^this.target.source.isNil
+	}
+
+	edit {
+		^WindowDef(\TdefEditor).front(this.target);
+	}
+}
+
+PlayerWrapper_Fdef : PlayerWrapper_Base {
+	playNow {
+		target.value;
+	}
+
+	play {
+		^target.value;
+	}
+
+	stop {
+		// NOOP
+	}
+
+	isPlaying { ^false }
+
+	label {
+		if(target.isKindOf(Fdef)) {
 			^target.key
 		} {
 			^target.getHalo(\label) ? ""

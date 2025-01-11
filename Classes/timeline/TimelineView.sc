@@ -1213,27 +1213,37 @@ TimelineView : SCViewHolder {
 	}
 
 	copyAtSelectionEdges {
-		var selrect = this.normRectToGridRect(this.selectionRect);
-		var el = this.model.clone;
-		var nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
-		this.findCrossedNodes(selrect.leftTop, selrect.leftBottom, nodes).do { arg node;
-			this.copySplitNode(el, node, selrect.left)
-		};
-		nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
-		this.findCrossedNodes(selrect.rightTop, selrect.rightBottom, nodes).do { arg node;
-			this.copySplitNode(el, node, selrect.right)
-		};
-		nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
-		//nodes.do({  arg nn; // debug
+		var selrect;
+		var el;
+		var nodes;
+		if(this.hasSelection) {
+
+			selrect = this.normRectToGridRect(this.selectionRect);
+			el = this.model.clone;
+			nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
+			this.findCrossedNodes(selrect.leftTop, selrect.leftBottom, nodes).do { arg node;
+				this.copySplitNode(el, node, selrect.left)
+			};
+			nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
+			this.findCrossedNodes(selrect.rightTop, selrect.rightBottom, nodes).do { arg node;
+				this.copySplitNode(el, node, selrect.right)
+			};
+			nodes = el.collect({ arg ev; this.nodeClass.new(this, 0, ev) });
+			//nodes.do({  arg nn; // debug
 			//[nn.rect, nn.model].debug("copyAtSelectionEdges3 nodes");
-		//});
-		^this.findContainedNodes(selrect, nodes).collect(_.model);
-		//^noel.select { arg ev;
+			//});
+			^this.findContainedNodes(selrect, nodes).collect(_.model);
+			//^noel.select { arg ev;
 			//var node = this.nodeClass.new(this, 0, ev);
 			//Log(\Param).debug("copyAtSelectionEdges: selrect:%, noderect:%, contains:%", selrect, node.rect, selrect.contains(node.rect));
 			//selrect.contains(node.rect);
-		//}
-				//Rect(5,5,10,10).contains(Rect(6,6,9,3))
+			//}
+			//Rect(5,5,10,10).contains(Rect(6,6,9,3))
+		} {
+			if(chosennode.notNil) {
+				^[chosennode.model]
+			};
+		};
 	}
 
 	splitAtSelectionEdges {
@@ -1546,6 +1556,8 @@ TimelineView : SCViewHolder {
 	}
 
 	virtualBounds {
+		// bounds.origin is the pos of the view on the parent, but virtualBounds.origin should be zero, or a margin offset
+		// it is used when we want to draw the view in a small rect inside a parent UserView like the preview of nodes
 		var offsetx = virtualBoundsOffsetX;
 		var offsety = virtualBoundsOffsetY;
 		//var offset = 15;

@@ -3838,14 +3838,14 @@ PdefParam : BaseAccessorParam {
 		}
 	}
 
-	initPstepSeq { arg size=8, forcePbindef=true;
+	initPstepSeq { arg size=8, forcePbindef=true, repeats=inf;
 		var getpstepseq = {
 			var val;
 			var def = this.default;
 			if(this.propertyArray.last == \stepseq) {
-				val = PstepSeq(def.extend(size, def.first))
+				val = PstepSeq(def.extend(size, def.first), repeats)
 			} {
-				val = PstepSeq(def!size)
+				val = PstepSeq(def!size, repeats)
 			};
 			val;
 		};

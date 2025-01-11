@@ -163,6 +163,12 @@ WindowDef {
 			};
 		};
 	}
+
+	clearWindowProperties {
+		Archive.global.put(\WindowDef, key, nil);
+		window.resetPosition(this.key);
+
+	}
 	
 	isFullScreen {
 		//^false

@@ -57,6 +57,16 @@ ProtoClassDef(\EventTimeline, (
 		self;
 	},
 
+	eventListClone: { arg self;
+		// used by preset system
+		self.eventList.clone;
+	},
+
+	eventListClone_: { arg self, val;
+		self.eventList = val.clone;
+	},
+
+
 	eventLoop: { arg self;
 		self.eventloop;
 	},

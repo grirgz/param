@@ -136,6 +136,12 @@ ProtoDef(\GlobalLibrary, (
 						Pdef, {
 							'pdef'
 						},
+						Tdef, {
+							'tdef'
+						},
+						Fdef, {
+							'fdef'
+						},
 						TrackDef, {
 							'trackdef'
 						},
@@ -366,6 +372,38 @@ ProtoDef(\GlobalLibrary, (
 			},
 
 		);
+
+		superself.clipFactories.tdef = (
+			parent: superself.clipFactories_parent,
+			key: 'tdef',
+			libIdKey: 'Tdef',
+
+			redefineEvent: { arg self, ev, target;
+				self.redefineEventAsPlayerEvent(ev, target)
+			},
+
+			classObject: {
+				Tdef
+			},
+
+		);
+
+		superself.clipFactories.fdef = (
+			parent: superself.clipFactories_parent,
+			key: 'fdef',
+			libIdKey: 'Fdef',
+
+			redefineEvent: { arg self, ev, target;
+				self.redefineEventAsPlayerEvent(ev, target)
+			},
+
+			classObject: {
+				Fdef
+			},
+
+		);
+
+		//// tracks
 
 		superself.clipFactories.trackdef = (
 			parent: superself.clipFactories_parent,
@@ -991,6 +1029,8 @@ TagSpecDef(\SynthDef_blocklist,
 	}
 );
 
+//// jitlib
+
 TagSpecDef(\Pdef, {
 	Pdef.all.asAssociations;
 });
@@ -1002,6 +1042,16 @@ TagSpecDef(\Ndef, {
 		[];
 	}
 });
+
+TagSpecDef(\Tdef, {
+	Tdef.all.asAssociations;
+});
+
+TagSpecDef(\Fdef, {
+	Fdef.all.asAssociations;
+});
+
+//// timelines
 
 TagSpecDef(\SampleTimeline, {
 	SampleTimeline.proto.all.asAssociations;
@@ -1219,6 +1269,8 @@ TagSpecDef(\ClipTimeline_newPlayer, [
 	//'Pdef' -> { arg name; Pdef(name) },
 	'Pbindef' -> { arg name; Pbindef(name) },
 	'Ndef' -> { arg name; Ndef(name) },
+	'Tdef' -> { arg name; Tdef(name) },
+	'Fdef' -> { arg name; Fdef(name) },
 ]);
 
 TagSpecDef(\MainProject_newObject, {
@@ -1239,6 +1291,8 @@ TagSpecDef(\GlobalLibraryType, [
 	\SynthDef,
 	\Pdef,
 	\Ndef,
+	\Tdef,
+	\Fdef,
 	\NoteTimeline,
 	\TrackTimeline,
 	\KitTimeline,
@@ -1305,6 +1359,8 @@ TagSpecDef('GlobalLibrary.type.Clip', [ // deprecated, use Player instead
 	\Sample,
 	\Pdef,
 	\Ndef,
+	\Tdef,
+	\Fdef,
 	\NoteTimeline,
 	\TrackTimeline,
 	\KitTimeline,
@@ -1376,6 +1432,8 @@ TagSpecDef('GlobalLibrary.type.Player', {
 	[
 		\Pdef,
 		\Ndef,
+		\Tdef,
+		\Fdef,
 		\NoteTimeline,
 		\TrackTimeline,
 		\KitTimeline,

@@ -137,6 +137,31 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self;
 	},
 
+	clipboard: { arg self;
+		if(ParamViewToolBox.clipboard[self.timeline_model.eventType].isNil) {
+			ParamViewToolBox.clipboard[self.timeline_model.eventType] = ();
+		};
+		ParamViewToolBox.clipboard[self.timeline_model.eventType];
+	},
+
+	selection_rect: { arg self;
+		// FIXME: this is misleading as it doesn't use timeline selectionRect but the clipboard one
+		// used to persist selection rect when reopening the window
+		//ParamViewToolBox.clipboard.trackTimeline_selectionRect
+		self.clipboard.selection_rect ?? { Rect(0,0,1,1) };
+		//ParamViewToolBox.clipboard.trackTimeline_selectionRect ?? { Rect(0,0,1,1) };
+	},
+
+	selection_rect_: { arg self, val;
+		//ParamViewToolBox.clipboard.trackTimeline_selectionRect = val;
+		self.clipboard.selection_rect = val;
+	},
+
+	has_selection_rect: { arg self;
+		self.clipboard.selection_rect.notNil;
+		//ParamViewToolBox.clipboard.trackTimeline_selectionRect.notNil;
+	},
+
 
 	////// saving system
 
@@ -930,7 +955,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 						]
 					};
 				},
-				if(self.clipboard.notNil) {
+				if(self.clipboard.nodes.notNil) {
 					MenuAction("Paste", {
 						self.pasteAction;
 					})
@@ -1143,17 +1168,21 @@ ProtoTemplateDef(\TimelinePanelView, (
 		selevents = self.timeline.copyAtSelectionEdges;
 		Log(\Param).debug("clipTimeline.copyAction: selevents: %", selevents);
 		if(selevents.size > 0) {
-			self.clipboard = selevents;
-			self.selection_rect = self.selection_cursor.rect;
+			self.clipboard.nodes = selevents;
+			if(self.timeline.hasSelection) {
+				self.selection_rect = self.selection_cursor.rect;
+			} {
+				self.selection_rect = nil;
+			};
 		};
 	},
 
 	pasteAction: { arg self, useSameRows=true;
 		// useSameRows: paste on same row it was copied
-		if(self.clipboard.notNil) {
+		if(self.clipboard.nodes.notNil) {
 			var delta;
 			var newnodes;
-			var first = self.clipboard.as(Array).inject(nil, { arg a, b; 
+			var first = self.clipboard.nodes.as(Array).inject(nil, { arg a, b; 
 				if(a.isNil) {
 					b
 				} {
@@ -1166,13 +1195,19 @@ ProtoTemplateDef(\TimelinePanelView, (
 			});
 			//first.debug("first");
 			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
-			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - self.selection_rect.origin;
+			if(self.has_selection_rect) {
+				delta = self.timeline.lastGridPos - self.selection_rect.origin;
+			} {
+				var node = self.clipboard.nodes.first;
+				delta = self.timeline.lastGridPos - Point(node.absTime, node[self.timeline.valueKey]);
+			};
 			if(useSameRows == true) {
 				delta.y = 0
 			};
 			//self.clipboard.debug("clipboard");
+			delta.debug("clipboard delta");
 			self.timeline_model.addHistorySnapshot;
-			self.clipboard.do({ arg event;
+			self.clipboard.nodes.do({ arg event;
 				var new;
 				new = event.copy;
 				//[new, delta].debug("new, delta");
@@ -1182,15 +1217,22 @@ ProtoTemplateDef(\TimelinePanelView, (
 			});
 			//self.timeline.model.changed(\refresh);
 
-			self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
-			self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
-			self.timeline.deselectAllNodes;
-			//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
-			newnodes = self.timeline.findNodes(self.selection_cursor.rect);
-			//Log(\Param).debug("new nodes %".format(newnodes));
-			self.timeline.selectNodes(newnodes);
-			//self.timeline.model.changed(\refresh);
-			self.timeline.lastGridPos = Point(self.timeline.lastGridPos.x + self.selection_cursor.rect.extent.x, self.timeline.lastGridPos.y);
+			if(self.has_selection_rect) {
+
+				self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
+				self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
+				self.timeline.deselectAllNodes;
+				//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
+				newnodes = self.timeline.findNodes(self.selection_cursor.rect);
+				//Log(\Param).debug("new nodes %".format(newnodes));
+				self.timeline.selectNodes(newnodes);
+				//self.timeline.model.changed(\refresh);
+				self.timeline.lastGridPos = Point(self.timeline.lastGridPos.x + self.selection_cursor.rect.extent.x, self.timeline.lastGridPos.y);
+			} {
+				var node = self.clipboard.nodes.first;
+				var sus = node.use { ~sustain.value };
+				self.timeline.lastGridPos = Point(self.timeline.lastGridPos.x + sus, self.timeline.lastGridPos.y);
+			};
 			self.timeline.model.reorder;
 		}
 	},
@@ -1880,29 +1922,12 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		self.layout;
 	},
 
-	clipboard: { arg self;
-		ParamViewToolBox.clipboard.clipTimeline
-	},
-
-	clipboard_: { arg self, val;
-		ParamViewToolBox.clipboard.clipTimeline = val;
-	},
-
-	selection_rect: { arg self;
-		// FIXME: this is misleading as it doesn't use timeline selectionRect but the clipboard one
-		// used to persist selection rect when reopening the window
-		ParamViewToolBox.clipboard.clipTimeline_selectionRect ?? { Rect(0,0,1,1) };
-	},
-
-	selection_rect_: { arg self, val;
-		ParamViewToolBox.clipboard.clipTimeline_selectionRect = val;
-	},
 
 	pasteAction: { arg self;
-		if(self.clipboard.notNil) {
+		if(self.clipboard.nodes.notNil) {
 			var delta;
 			var newnodes;
-			var first = self.clipboard.as(Array).inject(nil, { arg a, b; 
+			var first = self.clipboard.nodes.as(Array).inject(nil, { arg a, b; 
 				if(a.isNil) {
 					b
 				} {
@@ -1915,10 +1940,10 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			});
 			//first.debug("first");
 			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
-			delta = self.timeline.lastGridPos.round(self.timeline.quant.value) - self.selection_rect.origin;
+			delta = self.timeline.lastGridPos - self.selection_rect.origin;
 			//~clipTimeline_clipboard.debug("clipboard");
 			self.timeline_model.addHistorySnapshot;
-			self.clipboard.do({ arg event;
+			self.clipboard.nodes.do({ arg event;
 				var new;
 				new = event.copy;
 				//[new, delta].debug("new, delta");
@@ -1926,13 +1951,16 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 				new[self.timeline.valueKey] = new[self.timeline.valueKey] + delta.y;
 				self.timeline.model.addEvent(new);
 			});
-			self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
-			self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
-			self.timeline.deselectAllNodes;
-			//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
-			newnodes = self.timeline.findNodes(self.selection_cursor.rect);
-			//Log(\Param).debug("new nodes %".format(newnodes));
-			self.timeline.selectNodes(newnodes);
+			if(self.has_selection_rect) {
+
+				self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
+				self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
+				self.timeline.deselectAllNodes;
+				//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
+				newnodes = self.timeline.findNodes(self.selection_cursor.rect);
+				//Log(\Param).debug("new nodes %".format(newnodes));
+				self.timeline.selectNodes(newnodes);
+			};
 			//self.timeline.model.changed(\refresh);
 			self.timeline.model.reorder;
 		}
@@ -1993,23 +2021,6 @@ ProtoTemplateDef(\TrackTimelinePanelView, (
 		//self.makeWindow;
 	
 		self;
-	},
-
-	clipboard: { arg self;
-		ParamViewToolBox.clipboard.trackTimeline
-	},
-
-	clipboard_: { arg self, val;
-		ParamViewToolBox.clipboard.trackTimeline = val;
-	},
-
-	selection_rect: { arg self;
-		//ParamViewToolBox.clipboard.trackTimeline_selectionRect
-		ParamViewToolBox.clipboard.trackTimeline_selectionRect ?? { Rect(0,0,1,1) };
-	},
-
-	selection_rect_: { arg self, val;
-		ParamViewToolBox.clipboard.trackTimeline_selectionRect = val;
 	},
 
 	makeBottomPanelView: { },
@@ -2188,23 +2199,6 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		self.track_header;
 	},
 
-	clipboard: { arg self;
-		ParamViewToolBox.clipboard.paramTimeline
-	},
-
-	clipboard_: { arg self, val;
-		ParamViewToolBox.clipboard.paramTimeline = val;
-	},
-
-	selection_rect: { arg self;
-		//ParamViewToolBox.clipboard.paramTimeline_selectionRect
-		ParamViewToolBox.clipboard.paramTimeline_selectionRect ?? { Rect(0,0,1,1) };
-	},
-
-	selection_rect_: { arg self, val;
-		ParamViewToolBox.clipboard.paramTimeline_selectionRect = val;
-	},
-
 	makeBottomPanelView: { },
 
 	make_header: { arg self;
@@ -2372,23 +2366,6 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 		self.timeline_model.param;
 	},
 
-	clipboard: { arg self;
-		ParamViewToolBox.clipboard.noteTimeline
-	},
-
-	clipboard_: { arg self, val;
-		ParamViewToolBox.clipboard.noteTimeline = val;
-	},
-
-	selection_rect: { arg self;
-		//ParamViewToolBox.clipboard.noteTimeline_selectionRect
-		ParamViewToolBox.clipboard.noteTimeline_selectionRect ?? { Rect(0,0,1,1) };
-	},
-
-	selection_rect_: { arg self, val;
-		ParamViewToolBox.clipboard.noteTimeline_selectionRect = val;
-	},
-
 
 	make_header: { arg self;
 		self.recordButton = RecordButton(self.timeline_model, \recorder, "Rec");
@@ -2549,23 +2526,6 @@ ProtoTemplateDef(\KitTimelinePanelView, (
 
 	makeTimelineView: { arg self;
 		self.timelineClass.new(\kitIndex).viewport_(Rect(0,0,1,1/4))
-	},
-
-	clipboard: { arg self;
-		ParamViewToolBox.clipboard.kitTimeline
-	},
-
-	clipboard_: { arg self, val;
-		ParamViewToolBox.clipboard.kitTimeline = val;
-	},
-
-	selection_rect: { arg self;
-		//ParamViewToolBox.clipboard.kitTimeline_selectionRect
-		ParamViewToolBox.clipboard.kitTimeline_selectionRect ?? { Rect(0,0,1,1) };
-	},
-
-	selection_rect_: { arg self, val;
-		ParamViewToolBox.clipboard.kitTimeline_selectionRect = val;
 	},
 
 	make_header: { arg self;
