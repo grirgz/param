@@ -668,10 +668,10 @@ PlayerWrapper_Fdef : PlayerWrapper_Base {
 	isPlaying { ^false }
 
 	label {
-		if(target.isKindOf(Fdef)) {
-			^target.key
-		} {
-			^target.getHalo(\label) ? ""
+		^currentEnvironment.findKeyForValue(target) ?? { 
+			Fdef.all.findKeyForValue(target) ?? {
+				target.getHalo(\label) ?? {""}
+			}
 		}
 	}
 
