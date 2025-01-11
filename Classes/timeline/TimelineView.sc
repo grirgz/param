@@ -2940,7 +2940,11 @@ TimelineViewEventListNode : TimelineViewEventNode {
 
 			//[spritenum, rect].debug("draw");
 
-			Pen.color = label_background;
+			if(selected) {
+				Pen.color = this.colorSelected;
+			} {
+				Pen.color = label_background;
+			};
 			Pen.fillRect(rect);
 			Pen.color = preview_background;
 			Pen.fillRect(previewrect);
