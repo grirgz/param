@@ -586,7 +586,7 @@ TimelineView : SCViewHolder {
 				} {
 					var found;
 					rect = this.normRectToPixelRect(this.selectionRect);
-					rect = rect.insetAll(0,0,1,1); // prevent selecting next nodes in grid
+					rect = rect.insetAll(-1,1,1,-1); // prevent selecting next nodes in grid
 					rect = this.pixelRectToGridRect(rect);
 					wasSelected = selNodes.size > 0;
 					//selNodes = IdentitySet.new;
