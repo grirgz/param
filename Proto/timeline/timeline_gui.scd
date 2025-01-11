@@ -737,6 +737,9 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.timeline.preCreateNodeHook = {
 			self.timeline_model.addHistorySnapshot;
 		};
+		self.timeline.addHistorySnapshotHook = {
+			self.timeline_model.addHistorySnapshot;
+		};
 
 		self.timeline.quant = self.quant_ref;
 		self.timeline.mapSelectionCursor(self.selection_cursor);
@@ -775,14 +778,30 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	makeBrushSelectorView: { arg self;
+		var brushmove, brushpen;
+		var buttons;
+		var modes = [
+			\move -> (label:"👆", desc:"Set move mode"),
+			\pen -> (label:"✎", desc:"Set write mode"),
+			\eraser -> (label:"⎚", desc:"Set eraser mode"),
+		];
+
+		buttons = modes.collect { arg asso, idx;
+			brushmove = BasicButton.new.string_(asso.value.label).fixedSize_(20@20).action_({
+				self.timeline.currentBrush = asso.key;
+				self.timeline.changed(\currentBrush);
+			}).toolTip_(asso.value.desc);
+			brushmove.followChange(self.timeline, \currentBrush, { arg view, obj, msg, val;
+				if(self.timeline.currentBrush == asso.key) {
+					view.background_(ParamViewToolBox.color_ligth)
+				} {
+					view.background_(Color.white)
+				};
+			});
+		};
 		HLayout (
 			HLayout (
-				BasicButton.new.string_("👆").fixedSize_(20@20).action_({
-					self.timeline.currentBrush = \move;
-				}).toolTip_("Set move mode"),
-				BasicButton.new.string_("✎").maxSize_(20@20).action_({
-					self.timeline.currentBrush = \pen;
-				}).toolTip_("Set write mode"),
+				* buttons
 			).spacing_(3)
 			//nil,
 		).margins_(0).spacing_(0)

@@ -15,6 +15,7 @@ TimelineView : SCViewHolder {
 	var <>preCreateNodeHook;
 	var <>createNodeHook;
 	var <>deleteNodeHook;
+	var <>addHistorySnapshotHook;
 	var <>paraNodes, connections; 
 	var <chosennode; 
 	var clickedNextNode; // used to change curve in mouse handlers
@@ -282,8 +283,8 @@ TimelineView : SCViewHolder {
 		this.refresh;
 	}
 
-	addEventListSnapshot {
-		model.addList;
+	addHistorySnapshot {
+		addHistorySnapshotHook.(this)
 	}
 
 	////////////////////////// properties
@@ -453,8 +454,12 @@ TimelineView : SCViewHolder {
 		}
 		{ buttonNumber == 0 and: { currentBrush == \eraser } } {
 			// TODO
+			if(chosennode.notNil and: { chosennode.isKindOf(TimelineViewLocatorLineNode).not }) {
+				this.addHistorySnapshot;
+				this.deleteNode(chosennode, true)
+			};
 		}
-		{ buttonNumber == 0 and: { mod.isCtrl or: { currentBrush == \pen } } } {
+		{ chosennode.isNil and: {buttonNumber == 0} and: { mod.isCtrl or: { currentBrush == \pen } } } {
 			// create node mode
 			this.createNode(gpos);
 		}
@@ -486,6 +491,7 @@ TimelineView : SCViewHolder {
 			if(chosennode !=nil, { // a node is selected
 				refPoint = gpos; // var used here for reference in trackfunc
 				chosennode_old_origin = chosennode.origin; // used for reference when moving chosennode
+				refWidth = chosennode.width;
 
 				if(conFlag == true, { // if selected and "c" then connection is possible
 					paraNodes.do({arg node, i; 
