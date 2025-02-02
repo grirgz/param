@@ -19,6 +19,11 @@ ParamGroup : List {
 		^inst;
 	}
 
+	*newFrom { arg ar;
+		^this.new(ar)
+
+	}
+
 	initParamGroup {
 		presets = IdentityDictionary.new;
 	}
@@ -260,6 +265,7 @@ ParamGroup : List {
 		};
 		^res;
 	}
+
 
 	presetCompileString {
 		var ret;

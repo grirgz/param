@@ -20,6 +20,7 @@ ParamBaseSpec : Spec {
 
 }
 
+///////////////////////////// Base
 
 ParamArraySpec : ParamBaseSpec {
 	var array, default;
@@ -453,6 +454,8 @@ ParamAudioSpec : ParamBaseSpec {
 }
 
 
+///////////////////////////// Non-float
+
 ParamNonFloatSpec : ParamBaseSpec { // maybe a parent for all others special spec to exclude them when making a gui ?
 	var <>default;
 	constrain { arg val;
@@ -522,7 +525,6 @@ ParamAudioBufferSpec : ParamBufferSpec {
 		^this.newCopyArgs(numChannels, startParamName, sustainParamName, endParamName, speedParamName, startType, sustainType, endType);
 	}
 }
-ParamSampleSpec : ParamAudioBufferSpec {} // compat
 
 ParamDoneActionSpec : ParamNonFloatSpec {
 
@@ -536,6 +538,8 @@ ParamWavetableSpec : ParamBufferSpec {
 		}
 	}
 }
+
+///////////////////////////// Busses
 
 ParamBusSpec : ParamNonFloatSpec {
 	var <>numChannels;
@@ -593,6 +597,12 @@ ParamInBusSpec : ParamBusSpec {
 }
 
 ParamOutBusSpec : ParamBusSpec {
+
+}
+
+///////////////////////////// Misc
+
+ParamBoolControlSpec : ControlSpec {
 
 }
 
@@ -953,3 +963,4 @@ MenuSpec : TagSpec { } // compat
 MenuSpecDef : TagSpecDef { } // compat
 
 MenuSpecFuncDef : TagSpecDef { } // deprecated
+ParamSampleSpec : ParamAudioBufferSpec {} // compat

@@ -7,6 +7,7 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 		var menu_current_index, menu_old_index;
 		var menu_previous_index;
 		var menu_walk;
+		var arrow_width=25;
 
 		var make_save_preset_layout = { arg pg, save_callback;
 			var layout;
@@ -110,9 +111,9 @@ WindowDef(\PresetSelectorView, { arg def, pg;
 		};
 		
 		layout = HLayout(
-			left_button.maxWidth_(40),
+			left_button.maxWidth_(arrow_width),
 			[popup_menu, stretch:1],
-			right_button.maxWidth_(40),
+			right_button.maxWidth_(arrow_width),
 		).spacing_(1);
 		layout;
 

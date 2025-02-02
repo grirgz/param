@@ -3716,9 +3716,14 @@ PdefParam : BaseAccessorParam {
 		// FIXME: should test with accessors
 		// should implement it everywhere
 		var propertyArray = this.class.associationToArray(this.property);
-		if(propertyArray[1] == \source) {
+		if(propertyArray[1] == \source or: { propertyArray[1] == \stepseq }) {
 			// Pbindef
-			^this.target.source.at(this.propertyRoot).notNil
+			var src = this.target.source;
+			if(src.isNil) {
+				^false;
+			} {
+				^src.at(this.propertyRoot).notNil
+			};
 		} {
 			// Pdef
 			if(this.hasCombinator) {

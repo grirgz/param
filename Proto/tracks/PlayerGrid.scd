@@ -883,6 +883,10 @@ TrackTemplateDef(\PlayerGrid, (
 	},
 
 	linePlayerAt: { arg self, idx;
+		self.sectionAt(idx);
+	},
+
+	sectionAt: { arg self, idx;
 		if(self.linePlayers[idx].isNil) {
 			self.linePlayers[idx] = self.sectionClass.new(self, idx);
 		}; 

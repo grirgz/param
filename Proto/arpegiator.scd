@@ -173,6 +173,61 @@ ProtoTemplateDef(\Arpegiator, (
 				};
 				ev;
 			}).loop,
+			\boolDemuter, Pfunc({ arg ev;
+				if(ev[\isOn].notNil) {
+					if(ev[\isOn] == true  or: { ev[\isOn].value > 0 }) {
+						2;
+					} {
+						Rest()
+					}
+				} {
+					1;
+				};
+			}),
+			\boolMuter, Pfunc({ arg ev;
+				if(ev[\mute].notNil) {
+					if(ev[\mute] == true  or: { ev[\mute].value > 0 }) {
+						Rest()
+					} {
+						2;
+					}
+				} {
+					1;
+				};
+			}),
+			\coinMuter, Pfunc({ arg ev;
+				if(ev[\coin].notNil) {
+					if(ev[\coin].value.coin) {
+						2;
+					} {
+						Rest()
+					}
+				} {
+					1;
+				};
+			}),
+			\legatoMuter, Pfunc({ arg ev;
+				if(ev[\legato].notNil) {
+					if(ev.use { ~legato.value > 0 }) {
+						2;
+					} {
+						Rest()
+					}
+				} {
+					1;
+				};
+			}),
+			\ampMuter, Pfunc({ arg ev;
+				if(ev[\amp].notNil) {
+					if(ev.use { ~amp.value > 0}) {
+						2;
+					} {
+						Rest()
+					}
+				} {
+					1;
+				};
+			}),
 		);
 	},
 

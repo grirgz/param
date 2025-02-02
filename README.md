@@ -46,6 +46,10 @@ Disclaimer: this is a work in progress, some parts are broken, some parts are un
 Run this line inside supercollider to install the quark, it should automatically install dependancies.
 ```Quarks.install("https://github.com/grirgz/param.git");```
 
+Reboot the interpreter for the change to take effect. You can check if the installation is OK by opening a NoteTimeline for example.
+
+```NoteTimeline(\testme).edit;```
+
 ## Dependencies
 
 Quarks

@@ -638,7 +638,7 @@ WindowDef(\TrackList, (
 				).front;
 			}),
 			HLayout (
-				StaticText.new.string_("Part:"),
+				StaticText.new.string_("Section:"),
 				Param(Message(model), \selectedPart, ControlSpec(0,16,\lin,1)).asNumberBox,
 			),
 			HLayout (
