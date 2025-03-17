@@ -86,15 +86,28 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 
 	keepRecordedFile: { arg self;
 		var fileName = self.fileName;
-		if(fileName.notNil && self.recordedFileIsKept.not) { // can't use ProtoTemplateDef, clash with key and prAdd
-			var newfilename = self.recordFolder +/+ PathName(fileName).fileName;
-			File.mkdir(self.recordFolder);
-			File.copy(fileName, newfilename);
+		if(fileName.isNil) { 
+			var newfilename;
+			// buffer has not been written to disk yet
+			// note: maybe better to reuse name of previous in history
+			self.bufferInfo.fileName = "%_edit_%.flac".format(self.key, Date.localtime.stamp); // should be after buffer_ because it reset bufferInfo
+			newfilename = self.recordFolder +/+ PathName(self.fileName).fileName;
+			self.buffer.write(newfilename);
+			Log(\Param).debug("SampleTimeline.keepRecordedFile: written buffer % to %", self.buffer, newfilename);
 			self.fileName = newfilename;
-			self.buffer = BufDef(newfilename.asSymbol);
+			self.refreshKeepButton;
 		} {
-			Log(\Param).info("Keep: Already kept or no file name: %", self.fileName);
-		}
+
+			if(self.recordedFileIsKept.not) { 
+				var newfilename = self.recordFolder +/+ PathName(fileName).fileName;
+				File.mkdir(self.recordFolder);
+				File.copy(fileName, newfilename);
+				self.fileName = newfilename;
+				self.buffer = BufDef(newfilename.asSymbol);
+			} {
+				Log(\Param).info("Keep: Already kept or no file name: %", self.fileName);
+			}
+		};
 		
 	},
 
@@ -655,13 +668,17 @@ ProtoTemplateDef(\SampleTimelineView, (
 		)
 	},
 
+	refreshKeepButton: { arg self;
+		self.keepRecordedFileButton.visible = self.timeline_model.recordedFileIsKept.not;
+	},
+
 	make_header: { arg self;
 		self.counterView = StaticText.new.fixedWidth_(50).font_(Font.default.copy.size_(9));
 		//self.counterView = StaticText.new;
 		self.keepRecordedFileButton = BasicButton.new.label_("Keep").action_({
-					self.timeline_model.keepRecordedFile;
-				});
-		self.keepRecordedFileButton.visible = self.timeline_model.recordedFileIsKept.not;
+			self.timeline_model.keepRecordedFile;
+		});
+		self.refreshKeepButton;
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
@@ -778,6 +795,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 			{
 				self.timeline_model.changed(\data);
 				self.refresh;
+				self.refreshKeepButton;
 			}.defer
 		});
 	},
@@ -1007,9 +1025,11 @@ ProtoTemplateDef(\SampleTimelineView, (
 						xbuf.debug("xbuf loaded slice2");
 						//~newbuf = newbuf;
 						model.addHistorySnapshot;
-						model.buffer = xbuf;
+						// note: maybe better to reuse old name
 						model.eventList.startTime = 0;
 						model.eventList.endTime = xbuf.duration / model.tempoClock.tempo;
+						model.buffer = xbuf; // trigger refresh
+						//model.bufferInfo.fileName = "edit_%_%".format(self.timeline_model.key, Date.localtime.stamp); // should be after buffer_ because it reset bufferInfo
 					}.defer
 				})
 			});
