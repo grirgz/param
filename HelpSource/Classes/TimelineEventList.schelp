@@ -29,131 +29,132 @@ returns:: a TimelineEventList
 
 INSTANCEMETHODS::
 
-METHOD:: double
-(describe method here)
+METHOD:: startTime
+Get or set the time of the start event
 
-returns:: (describe returnvalue here)
+ARGUMENT:: time
+Absolute time in beats
+
+METHOD:: endTime
+Get or set the absolute time of the end event
+
+ARGUMENT:: time
+Absolute time in beats
+
+
+METHOD:: setStartPosition
+Same as link::#-startTime::
+
+METHOD:: setEndPosition
+Same as link::#-endTime::
+
+METHOD:: add
+Add an event to the TimelineEventList.
+Don't forget to call link::#-reorder:: when you have finished to update relative
+duration between events.
+
+ARGUMENT:: ev
+The event to add, only code::\absTime:: key is required
+
+
+METHOD:: addEvent
+Add an event to the TimelineEventList. Add the start event if list is
+empty. Also recompute duration of previous event
+and send a refresh message on the TimelineEventList.
+
+ARGUMENT:: ev
+The event to add, only code::\absTime:: key is required
+
+
+METHOD:: reorder
+Sort the events by code::\absTime::. 
+Update link::#-startTime::, link::#-endTime:: and link::#-totalDur:: variables. 
+Call link::#-calcRelDurs::.
+
+
+
+
+METHOD:: double
+Append a copy of itself at the end of the EventList, doubling it.
+
 
 METHOD:: calcRelDurs
 When you add events, call this method to compute code::relDur::, code::playDur:: and code::dur:: keys automatically for you
 
 returns:: this
 
-METHOD:: restoreDurs
-(describe method here)
+METHOD:: hasContent
+Return False if the only event in the list are start end end events
+returns:: a Boolean
 
-returns:: (describe returnvalue here)
+
 
 METHOD:: splitEvent
-(describe method here)
+Split an event into two events at durFromEventStart
 
 ARGUMENT:: event
-(describe argument here)
+The event to split
 
 ARGUMENT:: durFromEventStart
-(describe argument here)
+At which time in beat from start of event to split
 
-returns:: (describe returnvalue here)
+returns:: The new Event. If durFromEventStart is outside of event, return
+original event.
 
 METHOD:: embedInStream
-(describe method here)
+Embed the event list as a pattern
 
 ARGUMENT:: in
-(describe argument here)
+Optional input event
 
-returns:: (describe returnvalue here)
-
-METHOD:: addEvent
-(describe method here)
-
-ARGUMENT:: ev
-(describe argument here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: endTime
-(describe method here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: setRelDurInPrev
-(describe method here)
+Recompute the code::\relDur:: of previous event.
 
 ARGUMENT:: newEvent
-(describe argument here)
+this event was just added, it will be used to find the previous event
 
 ARGUMENT:: newIndex
-(describe argument here)
+you can provide the index of the new event, else it will take the
+indexOf(newEvent)
 
-returns:: (describe returnvalue here)
-
-METHOD:: setPlayDursToRelDur
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: quantizeDurs
-(describe method here)
-
-ARGUMENT:: quant
-(describe argument here)
-
-ARGUMENT:: fullDur
-(describe argument here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: relStartTime
-(describe method here)
+start time in beats relative to the time of first event
 
-returns:: (describe returnvalue here)
+returns:: a Float
 
 METHOD:: asPattern
-(describe method here)
+Return a pattern playing the event list
 
 ARGUMENT:: in
-(describe argument here)
+Optional input value
 
-returns:: (describe returnvalue here)
-
-METHOD:: reorder
-(describe method here)
-
-returns:: (describe returnvalue here)
+returns:: a Pattern
 
 METHOD:: removeEvent
+Remove event by calling link::#-remove:: and eventually refresh
 (describe method here)
 
 ARGUMENT:: event
-(describe argument here)
+The event to remove
 
-returns:: (describe returnvalue here)
+ARGUMENT:: refresh
+call link::#-calcRelDurs:: and send code::\refresh:: changed message if true.
 
 METHOD:: finish
-(describe method here)
+Add the end event
 
 ARGUMENT:: absTime
-(describe argument here)
+Absolute time of the end event in beats
 
-returns:: (describe returnvalue here)
 
-METHOD:: playingDur
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: setEndPosition
-(describe method here)
-
-ARGUMENT:: time
-(describe argument here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: clone
-(describe method here)
+Return a copy of the event list. This create a copy of each event, but objects
+stored on event keys stay shared.
 
-returns:: (describe returnvalue here)
+returns:: a TimelineEventList
 
 METHOD:: start
 Create the start event. This allow to start playing in the middle of the timeline
@@ -164,22 +165,22 @@ optional time (default: 0)
 returns:: this
 
 METHOD:: presetCompileString
-(describe method here)
+Return a compile string of the TimelineEventList
 
-returns:: (describe returnvalue here)
+returns:: a String
 
 METHOD:: firstTime
-(describe method here)
+Time of the first event in beats
 
-returns:: (describe returnvalue here)
+returns:: a Float
 
 METHOD:: totalDur
-(describe method here)
+Total duration of the event list from start event to end event in beats
 
-returns:: (describe returnvalue here)
+returns:: a Float
 
 METHOD:: print
-(describe method here)
+Pretty print the list
 
 ARGUMENT:: keys
 (describe argument here)
@@ -187,25 +188,35 @@ ARGUMENT:: keys
 ARGUMENT:: postRest
 (describe argument here)
 
-returns:: (describe returnvalue here)
 
-METHOD:: startTime
-(describe method here)
+METHOD:: extraData
+Used by link::Classes/SampleTimeline:: to store buffer info
 
-returns:: (describe returnvalue here)
+subsection:: Deprecated
+
 
 METHOD:: setPlayDurs
-(describe method here)
+Deprecated
 
-ARGUMENT:: func
+METHOD:: playingDur
+Deprecated
+
+METHOD:: setPlayDursToRelDur
+Deprecated
+
+METHOD:: quantizeDurs
+Deprecated
+
+ARGUMENT:: quant
+(describe argument here)
+
+ARGUMENT:: fullDur
 (describe argument here)
 
 returns:: (describe returnvalue here)
 
-METHOD:: extraData
-(describe method here)
-
-returns:: (describe returnvalue here)
+METHOD:: restoreDurs
+Deprecated
 
 
 EXAMPLES::
@@ -216,7 +227,7 @@ code::
 ~el.start; // always need a start event
 ~el.add((absTime:2, midinote:100)); // only absTime is required
 ~el.finish(4); // finish at beat 4
-NoteTimeline(\help).eventList = ~el;
+NoteTimeline(\help).eventList = ~el; // assign the event list to a timeline
 NoteTimeline(\help).edit;
 
 // you can create it like a List

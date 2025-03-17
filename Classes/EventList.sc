@@ -62,7 +62,7 @@ a.collect(_.type);
 
 TimelineEventList : List {
 	var <totalDur = 0, <playingDur = 0;
-	var >startTime, <>endTime;
+	var startTime, <endTime;
 	var <>extraData; // for storing buffer data or other things sync with his eventlist
 
 	print { |keys, postRest = true|
@@ -92,6 +92,41 @@ TimelineEventList : List {
 		this.add((absTime: absTime, type: \start, relDur: 0, sustain:0));
 	}
 
+	setStartPosition { arg time;
+		var tev;
+		block { arg break;
+			this.do { arg ev;
+				if(ev[\type] == \start) {
+					ev[\absTime] = time;
+					tev = ev;
+					break.value;
+				}
+			}
+		};
+		this.reorder;
+		if(tev.notNil) {
+			tev.changed(\refresh);
+		};
+	}
+
+	setEndPosition { arg time;
+		var tev;
+		block { arg break;
+			this.do { arg ev;
+				if(ev[\type] == \end) {
+					ev[\absTime] = time;
+					tev = ev;
+					break.value;
+				}
+				// FIXME: create end if not existing ?
+			}
+		};
+		this.reorder;
+		if(tev.notNil) {
+			tev.changed(\refresh);
+		};
+	}
+
 	startTime {
 		// this time is absolute
 		^startTime;
@@ -100,6 +135,14 @@ TimelineEventList : List {
 		//} {
 		//	^0
 		//};
+	}
+
+	startTime_ { arg val;
+		this.setStartPosition(val)
+	}
+
+	endTime_ { arg val;
+		this.setEndPosition(val)
 	}
 
 	relStartTime {
@@ -112,7 +155,9 @@ TimelineEventList : List {
 	}
 
 	clone {
-		^this.class.newFrom(this.collect(_.copy))
+		var inst = this.class.newFrom(this.collect(_.copy));
+		inst.extraData = this.extraData.copy;
+		^inst;
 	}
 
 	double {
@@ -182,7 +227,10 @@ TimelineEventList : List {
 
 	setPlayDurs { |func| this.do { |ev| ev.put(\playDur, func.value(ev)) } }
 
-	setPlayDursToRelDur { this.setPlayDurs({ |ev| ev[\relDur] }); }
+	setPlayDursToRelDur { 
+		// playDur is deprecated, was used to play at different tempo or for quantization
+		this.setPlayDurs({ |ev| ev[\relDur] }); 
+	}
 
 	quantizeDurs { |quant = 0.25, fullDur|
 		var durScaler = 1;
@@ -223,7 +271,7 @@ TimelineEventList : List {
 			ev2[\sustain] = osus-durFromEventStart;
 			ev2[\absTime] = ev1[\absTime] + durFromEventStart;
 			ev2[\event_dropdur] = durFromEventStart + ( ev2[\event_dropdur] ? 0 );
-			this.addEvent(ev2);
+			this.add(ev2);
 			this.reorder;
 			this.changed(\refresh);
 			^ev2;
@@ -392,41 +440,6 @@ TimelineEventList : List {
 			}
 		}
 		
-	}
-
-	setEndPosition { arg time;
-		var tev;
-		block { arg break;
-			this.do { arg ev;
-				if(ev[\type] == \end) {
-					ev[\absTime] = time;
-					tev = ev;
-					break.value;
-				}
-				// FIXME: create end if not existing ?
-			}
-		};
-		this.reorder;
-		if(tev.notNil) {
-			tev.changed(\refresh);
-		};
-	}
-
-	setStartPosition { arg time;
-		var tev;
-		block { arg break;
-			this.do { arg ev;
-				if(ev[\type] == \start) {
-					ev[\absTime] = time;
-					tev = ev;
-					break.value;
-				}
-			}
-		};
-		this.reorder;
-		if(tev.notNil) {
-			tev.changed(\refresh);
-		};
 	}
 
 	presetCompileString {
