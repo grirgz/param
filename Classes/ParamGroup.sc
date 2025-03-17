@@ -185,6 +185,10 @@ ParamGroup : List {
 		)
 	}
 
+	getPbindefCompileString {
+		^this.class.getPbindefCompileString(this.first.target)
+	}
+
 	getBufferCompileString { arg param;
 		// if val is a buffer, try to build BufDef compile string, else return val.asCompileString
 		var val = param.get;

@@ -189,7 +189,8 @@ ProtoTemplateDef(\TimelinePanelView, (
 		};
 		if(self.velocityTimeline.notNil) {
 			self.velocityTimeline.mapEventList(self.eventloop.list);
-		}
+		};
+		self.askBufferData;
 	},
 
 	update_track_header: { arg self;
@@ -1214,6 +1215,8 @@ ProtoTemplateDef(\TimelinePanelView, (
 			});
 			//first.debug("first");
 			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
+
+			// compute delta
 			if(self.has_selection_rect) {
 				delta = self.timeline.lastGridPos - self.selection_rect.origin;
 			} {
@@ -1223,21 +1226,23 @@ ProtoTemplateDef(\TimelinePanelView, (
 			if(useSameRows == true) {
 				delta.y = 0
 			};
-			//self.clipboard.debug("clipboard");
+			self.clipboard.debug("clipboard");
 			delta.debug("clipboard delta");
 			self.timeline_model.addHistorySnapshot;
+
+			// create new node, add delta, add to timeline
 			self.clipboard.nodes.do({ arg event;
-				var new;
-				new = event.copy;
-				//[new, delta].debug("new, delta");
-				new[\absTime] = new[\absTime] + delta.x;
-				new[self.timeline.valueKey] = new[self.timeline.valueKey] + delta.y;
-				self.timeline.model.addEvent(new);
+				var newnode;
+				newnode = event.copy;
+				//[newnode, delta].debug("newnode, delta");
+				newnode[\absTime] = newnode[\absTime] + delta.x;
+				newnode[self.timeline.valueKey] = newnode[self.timeline.valueKey] + delta.y;
+				self.timeline.model.addEvent(newnode);
 			});
 			//self.timeline.model.changed(\refresh);
 
+			// advance cursor to allow serial pasting
 			if(self.has_selection_rect) {
-
 				self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
 				self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
 				self.timeline.deselectAllNodes;
@@ -1941,49 +1946,6 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		self.layout;
 	},
 
-
-	pasteAction: { arg self;
-		if(self.clipboard.nodes.notNil) {
-			var delta;
-			var newnodes;
-			var first = self.clipboard.nodes.as(Array).inject(nil, { arg a, b; 
-				if(a.isNil) {
-					b
-				} {
-					if(a[\absTime] < b[\absTime]) {
-						a
-					} {
-						b
-					}
-				};
-			});
-			//first.debug("first");
-			//delta = self.timeline.lastGridPos.x.round(self.timeline.quant.value.x) - first[\absTime];
-			delta = self.timeline.lastGridPos - self.selection_rect.origin;
-			//~clipTimeline_clipboard.debug("clipboard");
-			self.timeline_model.addHistorySnapshot;
-			self.clipboard.nodes.do({ arg event;
-				var new;
-				new = event.copy;
-				//[new, delta].debug("new, delta");
-				new[\absTime] = new[\absTime] + delta.x;
-				new[self.timeline.valueKey] = new[self.timeline.valueKey] + delta.y;
-				self.timeline.model.addEvent(new);
-			});
-			if(self.has_selection_rect) {
-
-				self.selection_cursor.rect = self.selection_rect.moveBy(delta.x, delta.y);
-				self.timeline.updatePreviousNormSelRect; // needed to move selection as nodes moves
-				self.timeline.deselectAllNodes;
-				//Log(\Param).debug("deselectNodes %".format(self.timeline.selectedNodes));
-				newnodes = self.timeline.findNodes(self.selection_cursor.rect);
-				//Log(\Param).debug("new nodes %".format(newnodes));
-				self.timeline.selectNodes(newnodes);
-			};
-			//self.timeline.model.changed(\refresh);
-			self.timeline.model.reorder;
-		}
-	},
 
 	splitAction: { arg self;
 		self.timeline_model.addHistorySnapshot;

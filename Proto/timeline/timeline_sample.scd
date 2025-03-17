@@ -615,6 +615,9 @@ ProtoTemplateDef(\SampleTimelineView, (
 			MenuAction("Export selection to buffer", { 
 				viewmodel.exportSelectionToBufferEditor;
 			}),
+			MenuAction("Trim outside of selection", { 
+				viewmodel.action_keepOnlySelectedFrames;
+			}),
 
 			MenuAction.separator,
 			MenuAction("Load audio file", { 
@@ -655,15 +658,16 @@ ProtoTemplateDef(\SampleTimelineView, (
 	make_header: { arg self;
 		self.counterView = StaticText.new.fixedWidth_(50).font_(Font.default.copy.size_(9));
 		//self.counterView = StaticText.new;
+		self.keepRecordedFileButton = BasicButton.new.label_("Keep").action_({
+					self.timeline_model.keepRecordedFile;
+				});
+		self.keepRecordedFileButton.visible = self.timeline_model.recordedFileIsKept.not;
 		self.header_layout = HLayout(
 			PlayerWrapperView(self.timeline_model).view,
 			self.make_stop_button,
 			self.make_quant_popup,
-			if(self.timeline_model.recordedFileIsKept.not) {
-				BasicButton.new.label_("Keep").action_({
-					self.timeline_model.keepRecordedFile;
-				});
-			},
+			self.make_undo_system_buttons,
+			self.keepRecordedFileButton,
 			RecordButton(self.timeline_model, \recorder, "Rec"),
 			Param(Message(self.timeline_model.recorder), \recBus, TagSpecDef(\BusDef)).asPopUpMenu,
 			BasicButton.new.label_("Edit").action_({
@@ -763,6 +767,21 @@ ProtoTemplateDef(\SampleTimelineView, (
 		);
 	},
 
+	makeEventLoopFollower: { arg self, bla;
+		// bug: calling this method 3 times, only the two first seems to respond after gui is created
+
+		bla.debug("allez"); // debug
+		Log(\Param).debug("SampleTimelinePanelView: eventLoop dump %", self.eventLoop.dump);
+		self.timeline.view.followChange(self.eventLoop, \list, { 
+			bla.debug("allez dedans");
+			Log(\Param).debug("SampleTimelinePanelView: received list msg");
+			{
+				self.timeline_model.changed(\data);
+				self.refresh;
+			}.defer
+		});
+	},
+
 	makeLayout: { arg self;
 		var clipEditor;
 		//"clipTimelinePanelView.makeLayout: start init".debug;
@@ -778,11 +797,8 @@ ProtoTemplateDef(\SampleTimelineView, (
 		);
 		//"clipTimelinePanelView.makeLayout: part 2".debug;
 		//"clipTimelinePanelView.makeLayout: part 3".debug;
-		self.timeline.view.onChange(self.eventloop, \list, { 
-			{
-				self.refresh;
-			}.defer
-		});
+		self.makeEventLoopFollower(1); // debug
+		self.makeEventLoopFollower(2); // debug
 		self.timeline.mapData(self.timeline_model);
 		self.timeline_model.changed(\data);
 		//"clipTimelinePanelView.makeLayout: end init".debug;
@@ -956,9 +972,56 @@ ProtoTemplateDef(\SampleTimelineView, (
 		}
 	},
 
+	action_keepOnlySelectedFrames: { arg self;
+		var model = self.timeline_model;
+		var scursor = model.selection_cursor;
+		var cursor = model.cursor;
+		var startpos, endpos;
+		var exportedFrameCount;
+		var newbuf;
+		var buf = model.buffer;
+		if(scursor.startPosition == scursor.endPosition) { // when no selection
+			scursor = cursor; // use preview cursor instead
+		};
+		startpos = scursor.startPosition ? cursor.startPosition;
+		endpos = scursor.endPosition ? cursor.endPosition;
+		if(startpos.notNil) {
+
+			startpos = startpos/model.tempoClock.tempo * buf.sampleRate;
+			startpos = startpos.round.asInteger;
+			endpos = endpos/model.tempoClock.tempo * buf.sampleRate;
+			endpos = endpos.round.asInteger;
+			exportedFrameCount = endpos - startpos;
+
+			//exportedFrameCount.debug("exportedFrameCount");
+			newbuf = Buffer.alloc(Server.default, exportedFrameCount+1, model.buffer.numChannels);
+			model.buffer.debug("now getting slice");
+			model.buffer.loadToFloatArray(startpos, exportedFrameCount, { arg col;
+				col.size.debug("got colsize");
+				newbuf.debug("now loading in newbuf");
+				newbuf.loadCollection(col, action: { arg xbuf;
+					//newbuf.debug("newbuf loaded slice");
+					xbuf.debug("xbuf loaded slice");
+					{
+						//newbuf.debug("newbuf loaded slice2");
+						xbuf.debug("xbuf loaded slice2");
+						//~newbuf = newbuf;
+						model.addHistorySnapshot;
+						model.buffer = xbuf;
+						model.eventList.startTime = 0;
+						model.eventList.endTime = xbuf.duration / model.tempoClock.tempo;
+					}.defer
+				})
+			});
+		} {
+			Log(\Param).info("No selection");
+		}
+	},
+
 ));
 );
 
+// depreacted
 WindowDef(\SampleTimelineOverlayMenu, { arg def, viewmodel, view, x=600, y=600;
 	var inview, layout;
 	var model = viewmodel.timeline_model;
