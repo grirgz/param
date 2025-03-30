@@ -2214,17 +2214,22 @@ ProtoClassDef(\LoopMaster, (
 	getPatternSlice: { arg self, cutFunction, marker_start, marker_end, repeatCount, parallelPat;
 		var start, end;
 		var loclist = self.eventList.select({arg x; self.isLocator(x)});
+		var origmarker_start = marker_start;
 		marker_start = self.locatorLabelToIndex(loclist, marker_start);
-		marker_start = marker_start % ( loclist.size - 1 ); // -1 to avoid start to be end
+		if(marker_start.isNil) {
+			Log(\Param).error("ERROR: getPatternSlice: Can't find marker %".format(origmarker_start.asCompileString));
+		} {
+			marker_start = marker_start % ( loclist.size - 1 ); // -1 to avoid start to be end
 
-		marker_end = marker_end ? ( marker_start+1 );
-		marker_end = self.locatorLabelToIndex(loclist, marker_end);
-		marker_end = marker_end % ( loclist.size );
+			marker_end = marker_end ? ( marker_start+1 );
+			marker_end = self.locatorLabelToIndex(loclist, marker_end);
+			marker_end = marker_end % ( loclist.size );
 
-		start = loclist[marker_start].absTime;
-		end = loclist[marker_end].absTime;
-		// FIXME: the parallelPat is not sliced
-		self.getPreviewLoopPattern(cutFunction, start, end, repeatCount, parallelPat)
+			start = loclist[marker_start].absTime;
+			end = loclist[marker_end].absTime;
+			// FIXME: the parallelPat is not sliced
+			self.getPreviewLoopPattern(cutFunction, start, end, repeatCount, parallelPat)
+		};
 	},
 
 	getPatternSlices: { arg self, cutFunction, repeatCount=1, parallelPat;

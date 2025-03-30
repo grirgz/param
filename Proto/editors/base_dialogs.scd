@@ -179,9 +179,11 @@ WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue, label;
 		HLayout (
 			BasicButton.new.string_("Ok").action_({
 				var name = selectedView.string;
+				var stringname;
 				if(name != "") {
 					name = name.asSymbol;
-					okHook.(name, filteredList[listview.value], listview.value);
+					stringname = filteredList[listview.value];
+					okHook.(name, stringname, listitems.detectIndex({ arg x; x.key == name }));
 					def.closeWindow;
 				} {
 					"invalid name".debug;

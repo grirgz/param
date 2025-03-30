@@ -778,7 +778,7 @@ ProtoClassDef(\PatKitDef, (
 	},
 
 	asPattern: { arg self, score; // PatKitDef pattern
-		var pat = PdrumStep(self.patterns, score, 1, key:\kitIndex);
+		var pat = PdrumStep(self.getPatternList, score, 1, key:\kitIndex);
 		pat
 	},
 
