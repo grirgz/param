@@ -232,8 +232,8 @@ TimelineEnvViewNode : TimelineViewEventNode {
 			);
 			curve = model[\curve] ? 0;
 			origin = Point(model[timeKey] ? 0, posy);
-			color = Color.black;
-			outlineColor = Color.grey;
+			color = ParamViewToolBox.color_ligth;
+			outlineColor = Color.black;
 			//extent = Point(model.use { currentEnvironment[lenKey].value(model) }, 1); // * tempo ?
 			//[this.class, spritenum, origin, extent, color].debug("refresh");
 		};
@@ -255,16 +255,23 @@ TimelineEnvViewNode : TimelineViewEventNode {
 		//Pen.stroke;
 
 		Pen.color = this.outlineColor;
+
 		if(this.model[\releaseNode] == true or: { this.model[\loopNode] == true }) {
 			Pen.addRect(Rect.fromPoints(point-( radius ), point+( radius )))
 		} {
 			Pen.addArc(point, radius, 0, 2*pi);
 		};
+
+		if(selected) {
+			Pen.color = this.colorSelected;
+		} {
+			Pen.color = this.color;
+		};
 		//Pen.strokeRect(this.pixelRect);
-		Pen.fill;
+		//Pen.fill;
 
 		//Pen.color = Color(0.8,0.8,0.8);
-		Pen.color = ParamViewToolBox.color_ligth;
+		//Pen.color = ParamViewToolBox.color_ligth;
 		case(
 			{ this.model[\releaseNode] == true }, {
 				Pen.color = Color.blue;

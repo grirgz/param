@@ -3099,13 +3099,13 @@ TimelineViewEventListNode : TimelineViewEventNode {
 	}
 }
 
-TimelineViewEventEnvNode : TimelineViewEventListNode {
+TimelineViewEventEnvNode : TimelineViewEventListNode { // for ParamTimeline clip
 	timelinePreviewClass {
 		^TimelinePreview_Env
 	}
 }
 
-TimelineViewEventSampleNode : TimelineViewEventListNode {
+TimelineViewEventSampleNode : TimelineViewEventListNode { // for SampleTimeline clip
 	// NOTE: drawPreview is now factored inside TimelineViewEventListNode
 	//drawPreview { arg previewrect;
 		//// NOTE: had to fork drawPreview from TimelineViewEventListNode because need to find how to factor them
