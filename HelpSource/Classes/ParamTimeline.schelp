@@ -1,0 +1,170 @@
+TITLE:: ParamTimeline
+summary:: Automation curve for a Param
+categories:: GUI, Timeline
+related:: Classes/Param, Classes/NoteTimeline, Classes/ClipTimeline
+
+DESCRIPTION::
+ParamTimeline allow you to use a curve to automate a link::Classes/Param::
+
+
+CLASSMETHODS::
+
+METHOD:: new
+Create or retrieve an instance of ParamTimeline. If baseObject is provided, it is
+updated in the instance
+
+code::
+ParamTimeline(\test, Param(Pdef(\bass), \ffreq)).edit; // create the \test instance and edit it
+::
+
+ARGUMENT:: name
+the key under which the object which be stored
+
+ARGUMENT:: baseObject
+A link::Classes/Param:: which will be controlled by the timeline.
+
+returns:: a ParamTimeline
+
+
+INSTANCEMETHODS::
+
+METHOD:: play
+Play the timeline
+
+METHOD:: stop
+Stop the timeline
+
+METHOD:: isPlaying
+Return weither the timeline is playing.
+Set it to play/stop the timeline pattern
+ARGUMENT:: val
+true to start, false to stop
+
+METHOD:: edit
+Show the graphical editor
+
+METHOD:: eventList
+Return the current event list of the timeline
+returns:: a link::Classes/TimelineEventList::
+
+METHOD:: startRecording
+Start the recording
+
+METHOD:: stopRecording
+Stop the recording
+
+METHOD:: isRecording
+Return weither the timeline is recording.
+Set it to start/stop the recording.
+ARGUMENT:: val
+true to start, false to stop
+returns:: a Bool
+
+METHOD:: asPattern
+Return the timeline pattern for embeding in other patterns
+ARGUMENT:: startOffset
+Start startOffset beats after the start event
+FIXME: broken
+ARGUMENT:: dur
+Cut the length of the pattern to dur
+ARGUMENT:: repeatCount
+repeat the pattern repeatCount times
+returns:: a Prout
+
+METHOD:: asPatternAbs
+Same as asPattern but use absolute time instead
+ARGUMENT:: startBeat
+Start the loop at startBeat
+ARGUMENT:: endBeat
+End the loop at endBeat
+ARGUMENT:: repeatCount
+repeat the pattern repeatCount times
+returns:: a Prout
+
+METHOD:: asPatternSlices
+Slices are delimited by markers (\start, \end, and custom markers). Return every slices of the clip loop
+returns:: an array of Prout
+
+METHOD:: asPatternSlice
+Slices are delimited by markers.
+Return a specific slice from marker startMarker and endMarker.
+A marker can be \start, \end, or a String containing the label of the custom marker
+ARGUMENT:: startMarker
+ARGUMENT:: endMarker
+ARGUMENT:: repeatCount
+repeat the pattern repeatCount times
+returns:: a Prout
+
+METHOD:: presetCompileString
+Return a preset string so you can save the state of the timeline on disk. To load the timeline again, just interpret the string, it's human readable code.
+
+METHOD:: outBus
+Get or set the out bus of the pattern. Only meaningful if the target of the controlled Param is a bus.
+
+METHOD:: label
+Get or set the label of the timeline (default to key)
+
+METHOD:: key
+The key to identify the timeline (first argument at creation)
+
+METHOD:: quant
+Get or set the quant of the pattern player (EventPatternProxy). Do not confuse it with the grid quant
+
+EXAMPLES::
+
+code::
+(
+SynthDef(\saw, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\adsr.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	lpfr: ControlSpec(0.1,10,\lin, 0, 1) // define spec in synthdef so we don't have to specify it in Param
+))).add;
+);
+
+// define a base pattern that will be controlled
+(
+Pdef(\bass, 
+	Pbind(
+		\instrument, \saw,
+		\degree, Pseq([0,7,2,3],inf),
+		\octave, 3,
+		\dur, 1/8,
+		\amp, 0.1,
+	)
+).play;
+);
+
+// now you can create the curve (hold Ctrl key and click or use write mode)
+// holding shift and draging allow you to change curve
+// you can also record it, a knob allow you to control the value
+ParamTimeline(\test, Param(Pdef(\bass), \lpfr)).edit;
+
+(
+// create a pattern with both the bass pattern and the automation pattern
+Pdef(\main, 
+	Ppar([
+		Pdef(\bass),
+		ParamTimeline(\test).asPattern,
+	])
+).play;
+)
+
+
+////////// control a Ndef with ParamTimeline
+
+(
+Ndef(\sound, { 
+	var sig; 
+	sig = LFSaw.ar(LFNoise1.kr(1!2) * 20 + 200) * 0.1;
+	sig = RLPF.ar(sig, \lpf.kr(100), \rq.kr(0.5));
+}).play
+)
+
+ParamTimeline(\testndef, Param(Ndef(\sound), \lpf, \freq)).edit; // third argument of Param is the spec
+::
+

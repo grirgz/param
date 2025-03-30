@@ -102,7 +102,12 @@ table::
 CLASSMETHODS::
 
 METHOD:: new
-Create a new instance of NoteTimeline, or redefine the baseObject
+Create or retrieve an instance of NoteTimeline. If baseObject is provided, it is
+updated in the instance
+
+code::
+NoteTimeline(\test).edit; // create the \test instance and edit it
+::
 
 ARGUMENT:: name
 the key under which the object which be stored
