@@ -6,6 +6,86 @@ related:: Classes/Param, Classes/NoteTimeline, Classes/ClipTimeline
 DESCRIPTION::
 ParamTimeline allow you to use a curve to automate a link::Classes/Param::
 
+SECTION:: Graphical interfaces:
+
+SUBSECTION::Top bar
+
+table::
+    ## Play Button || Play the preview loop or the clip loop if there is no preview loop defined. Infinite repeat by default (use quant)
+    ## Stop button || Stop playing and erase the preview loop markers (with quant)
+    ## Play Target Button || If the target of the controlled Param is a Pdef or Ndef, you can play/stop it with this button
+    ## Label || Name of the controlled Param property
+	## Value Knob || This knob is linked to the contolled param, you can use it for recording.
+    ## Bus mode button || the Param should be in bus mode, you can ignore this button
+    ## Repeat Number box || The number of time the timeline will be looped before stopping
+    ## Grid quant menu || quantize selection, new notes, moving notes
+    ## History buttons || Undo and redo changes in the timeline
+    ## Rec button || Start/stop recording. 
+    ## Metronome button || Start/stop metronome. 
+    ## Menu ... button || See below.
+::
+
+SUBSECTION::Menu ...
+
+table::
+    ## Edit Param || Open the property window of the controlled Param
+    ## Select Param || Choose another Param to be controlled by the timeline
+    ## Save as / Save || Open a dialog to select a file in which save the timeline. If a file was already selected, the button is called "Save" and directly save to the previous file.
+    ## Copy refString to clipboard || Put in clipboard a compile string containing the timeline object so you can easily use it in your code
+::
+
+SUBSECTION::Mode button
+
+At the top left of the window.
+
+table::
+    ## Move mode (finger icon) || Move node by dragging them, draw selection
+rectangle, create nodes by holding Ctrl, change curve by holding shift and
+dragging
+    ## Write Mode (pen icon) || Clicking on empty space will create a node
+    ## Eraser Mode (square icon) || Clicking on a node will erase it
+::
+
+SUBSECTION::Zoom buttons
+
+At the top right of the window there is Vertical and horizontal arrow buttons.  They allow to set the vertical and horizontal zoom such as all nodes are visible.
+
+< and > buttons at the bottom right are used to grow or shrink the viewport of the timeline. Use it when you have no more room for writing your melody. Note that even if notes are not visible in the viewport, they are still present and played.
+
+
+SECTION:: Keyboard shortcuts
+
+On the time ruler:
+table::
+    ## Define start of the preview loop || Left click
+    ## Define end of the preview loop || Right click
+    ## Add a marker || Ctrl + left click
+    ## Edit marker name || Double click on marker. Hit Enter to save the new name
+    ## Delete a marker || Delete
+::
+
+
+On the main panel:
+table::
+    ## Add a node || Ctrl + Left click
+    ## Change curve shape || Shift + Left click, hold mouse button to adjust the curve shape under the cursor
+    ## Select a note || Click on the note to select it
+    ## Select several note || Click somewhere with no note and drag to form a selection rectangle
+    ## Play immediatly the selected part of the timeline (set preview loop) || Space
+	## Zoom in/out horizontally || Hold ctrl and use mouse wheel
+	## Zoom in/out vertically || Hold shift and use mouse wheel
+    ## Delete selected node(s) || use Delete key
+    ## Define the end of the clip || Ctrl + Right click
+    ## Copy selected notes || Ctrl + c
+    ## Paste selected notes || Ctrl + v (click first where you want to paste)
+    ## Double the clip by repeating notes || Ctrl + d
+    ## Add a snapshot to undo history || Ctrl + k
+    ## Create a new empty score || Ctrl + n
+    ## Quantize selected notes || q
+    ## Move up or down selected notes by track number || Up or Down arrow keys
+    ## Move left or right selected notes by grid quant || Left or Right arrow keys
+    ## Move left or right selected notes by grid quant * 8 || Ctrl + Left or Ctrl + Right arrow keys
+::
 
 CLASSMETHODS::
 
