@@ -661,7 +661,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 				};
 			} {
 				if(buttonNumber == 1) {
-					self.showLocatorBarContextMenu(me, px, py)
+					self.showLocatorBarContextMenu(me, px, py);
 				};
 			}
 		};
@@ -685,16 +685,18 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	showLocatorBarContextMenu: { arg self, view, x, y;
+		var chosenlocator = self.locatorbar.chosennode;
 		Menu(
 			MenuAction("Add locator", {
 				self.locatorbar.createNode
 			}),
 			MenuAction("Delete locator", {
-				self.deleteSelectedNodesHook.value(self.locatorbar);
-			}).enabled_(self.locatorbar.chosennode != nil),
+				self.locatorbar.selectNode(chosenlocator);
+				self.deleteSelectedLocatorHook.value(self.locatorbar);
+			}).enabled_(chosenlocator != nil),
 			MenuAction("Rename locator", {
-				TimelineLocatorPropertiesView.new(self.locatorbar.chosennode.model);
-			}).enabled_(self.locatorbar.chosennode != nil),
+				TimelineLocatorPropertiesView.new(chosenlocator.model);
+			}).enabled_(chosenlocator != nil),
 
 			MenuAction.separator,
 			MenuAction("Set clip start here", {
@@ -1261,6 +1263,12 @@ ProtoTemplateDef(\TimelinePanelView, (
 		}
 	},
 
+	deleteSelectedLocatorHook: { arg self;
+		// for SampleTimeline
+		// need a special method because delete selection is used to zero samples in buffer
+		self.deleteSelectedNodesHook;
+	},
+
 	deleteSelectedNodesHook: { arg self;
 		{ arg tl;
 			self.timeline_model.addHistorySnapshot;
@@ -1352,7 +1360,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	deleteAction: { arg self;
-		self.deleteSelectedNodesHook.value;
+		self.deleteSelectedNodesHook.value(self.timeline);
 	},
 
 	createNodeAction: { arg self;

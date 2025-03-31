@@ -727,6 +727,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 	},
 
 	makeXRuler: { arg self;
+		// specific code to have seconds ruler
 		var cursor_timeline;
 		var locatorbar;
 		var ruler_x_beat;
@@ -751,6 +752,17 @@ ProtoTemplateDef(\SampleTimelineView, (
 
 		locatorbar = TimelineLocatorBarView.new;
 		self.locatorbar = locatorbar;
+		self.locatorbar.mouseDownAction = {|me, px, py, mod, buttonNumber, clickCount, chosennode|
+			if(clickCount == 2) {
+				if(chosennode.notNil) {
+					TimelineLocatorPropertiesView.new(chosennode.model);
+				};
+			} {
+				if(buttonNumber == 1) {
+					self.showLocatorBarContextMenu(me, px, py)
+				};
+			}
+		};
 
 		locatorbar.quant = self.quant_ref;
 
@@ -867,12 +879,27 @@ ProtoTemplateDef(\SampleTimelineView, (
 
 	},
 
+	deleteSelectedLocatorHook: { arg self;
+		// need a special method because delete selection is used to zero samples in buffer
+		{ arg tl;
+			self.timeline_model.addHistorySnapshot;
+			//self.timeline_model.eventLoop.cloneAndPushList;
+			//Log(\Param).debug("hook qui foire");
+			//self.timeline.deleteSelectedNodes;
+			tl.deleteSelectedNodes;
+			//self.timeline_model.eventLoop.pushList;
+		}
+	},
+
 	deleteSelectedNodesHook: { arg self;
 		{ arg tl;
-			var cursor = self.timeline_model.selection_cursor;
+			var cursor;
 			var startpos, endpos;
-			var buf = self.timeline_model.buffer;
-			var model = self.timeline_model;
+			var buf;
+			var model;
+			cursor = self.timeline_model.selection_cursor;
+			buf = self.timeline_model.buffer;
+			model = self.timeline_model;
 
 			buf.loadToFloatArray(action:{ arg arr;
 				startpos = cursor.startPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;

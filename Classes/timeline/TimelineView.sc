@@ -1995,10 +1995,18 @@ TimelineView : SCViewHolder {
 		//this.refresh;
 	}
 
-	deselectAllNodes { arg chosennode;
+	deselectAllNodes { arg excluded;
+		var nodes;
 		// deselect all but chosennode
 		// should use selNodes, but at least we are sure there are no more selected nodes
-		this.deselectNodes(paraNodes.reject({ arg x; x === chosennode }))
+		if(excluded.notNil) {
+			nodes = paraNodes.reject({ arg x; x === excluded });
+		} {
+			nodes = paraNodes;
+		};
+		// when selecting a locator node then creating a node, it seems selNodes contains a node not in paraNodes
+		nodes = nodes ++ selNodes; // remove them
+		this.deselectNodes(nodes);
 	}
 
 	clearSelectionRect {
@@ -2647,7 +2655,7 @@ TimelineViewEventNode : TimelineViewNodeBase {
 	}
 
 	selectable {
-		^[\rest, \start, \end].includes(this.model[\type]).not
+		^[\rest, \start, \end, \locator].includes(this.model[\type]).not
 	}
 
 	deletable {

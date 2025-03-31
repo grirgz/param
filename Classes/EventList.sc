@@ -307,12 +307,17 @@ TimelineEventList : List {
 					// end before start, swap them
 					var tmp = endEv.copy;
 					//endEv.debug("swap!");
+					
 					endEv[\type] = startEv[\type];
 					endEv[\label] = startEv[\label];
 					startEv[\type] = tmp[\type];
 					startEv[\label] = tmp[\label];
-					startTime = endEv[\absTime];
-					endTime = startEv[\absTime];
+					
+					//endEv[\absTime] = startEv[\absTime];
+					//startEv[\absTime] = tmp[\absTime];
+					//startTime = startEv[\absTime];
+					endTime = endEv[\absTime];
+					startTime = startEv[\absTime];
 					//[ev, startEv, endEv, this].debug("end swap");
 				};
 			};

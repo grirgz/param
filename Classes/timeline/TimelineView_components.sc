@@ -484,6 +484,7 @@ TimelineLocatorBarView : TimelineView {
 			};
 			if(item.model.type == \end) {
 				//[item.origin, item.model].debug("end node");
+				nstart = this.gridPointToPixelPoint(item.origin).x;
 				nend = this.gridPointToPixelPoint(item.origin).x;
 				Pen.addRect(Rect(nend,bounds.origin.y, bounds.right - nstart, bounds.height ));
 				Pen.color = Color.black.alpha_(0.2);
