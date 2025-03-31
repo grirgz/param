@@ -58,6 +58,7 @@ Quarks
 	- Collapse: dependency of WindowRecallView
 - Log
 	- Singleton: dependency of Log
+- EQui
 	
 Optional quarks
 - Modality-toolkit
