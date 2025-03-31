@@ -143,15 +143,15 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	previewPattern: { arg self, absStart, absEnd, repeatCount;
-		self.loopMaster.getPreviewLoopPattern(self.cutPatternFunction, absStart, absEnd, repeatCount ? self.repeatCount, self.automationPattern);
+		self.loopMaster.getPreviewLoopPattern(self.cutPatternFunction, absStart, absEnd, repeatCount ? self.repeatCount, self.automationPattern(repeatCount));
 	},
 
 	asPatternSlice: { arg self, startLocator, endLocator, repeatCount=1;
-		self.loopMaster.getPatternSlice(self.cutPatternFunction, startLocator, endLocator, repeatCount ? self.repeatCount, self.automationPattern);
+		self.loopMaster.getPatternSlice(self.cutPatternFunction, startLocator, endLocator, repeatCount ? self.repeatCount, self.automationPattern(repeatCount));
 	},
 
 	asPatternSlices: { arg self, repeatCount=1;
-		self.loopMaster.getPatternSlices(self.cutPatternFunction, repeatCount ? self.repeatCount, self.automationPattern);
+		self.loopMaster.getPatternSlices(self.cutPatternFunction, repeatCount ? self.repeatCount, self.automationPattern(repeatCount));
 	},
 
 	asSelectedPattern: { arg self, repeatCount;
@@ -487,9 +487,9 @@ ProtoClassDef(\EventTimeline, (
 
 	automationEnabled: true,
 
-	automationPattern: { arg self;
+	automationPattern: { arg self, repeatCount;
 		if(self.automationEnabled == true and: { self.automationRack.hasAnyTrackEnabled }) {
-			self.automationRack.asPattern
+			self.automationRack.asPattern(repeatCount)
 		} {
 			nil
 		};

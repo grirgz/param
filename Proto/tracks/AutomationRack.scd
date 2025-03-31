@@ -154,12 +154,12 @@ TrackTemplateDef(\AutomationRack, (
 		};
 	},
 
-	asPattern: { arg self;
+	asPattern: { arg self, repeatCount;
 		if(self.automationList.size > 0) {
 			Ppar(
 				self.automationList.select({ arg x; x.disabled != true }).collect { arg item, idx;
 					var pt = item.paramTimeline;
-					pt.asSelectedPattern;
+					pt.asSelectedPattern(repeatCount);
 				};
 			)
 		} {
