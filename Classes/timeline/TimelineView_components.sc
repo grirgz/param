@@ -91,8 +91,46 @@ TimelineRulerView : TimelineView {
 		};
 	}
 
-
 	drawGraduations { arg factor, x, oidx, idx;
+		// factor: the zoom factor, a big factor means big zoom and grid marking very small times
+		// x is x position in pixel where to draw a bar
+		// oidx is the index of the bar to alternate bold bars
+		// idx is not used
+		var yoffset;
+		var prec = 4;
+		//x = x + this.gridPointToPixelPoint(gridRulerOffset,0).x;
+
+		if( oidx % 4 == 0 ) { 
+			yoffset = 0;
+			Pen.color = Color.black;
+			Pen.alpha = 1;
+		} { 
+			yoffset = 4;
+			Pen.color = Color.black;
+			Pen.alpha = 0.5;
+		};
+		//Pen.line(Point(x,yoffset), Point(x,this.virtualBounds.height));
+		x = x - 2; // x offset to center text
+		if(oidx % 2 == 0) {
+			var fontsize = 8;
+			if(oidx % 16 == 0) {
+				if(oidx % 32 == 0) {
+					fontsize = 10;
+					Pen.stringAtPoint("" ++ ( oidx/factor ).asStringPrec(prec), Point(x,-2), Font.new.size_(fontsize).bold_(true));
+				} {
+					fontsize = 10;
+					Pen.stringAtPoint("" ++ ( oidx/factor ).asStringPrec(prec), Point(x,-2), Font.new.size_(fontsize));
+				}
+			} {
+				Pen.stringAtPoint("" ++ ( oidx/factor ).asStringPrec(prec), Point(x,0), Font.new.size_(fontsize));
+			};
+		};
+		//Pen.stroke;
+	}
+
+	drawGraduationsWithLines { arg factor, x, oidx, idx;
+		// deprecated
+		// write vertical line and the number is at the left
 		// factor: the zoom factor, a big factor means big zoom and grid marking very small times
 		// x is x position in pixel where to draw a bar
 		// oidx is the index of the bar to alternate bold bars
