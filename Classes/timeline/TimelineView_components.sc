@@ -873,6 +873,7 @@ CursorTimelineView : TimelineView {
 	var <>playtask;
 	var <>cursor;
 	var <>cursorController;
+	var <>mimicCursorController;
 	var <>isPlaying = false;
 	var <>refreshRate = 16;
 	var <>bandWidth = 5;
@@ -938,6 +939,25 @@ CursorTimelineView : TimelineView {
 					cursorController.remove;
 				} {
 					this.view.refresh;
+				};
+			}
+		})
+	}
+
+	mimicCursor { arg othercur;
+		//[cursor, othercur].debug("mimicCursor");
+		if(mimicCursorController.notNil) {
+			mimicCursorController.remove;
+		};
+		mimicCursorController = SimpleController(othercur).put(\refresh, {
+			//"mimicCursorController".debug;
+			if(this.view.notNil) {
+				if(this.view.isClosed) {
+					mimicCursorController.remove;
+				} {
+					//[cursor.startPosition, cursor.endPosition, othercur.startPosition, othercur.endPosition].debug("mimicCursorController");
+					cursor.startPosition = othercur.startPosition;
+					cursor.endPosition = othercur.endPosition;
 				};
 			}
 		})

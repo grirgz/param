@@ -631,11 +631,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 
 	mimicCursor: { arg self, cursorModel;
 		//self.cursor_timeline.debug("mimicCursor");
-		self.cursor_timeline.mapCursor(cursorModel);
+		self.cursor_timeline.mimicCursor(cursorModel);
 		[\ruler_x_beat, \ruler_x].do { arg key;
 			//self[key].debug("mimicCursor");
 			if(self[key].notNil) {
-				self[key].value.mapCursor(cursorModel);
+				self[key].value.mimicCursor(cursorModel);
 			};
 		};
 	},
@@ -1406,20 +1406,20 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.timeline.mimicTimeline(ptview.timeline, \horizontal);
 		ptview.mimicCursor(self.timeline_model.cursor);
 		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
-		ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg view, obj, msg, arg1;
-			//[view, obj, msg, arg1].debug("showAutomation cursor");
-			if(arg1 == \play) {
-				//ptview.cursor_timeline.play; // already sent by loopMaster
-			} {
+		//ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg view, obj, msg, arg1;
+			////[view, obj, msg, arg1].debug("showAutomation cursor");
+			//if(arg1 == \play) {
+				////ptview.cursor_timeline.play; // already sent by loopMaster
+			//} {
 
-				if(arg1 == \stop) {
+				//if(arg1 == \stop) {
 
-					// this event is sent by timeline_model.stop function
-					ptline.eventList.changed(\cursor, \stop);
-					//ptview.cursor_timeline.stop;
-				};
-			}
-		});
+					//// this event is sent by timeline_model.stop function
+					//ptline.eventList.changed(\cursor, \stop);
+					////ptview.cursor_timeline.stop;
+				//};
+			//}
+		//});
 		if(self.timeline_model.isPlaying) {
 			ptview.cursor_timeline.play;
 		};
