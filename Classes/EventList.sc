@@ -897,7 +897,7 @@ TimelineEventLoop {
 	
 	historyAddSnapshot {
 		//~debug = this;
-		if(list.notNil) {
+		if(list.notNil and: { list.size != 0 }) {
 			if(inHistoryMode == true) {
 				inHistoryMode = false;
 				historyIndex = -1;
