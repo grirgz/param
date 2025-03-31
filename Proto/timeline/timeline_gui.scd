@@ -1112,6 +1112,13 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.update_track_header;
 	},
 
+	remove_last_track: { arg self;
+		self.timeline_model.remove_last_track;
+		self.timeline.refreshEventList;
+		self.timeline.refresh;
+		self.update_track_header;
+	},
+
 	posyKey: { arg self;
 		\midinote;
 	},
@@ -3199,6 +3206,9 @@ WindowDef(\ClipTimelineContextMenu, { arg def, viewmodel, view;
 			MenuAction.separator,
 			MenuAction("Add track", {
 				viewmodel.add_track;
+			}),
+			MenuAction("Remove last track", {
+				viewmodel.remove_last_track;
 			}),
 			MenuAction("Sample manager", {
 				WindowDef("%_SampleManager".format(viewmodel.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(viewmodel.timeline_model);

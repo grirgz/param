@@ -554,7 +554,11 @@ ProtoClassDef(\ClipTimeline, (
 			muted: false,
 			solo: false,
 		));
-		self.areasize = Point(self.areasize.x, self.tracks.size ); // areasize is deprecated, use track_count
+		//self.areasize = Point(self.areasize.x, self.tracks.size ); // areasize is deprecated, use track_count
+	},
+
+	remove_last_track: { arg self;
+		self.tracks = self.tracks[0..self.tracks.size-2];
 	},
 
 	tracks_: { arg self, tracks;
