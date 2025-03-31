@@ -955,7 +955,8 @@ ProtoTemplateDef(\PatKitDefChild, (
 	},
 
 	instrument_: { arg self, instr;
-		self.parent_self.setInstrument(self.index, instr)
+		self.parent_self.setInstrument(self.index, instr);
+		self.changed(\instrument);
 	},
 
 	isEmpty: { arg self;
