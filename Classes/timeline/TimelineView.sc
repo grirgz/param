@@ -483,7 +483,11 @@ TimelineView : SCViewHolder {
 					chosennode = nil;
 					clickedNextNode = nil;
 				};
-				refWidth = chosennode.curve;
+				if(chosennode.notNil) {
+					refWidth = chosennode.curve;
+				} {
+					refWidth = nil;
+				};
 				refPoint = gpos;
 			};
 		}
