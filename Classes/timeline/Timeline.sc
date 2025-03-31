@@ -120,6 +120,16 @@ CursorTimeline {
 		this.changed(\refresh);
 	}
 
+	clear {
+		startPoint = nil;
+		endPoint = nil;
+		this.changed(\refresh);
+	}
+
+	isCleared {
+		^startPoint.isNil and: { endPoint.isNil }
+	}
+
 	rect {
 		^Rect.fromPoints(this.startPoint, this.endPoint)
 	}

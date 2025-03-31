@@ -316,15 +316,15 @@ ProtoTemplateDef(\TimelinePanelView, (
 					"split!".debug;
 					self.splitAction;
 				};
-				if(keycode == $z.ascii) { // ^s
+				if(keycode == $z.ascii) { // ^z
 					"undo!".debug;
 					self.undoAction;
 				};
-				if(keycode == $y.ascii) { // ^s
+				if(keycode == $y.ascii) { // ^y
 					"redo!".debug;
 					self.redoAction;
 				};
-				if(keycode == $ .ascii) { // ^s
+				if(keycode == $ .ascii) { // ^<Space>
 					"stop!".debug;
 					self.timeline_model.stopNow;
 				}
@@ -332,14 +332,15 @@ ProtoTemplateDef(\TimelinePanelView, (
 				// no modifier
 
 				if(keycode == $ .ascii) { // ^s
-					"play/stop now!".debug;
-					if(self.timeline_model.selection_cursor.notNil) {
+					Log(\Param).debug("play/stop now!");
+					if(self.selection_cursor.notNil and: { self.selection_cursor.isCleared.not }) {
 						self.timeline_model.cursor.setPositions(
 							self.timeline_model.selection_cursor.startPosition ? 0,
 							self.timeline_model.selection_cursor.endPosition
 						);
+						self.selection_cursor.clear;
 					} {
-						Log(\Param).debug("no selection cursor");
+						//Log(\Param).debug("no selection cursor");
 					};
 					self.timeline_model.playNow(1);
 				};
