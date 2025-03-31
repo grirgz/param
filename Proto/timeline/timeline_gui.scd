@@ -584,7 +584,14 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	make_repeatCount_box: { arg self;
-		Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox.maxWidth_(40)
+		var box = Param(Message(self.timeline_model), \repeatCount, ControlSpec(1,inf,\lin)).asNumberBox.maxWidth_(40);
+		box.setContextMenuActions(
+			MenuAction("Set to +Inf", { 
+				self.timeline_model.repeatCount = inf; 
+				self.timeline_model.changed(\repeatCount);
+			})
+		);
+		box;
 	},
 
 	make_quant_spec: { arg self;
