@@ -496,6 +496,15 @@ ProtoDef(\GlobalLibrary, (
 			);
 		};
 
+		superself.clipFactories.clip = (
+			key: \clip,
+			libIdKey: \Clip,
+			parent: parentFactory,
+			getEvent: { arg self;
+				self.getTarget.copy;
+			},
+		);
+
 		//superself.clipFactories.sampleTimeline = (
 			//key: 'sampleTimeline',
 			//libIdKey: \SampleTimeline,

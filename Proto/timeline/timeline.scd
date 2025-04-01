@@ -1759,8 +1759,12 @@ ProtoClassDef(\ClipTimelineClipList, (
 		}
 	},
 
-	clipIdToEvent: { arg self, clipId;
+	clipIdToEvent: { arg self, clipId, inputEv;
 		var ev = self.lib.libIdToWrapper(clipId).getEvent;
+		if(clipId.first == \Clip) {
+			inputEv.sustain = ev.sustain;
+		};
+		ev.putAll(inputEv);
 		//[ev, ev[\label]].debug("clipIdToEvent ev");
 		ev
 	},
@@ -1852,8 +1856,8 @@ ProtoClassDef(\ClipTimelineClipList, (
 					Log(\Param).debug("No brush selected");
 					clipev = ev;
 				} {
-					clipev = self.clipIdToEvent(self.brushClipId);
-					clipev.putAll(ev);
+					clipev = self.clipIdToEvent(self.brushClipId, ev);
+					//clipev.putAll(ev);
 				};
 				Log(\Param).debug("ev fac: brush:%, clipev:%", self.brushClipId, clipev);
 				clipev;

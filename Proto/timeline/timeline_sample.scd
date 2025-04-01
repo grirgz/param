@@ -35,6 +35,24 @@ SynthDef(\SampleTimeline_player_rhpf, { arg out=0, gate=1, amp=0.1, pan=0, freq=
 
 TagSpecDef(\SampleTimeline_player).addUnique(\SampleTimeline_player_rhpf);
 
+SynthDef(\SampleTimeline_player_mono, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, speed=1, trigger=1, loop=0, bufnum=0, startSeconds=0, gain=1, muteGain=1, parentGain=1;
+	var sig;
+	sig = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum) * speed, trigger, startPos: (startSeconds*BufSampleRate.kr(bufnum)), doneAction:2, loop: loop);
+	sig = sig * EnvGen.kr(Env.asr(\fadeIn.kr(0.01),1,\fadeOut.kr(0.01), [\curveIn.kr(0), 0, \curveOut.kr(0)]), gate, doneAction:2);
+	sig = sig * gain;
+	sig = sig * muteGain * parentGain;
+	sig = Pan2.ar(sig, pan);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	bufnum: ParamBufferSpec(1),
+	startSeconds: ControlSpec(0,8,\lin, 0, 0),
+	fadeIn: ControlSpec(0,5,\lin,0,0),
+	fadeOut: ControlSpec(0,5,\lin,0,0),
+	curveIn: ControlSpec(-5,5,\lin,0,0),
+	curveOut: ControlSpec(-5,5,\lin,0,0),
+))).add;
+
+TagSpecDef(\SampleTimeline_player).addUnique(\SampleTimeline_player_mono);
 
 SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with key and prAdd
 	parent: ProtoClassDef(\EventTimeline),
@@ -902,7 +920,8 @@ ProtoTemplateDef(\SampleTimelineView, (
 			endpos = endp/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 			endpos = endpos.round.asInteger;
 			//"ém1".debug;
-			ParamViewToolBox.clipboard.sampleTimeline = arr[startpos..endpos];
+			ParamViewToolBox.clipboard.sampleTimeline = ParamViewToolBox.clipboard.sampleTimeline ?? { () };
+			ParamViewToolBox.clipboard.sampleTimeline.bufdata = arr[startpos..endpos];
 		});
 
 		// ClipTimeline pasting support
@@ -988,7 +1007,8 @@ ProtoTemplateDef(\SampleTimelineView, (
 	},
 
 	pasteAction: { arg self;
-		if(ParamViewToolBox.clipboard.sampleTimeline.notNil) {
+		var cb = ParamViewToolBox.clipboard.sampleTimeline;
+		if(cb.notNil and: { cb.bufdata.notNil }) {
 			var cursor = self.timeline_model.selection_cursor;
 			var startpos, endpos;
 			var buf = self.timeline_model.buffer;
@@ -999,7 +1019,7 @@ ProtoTemplateDef(\SampleTimelineView, (
 				startpos = startpos.round.asInteger;
 				endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 				endpos = endpos.round.asInteger;
-				arr.overWrite(ParamViewToolBox.clipboard.sampleTimeline, startpos);
+				arr.overWrite(cb.bufdata, startpos);
 				//"ém1".debug;
 				buf.loadCollection(arr, action:{
 					//model.bufferTempPath = nil;

@@ -969,6 +969,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 						MenuAction("Copy", {
 							self.copyAction;
 						}),
+						if(self[\addToClipListAction].notNil) {
+							MenuAction("Add Clip to ClipList", {
+								self.addToClipListAction(chosennode.model);
+							})
+						}
 					]
 				} {
 					if(selected.notNil and: { selected.size > 0 }) {
@@ -1976,6 +1981,10 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		self.timeline.deleteSelectedNodesHook = self.deleteSelectedNodesHook;
 
 		self.layout;
+	},
+
+	addToClipListAction: { arg self, ev;
+		self.timeline_model.clipList.addClipIdToClipList([\Clip, ev.label -> ev])
 	},
 
 
