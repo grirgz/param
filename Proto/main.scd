@@ -14,6 +14,7 @@
 		"player_groups.scd",
 		"GlobalLibrary.scd",
 		"arpegiator.scd",
+		"SynthDefPresetBank.scd",
 
 		//// editors
 
