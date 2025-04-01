@@ -201,7 +201,7 @@ ParamEnvSpec : ParamBaseSpec {
 	var <size;
 	var <isMonoSpec;
 	var <isDynamic=false;
-	var <type=\default;
+	var type=\default;
 	classvar zerospec;
 	classvar defaultLevelSpec;
 
@@ -339,18 +339,26 @@ ParamEnvSpec : ParamBaseSpec {
 		^inst;
 	}
 
-	// TODO: others env
-
-	*sine {
-		"NOT IMPLEMENTED".throw;
+	*sine { arg dur, level;
+		var inst;
+		dur = dur ? defaultLevelSpec;
+		level = level ? defaultLevelSpec;
+		inst = this.new([level, level, level], dur, \sine);
+		^inst;
 	}
 
-	*linen {
-		"NOT IMPLEMENTED".throw;
+	*linen { arg attackTime, sustainTime, releaseTime, level, curve;
+		var inst;
+		level = level ? defaultLevelSpec;
+		inst = this.new(level, [attackTime, sustainTime, releaseTime], curve);
+		^inst;
 	}
 
-	*cutoff {
-		"NOT IMPLEMENTED".throw;
+	*cutoff { arg releaseTime, level, curve;
+		var inst;
+		level = level ? defaultLevelSpec;
+		inst = this.new([level, level], releaseTime, curve);
+		^inst;
 	}
 
 	map { arg val, ignoreCurves=true;

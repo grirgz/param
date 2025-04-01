@@ -104,9 +104,7 @@ Ndef(\echo).play;
 	biglayout = VLayout(*
 		biglist.collect({ arg param;
 			VLayout(
-				param.asStaticTextLabel,
 				param.asView,
-				param.asTextField,
 			)
 		})
 	);
@@ -124,7 +122,7 @@ Ndef(\echo).play;
 			presets.collect({ arg preset, x;
 				VLayout(
 					XSimpleButton.new.label_("load " ++ preset).action_({ morpher.set(x) }),
-					XSimpleButton.new.label_("save " ++ preset).action_({ list.save(preset) }),
+					XSimpleButton.new.label_("save " ++ preset).action_({ list.savePreset(preset) }),
 				);
 			})
 		),
@@ -161,16 +159,16 @@ Ndef(\plopx, { arg freq, bla, pan=0, amp=0.1;
 }).play;
 );
 
-	Param([Ndef(\plopx), \bla]).get
-	Param([Ndef(\plopx), \bla]).edit
-	Param([Ndef(\plopx2), \bla]).edit
-	Param([Ndef(\plopx2), \bla]).get
+	Param(Ndef(\plopx), \bla).get
+	Param(Ndef(\plopx), \bla).edit
+	Param(Ndef(\plopx2), \bla).edit
+	Param(Ndef(\plopx2), \bla).get
 
-	Param([Ndef(\echo), \delay]).edit
-	Param([Ndef(\echo), \delay]).get
-	Param([Ndef(\echo), \delay]).set(0.2)
+	Param(Ndef(\echo), \delay).edit
+	Param(Ndef(\echo), \delay).get
+	Param(Ndef(\echo), \delay).set(0.2)
 
-	Param([Pdef(\plop), \freq]).get.asCompileString
+	Param(Pdef(\plop), \freq).get.asCompileString
 	ParamGroup(~list).edit
 	ParamGroup(~list).valueList
 	Pdef(\plop).get(\freq)
@@ -184,7 +182,7 @@ Ndef(\plopx, { arg freq, bla, pan=0, amp=0.1;
 
 	(
 		~win = Window.new;
-		~win.layout = HLayout(* ~list.collect { arg p; Param(p).asSlider });
+		~win.layout = HLayout(* ~list.collect { arg p; Param(*p).asSlider });
 		~win.front;
 
 	)

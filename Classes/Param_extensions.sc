@@ -789,7 +789,7 @@
 
 +SequenceableCollection {
 	asParam { arg self;
-		^Param(this)
+		^Param(*this)
 	}
 
 	asCachedBus {

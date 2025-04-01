@@ -23,203 +23,249 @@ ParamEnvSpec(\freq!4,\unipolar); // same, with 4 levels values and 3 times value
 CLASSMETHODS::
 
 METHOD:: new
-(describe method here)
+Create a new ParamEnvSpec
 
 ARGUMENT:: levels
-(describe argument here)
+An array of spec for each level of the Env. If instead of an array you provide a single spec, it will be used for every level of the env.
 
 ARGUMENT:: times
-(describe argument here)
+An array of spec for each time of the Env. If instead of an array you provide a single spec, it will be used for every time of the env.
 
 ARGUMENT:: curves
-(describe argument here)
+An array of spec for each curve of the Env. If instead of an array you provide a single spec, it will be used for every curve of the env.
 
 ARGUMENT:: default
-(describe argument here)
+The default value used to initialise the control with this spec assigned
 
-returns:: (describe returnvalue here)
+returns:: a ParamEnvSpec
 
 
 METHOD:: triangle
-(describe method here)
+Create a new ParamEnvSpec in the shape of Env.triangle
 
 ARGUMENT:: dur
-(describe argument here)
+The dur spec
 
 ARGUMENT:: level
-(describe argument here)
+The level spec
 
-returns:: (describe returnvalue here)
+returns:: a ParamEnvSpec
 
 
 METHOD:: sine
-(describe method here)
+Create a new ParamEnvSpec in the shape of Env.sine
 
-returns:: (describe returnvalue here)
+returns:: a ParamEnvSpec
 
-METHOD:: classInit
-(describe method here)
-
-returns:: (describe returnvalue here)
 
 
 METHOD:: cutoff
-(describe method here)
+Create a new ParamEnvSpec in the shape of Env.cutoff
 
-returns:: (describe returnvalue here)
+returns:: a ParamEnvSpec
 
 
 METHOD:: adsr
-(describe method here)
+Create a new ParamEnvSpec in the shape of Env.adsr
 
 ARGUMENT:: attackTime
-(describe argument here)
+The spec for attackTime
 
 ARGUMENT:: decayTime
-(describe argument here)
+The spec for decayTime
 
 ARGUMENT:: sustainLevel
-(describe argument here)
+The spec for sustainLevel
 
 ARGUMENT:: releaseTime
-(describe argument here)
+The spec for releaseTime
 
 ARGUMENT:: peakLevel
-(describe argument here)
+The spec for peakLevel
 
-returns:: (describe returnvalue here)
+returns:: a ParamEnvSpec
 
 
 METHOD:: dadsr
-(describe method here)
+Create a new ParamEnvSpec in the shape of Env.dadsr
 
 ARGUMENT:: delayTime
-(describe argument here)
+The spec for delayTime
 
 ARGUMENT:: attackTime
-(describe argument here)
+The spec for attackTime
 
 ARGUMENT:: decayTime
-(describe argument here)
+The spec for decayTime
 
 ARGUMENT:: sustainLevel
-(describe argument here)
+The spec for sustainLevel
 
 ARGUMENT:: releaseTime
-(describe argument here)
+The spec for releaseTime
 
 ARGUMENT:: peakLevel
-(describe argument here)
+The spec for peakLevel
 
-returns:: (describe returnvalue here)
+returns:: a ParamEnvSpec
+
 
 METHOD:: perc
-(describe method here)
+Create a new ParamEnvSpec in the shape of Env.perc
 
 ARGUMENT:: attackTime
-(describe argument here)
+The spec for attackTime
 
 ARGUMENT:: releaseTime
-(describe argument here)
+The spec for releaseTime
 
 ARGUMENT:: level
-(describe argument here)
+The spec for level
 
-returns:: (describe returnvalue here)
+returns:: a ParamEnvSpec
 
 METHOD:: asr
-(describe method here)
+Create a new ParamEnvSpec in the shape of Env.perc
 
 ARGUMENT:: attackTime
-(describe argument here)
+The spec for attackTime
 
 ARGUMENT:: sustainLevel
-(describe argument here)
+The spec for sustainLevel
 
 ARGUMENT:: releaseTime
-(describe argument here)
+The spec for releaseTime
 
-returns:: (describe returnvalue here)
+returns:: a ParamEnvSpec
 
 METHOD:: linen
-(describe method here)
+Create a new ParamEnvSpec in the shape of Env.linen
 
-returns:: (describe returnvalue here)
+ARGUMENT:: attackTime
+The spec for attackTime
+
+ARGUMENT:: sustainLevel
+The spec for sustainLevel
+
+ARGUMENT:: releaseTime
+The spec for releaseTime
+
+ARGUMENT:: level
+The spec for level
+
+ARGUMENT:: curve
+The spec for curve
+
+returns:: a ParamEnvSpec
 
 
 INSTANCEMETHODS::
 
-METHOD:: isDynamic
-(describe method here)
+METHOD:: map
+provide a normalized Env (all values between 0 and 1) and get an Env matching this spec.
 
-returns:: (describe returnvalue here)
+ARGUMENT:: val
+the normalized Env
 
-METHOD:: type
-(describe method here)
+ARGUMENT:: ignoreCurves
+do not map curves if true (default is true)
 
-returns:: (describe returnvalue here)
+returns:: an Env
 
-METHOD:: size
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: levels
-(describe method here)
-
-returns:: (describe returnvalue here)
 
 METHOD:: unmap
-(describe method here)
+provide an Env and get a normalized Env using this spec to convert.
 
 ARGUMENT:: val
-(describe argument here)
+the input Env
 
 ARGUMENT:: ignoreCurves
-(describe argument here)
+do not unmap curves if true (default is true)
 
-returns:: (describe returnvalue here)
+returns:: an Env
+
+
+METHOD:: isDynamic
+If you provide a single value instead of an Array in code::levels:: argument,
+the spec is said to be dynamic.
+
+returns:: a Boolean
+
+METHOD:: size
+return the size of the env described by this spec. This is the size of the
+code::levels:: array. Note that size of code::times:: array is always one less
+than size of code::levels:: array.
+
+returns:: an Integer
+
+METHOD:: levels
+Get or set the code::levels:: array
+
+returns:: an Array of specs
+
 
 METHOD:: default
-(describe method here)
+Get or set the default value for this spec
 
-returns:: (describe returnvalue here)
+returns:: an Env
 
 METHOD:: times
-(describe method here)
+Get or set the code::times:: array
 
-returns:: (describe returnvalue here)
-
-METHOD:: isMonoSpec
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: storeArgs
-(describe method here)
-
-returns:: (describe returnvalue here)
-
-METHOD:: map
-(describe method here)
-
-ARGUMENT:: val
-(describe argument here)
-
-ARGUMENT:: ignoreCurves
-(describe argument here)
-
-returns:: (describe returnvalue here)
+returns:: an Array of specs
 
 METHOD:: curves
-(describe method here)
+Get or set the code::curves:: array
 
-returns:: (describe returnvalue here)
+returns:: an Array of specs
 
 
 EXAMPLES::
 
 code::
-(some example code)
+
+(
+SynthDef(\sawadsr, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\myenv.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}).add;
+);
+
+// see argument envadsr is not recognized properly, it is treated as an Array
+Pbindef(\test, \instrument, \sawadsr).edit; 
+Pdef(\testspec, Pbind(\instrument, \sawadsr)).edit;
+Ndef(\testndef, \sawadsr).asParamGroup.edit;
+Param(Pdef(\testspec), \myenv).type; // the recognized type is \array, should be \env
+Param(Pdef(\testspec), \myenv).spec; // a ParamArraySpec
+
+// there is several ways to define the spec of \myenv
+
+// you can specify the env directly in Param
+Param(Pdef(\testspec), \myenv, ParamEnvSpec.adsr).edit;
+
+// you can add it with JitLib .addSpec
+Pdef(\testspec).addSpec(\myenv, ParamEnvSpec.adsr);
+Pdef(\testspec).edit; // now it is recognized as an Env
+
+// you can add it to global specs
+Spec.add(\myenv, ParamEnvSpec.adsr)
+
+// you can define it in the synthdef
+(
+SynthDef(\sawadsr, { arg out=0, amp=0.1, gate=1, pan=0, spread=0.8, freq=200,  doneAction=2;
+	var sig, sig1, sig2, sig3;
+	sig = LFSaw.ar(freq * [1.01,1,0.99]);
+	sig = RLPF.ar(sig, \lpfr.kr(1.1) * freq, \rq.kr(0.5));
+	sig = sig * EnvGen.ar(\myenv.kr(Env.adsr(0.01,0.1,0.8,0.1)),gate,doneAction:doneAction);
+	sig = Splay.ar(sig, spread, amp, pan);
+	Out.ar(out, sig);
+}, metadata:(specs:(
+	myenv: ParamEnvSpec.adsr,
+))).add;
+);
 ::
 

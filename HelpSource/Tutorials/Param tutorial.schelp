@@ -258,13 +258,13 @@ code::
 You can save presets
 
 code::
-~pg.save(\mypreset1);
+~pg.savePreset(\mypreset1);
 ::
 
 And load them:
 
 code::
-~pg.load(\mypreset1);
+~pg.loadPreset(\mypreset1);
 ::
 
 A preset is just a list of values, you can see it with:
@@ -285,7 +285,7 @@ code::
 ~pg.erase(\mypreset1);
 ::
 
-Or get the values of the current Param's in the group (this are the values saved when you call .save(\presetname))
+Or get the values of the current Param's in the group (this are the values saved when you call .savePreset(\presetname))
 
 code::
 ~pg.valueList;
@@ -317,8 +317,8 @@ ParamGroupDef(\mygroup)
 There is an additional benefit: when saving a preset, it's automatically saved on your hard drive using Archive. So you can reload a preset even after restarting Supercollider
 
 code::
-ParamGroupDef(\mygroup).save(\mypreset1); // save it
-ParamGroupDef(\mygroup).load(\mypreset1); // load it later
+ParamGroupDef(\mygroup).savePreset(\mypreset1); // save it
+ParamGroupDef(\mygroup).loadPreset(\mypreset1); // load it later
 ::
 
 
@@ -335,9 +335,9 @@ code::
 
 // first lets define some presets 
 ~pg.edit // change the values before saving each new preset else morphing is useless
-~pg.save(\preset1);
-~pg.save(\preset2);
-~pg.save(\preset3);
+~pg.savePreset(\preset1);
+~pg.savePreset(\preset2);
+~pg.savePreset(\preset3);
 
 (
 ~m = ParamMorpher( ~pg,

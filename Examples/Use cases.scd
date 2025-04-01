@@ -18,21 +18,6 @@ Ndef(\zed).edit
 Ndef(\zed).send
 
 Ndef(\zed2, Ndef(\zed))
-(
-WindowDef(\multi, {
-	arg def, player;
-	HLayout(
-		* 4.collect { arg idx;
-			VLayout(
-				* 4.collect {
-					arg idx2;
-					WindowDef(\meter).asView(Ndef(\player+++idx+++idx2).source_(player.source) )
-				}
-			)
-		}
-	)
-}).front(Ndef(\zed))
-)
 
 (
 WindowDef(\meter, { arg def, player = Ndef(\zed);
@@ -50,6 +35,23 @@ WindowDef(\meter, { arg def, player = Ndef(\zed);
 	)
 }).front;
 );
+
+(
+WindowDef(\multi, {
+	arg def, player;
+	HLayout(
+		* 4.collect { arg idx;
+			VLayout(
+				* 4.collect {
+					arg idx2;
+					WindowDef(\meter).asView(Ndef(\player+++idx+++idx2).source_(player.source) )
+				}
+			)
+		}
+	)
+}).front(Ndef(\zed))
+)
+
 
 (
 WindowDef(\MeterFader, { arg def, bus;

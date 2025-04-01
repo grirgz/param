@@ -60,7 +60,7 @@ Ndef(\echo).addSpec(\shift2, \shift.asSpec);
 	var win;
 	var widget;
 	win = Window.new;
-	win.layout = HLayout.new(*ParamGroup(~list).collect(_.asView)); // automatic view creation
+	win.layout = VLayout.new(*ParamGroup(~list).collect(_.asView)); // automatic view creation
 	win.alwaysOnTop = true;
 	win.front;
 };
@@ -98,12 +98,12 @@ Ndef(\echo).play;
 		playout,
 		HLayout(
 			VLayout(
-				XSimpleButton.new.label_("load preset1").action_({ list.load(\preset1) }),
-				XSimpleButton.new.label_("save preset1").action_({ list.save(\preset1) }),
+				XSimpleButton.new.label_("load preset1").action_({ list.loadPreset(\preset1) }),
+				XSimpleButton.new.label_("save preset1").action_({ list.savePreset(\preset1) }),
 			),
 			VLayout(
-				XSimpleButton.new.label_("load preset2").action_({ list.load(\preset2) }),
-				XSimpleButton.new.label_("save preset2").action_({ list.save(\preset2) }),
+				XSimpleButton.new.label_("load preset2").action_({ list.loadPreset(\preset2) }),
+				XSimpleButton.new.label_("save preset2").action_({ list.savePreset(\preset2) }),
 			),
 		)
 	);
@@ -245,7 +245,8 @@ MIDIdef.cc(\arf).free;
 (
 // if you have 4 knobs (\k1, \k2, ..) and 4 sliders (\s1, \s2, ..) defined in MIDIMap
 ~makegui.(
-	[\k, \s].collect { arg pre; 4.collect{ arg x; ( pre++(x+1) ).asSymbol }}.flat
+	//[\k, \s].collect { arg pre; 4.collect{ arg x; ( pre++(x+1) ).asSymbol }}.flat
+	[ 'k1', 'k2', 'k3', 'k4', 's1', 's2', 's3', 's4'  ]
 );
 )
 

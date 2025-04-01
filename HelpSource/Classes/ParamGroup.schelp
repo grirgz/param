@@ -39,9 +39,8 @@ returns:: a Function
 INSTANCEMETHODS::
 
 METHOD:: edit
-(describe method here)
+Open a GUI with sliders for each Param in the group
 
-returns:: (describe returnvalue here)
 
 
 METHOD:: valueList

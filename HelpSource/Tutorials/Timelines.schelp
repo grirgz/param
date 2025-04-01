@@ -24,7 +24,7 @@ LIST::
 
 section:: Internals
 
-Timelines are built on TimelineEventList class which is just a list of event like the events produced by a pattern.
+Timelines are built on link::Classes/TimelineEventList:: class which is just a list of event like the events produced by a pattern.
 There are special events with type \start and \end that represent the start and end cursor displayed on the timeline view.
 
 There are other special events that play a Player instead of a Synth node. A Player is any object that respond to .play and .stop, timelines are Player too. This allow to embed Timelines in Timelines like we do in ClipTimeline
