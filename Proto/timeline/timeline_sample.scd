@@ -4,12 +4,16 @@
 SynthDef(\SampleTimeline_player, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, speed=1, trigger=1, loop=0, bufnum=0, startSeconds=0, gain=1, muteGain=1, parentGain=1;
 	var sig;
 	sig = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * speed, trigger, startPos: (startSeconds*BufSampleRate.kr(bufnum)), doneAction:2, loop: loop);
-	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.01,0.1,1,0.01)), gate, doneAction:2);
+	sig = sig * EnvGen.kr(Env.asr(\fadeIn.kr(0.01),1,\fadeOut.kr(0.01), [\curveIn.kr(0), 0, \curveOut.kr(0)]), gate, doneAction:2);
 	sig = sig * gain;
 	sig = sig * muteGain * parentGain;
 	Out.ar(out, sig);
 }, metadata:(specs:(
 	startSeconds: ControlSpec(0,8,\lin, 0, 0),
+	fadeIn: ControlSpec(0,5,\lin,0,0),
+	fadeOut: ControlSpec(0,5,\lin,0,0),
+	curveIn: ControlSpec(-5,5,\lin,0,0),
+	curveOut: ControlSpec(-5,5,\lin,0,0),
 ))).add;
 
 TagSpecDef(\SampleTimeline_player).addUnique(\SampleTimeline_player);
@@ -17,12 +21,16 @@ TagSpecDef(\SampleTimeline_player).addUnique(\SampleTimeline_player);
 SynthDef(\SampleTimeline_player_rhpf, { arg out=0, gate=1, amp=0.1, pan=0, freq=200, speed=1, trigger=1, loop=0, bufnum=0, startSeconds=0, gain=1;
 	var sig;
 	sig = PlayBuf.ar(2, bufnum, BufRateScale.kr(bufnum) * speed, trigger, startPos: (startSeconds*BufSampleRate.kr(bufnum)), doneAction:2, loop: loop);
-	sig = sig * EnvGen.kr(\adsr.kr(Env.adsr(0.01,0.1,1,0.01)), gate, doneAction:2);
+	sig = sig * EnvGen.kr(Env.asr(\fadeIn.kr(0.01),1,\fadeOut.kr(0.01), [\curveIn.kr(0), 0, \curveOut.kr(0)]), gate, doneAction:2);
 	sig = RHPF.ar(sig, \hpf.kr(10), \rq.kr(0.5));
 	sig = sig * gain;
 	Out.ar(out, sig);
 }, metadata:(specs:(
 	startSeconds: ControlSpec(0,8,\lin, 0, 0),
+	fadeIn: ControlSpec(0,5,\lin,0,0),
+	fadeOut: ControlSpec(0,5,\lin,0,0),
+	curveIn: ControlSpec(-5,5,\lin,0,0),
+	curveOut: ControlSpec(-5,5,\lin,0,0),
 ))).add;
 
 TagSpecDef(\SampleTimeline_player).addUnique(\SampleTimeline_player_rhpf);
@@ -155,7 +163,16 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 	samplePattern: { arg self, startBeats=0, parentEvent, parentTimeline;
 		var pat;
 		[startBeats, startBeats / self.tempoClock.tempo].debug("samplePattern: startBeats, startSeconds");
-		pat = self.postProxy <> Pmono(self.playerSynthDef,
+		pat = Pfunc({ arg ev;
+			if(parentEvent.notNil) {
+				[\fadeIn,\fadeOut,\curveIn,\curveOut].do { arg key, idx;
+					if(parentEvent[key].notNil) {
+						ev[key] = parentEvent[key];
+					};
+				};
+			};
+			ev;
+		}) <> self.postProxy <> Pmono(self.playerSynthDef,
 			\bufnum, self.buffer ?? { self.getEmptyBuffer },
 			\startSeconds, startBeats / self.tempoClock.tempo,
 			\legato, 1,
@@ -184,7 +201,7 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 				Pn(self.samplePattern(offset+self.eventList.startTime, parentEvent, parentTimeline), 1),
 				0, //offset,
 				dur,
-				self.fadeOut
+				self.earlyOut
 			).embedInStream
 		}
 	},
@@ -250,11 +267,16 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		"%.buffer = %;\n".format(self.refCompileString(self.key.asCompileString), BufDef.bufferCompileString(self.buffer)) 
 		++
 		"%.postPatternPreset = %;\n".format(self.refCompileString(self.key.asCompileString), self.postPatternPreset.asCompileString);
-		if(self.fadeOut.notNil) {
+		if(self.earlyOut.notNil) {
 			str = str ++
-			"%.fadeOut = %;\n".format(self.refCompileString(self.key.asCompileString), self.fadeOut.asCompileString) 
+			"%.earlyOut = %;\n".format(self.refCompileString(self.key.asCompileString), self.earlyOut.asCompileString) 
 		};
 		str;
+	},
+
+	earlyOut_: { arg self, val;
+		self[\earlyOut] = val;
+		self.changed(\earlyOut);
 	},
 
 	bufferInfo: { arg self;
@@ -691,10 +713,10 @@ ProtoTemplateDef(\SampleTimelineView, (
 				WindowDef(\EventPatternProxyEditor_ +++ self.timeline_model.key, { arg me, target, label, group;
 					VLayout(
 						HLayout (
-							PlayerWrapper(target).label_(label).asView,
+							PlayerWrapper(self.timeline_model).asView,
 							Param(Message(self.timeline_model), \playerSynthDef, TagSpecDef(\SampleTimeline_player)).asPopUpMenu,
 						),
-						Param(Message(self.timeline_model), \fadeOut, ControlSpec(0,1,\lin)).asView,
+						Param(Message(self.timeline_model), \earlyOut, ControlSpec(0,1,\lin)).asView,
 						ParamGroupLayout.two_panes(group),
 					);
 				}).front(self.timeline_model.postProxy, self.timeline_model.label, self.timeline_model.postProxy.asParamGroup(nil, false, [\gate, \doneAction, \bufnum]));

@@ -2719,6 +2719,17 @@ WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 		Param(clip, \absTime),
 		Param(clip, Pembed.sustainKey),
 	];
+	if(libid.first == \SampleTimeline) {
+		params = params.addAll([
+			//Param(clip.fadeIn, \list -> 0, ControlSpec(0,5,\lin,0,0.01)),
+			//Param(clip.adsr.times, \list -> 1, ControlSpec(0,5,\lin,0,0.01)),
+			//Param(clip, \adsr -> \release, ControlSpec(0,5,\lin,0,0.01)),
+			Param(clip, \fadeIn, ControlSpec(0,5,\lin, 0,0)),
+			Param(clip, \fadeOut, ControlSpec(0,5,\lin, 0,0)),
+			Param(clip, \curveIn, ControlSpec(-5,5,\lin, 0,0)),
+			Param(clip, \curveOut, ControlSpec(-5,5,\lin, 0,0)),
+		])	
+	};
 	refresh = {
 		//debug("refresh from ClipTimeline_ClipEditor");
 		eventlist.changed(\refresh);
@@ -2753,7 +2764,7 @@ WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 		* params.collect({ arg param;
 			//param.asView
 			HLayout(
-				StaticText.new.string_(param.property).minWidth_(110),
+				ParamViewToolBox.attachContextMenu(param, StaticText.new.string_(param.property).minWidth_(110)),
 				if(param.spec.isKindOf(TagSpec)) {
 					param.asPopUpMenu;
 				} {

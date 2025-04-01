@@ -4922,6 +4922,10 @@ DictionaryParam : BaseParam {
 		};
 	}
 
+	unset {
+		target[property] = nil;
+	}
+
     isSet {
 		^target[property].notNil
     }
