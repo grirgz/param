@@ -885,19 +885,35 @@ ProtoTemplateDef(\SampleTimelineView, (
 	copyAction: { arg self;
 		var selnodes;
 		var cursor = self.timeline_model.selection_cursor;
+		var previewcursor = self.timeline_model.cursor;
 		var startpos, endpos;
 		var buf = self.timeline_model.buffer;
 		var model = self.timeline_model;
+		var pev;
 		//[ cursor.startPosition, cursor.endPosition ].debug("copy start end");
+		var startp, endp;
+
+		startp = ( cursor.startPosition ?? { previewcursor.startPosition ? 0 } );
+		endp = ( cursor.endPosition ?? { previewcursor.endPosition ? 1 } );
 
 		buf.loadToFloatArray(action:{ arg arr;
-			startpos = cursor.startPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+			startpos = startp/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 			startpos = startpos.round.asInteger;
-			endpos = cursor.endPosition/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
+			endpos = endp/model.tempoClock.tempo * buf.sampleRate * buf.numChannels;
 			endpos = endpos.round.asInteger;
 			//"ém1".debug;
 			ParamViewToolBox.clipboard.sampleTimeline = arr[startpos..endpos];
-		})
+		});
+
+		// ClipTimeline pasting support
+		pev = self.timeline_model.asPatternEvent;
+		pev[\event_dropdur] = startp;
+		pev[\sustain] = endp - startp;
+		pev[\midinote] = 0;
+		if(ParamViewToolBox.clipboard.clipTimeline.isNil) {
+			ParamViewToolBox.clipboard.clipTimeline = ();
+		};
+		ParamViewToolBox.clipboard.clipTimeline.nodes = [pev];
 
 	},
 

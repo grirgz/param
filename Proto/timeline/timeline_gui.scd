@@ -312,6 +312,10 @@ ProtoTemplateDef(\TimelinePanelView, (
 					"paste!".debug;
 					self.pasteAction;
 				};
+				if(keycode == $V.ascii) { // ^V
+					"paste in place!".debug;
+					self.pasteAction(false);
+				};
 				if(keycode == $s.ascii) { // ^s
 					"split!".debug;
 					self.splitAction;
@@ -990,6 +994,11 @@ ProtoTemplateDef(\TimelinePanelView, (
 						self.pasteAction;
 					})
 				},
+				if(self.clipboard.nodes.notNil) {
+					MenuAction("Paste in place", {
+						self.pasteAction(false);
+					})
+				},
 				MenuAction("Split", {
 					self.splitAction;
 				}).enabled_(self.timeline.selectionHasCrossingNodes),
@@ -1238,7 +1247,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 				delta = self.timeline.lastGridPos - self.selection_rect.origin;
 			} {
 				var node = self.clipboard.nodes.first;
-				delta = self.timeline.lastGridPos - Point(node.absTime, node[self.timeline.valueKey]);
+				delta = self.timeline.lastGridPos - Point(node.absTime ? 0, node[self.timeline.valueKey] ? 0);
 			};
 			if(useSameRows == true) {
 				delta.y = 0
@@ -1252,8 +1261,8 @@ ProtoTemplateDef(\TimelinePanelView, (
 				var newnode;
 				newnode = event.copy;
 				//[newnode, delta].debug("newnode, delta");
-				newnode[\absTime] = newnode[\absTime] + delta.x;
-				newnode[self.timeline.valueKey] = newnode[self.timeline.valueKey] + delta.y;
+				newnode[\absTime] = ( newnode[\absTime] ? 0 ) + delta.x;
+				newnode[self.timeline.valueKey] = ( newnode[self.timeline.valueKey] ? 0 ) + delta.y;
 				self.timeline.model.addEvent(newnode);
 			});
 			//self.timeline.model.changed(\refresh);
