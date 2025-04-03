@@ -2,7 +2,7 @@ title:: Easy tutorial for Param quark
 summary:: Learn the most basic and useful tricks
 categories:: GUI
 
-section::Automatic GUI Generation
+SECTION::Automatic GUI Generation
 
 
 code::
@@ -30,13 +30,49 @@ Pdef(\saw,
 
 Pdef(\saw).edit; // use default pdef editor
 
-WindowDef(\NdefEditor).front(Ndef(\saw)); // since Ndef already have an editor, you can use the default one with WindowDef
+WindowDef(\NdefEditor).front(Ndef(\saw, \saw)); // since Ndef already have an editor, you can use the default one with WindowDef
 ::
 
 
 
-section::NoteTimeline
+SECTION::NoteTimeline
 
 code::
 NoteTimeline(\note1).edit; // using it create it automatically
 ::
+
+Use Ctrl-click to create nodes.
+
+By default, it code::Pdef(\NoteTimeline_default):: as the instrument for the
+notes. You want to provide your own Pdef so you can tweak SynthDef parameters.
+
+code::
+(
+Pdef(\instr1, 
+	Pbind(
+		\instrument, \saw,
+	)
+);
+);
+
+NoteTimeline(\note1, Pdef(\instr1)).edit; // redefine instrument for \note1
+::
+
+
+SECTION::ClipTimeline
+
+ClipTimeline allow you to sequence Pdef, Ndef or other timelines on a timeline.
+You can also record some audio bus directly to a track of ClipTimeline.
+
+code::
+ClipTimeline(\scene1).edit;
+::
+
+Click on Add button at top left of the window and double-click
+code::Pdef(\saw):: and code::NoteTimeline(\note1):: then click OK to close the dialog. Now select \note1 in the list on the right and use Ctrl-click to add it to the timeline.
+
+For recording, click on the black circle button in some track header at the left
+to arm for recording. The popup below specify the bus to be recorded (0 by
+default, meaning the main output of supercollider). Then click record button,
+click again to stop recording.
+

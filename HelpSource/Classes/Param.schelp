@@ -12,7 +12,7 @@ LIST::
 ## link::Tutorials/Building blocks overview::. Nice overview of the most used classes
 ## link::Tutorials/Param tutorial::. Long tutorial on features of Param class
 ## link::Tutorials/Param cookbook::. Lot of code snippets for various tasks
-## link::Tutorials/Param Timelines::. Overview of timelines
+## link::Tutorials/Timelines::. Overview of timelines
 ## link::Guides/GUI_modifications::. Param quark has made some modifications to GUI work
 ## link::Guides/Param_modifications::. Param quark has made some general modifications
 ## You can also see examples in the Examples subfolder of the Param quark
