@@ -288,7 +288,13 @@ WindowDef(\TrackGrid, (
 			Param(Message(self.maintrack), \enableAutoSetOutbus, ParamBoolSpec()).asMenuAction,
 			Menu(
 				* WindowDef(\TrackMixerDef_advanced).proto.displayOptions.collect { arg item, idx;
-					var curval = self.trackFaders.first.proto.perform(item);
+					var curval;
+					if(self.maintrack.displayConfig.isNil) {
+						self.maintrack.displayConfig = ();
+					};
+					curval = self.maintrack.displayConfig.perform(item);
+					curval = curval ?? { self.trackFaders.first.proto.perform(item) };
+					self.maintrack.displayConfig.perform(item.asSetter, curval.not);
 					MenuAction(item, {
 						self.trackFaders.do { arg mixerview, idx;
 							mixerview.proto.perform(item.asSetter, curval.not)
@@ -379,10 +385,18 @@ WindowDef(\TrackGrid, (
 		child = self.maintrack.childAtOffset(trackidx);
 		if(child.notNil) {
 			var win = WindowDef(\customgrid_mixer+++trackidx, WindowDef(\TrackMixerDef_advanced));
+			var mproto;
 			mixer = child.mixer;
-			win.proto.showPlay = false;
 			//mixerview = win.asView(mixer);
 			mixerview = win.asView;
+			mproto = mixerview.proto;
+			mproto.neverShowPlay = true;
+			if(self.maintrack.displayConfig.notNil) {
+				self.maintrack.displayConfig.keysValuesDo { arg key,val;
+					mproto[key] = val;
+				};
+			};
+			mproto.refreshView;
 			// model_ is already defined in mixer view
 			//mixerview.debug("created mixerview");
 			mixerview.maxWidth_(200);
@@ -773,7 +787,7 @@ WindowDef(\TrackList, (
 		//})
 	},
 
-	makeTrackView: { arg self, child;
+	makeTrackView_old: { arg self, child;
 		var rowHeight = 80;
 		var rowHeight_inset = rowHeight - 5;
 		var model = self.model;
@@ -896,6 +910,107 @@ WindowDef(\TrackList, (
 		viewSelector.add_view(chanview);
 		chanview;
 	},
+
+	makeTrackView: { arg self, child;
+		var rowHeight = 30;
+		var rowHeight_inset = rowHeight - 5;
+		var model = self.model;
+		var idx = model.selectedPart.asInteger;
+		var cell = child.childAt(idx);
+		var linename = "%.%".format(model.key, idx).asSymbol;
+		var name = "%.%.%".format(model.key, childidx, idx).asSymbol;
+		var playbut = PlayerWrapper(cell).label_("").asView;
+		var lay;
+		var chanview = View.new;
+		var variableView;
+		var viewSelector = self.trackButtonSelector;
+		var childidx = child.index;
+		var tracknamebut; 
+
+		tracknamebut = BasicButton.new
+			.string_("%: %".format(child.index, child.label))
+			.action_({
+				//Log(\Param).debug("edit: idx%, instr %", childidx, child.instrument.asCompileString);
+				child.editInstrument;
+			})
+			.fixedWidth_(200)
+			.mouseDownAction_({ arg but, x, y, modifiers, buttonNumber, clickCount;
+				//[but, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+		
+				if(buttonNumber == 1) { // if right-click
+					self.makeTrackMenu(child, cell);
+				}
+			})
+		;
+  
+		variableView = View.new.followChange(child, \mixer, { arg view;
+			view.removeAll;
+			//Log(\Param).debug("mixer variableView: %, %, %", child.label, child.isMixerEnabled, child.mixer);
+			if(child.isMixerEnabled) {
+				view.layout = HLayout (
+					Param(Message(child.mixer), \muteMode, ParamBoolSpec()).asButton.string_("M").fixedSize_(Point(15,15)),
+					Param(Message(child.mixer), \soloMode, ParamBoolSpec()).asButton.string_("S").fixedSize_(Point(15,15)),
+					StackLayout(
+						child.mixer.asParam(\postfader).asSlider.orientation_(\horizontal).background_(Color.clear),
+						CompactServerMeterView(nil, 0,2, child.mixer.recbus).orientation_(\horizontal),
+					).mode_(\stackAll);
+				).spacing_(0).margins_(0)
+			}
+		});
+
+		//playbut.debug("i");
+		playbut.button.fixedWidth_(30);
+		//playbut.parentView.states = [
+		//[""],
+		//["", Color.black,ParamViewToolBox.color_ligth],
+		//];
+		//playbut.parentView.update;
+		lay = HLayout (
+			HLayout (
+				playbut,
+				tracknamebut,
+			),
+			[{
+				if(cell.isEmpty) {
+					BasicButton.new.string_("make score").action_({
+						cell.makeScore;
+						model.changed(\tracklist);
+					}).fixedHeight_(rowHeight_inset)
+				} {
+					var preview;
+					//var preview = cell.score.timeline.asPreview.fixedHeight_(rowHeight_inset);
+					//Log(\Param).debug("InstrumentTrackPart: cell %", cell);
+					preview = ( cell.asPreview ?? { View.new } ).fixedHeight_(rowHeight_inset);
+					//timelinePreviewList.add(preview);
+					//preview.timeline.areasize.x = model.areasizex ?? { preview.timeline.areasize.x };
+					//preview.timeline.changed(\areasize);
+					preview;
+				}
+
+			}.value, stretch:100],
+		);
+		chanview.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			//[view, x, y, modifiers, buttonNumber, clickCount, childidx].debug("mouseDownAction");
+			//view.background = ParamViewToolBox.color_dark;
+			//view.background = Color.grey;
+			viewSelector.select_item(childidx);
+			if(FileSystemProject.current.notNil) {
+
+				FileSystemProject.current.tracklist_selected_track = [\TrackListPart, linename -> model.linePlayerAt(idx)];
+				FileSystemProject.current.changed(\tracklist_selected_track);
+				FileSystemProject.current.tracklist_selected_track = [\InstrumentTrackPart, name -> cell];
+				FileSystemProject.current.changed(\tracklist_selected_track);
+				//FileSystemProject.current.tracklist_selected_track.debug("sel track");
+			}
+
+		});
+		lay.spacing_(3);
+		lay.margins_(0);
+		chanview.fixedHeight_(rowHeight);
+		chanview.layout_(lay);
+		viewSelector.add_view(chanview);
+		chanview;
+	},
 ));
 
 
@@ -903,56 +1018,63 @@ WindowDef(\TrackList, (
 (
 WindowDef(\TrackListMixer, { arg def, tracklist;
 	var mixers;
-	var mixerTemplate = ProtoClass((
-		sendCount: 8,
-		nullbuss: BusDef(\null, \audio, 2),
-	));
-	mixerTemplate.sendKnobCount.do { arg idx;
-		var key = ( \sendbus ++ idx ).asSymbol;
-		mixerTemplate[key] = { arg self; BusDef(key, \audio, 2) }
-	};
-	mixers = tracklist.existingChildren.collect { arg track, idx;
-		if(track.isMixerEnabled == true) {
-			var mixer = track.mixer;
-			var boxview = View.new;
-			var delayview;
-			var mixerview;
-			boxview.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-				if(buttonNumber == 1) {
-					//WindowDef(\SimpleMixerOverlayMenu).front(simpleMixer, boxview, x, y);
-					WindowDef(\TrackListMixerStrip_OverlayMenu).front(mixer, mixerTemplate, view, x, y)
-				};
-			});
-			delayview = TextField.new;
-			delayview.mapParam( Param(mixer.proxy, \postdelay, ControlSpec(0,0.1,\lin)) );
-			boxview.layout = VLayout (
-				PlayerWrapper(mixer.proxy)
-				.label_("%: %".format(track.index, mixer.name ?? mixer.key))
-				.asView,
-				mixerview = WindowDef(\TrackListMixerStrip).asView(mixer, mixerTemplate),
-				HLayout(StaticText.new.string_("postdelay:"), delayview),
-				Param(Message(mixer), \outbus,TagSpecDef(\BusDef)).asPopUpMenu.minWidth_(60).addAction({ 
-					mixer.play;
-					"kjkj".postln
-				}),
-			);
-			boxview.background = Color.gray;
-			mixerview.slider.minWidth_(10);
-			boxview.maxWidth_(260);
-			boxview.addUniqueMethod(\model_, { arg me, val;
-				mixerview.model = val;
-			});
-			boxview;
-		}
-	}.select(_.notNil).as(Array);
-	//def.windowName = simpleMixer.key ? "simpleMixer";
+	var menuButton;
+	var mainview = View.new;
 
-	HLayout(* mixers);
+	menuButton = BasicButton.new.string_("...").action_({
+		Menu(
+			//MenuAction("Save preset", {
+				//tracklist.savePresetCompileStringDialog;
+			//}),
+			//MenuAction("Load preset", {
+				//tracklist.loadPresetCompileStringDialog;
+			//}),
+			//Menu(
+				* WindowDef(\TrackMixerDef_advanced).proto.displayOptions.collect { arg item, idx;
+					var curval;
+					if(tracklist.displayConfig.isNil) {
+						tracklist.displayConfig = ();
+					};
+					curval = tracklist.displayConfig.perform(item);
+					curval = curval ?? { mixers.first.proto.perform(item) };
+					MenuAction(item, {
+						tracklist.displayConfig.perform(item.asSetter, curval.not);
+						mixers.do { arg mixerview, idx;
+							mixerview.proto.perform(item.asSetter, curval.not)
+						};
+					}).checked_(curval)
+				}
+				//++ [
+					//Param(Message(self.maintrack), \showTrackHeaders, ParamBoolSpec()).asMenuAction(),
+					//Param(Message(self.maintrack), \showRecorderView, ParamBoolSpec()).asMenuAction(),
+				//]
+			//).title_("Mixer layout"),
+		).front
+	});
+	menuButton.fixedWidth_(20);
+
+
+	//HLayout(* mixers ++ [menuButton]);
+	mainview.followChange(tracklist, \tracklist, {
+
+		mixers = tracklist.existingChildren.collect { arg track, idx;
+			var mixer = track.mixer;
+			var mproto;
+			var boxview;
+
+			boxview = WindowDef(\TrackList_mixer+++idx, WindowDef(\TrackMixerDef_advanced)).asView;
+			mproto = boxview.proto;
+			mproto.track = track;
+			boxview;
+		}.as(Array);
+		mainview.layout = HLayout(* mixers ++ [[ menuButton, align:\top ], nil]);
+	});
+	mainview;
 });
 
 
 WindowDef(\TrackListMixerStrip, { arg def, mixer, mixerTemplate;
+	// not used anymore
 		var sendKnobCount = 8;
 		var param;
 		var sends = [], allsends = [];
@@ -989,28 +1111,39 @@ WindowDef(\TrackListMixerStrip, { arg def, mixer, mixerTemplate;
 			)
 		);
 		layout.addUniqueMethod(\model_, { arg me, mixer;
-			if(mixer.isKindOf(Volume)) {
-				//"volume".debug;
-				param = Param(mixer, \volume);
-				sends = mixerTemplate.sendCount.collect({ arg x; x -> nil });
-			} {
-				//"mixer".debug;
-				param = mixer.asParam(\postfader);
-				allsends = mixerTemplate.sendCount.collect({ arg x; x -> mixer.asParam(\send+++x) });
-				sends = allsends.select{ arg assoidx;
-					var idx = assoidx.key;
-					var bus = mixerTemplate[\sendbus +++ idx].value(mixerTemplate);
-					bus != mixerTemplate.nullbus
+			if(mixer.notNil) {
+
+				if(mixer.isKindOf(Volume)) {
+					//"volume".debug;
+					param = Param(mixer, \volume);
+					sends = mixerTemplate.sendCount.collect({ arg x; x -> nil });
+				} {
+					//"mixer".debug;
+					param = mixer.asParam(\postfader);
+					allsends = mixerTemplate.sendCount.collect({ arg x; x -> mixer.asParam(\send+++x) });
+					sends = allsends.select{ arg assoidx;
+						var idx = assoidx.key;
+						var bus = mixerTemplate[\sendbus +++ idx].value(mixerTemplate);
+						bus != mixerTemplate.nullbus
+					};
 				};
+				//[slider, param].debug("slider, param: what ?");
+				slider.mapParam(param);
+				textfield.mapParam(param);
+				knobs.do({ arg k, idx; 
+					var send = sends[idx] ?? { allsends[idx] }; 
+					k.mapParam(send.value); 
+					k.toolTip = "%: %".format(send.key, mixerTemplate[\sendbus +++ send.key].value(mixerTemplate));
+				});
+				slider.followChange(mixerTemplate)
+			} {
+				slider.mapParam(nil);
+				textfield.mapParam(nil);
+				knobs.do({ arg k, idx; 
+					k.mapParam(nil);
+					k.toolTip = "";
+				});
 			};
-			//[slider, param].debug("slider, param: what ?");
-			slider.mapParam(param);
-			textfield.mapParam(param);
-			knobs.do({ arg k, idx; 
-				var send = sends[idx] ?? { allsends[idx] }; 
-				k.mapParam(send.value); 
-				k.toolTip = "%: %".format(send.key, mixerTemplate[\sendbus +++ send.key].value(mixerTemplate));
-			})
 		});
 		if(mixer.notNil) {
 			layout.model = mixer;

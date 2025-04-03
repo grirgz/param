@@ -22,7 +22,6 @@
 /// base class
 
 (
-// TODO: should be named TrackList
 TrackTemplateDef(\TrackList, (
 	parent: TrackTemplateDef(\PlayerGrid),
 
@@ -401,6 +400,7 @@ TrackTemplateDef(\CustomTrack, (
 	isMixerEnabled: false,
 
 	isMixerEnabled_: { arg self, val;
+		var wasPlaying = self.isPlaying;
 		self[\isMixerEnabled] = val;
 		if(val == true) {
 			if(self.parentTrack.mixer.notNil) {
@@ -441,6 +441,10 @@ TrackTemplateDef(\CustomTrack, (
 					self.init_mixer_busses;
 				};
 				self.outBus = self.mixer_obj.inbus;
+				[wasPlaying, self.isPlaying].debug("alors ca play ?");
+				if(wasPlaying) {
+					self.mixer_obj.play;
+				};
 			}
 		} {
 			self.outBus = 0;

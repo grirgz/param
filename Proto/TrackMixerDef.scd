@@ -719,6 +719,7 @@ WindowDef(\TrackMixerDef_advanced, (
 	showMeter: true,
 	showMuteSolo: true,
 	showPlay: true,
+	neverShowPlay: false,
 	showFx: false,
 	showSends: true,
 	showFaderTextField: true,
@@ -784,6 +785,7 @@ WindowDef(\TrackMixerDef_advanced, (
 	makeSendKnobs: { arg self, mixer;
 		var lay;
 		var knobs;
+		self.showSends.debug("makeSendKnobs: showSends");
 		if(self.showSends) {
 			lay = VLayout(*
 				knobs = self.sendCount.collect({ 
@@ -819,11 +821,20 @@ WindowDef(\TrackMixerDef_advanced, (
 			mixer = () // ugly trick to not have to test if model is nil everywhere
 		};
 		boxview.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			if(buttonNumber == 1) {
 				//WindowDef(\SimpleMixerOverlayMenu).front(simpleMixer, boxview, x, y);
+				[self.model, mixer].debug("model");
 				if(self.model.notNil) {
 					WindowDef(\TrackMixerDef_advanced_OverlayMenu).front(self, view, x, y)
+				} {
+					if(self.track.notNil) {
+						Menu(
+							MenuAction("Enable mixer", { 
+								self.track.isMixerEnabled = true;
+							})
+						).front
+					};
 				}
 			};
 		});
@@ -836,7 +847,7 @@ WindowDef(\TrackMixerDef_advanced, (
 		};
 		boxview.layout = VLayout ( 
 			*[
-				if(self.showPlay) {
+				if(self.showPlay and: { self.neverShowPlay.not }) {
 					playbut = PlayerWrapper(mixer.proxy)
 						.label_("%".format(mixer.name ?? mixer.key))
 						.asView
@@ -886,8 +897,10 @@ WindowDef(\TrackMixerDef_advanced, (
 	},
 
 	setModel: { arg self, model;
-		// TODO
 		var mixer, param;
+		if(model == ()) {
+			model = nil;
+		};
 		self[\model] = model;
 		mixer = model;
 		
@@ -904,7 +917,9 @@ WindowDef(\TrackMixerDef_advanced, (
 
 			//[mixer, param].debug("TrackMixerDef_advanced: setModel: mixer fader param");
 
+			self.slider.enabled = true;
 			self.slider.mapParam(param);
+			self.slider.background = Color.clear;
 
 			if(self.meterOut.notNil) {
 				var bus;
@@ -956,6 +971,8 @@ WindowDef(\TrackMixerDef_advanced, (
 			};
 
 			self.slider.mapParam(nil);
+			self.slider.enabled = false;
+			self.slider.background = Color.grey;
 
 			if(self.meterOut.notNil) {
 				var bus;
@@ -987,9 +1004,37 @@ WindowDef(\TrackMixerDef_advanced, (
 		}
 	},
 
+	track_: { arg self, track;
+		// track from TrackList support
+		self[\track] = { track };
+		self.boxview.followChange(track, \mixer, {
+			if(track.parentTrack.notNil) {
+				if(track.parentTrack.displayConfig.notNil) {
+					track.parentTrack.displayConfig.asCompileString.debug("setting initial options");
+					track.parentTrack.displayConfig.keysValuesDo { arg key,val;
+						[key,val].debug("set");
+						self[key] = val; // do not trigger refreshView
+					};
+				};
+			};
+			self.boxview.model = track.mixer;
+			self.refreshView;
+			if(self.playerButton.notNil) {
+				self.playerButton.label = "%: %".format(track.index, track.label);
+				self.playerButton.toolTip = "%: %".format(track.index, track.label);
+			};
+		});
+	},
+
 	refreshView: { arg self;
 		self.boxview.removeAll;
 		self.makeMixerView(self.model);
+		if(self.track.notNil) {
+			if(self.playerButton.notNil) {
+				self.playerButton.label = "%: %".format(self.track.index, self.track.label);
+				self.playerButton.toolTip = "%: %".format(self.track.index, self.track.label);
+			};
+		};
 	},
 
 	makeTinyFxView: { arg self, mixer;
@@ -1065,6 +1110,7 @@ WindowDef(\TrackMixerDef_advanced_OverlayMenu, { arg def, mixerview, view, x=600
 	var sends;
 	var mixer = mixerview.model;
 	var sendView;
+	var optionView;
 	//[x, y].debug("xy");
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
@@ -1073,6 +1119,7 @@ WindowDef(\TrackMixerDef_advanced_OverlayMenu, { arg def, mixerview, view, x=600
 	};
 	inview = View.new;
 	sendView = View.new;
+	optionView = View.new;
 
 
 	layout = VLayout (
@@ -1082,13 +1129,8 @@ WindowDef(\TrackMixerDef_advanced_OverlayMenu, { arg def, mixerview, view, x=600
 			//Param(Message(mixerTemplate), \trackCount, ControlSpec(1,16,\lin,1)).asNumberBox,
 		//),
 		WindowDef(\TrackMixerDef_fxlist).asView(mixer),
-		HLayout (
-			* mixerview.displayOptions.collect { arg item, idx;
-				def.waitIfNeeded;
-				Param(Message(mixerview), item, ParamBoolSpec()).asButton;
-			};
-		),
-		[BasicButton.new.string_("> Sends").background_(Color.clear).action_({
+		[BasicButton.new.string_("> Sends        ").background_(Color.clear).action_({
+			// spaces in label to align to left
 			sendView.removeAll;
 			sends = mixerview.sendCount.collect({ arg idx;
 				HLayout(
@@ -1101,6 +1143,21 @@ WindowDef(\TrackMixerDef_advanced_OverlayMenu, { arg def, mixerview, view, x=600
 			);
 		}), align:\left],
 		sendView,
+		[BasicButton.new.string_("> Display options").background_(Color.clear).action_({
+			optionView.removeAll;
+			optionView.layout = HLayout (
+				* mixerview.displayOptions.collect { arg item, idx;
+					def.waitIfNeeded;
+					Param(Message(mixerview), item, ParamBoolSpec()).asButton;
+				};
+			).margins_(0);
+		}), align:\left],
+		optionView,
+		if(mixerview.track.notNil) {
+			BasicButton.new.string_("Disable mixer").action_({
+				mixerview.track.isMixerEnabled = false;
+			})
+		},
 		nil
 	);
 	//def.windowDo { arg win;
