@@ -3848,6 +3848,10 @@ PdefParam : BaseAccessorParam {
 			var val;
 			var def = this.default;
 			if(this.propertyArray.last == \stepseq) {
+				if(def.isSequenceableCollection.not) {
+					// this is ugly bug fix, why it is not an array ?
+					def = [def];
+				};
 				val = PstepSeq(def.extend(size, def.first), repeats)
 			} {
 				val = PstepSeq(def!size, repeats)

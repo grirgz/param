@@ -575,6 +575,49 @@ ParamGroupLayout {
 		)
 	}
 
+	*buffer_load_button { arg param;
+		^BasicButton.new.string_("Load").action_({
+			WindowDef(\filedialog_sample).front(nil, { arg path;
+				switch(param.spec.numChannels,
+					1, { param.set(BufDef.mono(path).bufnum) },
+					2, { param.set(BufDef.stereo(path).bufnum) },
+					{ param.set(BufDef(path).bufnum) }
+				);
+				{
+					param.spec.tagSpec.changed(\list);
+					param.sendChanged;
+				}.defer(0.1);
+
+			})
+		}).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			if(buttonNumber == 1) {
+				Menu(
+					Menu(
+						* TagSpecDef(\RandomBufferLibrary).list.collect { arg asso, idx;
+							var key = asso.key;
+							var val = asso.value;
+
+							MenuAction(key, {
+								var path = val[val.size.rand].value;
+								switch(param.spec.numChannels,
+									1, { param.set(BufDef.mono(path).bufnum) },
+									2, { param.set(BufDef.stereo(path).bufnum) },
+									{ param.set(BufDef(path).bufnum) }
+								);
+								{
+									param.spec.tagSpec.changed(\list);
+									param.sendChanged;
+								}.defer(0.1);
+							})
+						}
+					).title_("Random")
+				).front;
+			};
+		})
+
+	}
+
 	*two_panes { arg pg, label_mode;
 
 		var layout;
@@ -625,6 +668,11 @@ ParamGroupLayout {
                     } {
                         param.asBusPopUpMenu;
                     },
+					if(param.spec.isKindOf(ParamBufferSpec)) {
+						this.buffer_load_button(param)
+					} {
+						nil
+					};
 					//param.asTextField,
 				]
 			}) ++

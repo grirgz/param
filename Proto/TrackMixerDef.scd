@@ -756,8 +756,18 @@ WindowDef(\TrackMixerDef_advanced, (
 			} {
 				bus = BusDef(\zero, \audio);
 			};
+			if(self.meterOut.notNil) {
+				self.meterOut.stop;
+			};
+			Log(\Param).debug("makeFader: mixer %, param %, bus %".format(mixer, param, bus));
 			meterout = CompactServerMeterView(nil, 0,2, bus);
+			//meterout = ();
+			//meterout.stop;
 			self.meterOut = meterout;
+			//slider.onClose = {
+				//"mixer fader close!".debug;
+				//self.meterOut.stop;
+			//};
 			stack = StackLayout(
 				slider, 
 				meterout.view,
@@ -925,7 +935,7 @@ WindowDef(\TrackMixerDef_advanced, (
 				var bus;
 				if(mixer[self.meterMode].notNil) {
 					bus = mixer[self.meterMode].value(mixer);
-					self.meterOut.bus = bus;
+					self.meterOut.bus = bus; // debug comment test
 				} {
 					self.meterOut.stop;
 					//bus = BusDef(\zero, \audio);

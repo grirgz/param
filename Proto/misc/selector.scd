@@ -66,9 +66,9 @@ ProtoTemplateDef(\ViewSelector, (
 	},
 
 	select_item: { arg self, x, views;
-		"select_item".debug;
+		//"select_item".debug;
 		views = views ?? {self.views};
-		[self.selected_index, x, views].debug("selector.select_item: old selected_index, new one, views");
+		//[self.selected_index, x, views].debug("selector.select_item: old selected_index, new one, views");
 		x = x.clip(0, views.size-1);
 		if(views.size > 0) {
 			self.old_selected_index = self.selected_index;
@@ -158,7 +158,7 @@ ProtoTemplateDef(\SimpleViewSelector, (
 	},
 
 	selectIndex: { arg self, idx;
-		idx.debug("selectIndex");
+		//idx.debug("selectIndex");
 		self.oldSelectedIndex = self.selectedIndex;
 		self.selectedIndex = idx;
 		self.changed(\selectedIndex, idx);

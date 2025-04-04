@@ -78,6 +78,7 @@ TrackTemplateDef(\TrackList, (
 			newtrack.label = label
 		};
 		self.changed(\tracklist);
+		self.changed(\trackCount);
 		
 	},
 
@@ -85,6 +86,7 @@ TrackTemplateDef(\TrackList, (
 		self.childAt(index).clearTrack;
 		self.children[index] = nil;
 		self.changed(\tracklist);
+		self.changed(\trackCount);
 	},
 
 	////// others

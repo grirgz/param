@@ -143,11 +143,12 @@ TrackTemplateDef(\NoteTimelineTrack, (
 
 
 	playerSynthDef_: { arg self, instr;
+		// not used anymore, editor use PbindefEditor to change instrument
 		// TagSpecDef(\SynthDef) values are SynthDesc, not SynthDef key
 		//Log(\Param).debug("TrackInstrument_NoteTimelineTrack set playerSynthDef %", instr);
 		self[\playerSynthDef] = instr;
 		Pbindef(self.source.key, \instrument, instr);
-		self.source.addHalo(\instrument, instr);
+		//self.source.addHalo(\instrument, instr);
 		self.changed(\playerSynthDef);
 	},
 	makeScore: { arg self;
@@ -231,29 +232,34 @@ TagSpecDef(\CustomTrackTemplate).addUnique(\NoteTimelineTrack -> TrackTemplateDe
 );
 
 WindowDef(\PdefInstrumentEditor, { arg def, instr;
-	var target = instr.source;
-	var pwrapper = PlayerWrapper(target);
-	var paramView = View.new;
-	paramView.followChange(instr, \source, {
-		pwrapper.target = target;
-	});
-	paramView.followChange(instr, \playerSynthDef, {
-		//Log(\Param).debug("paramView: followChange playerSynthDef");
-		paramView.removeAll;
-		paramView.layout = ParamGroupLayout.two_panes(target.asParamGroup(nil, false, [\gate, \doneAction]));
-	});
-	VLayout(
-		HLayout (
-			pwrapper.asView,
-			Param(Message(instr), \playerSynthDef, TagSpecDef(\SynthDef_keys)).asPopUpMenu,
-			if(target.getHalo(\edit).notNil) {
-				BasicButton.new.string_("Special edit").action_({
-					target.getHalo(\edit).value(target);
-				})
-			}
-		),
-		paramView,
-	);
+
+	instr.debug("instr");
+	instr.source.debug("source");
+	WindowDef(\PbindefEditor).asView(instr.source);
+
+	//var target = instr.source;
+	//var pwrapper = PlayerWrapper(target);
+	//var paramView = View.new;
+	//paramView.followChange(instr, \source, {
+		//pwrapper.target = target;
+	//});
+	//paramView.followChange(instr, \playerSynthDef, {
+		////Log(\Param).debug("paramView: followChange playerSynthDef");
+		//paramView.removeAll;
+		//paramView.layout = ParamGroupLayout.two_panes(target.asParamGroup(nil, false, [\gate, \doneAction]));
+	//});
+	//VLayout(
+		//HLayout (
+			//pwrapper.asView,
+			//Param(Message(instr), \playerSynthDef, TagSpecDef(\SynthDef_keys)).asPopUpMenu,
+			//if(target.getHalo(\edit).notNil) {
+				//BasicButton.new.string_("Special edit").action_({
+					//target.getHalo(\edit).value(target);
+				//})
+			//}
+		//),
+		//paramView,
+	//);
 });
 
 //////// KitTimeline

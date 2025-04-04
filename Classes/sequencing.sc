@@ -61,6 +61,16 @@ PstepSeq : ListPattern {
 		this.list.changed(\cursor, nil, 0); // turn off all cells
 	}
 
+	stepCount_ { arg count;
+		// with MultiSliderView, just change the GUI size and it will update the list
+		list = list.extend(count.asInteger, list.last);
+		this.changed(\stepCount);
+	}
+
+	stepCount {
+		^list.size;
+	}
+
     asParam { 
 		^Param(Message(this), \list)
     }

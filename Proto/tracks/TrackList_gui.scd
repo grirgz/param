@@ -943,20 +943,20 @@ WindowDef(\TrackList, (
 			})
 		;
   
-		variableView = View.new.followChange(child, \mixer, { arg view;
-			view.removeAll;
-			//Log(\Param).debug("mixer variableView: %, %, %", child.label, child.isMixerEnabled, child.mixer);
-			if(child.isMixerEnabled) {
-				view.layout = HLayout (
-					Param(Message(child.mixer), \muteMode, ParamBoolSpec()).asButton.string_("M").fixedSize_(Point(15,15)),
-					Param(Message(child.mixer), \soloMode, ParamBoolSpec()).asButton.string_("S").fixedSize_(Point(15,15)),
-					StackLayout(
-						child.mixer.asParam(\postfader).asSlider.orientation_(\horizontal).background_(Color.clear),
-						CompactServerMeterView(nil, 0,2, child.mixer.recbus).orientation_(\horizontal),
-					).mode_(\stackAll);
-				).spacing_(0).margins_(0)
-			}
-		});
+		//variableView = View.new.followChange(child, \mixer, { arg view;
+			//view.removeAll;
+			////Log(\Param).debug("mixer variableView: %, %, %", child.label, child.isMixerEnabled, child.mixer);
+			//if(child.isMixerEnabled) {
+				//view.layout = HLayout (
+					//Param(Message(child.mixer), \muteMode, ParamBoolSpec()).asButton.string_("M").fixedSize_(Point(15,15)),
+					//Param(Message(child.mixer), \soloMode, ParamBoolSpec()).asButton.string_("S").fixedSize_(Point(15,15)),
+					//StackLayout(
+						//child.mixer.asParam(\postfader).asSlider.orientation_(\horizontal).background_(Color.clear),
+						//CompactServerMeterView(nil, 0,2, child.mixer.recbus).orientation_(\horizontal),
+					//).mode_(\stackAll);
+				//).spacing_(0).margins_(0)
+			//}
+		//});
 
 		//playbut.debug("i");
 		playbut.button.fixedWidth_(30);
@@ -1055,7 +1055,8 @@ WindowDef(\TrackListMixer, { arg def, tracklist;
 
 
 	//HLayout(* mixers ++ [menuButton]);
-	mainview.followChange(tracklist, \tracklist, {
+	mainview.followChange(tracklist, \trackCount, {
+		mainview.removeAll;
 
 		mixers = tracklist.existingChildren.collect { arg track, idx;
 			var mixer = track.mixer;
