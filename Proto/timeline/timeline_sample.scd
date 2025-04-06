@@ -389,7 +389,11 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 
 	bufferNumBeats: { arg self;
 		if(self.buffer.notNil) {
-			self.buffer.numFrames / self.buffer.sampleRate * TempoClock.default.tempo;
+			if(self.buffer.numFrames.notNil) {
+				self.buffer.numFrames / self.buffer.sampleRate * TempoClock.default.tempo;
+			} {
+				Log(\Param).debug("SampleTimeline: buffer is empty %".format(self.buffer));
+			};
 		}
 	},
 

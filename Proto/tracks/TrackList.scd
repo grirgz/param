@@ -279,7 +279,7 @@ TrackTemplateDef(\CustomTrack, (
 	clearAllTrackParts: { arg self;
 		self.children.do { arg child;
 			if(child.notNil) {
-				child.clearPart;
+				child.clearTrack;
 			}
 		}
 	},
@@ -587,7 +587,7 @@ TrackTemplateDef(\CustomTrackPart, (
 	},
 
 	clearTrack: { arg self;
-		self.clearPart;
+		//self.clearPart; // no need to erase score because it recreate object
 		self.parentTrack.children[self.index] = nil; // erase from parent, force recreate with good template
 		self.parentTrack.changed(\children);
 		Log(\Param).debug("clearTrack: erased %", self.index);

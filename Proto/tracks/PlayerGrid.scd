@@ -125,7 +125,7 @@ TrackTemplateDef(\PlayerTrackPart, (
 		//}).front;
 	},
 
-	selectSourceDialog: { arg self;
+	selectSourceDialog: { arg self, callback;
 		var source;
 		var default;
 		if(self.source.isKindOf(PlayerWrapper)) {
@@ -135,8 +135,10 @@ TrackTemplateDef(\PlayerTrackPart, (
 		};
 	   	default = ProtoDef(\GlobalLibrary).targetToLibId(source);
 		WindowDef(\GlobalLibrary_select).front(default, { arg player;
+			var val = player.last.value;
 			//~child = child;
-			self.source = player.last.value;
+			self.source = val;
+			callback.value(player)
 		}, [\Player])
 	},
 

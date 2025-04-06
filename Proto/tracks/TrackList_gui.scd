@@ -629,6 +629,20 @@ WindowDef(\TrackList, (
 		self.mainView;
 	},
 
+	clipboard: { arg self;
+		ParamViewToolBox.clipboard.trackDef
+	},
+	clipboard_: { arg self, val;
+		ParamViewToolBox.clipboard.trackDef = val;
+	},
+
+	clipboardSection: { arg self;
+		ParamViewToolBox.clipboard.trackDef_section
+	},
+	clipboardSection_: { arg self, val;
+		ParamViewToolBox.clipboard.trackDef_section = val;
+	},
+
 	makeToolbar: { arg self;
 		var model = self.model;
 		var playButton;
@@ -674,8 +688,58 @@ WindowDef(\TrackList, (
 		)
 	},
 
+	duplicateSection: { arg self, from, to;
+		from = from ?? {self.model.selectedPart};
+		to = to ?? { from+1 };
+		[from, to].debug("duplicateSection");
+		if(self.model.sectionAt(to).existingChildren.every(_.isEmpty)) {
+			self.model.sectionAt(from).existingChildren.do { arg fromchild, idx;
+				var tochild = self.model.sectionAt(to).childAt(fromchild.parentTrack.index);
+				[fromchild, tochild].debug("duplicateSection pasteScore");
+				self.pasteScore(fromchild, tochild);
+			};
+		} {
+			Log(\Param).debug("can't duplicate, next section is not empty");
+		}
+		
+	},
+
+	copySection: { arg self, from;
+		from = from ?? {self.model.selectedPart};
+		self.clipboardSection = self.model.sectionAt(from);
+	},
+
+	pasteSection: { arg self, to;
+		to = to ?? {self.model.selectedPart};
+		if(self.clipboardSection.notNil) {
+			if(self.model.sectionAt(to).existingChildren.every(_.isEmpty)) {
+				self.clipboardSection.existingChildren.do { arg fromchild, idx;
+					var tochild = self.model.sectionAt(to).childAt(fromchild.parentTrack.index);
+					[fromchild, tochild].debug("pasteSection pasteScore");
+					self.pasteScore(fromchild, tochild);
+				};
+			};
+			
+		};
+	},
+
 	showGeneralOverlayMenu: { arg self, view, x, y;
+		var sectionEmpty = self.model.sectionAt(self.model.selectedPart).isEmpty;
 		Menu(
+			if(sectionEmpty) {
+				MenuAction("Paste section", {
+					self.pasteSection;
+				}).enabled_(self.clipboardSection.notNil)
+			} {
+				MenuAction("Copy section", {
+					self.copySection;
+				})
+			},
+			MenuAction("Duplicate section", {
+				self.duplicateSection
+			}).enabled_(sectionEmpty.not),
+
+			MenuAction.separator,
 			MenuAction("Save", {
 				self.model.savePresetCompileStringDialog;
 			}),
@@ -728,9 +792,17 @@ WindowDef(\TrackList, (
 		view;
 	},
 
+	pasteScore: { arg self, fromcell, tocell;
+		var cell = tocell;
+		if(self.clipboard.notNil) {
+			cell.parentTrack.children[cell.index] = fromcell.clone(cell.parentTrack, cell.index);
+			cell.parentTrack.parentTrack.changed(\tracklist);
+		};
+	},
+
 	makeTrackMenu: { arg self, child, cell;
 		
-		Menu(
+		Menu( *[
 			CustomViewAction(
 				View.new.layout_(HLayout (
 					StaticText.new.string_("label:"),
@@ -741,28 +813,39 @@ WindowDef(\TrackList, (
 				)),
 			),
 			if(cell.isEmpty) {
-				MenuAction("Create and edit score", {
-					cell.makeScore;
-					self.model.changed(\tracklist); // overkill refresh
-					cell.edit;
-				})
+				[
+					MenuAction("Create and edit score", {
+						cell.makeScore;
+						self.model.changed(\tracklist); // overkill refresh
+						cell.edit;
+					}),
+					MenuAction("Paste score", {
+						self.pasteScore(self.clipboard, cell);
+					}).enabled_(self.clipboard.notNil);
+				]
 			} {
-				MenuAction("Edit score", {
-					cell.edit;
-				})
+				[
+					MenuAction("Edit score", {
+						cell.edit;
+					}),
+					MenuAction("Copy score", {
+						self.clipboard = cell;
+					})
+				]
 			},
 			MenuAction("Edit instrument", {
 				child.editInstrument;
 			}),
 			Param(Message(child), \isMixerEnabled, ParamBoolSpec()).asMenuAction("Enable mixer"),
 			MenuAction.separator,
-			MenuAction("clear score", {
-				cell.clearPart;
+			MenuAction("Clear score", {
+				cell.clearTrack;
+				self.model.changed(\tracklist);
 			}).enabled_(cell.isEmpty.not),
-			MenuAction("remove track", {
+			MenuAction("Remove track", {
 				self.model.removeTrack(child.index);
 			}).enabled_(child.isEmpty.not)
-		).front;
+		].flat).front;
 
 		//WindowDef(\OverlayMenu).front(but, x, y, { arg def;
 		//VLayout (

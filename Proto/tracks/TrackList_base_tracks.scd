@@ -19,7 +19,9 @@ TrackTemplateDef(\PlayerWrapperTrack, (
 TrackTemplateDef(\PlayerWrapperTrackPart, (
 	parent: TrackTemplateDef(\CustomInstrumentTrackPart),
 	selectSourceDialog: { arg self;
-		TrackTemplateDef(\playerwrapper)[\selectSourceDialog].value(self);
+		TrackTemplateDef(\PlayerTrackPart)[\selectSourceDialog].value(self, {
+			self.parentTrack.parentTrack.changed(\tracklist);
+		});
 	},
 
 	asPreview: { arg self;
@@ -92,10 +94,48 @@ TrackTemplateDef(\PbindefTrackPart, (
 		WindowDef(\PbindefEditor).front(self.score);
 	},
 	score_: { arg self, val;
-		self[\score] = val;
-		self[\pchain] = Pdef( (self.trackKey++\_chain).asSymbol, self.score <> self.parentTrack.score );
-		self[\proxy] = PlayerWrapper(self.pchain);
+		if(val.notNil) {
+			self[\score] = val;
+			self[\pchain] = Pdef( (self.trackKey++\_chain).asSymbol, self.score <> self.parentTrack.score );
+			self[\proxy] = PlayerWrapper(self.pchain);
+		} {
+			self[\score] = nil;
+			self[\pchain] = nil;
+			self[\proxy] = nil;
+		};
 	},
+
+	asPreview: { arg self;
+		var tkeys, val, label;
+		//View.new.layout_()
+		//StaticText.new.string_(self.score.source.get(\note))
+		tkeys = [\note, \degree, \freq];
+		tkeys.do { arg key, idx;
+			val = val ?? {
+				label = key;
+				self.score.source.at(key);
+			}
+		};
+		StaticText.new.string_("%: %".format(label, val.source.asCompileString)).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//if(buttonNumber == 1) {
+				self.edit;
+			//};
+		});
+	},
+
+	cloneScore: { arg self;
+		var newscore;
+		newscore = Pbindef(self.trackKey).source_(PbindProxy());
+		self.score.source.pairs.clump(2).collect { arg pair, idx;
+			//[ pair, pair[1].source.copy ].debug("clone");
+			newscore.source.set(pair[0], pair[1].source.copy);
+		};
+		//~newscore = newscore;
+		newscore.envir = self.score.envir.copy;
+		newscore;
+	},
+
 	makeScore: { arg self;
 		self.score = Pbindef(self.trackKey).source_(PbindProxy());
 		//self.proxy.debug("makeScore proxy end");
@@ -479,15 +519,15 @@ TrackTemplateDef(\ParamTimelineTrack, (
 TrackTemplateDef(\ParamTimelineTrackPart, (
 	parent: TrackTemplateDef(\NoteTimelineTrackPart),
 
-	//cloneScore: { arg self;
-		//var newscore;
-		//newscore = ParamTimeline(self.name+++\score, self.parentTrack.targetParam);
-		//newscore.eventList = self.score.eventList.clone;
-		//newscore.buffer = self.score.buffer;
-		//newscore.outBus = self.parentTrack.outBus;
-		//newscore.recorder.recBus = self[\score].recorder.recBus;
-		//newscore;
-	//},
+	cloneScore: { arg self;
+		var newscore;
+		newscore = ParamTimeline(self.name+++\score, self.parentTrack.targetParam);
+		newscore.eventList = self.score.eventList.clone;
+		newscore.buffer = self.score.buffer;
+		newscore.outBus = self.parentTrack.outBus;
+		newscore.recorder.recBus = self[\score].recorder.recBus;
+		newscore;
+	},
 
 	score_: { arg self, score;
 		self[\score] = score;
