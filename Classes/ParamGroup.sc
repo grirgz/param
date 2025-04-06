@@ -297,9 +297,9 @@ ParamGroup : List {
 		// use Pdef.envir
 		if(pdef.envir.notNil and: { pdef.envir.keys.size > 0 }) {
 			var pairs = pdef.envir.keys.as(Array).collect { arg key, idx;
-				"\t%, %\n".format(key.asCompileString, pdef.envir[key].asCompileString);
+				"\t%, %".format(key.asCompileString, pdef.envir[key].asCompileString);
 			};
-			^"%.set(\n%);\n".format(pdef.asCompileString, pairs.join(", "));
+			^"%.set(\n%\n);\n".format(pdef.asCompileString, pairs.join(",\n"));
 		} {
 			^""
 		}

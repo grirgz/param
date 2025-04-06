@@ -466,10 +466,11 @@ ProtoClassDef(\EventTimeline, (
 		}
 	},
 
-	asPreview: { arg self;
+	asPreview: { arg self, totalDur;
 		TimelinePreview.new
 			.mapEventList(self.eventList)
 			.areasize_(self.areasize)
+			.setViewportToClipBounds(totalDur)
 			.view.mouseDownAction_({ 
 				self.edit;
 			}).fixedHeight_(40);
@@ -1293,11 +1294,12 @@ ProtoClassDef(\ParamTimeline, (
 		x;
 	},
 
-	asPreview: { arg self;
+	asPreview: { arg self, totalDur;
 		TimelinePreview_Env.new
 			.mapEventList(self.eventList)
 			.mapParam(self.levelParam)
 			.areasize_(self.areasize)
+			.setViewportToClipBounds(totalDur)
 			.view.mouseDownAction_({ 
 				self.edit;
 			})
@@ -1578,11 +1580,12 @@ ProtoClassDef(\KitTimeline, (
 	//},
 
 
-	asPreview: { arg self;
+	asPreview: { arg self, totalDur;
 		TimelinePreview.new(\kitIndex)
 			.mapEventList(self.eventList)
 			.viewport_(Rect(0,0,1,1/4))
 			.areasize_(self.areasize)
+			.setViewportToClipBounds(totalDur)
 			.view.mouseDownAction_({ 
 				self.edit;
 			}).fixedHeight_(40);

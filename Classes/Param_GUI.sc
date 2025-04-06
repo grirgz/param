@@ -579,9 +579,9 @@ ParamGroupLayout {
 		^BasicButton.new.string_("Load").action_({
 			WindowDef(\filedialog_sample).front(nil, { arg path;
 				switch(param.spec.numChannels,
-					1, { param.set(BufDef.mono(path).bufnum) },
-					2, { param.set(BufDef.stereo(path).bufnum) },
-					{ param.set(BufDef(path).bufnum) }
+					1, { param.set(BufDef.mono(path)) },
+					2, { param.set(BufDef.stereo(path)) },
+					{ param.set(BufDef(path)) }
 				);
 				{
 					param.spec.tagSpec.changed(\list);
@@ -601,9 +601,9 @@ ParamGroupLayout {
 							MenuAction(key, {
 								var path = val[val.size.rand].value;
 								switch(param.spec.numChannels,
-									1, { param.set(BufDef.mono(path).bufnum) },
-									2, { param.set(BufDef.stereo(path).bufnum) },
-									{ param.set(BufDef(path).bufnum) }
+									1, { param.set(BufDef.mono(path)) },
+									2, { param.set(BufDef.stereo(path)) },
+									{ param.set(BufDef(path)) }
 								);
 								{
 									param.spec.tagSpec.changed(\list);

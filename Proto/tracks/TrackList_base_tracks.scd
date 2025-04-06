@@ -239,9 +239,10 @@ TrackTemplateDef(\NoteTimelineTrackPart, (
 	},
 
 	asPreview: { arg self;
-		var tlpreview = self.score.asPreview;
 		var model = self.parentTrack.parentTrack;
-		tlpreview.timeline.areasize.x = model.areasizex ?? { tlpreview.timeline.areasize.x };
+		var tlpreview = self.score.asPreview(model.areasizex);
+		//tlpreview.setViewportToClipBounds(model.areasizex);
+		//tlpreview.timeline.areasize.x = model.areasizex ?? { tlpreview.timeline.areasize.x };
 		tlpreview.timeline.changed(\areasize);
 		tlpreview;
 	},
@@ -626,9 +627,9 @@ TrackTemplateDef(\ClipTimelineTrackPart, (
 	},
 
 	asPreview: { arg self;
-		var tlpreview = self.score.asPreview;
 		var model = self.parentTrack.parentTrack;
-		tlpreview.timeline.areasize.x = model.areasizex ?? { tlpreview.timeline.areasize.x };
+		var tlpreview = self.score.asPreview(model.areasizex);
+		//tlpreview.timeline.areasize.x = model.areasizex ?? { tlpreview.timeline.areasize.x };
 		tlpreview.timeline.changed(\areasize);
 		tlpreview;
 	},

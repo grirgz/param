@@ -643,6 +643,10 @@ WindowDef(\TrackList, (
 		ParamViewToolBox.clipboard.trackDef_section = val;
 	},
 
+	previewLen_: { arg self, len;
+		self.model
+	},
+
 	makeToolbar: { arg self;
 		var model = self.model;
 		var playButton;

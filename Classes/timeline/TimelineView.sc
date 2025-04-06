@@ -1725,6 +1725,12 @@ TimelineView : SCViewHolder {
 		timeline.changed(\selectedNodes);
 	}
 
+	setViewportToClipBounds { arg totalDur;
+		var el = this.model;
+		this.areasize = Point(el.endTime, this.areasize.y);
+		this.viewport = this.gridRectToNormRect(Rect(el.startTime, 0, totalDur ?? { el.totalDur }, this.areasize.y));
+	}
+
 	///////////////// coordinates conversion
 
 	clipGridPoint { arg point;

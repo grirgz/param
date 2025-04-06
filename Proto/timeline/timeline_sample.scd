@@ -259,10 +259,14 @@ SampleTimeline.proto = ProtoClass(( // can't use ProtoTemplateDef, clash with ke
 		x;
 	},
 
-	asPreview: { arg self;
-		TimelinePreview_Sample.new.mapData(self).mapEventList(self.eventList).view.mouseDownAction_({ 
-			self.edit;
-		}).fixedHeight_(40);
+	asPreview: { arg self, totalDur;
+		TimelinePreview_Sample.new
+			.mapData(self)
+			.mapEventList(self.eventList)
+			.setViewportToClipBounds(totalDur)
+			.view.mouseDownAction_({ 
+				self.edit;
+			}).fixedHeight_(40);
 	},
 
 
