@@ -104,7 +104,7 @@ WindowDef(\ParamSelectDialog,{ arg def, selectedHook, okHook, defaultValue;
 							libId = ProtoDef(\GlobalLibrary).targetToLibId(param.target);
 							if(libId.notNil) {
 								selectedCallback.(libId);
-								paramList.value = paramList.items.indexOf(param.property);
+								paramList.value = paramList.items.indexOf(param.propertyRoot);
 							} {
 								Log(\Param).info("Param not found in lib: %", param.asCompileString);
 							}
