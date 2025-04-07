@@ -2300,6 +2300,18 @@ BaseParam {
 				val = spec.default
 			}
 		};
+		if(this.propertyArray.last == \stepseq) { // maybe ugly to fix this here
+			var psize = this.size;
+			if(psize == 0) {
+				psize = 8;
+			};
+			if(val.isSequenceableCollection.not) {
+				val = val ! psize;
+			};
+			if(val.isSequenceableCollection and: { val.size != psize }) {
+				val = val.copy.extend(psize, val.last)
+			};
+		};
 		^val.copy;
 	}
 
@@ -3859,10 +3871,14 @@ PdefParam : BaseAccessorParam {
 	initPstepSeq { arg size=8, forcePbindef=true, repeats=inf;
 		var getpstepseq = {
 			var val;
-			var def = this.default;
+			var pa;
+			var def;
+			def = this.default;
+			//Log(\Param).debug("Param.initPstepSeq: default %".format(def));
 			if(this.propertyArray.last == \stepseq) {
 				if(def.isSequenceableCollection.not) {
 					// this is ugly bug fix, why it is not an array ?
+					// fixed default method now, but if param is not stepseq, should still build the default value
 					def = [def];
 				};
 				val = PstepSeq(def.extend(size, def.first), repeats)
