@@ -167,12 +167,43 @@
 	asParamGroup { arg instrument, notes=true, exclude;
 		// TODO: find a better name for 'notes' argument (this is for adding \dur and \legato)
 		var list;
+		var tmpexc;
+		var isPbindef = this.source.isKindOf(PbindProxy);
+
+		list = List.new;
+		exclude = exclude ?? { [] };
+
+		//// retrieve existing keys
+		isPbindef.debug("asParamGroup: isPbindef");
+		if(isPbindef) { // Pbindef support
+			this.source.pairs.debug("asParamGroup: pairs");
+			this.source.pairs.clump(2).do { arg pair, idx;
+				if(exclude.includes(pair[0]).not) {
+					if(pair[1].source.isKindOf(PstepSeq)) {
+						list.add(Param(this, pair[0] -> \stepseq))
+					} {
+						list.add(Param(this, pair[0] -> \source))
+					};
+				};
+			};
+		};
+		tmpexc = list.collect(_.propertyRoot) ++ exclude;
+
+		if(this.envir.notNil) {
+			this.envir.keys.do { arg key, idx;
+				if(tmpexc.includes(key).not) {
+					list.add(Param(this, key))
+				};
+			};
+		};
+		tmpexc = list.collect(_.propertyRoot);
 
 		instrument = instrument ?? { PdefParam.instrument(this) };
+
 		if(instrument.isNil) {
 			//"ERROR: Pdef:asParamGroup: Can't create paramGroup: no instrument is defined".postln;
 			//^nil
-			list = List.new;
+			//list = List.new;
 		} {
 			var synthdesc;
 			exclude = exclude ? [\gate, \doneAction];
@@ -180,15 +211,23 @@
 			synthdesc = SynthDescLib.global.synthDescs[instrument];
 			if(synthdesc.isNil) {
 				Log(\Param).error("ERROR: Pdef:asParamGroup: Can't create paramGroup: no synthdesc for this instrument: %".format(instrument));
-				list = List.new;
+				//list = List.new;
 			} {
-				list = synthdesc.controls.reject({ arg con; 
+				var newlist;
+				newlist = synthdesc.controls.reject({ arg con; 
 					con.name == '?' or: {
 						exclude.includes(con.name)
+					} or: {
+						tmpexc.includes(con.name)
 					}
 				}).collect({ arg con;
-					Param( this, con.name );
+					if(isPbindef) {
+						Param( this, con.name -> \source );
+					} {
+						Param( this, con.name );
+					};
 				});
+				list.addAll(newlist);
 			}
 
 		};
@@ -790,6 +829,10 @@
 +SequenceableCollection {
 	asParam { arg self;
 		^Param(*this)
+	}
+
+	asParamGroup { arg self;
+		^ParamGroup(this)
 	}
 
 	asCachedBus {

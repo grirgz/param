@@ -59,7 +59,7 @@ ParamGroup : List {
 	}
 
 	presetDict {
-		presets;
+		^presets;
 	}
 
 	getPreset { arg key=\default;
@@ -462,6 +462,11 @@ ParamGroupDef {
 	valueList {
 		^group.valueList;
 	}
+
+	presetDict {
+		^group.presetDict;
+	}
+
 
 	saveArchive {
 		var archive = IdentityDictionary.new;

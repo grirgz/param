@@ -7,6 +7,7 @@ WindowDef(\PbindefEditor, (
 	},
 
 	showParamOverlayMenu: { arg self, param, editorView, textView, view;
+		Log(\Param).debug("PbindefEditor: param %".format(param));
 		Menu(*
 			WindowDef(\ParamGenericContextMenuEntries).sourceValue(param) ++
 			[
@@ -661,7 +662,7 @@ WindowDef(\PbindefEditor, (
 			var innerView;
 			//if(true) {
 			//[view, model, msg, args].debug("args");
-			//[param, cparam].debug("followChange test");
+			[param, cparam].debug("followChange test");
 			if(param === cparam) {
 				//Log(\Param).debug("editorView: followChange: %, %", param.property, param.spec);
 				editorView.removeAll;
@@ -1109,22 +1110,28 @@ WindowDef(\PbindefEditor, (
 		var cust = self.noteParamList ++ self.customParamList;
 		var pbkeys;
 		if(self.showSynthDefParams == true) {
-			plist.addAll(self.proxy.asParamGroup(nil, false, [\freq, \gate, \doneAction]).as(Array));
+			plist = plist.addAll(self.proxy.asParamGroup(nil, false, [\freq, \gate, \doneAction, \instrument]).as(Array));
 		};
 		if(self.showOnlySetParams == true) {
 			plist = plist.select({ arg p; p.isSet });
 		};
 		//[ cust ++ plist ].debug("pbjkeys");
 		pbkeys = self.pbindefKeysParamList(cust ++ plist);
-		plist.addAll(pbkeys);
-		plist.addAll(cust);
-		plist.collect({ arg p; 
-			if(p.at(\source).get.isKindOf(PstepSeq)) {
-				p.at(\stepseq)
+		plist = plist.addAll(pbkeys);
+		plist = plist.addAll(cust);
+		plist = plist.collect({ arg p; 
+			if([\source, \stepseq].includes(p.propertyArray.last).not) {
+				if(p.at(\source).get.isKindOf(PstepSeq)) {
+					p.at(\stepseq)
+				} {
+					p.at(\source);
+				}
 			} {
-				p.at(\source);
-			}
+				p
+			};
 		});
+		//plist.do(_.debug("PbindefEditor: plist")); // debug
+		plist;
 	},
 
 	pbindefKeysParamList: { arg self, exclude, excludeBaseKeys=true;

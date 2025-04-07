@@ -321,6 +321,10 @@ Param {
 		}
 	}
 
+	withSpec { arg aspec;
+		^Param(this.target, this.property, aspec);
+	}
+
 	printOn { arg stream;
 		this.storeOn(stream); // storeOn call storeArgs
 	}
@@ -2611,6 +2615,14 @@ ParamAccessor {
 				prop
 			},
 
+			unset: { arg self;
+				Log(\Param).debug("ParamAccessor.stepseq: unset");
+				if(self.obj.target.source.at(selector).notNil) { // Pbindef recreate key if not defined
+					self.obj.target.source.set(selector, nil);
+					self.obj.target.changed(\set, [selector]); // no changed msg when setting PbindProxy
+				}
+			},
+
 			controllerTargetCursor: { arg self;
 				self.obj.target.source.at(selector).source
 			},
@@ -3389,6 +3401,7 @@ BaseAccessorParam : BaseParam {
 
 
 	setDefaultIfNil {
+		// maybe an ideal place to call .initPstepSeq
 		this.set(this.get); // this doesn't work if the default of target is different from Param.default
 		//if(target[property].isNil) {
 			//this.set(this.default);

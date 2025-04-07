@@ -156,7 +156,7 @@ WindowDef(\NdefEditor, { arg me, key=\default;
 	VLayout(
 		HLayout(
 			PlayerWrapper(target).asView,
-			EventClass.presetSelectorView.(pg),
+			WindowDef(\PresetSelectorView).asView(pg),
 			Param(Message(target), \quant, ParamNonFloatSpec()).asTextField.maxWidth_(80),
 			BasicButton.new.string_("...").maxWidth_(20).action_({
 				Menu(

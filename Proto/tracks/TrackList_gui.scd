@@ -624,7 +624,7 @@ WindowDef(\TrackList, (
 		self.mainView.layout = VLayout(
 			self.makeToolbar,
 			self.makeTrackList,
-		);
+		).margins_(0);
 		
 		self.mainView;
 	},
@@ -1155,7 +1155,7 @@ WindowDef(\TrackListMixer, { arg def, tracklist;
 			mproto.track = track;
 			boxview;
 		}.as(Array);
-		mainview.layout = HLayout(* mixers ++ [[ menuButton, align:\top ], nil]);
+		mainview.layout = HLayout(* mixers ++ [[ menuButton, align:\top ], nil]).margins_(0);
 	});
 	mainview;
 });
