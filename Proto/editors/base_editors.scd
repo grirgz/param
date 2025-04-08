@@ -230,7 +230,8 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 		}),
 		Menu(
 			CustomViewAction(
-				param.asTextField.minWidth_(500);
+				View.new.layout_(WindowDef(\CompileStringEditor).asView(param, true))
+				//param.asTextField.minWidth_(500);
 			)
 		).title_("Edit text"),
 		MenuAction.separator,
@@ -837,6 +838,31 @@ WindowDef(\ParamCombinatorModulatorEditor, { arg def, param;
 			def.front(param);
 		})
 	}
+});
+);
+////// others
+
+
+(
+WindowDef(\CompileStringEditor, { arg def, param, cancelIsRevert=false;
+	var textview;
+	var backupval = param.get;
+	VLayout (
+		textview = TextView.new.string_(param.get.asCompileString).minHeight_(25),
+		HLayout (
+			BasicButton.new.string_("Ok").action_({
+				param.set(textview.string.interpret);
+				def.closeWindow;
+			}),
+			BasicButton.new.string_("Cancel").action_({
+				if(cancelIsRevert) {
+					param.set(backupval)
+				};
+				def.closeWindow;
+			}),
+		)
+	)
+	
 });
 );
 

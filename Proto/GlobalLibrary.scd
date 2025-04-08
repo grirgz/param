@@ -1015,7 +1015,7 @@ TagSpecDef(\SynthDef_keys, {
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.keys.as(Array) }).flat.reject({ arg item;
 		blocklist.value(item)
 	}).sort;
-});
+}).default_(\default);
 
 TagSpecDef(\SynthDef, {
 	var blocklist = TagSpecDef(\SynthDef_blocklist).valueList.collect({ arg x; Constraint(x) });

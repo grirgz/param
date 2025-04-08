@@ -27,4 +27,4 @@ Spec.add(\note, ControlSpec(0,24,\lin,1));
 Spec.add(\ctranspose, ControlSpec(0,24,\lin,1));
 Spec.add(\midinote, ControlSpec(1,126,\lin,1,60));
 Spec.add(\octave, ControlSpec(1,7,\lin,1,4));
-Spec.add(\scale, TagSpecDef(\scale, { Scale.all.parent.asAssociations } ));
+Spec.add(\scale, TagSpecDef(\scale, { Scale.all.parent.asAssociations.sort({ arg a, b; a.key.asString < b.key.asString }) } ));

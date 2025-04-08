@@ -618,20 +618,17 @@ WindowDef(\PbindefEditor, (
 	},
 
 	showMixerOverlayMenu: { arg self, view, x, y;
-		WindowDef(\OverlayMenu).front(view, x, y, { arg def;
-			VLayout (
-				Param(Message(self), \isMixerEnabled, ParamBoolSpec()).asButton.string_("Enable mixer"),
-				BasicButton.new.string_("Show mixer").action_({
+		Menu(
+				Param(Message(self), \isMixerEnabled, ParamBoolSpec()).asMenuAction("Enable mixer"),
+				MenuAction("Show mixer", {
 					if(self.isMixerEnabled) {
 						self.mixer.edit;
 					}
-				}),
-				BasicButton.new.string_("Add fx").action_({
+				}).enabled_(self.isMixerEnabled),
+				MenuAction("Add FX", {
 					self.addFx;
-				}),
-				nil,
-			)
-		});
+				}).enabled_(self.isMixerEnabled),
+		).front;
 	},
 
 	hiddenParamList: { arg self;
@@ -1183,7 +1180,7 @@ WindowDef(\PbindefEditor, (
 		\lag, 
 		\mtranspose, 
 		\ctranspose, 
-		'Add custom param'
+		'* Add custom param...'
 	],
 	paramForms: [\scalar, \stepseq, \chord, \text, \timeline, \modTimeline, \inlineEnv],
 

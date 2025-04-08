@@ -205,6 +205,8 @@ SimpleServerMeterView : SCViewHolder {
 		// The problem is CmdPeriod does not set serverCleanupFuncs to nil, we don't know synth is freed
 		//	  solved by reseting it in ServerTree
 		// The problem is stop should only stop if there is no more instance playing
+		
+		Log(\Param).debug("startOutputMeter %".format(numOuts));
 
 		if(numOuts < 1) {
 			^\abort
@@ -554,6 +556,7 @@ CompactServerMeterView : SimpleServerMeterView {
 			;
 		};
 		if(this.view.notNil) {
+			this.view.onClose = nil; // prevent stopping
 			this.view.removeAll;
 			this.view.remove;
 		};

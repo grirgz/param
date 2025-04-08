@@ -830,7 +830,11 @@ TagSpec : ParamNonFloatSpec {
 	}
 
 	default { 
-		^this.valueList[0]
+		if(default.notNil) {
+			^default
+		} {
+			^this.valueList[0]
+		};
 	}
 
 	mapIndex { arg val;
