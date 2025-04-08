@@ -372,6 +372,10 @@ Param {
 		wrapper.default = val;
 	}
 
+	canBeMapped {
+		^wrapper.canBeMapped;
+	}
+
 	setBusMode { arg enable=true, free=true;
 		wrapper.setBusMode(enable, free);
 	}
@@ -2315,6 +2319,10 @@ BaseParam {
 		^val.copy;
 	}
 
+	canBeMapped {
+		^true
+	}
+
 	inBusMode {
 		^false
 	}
@@ -3684,6 +3692,11 @@ PdefParam : BaseAccessorParam {
 		//} {
 			//^this.spec.size
 		//}
+	}
+
+	canBeMapped {
+		// can't put mapped bus in \dur nor \legato
+		^[\dur, \legato, \degree, \note, \mtranspose, \ctranspose, \octave, \strum].includes(this.propertyRoot).not
 	}
 
 	setBusMode { arg enable=true, free=true;

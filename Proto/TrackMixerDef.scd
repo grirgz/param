@@ -1229,6 +1229,59 @@ WindowDef(\TrackMixer_InsertFxEditor, { arg def, insertFx;
 });
 );
 
+/////////////////////////////// MixerBoard
+
+(
+ProtoTemplateDef(\MixerBoard, (
+	new: { arg self, mixerList;
+		self = ProtoClass((parent:self));
+	
+		self.mixerList = mixerList;
+	
+		self;
+	},
+
+	mixerList_: { arg self, val;
+		val = val.collect { arg item, idx;
+			if(item.isKindOf(Symbol)) {
+				TrackMixerDef(item)
+			} {
+				item
+			};
+		};
+		self[\mixerList] = val;
+	},
+
+	source_: { arg self, val;
+		self.mixerList = val;
+	},
+	source: { arg self;
+		self.mixerList;
+	},
+
+	edit: { arg self;
+		WindowDef("MixerBoard_%".format(self.key).asSymbol, WindowDef(\MixerBoard)).front(self)
+	},
+));
+);
+
+(
+WindowDef(\MixerBoard, { arg def, model;
+	var mlist;
+	if(model.isSequenceableCollection) {
+		mlist = model;
+	} {
+		mlist = model.mixerList;
+	};
+	HLayout (
+		* mlist.collect { arg item, idx;
+			item.asView
+		} ++ [nil];
+	)
+	
+});
+);
+
 
 ///////////////////////////////
 (

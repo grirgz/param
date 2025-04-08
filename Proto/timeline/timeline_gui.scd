@@ -962,13 +962,13 @@ ProtoTemplateDef(\TimelinePanelView, (
 					[
 						MenuAction("Edit", {
 							self.showClipEditor(chosennode.model);
-						}),
+						}).shortcut_("double-click"),
 						MenuAction("Delete node", {
 							self.deleteAction;
-						}),
+						}).shortcut_("suppr"),
 						MenuAction("Copy", {
 							self.copyAction;
-						}),
+						}).shortcut_("ctrl-c"),
 						if(self[\addToClipListAction].notNil) {
 							MenuAction("Add Clip to ClipList", {
 								self.addToClipListAction(chosennode.model);
@@ -980,33 +980,33 @@ ProtoTemplateDef(\TimelinePanelView, (
 						[
 							MenuAction("Delete selected nodes", {
 								self.deleteAction;
-							}),
+							}).shortcut_("suppr"),
 							MenuAction("Copy selected nodes", {
 								self.copyAction;
-							}),
+							}).shortcut_("ctrl-c"),
 						]
 					} {
 						[
 							MenuAction.separator,
 							MenuAction("Create node", {
 								self.createNodeAction;
-							}),
+							}).shortcut_("ctrl-click"),
 						]
 					};
 				},
 				if(self.clipboard.nodes.notNil) {
 					MenuAction("Paste", {
 						self.pasteAction;
-					})
+					}).shortcut_("ctrl-v")
 				},
 				if(self.clipboard.nodes.notNil) {
 					MenuAction("Paste in place", {
 						self.pasteAction(false);
-					})
+					}).shortcut_("ctrl-shift-v")
 				},
 				MenuAction("Split", {
 					self.splitAction;
-				}).enabled_(self.timeline.selectionHasCrossingNodes),
+				}).enabled_(self.timeline.selectionHasCrossingNodes).shortcut_("ctrl-s"),
 
 				MenuAction.separator,
 				MenuAction("Set clip start here", {
@@ -1014,7 +1014,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 				}),
 				MenuAction("Set clip end here", {
 					self.setEndAction;
-				}),
+				}).shortcut_("ctrl-right-click"),
 				MenuAction("Set preview loop start here", {
 					self.setPreviewStartAction;
 				}),

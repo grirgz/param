@@ -888,6 +888,9 @@ WindowDef(\PbindefEditor, (
 					editorView.layout.addUniqueMethod(\innerView, { innerView });
 				};
 				//Log(\Param).debug("editorView: END followChange: %, %", param.property, param.spec);
+				if(self.inRedrawMode != true) {
+					self.updateModulatorView;
+				};
 			}
 		}, false);
 		self.proxy.changed(\keyForm, param);
@@ -986,6 +989,7 @@ WindowDef(\PbindefEditor, (
 		//pgroup.do { arg param, idx;
 			//param.debug("makeParamGroupView: pgroup item: %");
 		//};
+		self.inRedrawMode = true; // prevent too much gui update
 		lay	= VLayout(
 			* pgroup.collect { arg param, idx;
 				var res;
@@ -997,6 +1001,7 @@ WindowDef(\PbindefEditor, (
 		);
 		//Log(\Param).debug("makeParamGroupView2");
 		self.updateModulatorView;
+		self.inRedrawMode = false; // prevent too much gui update
 		//Log(\Param).debug("makeParamGroupView3");
 		lay;
 	},
@@ -1106,16 +1111,32 @@ WindowDef(\PbindefEditor, (
 		var plist = List.new;
 		var cust = self.noteParamList ++ self.customParamList;
 		var pbkeys;
+		var exc;
+		var out;
 		if(self.showSynthDefParams == true) {
 			plist = plist.addAll(self.proxy.asParamGroup(nil, false, [\freq, \gate, \doneAction, \instrument]).as(Array));
 		};
 		if(self.showOnlySetParams == true) {
 			plist = plist.select({ arg p; p.isSet });
 		};
-		//[ cust ++ plist ].debug("pbjkeys");
-		pbkeys = self.pbindefKeysParamList(cust ++ plist);
-		plist = plist.addAll(pbkeys);
-		plist = plist.addAll(cust);
+		exc = plist.collect(_.propertyRoot);
+		// put out Param to top
+		out = plist.detect({ arg p; p.propertyRoot == \out });
+		if(out.notNil) {
+			plist = plist.reject({ arg p; p.propertyRoot == \out });
+		};
+		[ cust ++ plist ].debug("pbjkeys");
+		//pbkeys = self.pbindefKeysParamList(cust ++ plist);
+		//plist = plist.addAll(pbkeys);
+		cust.do { arg item, idx;
+			if(exc.includes(item.propertyRoot).not) {
+				plist.add(item);
+			};
+		};
+		//plist = plist.addAll(cust);
+		if(out.notNil) {
+			plist = [out] ++ plist;
+		};
 		plist = plist.collect({ arg p; 
 			if([\source, \stepseq].includes(p.propertyArray.last).not) {
 				if(p.at(\source).get.isKindOf(PstepSeq)) {

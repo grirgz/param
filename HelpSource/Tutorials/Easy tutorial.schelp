@@ -35,7 +35,7 @@ WindowDef(\NdefEditor).front(Ndef(\saw, \saw)); // since Ndef already have an ed
 
 
 
-SECTION::NoteTimeline
+SECTION::NoteTimeline: record piano notes
 
 code::
 NoteTimeline(\note1).edit; // using it create it automatically
@@ -59,7 +59,7 @@ NoteTimeline(\note1, Pdef(\instr1)).edit; // redefine instrument for \note1
 ::
 
 
-SECTION::ClipTimeline
+SECTION::ClipTimeline: arrange Pdefs on a timeline
 
 ClipTimeline allow you to sequence Pdef, Ndef or other timelines on a timeline.
 You can also record some audio bus directly to a track of ClipTimeline.
@@ -76,3 +76,5 @@ to arm for recording. The popup below specify the bus to be recorded (0 by
 default, meaning the main output of supercollider). Then click record button,
 click again to stop recording.
 
+SECTION::PatKitDef: list of patterns to be triggered like a drum kit
+SECTION::PatKitDef: list of patterns to be triggered like a drum kit

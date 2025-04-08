@@ -451,7 +451,11 @@ ParamCombinator : Pattern {
 			//Log(\Param).debug("asPattern busmode");
 			Pfunc({ arg ev;
 				this.playAll(ev);
-				proxy.asMap.asSymbol
+				if(this.targetParam.canBeMapped) {
+					proxy.asMap.asSymbol
+				} {
+					proxy.bus.getSynchronous;
+				};
 			});
 		} {
 			//Log(\Param).debug("asPattern value");
