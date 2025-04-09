@@ -179,6 +179,27 @@ TrackTemplateDef(\AutomationRack, (
 		};
 	},
 
+	mimicCursor: { arg self, cursorModel, view;
+		//[cursor, othercur].debug("mimicCursor");
+		if(self.mimicCursorController.notNil) {
+			self.mimicCursorController.remove;
+		};
+		self.mimicCursorController = SimpleController(cursorModel).put(\refresh, {
+			//"mimicCursorController".debug;
+			if(view.notNil) {
+				if(view.isClosed) {
+					self.mimicCursorController.remove;
+				} {
+					self.automationList.do { arg auto, idx;
+						var curdest = auto.paramTimeline.cursor;
+						curdest.startPosition = cursorModel.startPosition;
+						curdest.endPosition = cursorModel.endPosition;
+					};
+				};
+			}
+		})
+	},
+
 	presetCompileString: { arg self, refCompileString;
 		var str = "";
 		refCompileString = refCompileString ?? { self.refCompileString };

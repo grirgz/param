@@ -3696,7 +3696,7 @@ PdefParam : BaseAccessorParam {
 
 	canBeMapped {
 		// can't put mapped bus in \dur nor \legato
-		^[\dur, \legato, \degree, \note, \mtranspose, \ctranspose, \octave, \strum].includes(this.propertyRoot).not
+		^[\dur, \sustain, \legato, \degree, \note, \mtranspose, \ctranspose, \octave, \strum].includes(this.propertyRoot).not
 	}
 
 	setBusMode { arg enable=true, free=true;

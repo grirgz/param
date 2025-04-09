@@ -642,6 +642,8 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	mimicCursor: { arg self, cursorModel;
+		// deprecated by AutomationRack.mimicCursor
+		// ruler_x are no longer displayed
 		//self.cursor_timeline.debug("mimicCursor");
 		self.cursor_timeline.mimicCursor(cursorModel);
 		[\ruler_x_beat, \ruler_x].do { arg key;
@@ -1433,7 +1435,8 @@ ProtoTemplateDef(\TimelinePanelView, (
 		ptview.makeAutomationLayout;
 		ptview.timeline.mimicTimeline(self.timeline, \horizontal);
 		self.timeline.mimicTimeline(ptview.timeline, \horizontal);
-		ptview.mimicCursor(self.timeline_model.cursor);
+		//ptview.mimicCursor(self.timeline_model.cursor); // deprecated
+		self.timeline_model.automationRack.mimicCursor(self.timeline_model.cursor, self.velocityButton);
 		self.bottomPanelVerticalScroller.mapTimeline(ptview.timeline);
 		//ptview.cursor_timeline.followChange(self.eventList, \cursor, { arg view, obj, msg, arg1;
 			////[view, obj, msg, arg1].debug("showAutomation cursor");

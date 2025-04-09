@@ -1521,6 +1521,9 @@ WindowDef(\PbindefEditor, (
 	asView: { arg self, def, proxy;
 		var modview = self.makeModulatorView;
 		~self = self;
+		if(proxy.source.isNil) {
+			proxy.source = PbindProxy();
+		};
 		self.proxy = proxy;
 		self.customParamList = [
 			Param(self.proxy, \dur),
