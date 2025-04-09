@@ -400,19 +400,23 @@ BufDef {
 		};
 	}
 
-    *bufferCompileString { arg buffer;
+	*bufferCompileString { arg buffer;
 		// Buffer.asCompileString is added in Param_extensions.sc
-		if(buffer.key.notNil) {
-			^"BufDef(%)".format(buffer.key.asCompileString)
-		} {
-			if(buffer.path.notNil) {
-				^"BufDef(%)".format(buffer.path.asCompileString)
+		if(buffer.notNil) {
+			if(buffer.key.notNil) {
+				^"BufDef(%)".format(buffer.key.asCompileString)
 			} {
-				Log(\Param).warning("WARNING: BufDef.bufferCompileString: Can't get compile string of buffer %".format(buffer));
-				^buffer.asCompileString;
-			};
-		}
-    }
+				if(buffer.path.notNil) {
+					^"BufDef(%)".format(buffer.path.asCompileString)
+				} {
+					Log(\Param).warning("WARNING: BufDef.bufferCompileString: Can't get compile string of buffer %".format(buffer));
+					^buffer.asCompileString;
+				};
+			}
+		} {
+			^"nil"
+		};
+	}
 
 }
 

@@ -430,9 +430,9 @@ TrackTemplateDef(\PlayerTrack, (
 	hasTrackTemplate: false,
 
 	updateChildren: { arg self;
-		"updateChildren x".debug;
+		//"updateChildren x".debug;
 		self.initTrack;
-		"updateChildren2".debug;
+		//"updateChildren2".debug;
 		self.children.do { arg child, idx;
 			if(child.notNil) {
 				if(child.isEmpty) {

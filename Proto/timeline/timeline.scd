@@ -467,14 +467,43 @@ ProtoClassDef(\EventTimeline, (
 	},
 
 	asPreview: { arg self, totalDur;
-		TimelinePreview.new
-			.mapEventList(self.eventList)
-			.areasize_(self.areasize)
-			.setViewportToClipBounds(totalDur)
-			.view.mouseDownAction_({ 
-				self.edit;
-			}).fixedHeight_(40);
+		self.makeCursorTimelinePreviewStack(
+			TimelinePreview.new
+				.mapEventList(self.eventList)
+				.areasize_(self.areasize)
+				.setViewportToClipBounds(totalDur)
+				.view.mouseDownAction_({ 
+					self.edit;
+				}).fixedHeight_(40)
+		)
 	},
+
+	makeCursorTimelinePreviewStack: { arg self, preview, withCursor=true;
+		if(withCursor == true) {
+			var tl = preview;
+			preview = View.new.layout_(StackLayout(
+				self.makeCursorTimelinePreview(tl.timeline).view,
+				tl,
+			).mode_(1)).addUniqueMethod(\timeline, { tl.timeline });
+			preview;
+		} {
+			preview
+		};
+	},
+
+	makeCursorTimelinePreview: { arg self, timeline;
+		var cursor_timeline;
+		
+		cursor_timeline = CursorTimelineView.new;
+		cursor_timeline.mapCursor(self.cursor);
+		cursor_timeline.mimicTimeline(timeline);
+		cursor_timeline.mapEventList(timeline.model);
+		if(self.isPlaying) {
+			cursor_timeline.play;
+		};
+		cursor_timeline;
+	},
+
 
 	addHistorySnapshot: { arg self;
 		self.eventLoop.historyAddSnapshot;
@@ -1294,8 +1323,9 @@ ProtoClassDef(\ParamTimeline, (
 		x;
 	},
 
-	asPreview: { arg self, totalDur;
-		TimelinePreview_Env.new
+	asPreview: { arg self, totalDur, withCursor=true;
+		var preview;
+		preview = TimelinePreview_Env.new
 			.mapEventList(self.eventList)
 			.mapParam(self.levelParam)
 			.areasize_(self.areasize)
@@ -1305,6 +1335,8 @@ ProtoClassDef(\ParamTimeline, (
 			})
 			.fixedHeight_(40)
 		;
+		self.makeCursorTimelinePreviewStack(preview, withCursor);
+		preview;
 	},
 
 	asView: { arg self;
@@ -1581,14 +1613,16 @@ ProtoClassDef(\KitTimeline, (
 
 
 	asPreview: { arg self, totalDur;
-		TimelinePreview.new(\kitIndex)
+		self.makeCursorTimelinePreviewStack(
+			TimelinePreview.new(\kitIndex)
 			.mapEventList(self.eventList)
 			.viewport_(Rect(0,0,1,1/4))
 			.areasize_(self.areasize)
 			.setViewportToClipBounds(totalDur)
 			.view.mouseDownAction_({ 
 				self.edit;
-			}).fixedHeight_(40);
+			}).fixedHeight_(40)
+		);
 	},
 
 	cutPatternFunction: { arg self;

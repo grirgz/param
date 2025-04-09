@@ -192,7 +192,7 @@ TrackTemplateDef(\NoteTimelineTrack, (
 		self.changed(\playerSynthDef);
 	},
 	makeScore: { arg self;
-		self[\source] = Pdef("%.%.instr".format(self.key, self.index).asSymbol, Pbind());
+		self[\source] = Pdef("%.instr".format(self.trackKey).asSymbol, Pbind());
 		self.playerSynthDef = \default;
 		//self.isEmpty = false;
 	},
@@ -240,7 +240,7 @@ TrackTemplateDef(\NoteTimelineTrackPart, (
 
 	asPreview: { arg self;
 		var model = self.parentTrack.parentTrack;
-		var tlpreview = self.score.asPreview(model.areasizex);
+		var tlpreview = self.score.asPreview(model.areasizex, true);
 		//tlpreview.setViewportToClipBounds(model.areasizex);
 		//tlpreview.timeline.areasize.x = model.areasizex ?? { tlpreview.timeline.areasize.x };
 		tlpreview.timeline.changed(\areasize);
@@ -338,8 +338,23 @@ TrackTemplateDef(\KitTimelineTrack, (
 		).margins_(0).spacing_(0)
 	},
 
+	scorePresetCompileString: { arg self;
+		var str;
+		str = List.new;
+		str.add( "%.kit = %;".format(self.refCompileString, self.kit.asCompileString));
+		if(self.kit.key == self.defaultKitKey) {
+			// if not a custom kit, save it
+			str.add( "%".format(self.kit.presetCompileString));
+		};
+		str.join($\n);
+	},
+
+	defaultKitKey: { arg self;
+		( self.trackKey++\_kit ).asSymbol;
+	},
+
 	makeScore: { arg self;
-		self.kit = PatKitDef(( self.trackKey++\_kit ).asSymbol);
+		self.kit = PatKitDef(self.defaultKitKey);
 		//self[\source] = Pdef("%.%.instr".format(self.key, self.index).asSymbol, Pbind());
 	},
 ));
