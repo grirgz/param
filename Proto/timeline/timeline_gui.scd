@@ -2159,10 +2159,21 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 		var maxy, miny, margin;
 		var range;
 		var posyKey = self.posyKey;
+		var addmargin = { arg a, b;
+			// bottom 1 become 0.9 but bottom -1 should be -1.1
+			// could be: a +- ( a.abs/10 )
+			if(a > 0) {
+				a * b
+			} {
+				a / b;
+			};
+		};
 
 		spec = self.param.spec;
 		maxy = spec.minval;
 	   	miny = spec.maxval;
+
+		//[miny, maxy].debug("zoomFitAction 1");
 
 		if(timeline.model.size < 3) { // if empty
 			// NOOP
@@ -2186,16 +2197,20 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 			};
 
 			// add margin top and bottom
-			miny = miny * 0.9;
-			maxy = maxy * 1.1;
+			miny = addmargin.(miny, 0.9);
+			maxy = addmargin.(maxy, 1.1);
+
 
 			//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM viewport before");
 			//[timeline.areasize].debug("areasize");
-			range = (maxy-miny * 1.1)/timeline.areasize.y;
-			timeline.viewport.top = (miny/timeline.areasize.y);
+			//range = (maxy-miny * 1.1)/timeline.areasize.y;
+			range = timeline.gridRectToNormRect(Rect(0,miny, 1, (maxy-miny * 1.1))).height;
+			//timeline.viewport.top = (miny/timeline.areasize.y);
+			timeline.viewport.top = timeline.gridPointToNormPoint(Point(0,miny)).y;
 			timeline.viewport.height = range.clip(0.1,1);
 			//[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
 
+			//[miny, maxy, range, timeline.areasize.y, (miny/timeline.areasize.y), timeline.gridPointToNormPoint(Point(0,miny)).y].debug("zoomFitAction 2");
 
 
 			timeline.changed(\viewport);
