@@ -1002,62 +1002,6 @@ ProtoClassDef(\NoteTimeline, (
 		}
 	},
 
-	//asPattern_old: { arg self, relStartTime, totalDur, repeatCount;
-		////[relStartTime.value, totalDur.value].debug("relstart, totaldur");
-		//// there is 3 kinds of call to asPattern:
-		//// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
-		//// - the live code: no startPosition given, defaulting to start event : asPattern
-		//// - when embedded in bigger timeline: startPosition is relative to start event : embedInTimeline
-		////		if startOffset, relStartTime is adjusted
-
-		//// timeline_pattern take a start time relative to firstEvent
-		//// XEventList.relStartTime is relative to firstEvent
-		//// FIXME: replacing source in proxy at call time means that a playing proxy will play immediately the new source when asked its pattern
-		////		could have nasty side effects
-		////self.proxy.source = Plazy({
-		//var pat = Plazy({
-			//var eventlist = self.eventloop.list;
-			//var pat;
-			//var xrelStartTime, xtotalDur;
-
-			//xrelStartTime = relStartTime.value ? eventlist.relStartTime;
-			//xtotalDur = totalDur.value ? eventlist.totalDur;
-
-			//self.eventloop.list.changed(\cursor, \play);
-			////pat = Pfindur(xtotalDur, ~timeline_pattern.(
-			////	Pn(self.eventloop.list, 1),
-			////	xrelStartTime
-			////));
-
-			////[xrelStartTime, relStartTime.value, eventlist.relStartTime].debug("xrel, rel, evrel");
-			////[xtotalDur, totalDur.value, eventlist.totalDur].debug("xrel, rel, evrel");
-
-			//if(xtotalDur <= 0) {
-				//"ERROR: totalDur is negative or zero".postln;
-				//xtotalDur = 2
-			//};
-
-			//pat = self.postChain <> Pfindur(xtotalDur, Pembed(
-				//Pn(self.eventloop.list.clone, 1),
-				//xrelStartTime
-			//));
-
-			//if(self.param.notNil and: {self.composeParamPattern == true}) {
-				//if(self.eventFactory.notNil and: {self.eventFactory.mode == \event}) {
-					////"Event mode!".debug;
-					//pat = self.param.target <> pat;
-				//} {
-					////"Normal mode!".debug;
-					//pat = pat <> self.param.target;
-				//}
-			//};
-
-			//pat;
-		//}).repeat(repeatCount ? self.repeatCount);
-		////self.proxy;
-		//pat;
-	//},
-
 
 	edit: { arg self;
 		var x = ProtoTemplateDef(\NoteTimelinePanelView).new(self);
@@ -1335,8 +1279,85 @@ ProtoClassDef(\ParamTimeline, (
 			})
 			.fixedHeight_(40)
 		;
+		self.zoomFitWithView(preview.timeline);
 		self.makeCursorTimelinePreviewStack(preview, withCursor);
-		preview;
+	},
+
+	posyKey: { arg self;
+		\level;
+	},
+
+	zoomFitWithView: { arg self, timeline;
+		// TODO: use timeline.spec to get initial maxy and miny
+		//var timeline = self.timeline;
+		var spec;
+		var maxy, miny, margin;
+		var range;
+		var posyKey = self.posyKey;
+		var addmargin = { arg a, b;
+			// bottom 1 become 0.9 but bottom -1 should be -1.1
+			// could be: a +- ( a.abs/10 )
+			if(a > 0) {
+				a * b
+			} {
+				a / b;
+			};
+		};
+
+		spec = self.param.spec;
+		maxy = spec.minval;
+	   	miny = spec.maxval;
+
+		[miny, maxy].debug("zoomFitAction 1");
+
+		if(timeline.model.size < 3) { // if empty
+			// NOOP
+		} {
+			timeline.model.do { arg ev, x;
+				var midi = ev.use { ev[posyKey].value(ev) };
+				//[x, maxy, miny, midi, ev].debug("zoom_fit: midi");
+				if(midi.notNil) {
+					//[x, midi].debug("zoom_fit, notnil");
+					if(midi > maxy) {
+						maxy = midi;
+					};
+					if(midi < miny) {
+						miny = midi;
+					};
+				}
+			};
+
+			"kjkj".debug;
+
+			if(( maxy * 1.1 ) > timeline.areasize.y) {
+				timeline.areasize.y = maxy * 1.1;
+			};
+
+			// add margin top and bottom
+			miny = addmargin.(miny, 0.9);
+			maxy = addmargin.(maxy, 1.1);
+
+
+			//[timeline.viewport, timeline.viewport.top, maxy/timeline.areasize.y, timeline.viewport.height, (maxy-miny)/timeline.areasize.y].debug("ZOOM viewport before");
+			//[timeline.areasize].debug("areasize");
+			//range = (maxy-miny * 1.1)/timeline.areasize.y;
+			range = timeline.gridRectToNormRect(Rect(0,miny, 1, (maxy-miny * 1.1))).height;
+			//timeline.viewport.top = (miny/timeline.areasize.y);
+			timeline.viewport.top = timeline.gridPointToNormPoint(Point(0,miny)).y;
+			timeline.viewport.height = range.clip(0.1,1);
+			//[timeline.viewport.top, timeline.viewport.height, maxy, miny, timeline.areasize.y].debug("top, height, maxy, miny, areasize");
+
+			[miny, maxy, range, timeline.areasize.y, (miny/timeline.areasize.y), timeline.gridPointToNormPoint(Point(0,miny)).y].debug("zoomFitAction 2");
+
+
+			timeline.changed(\viewport);
+			timeline.refresh;
+		};
+
+
+		//[self.areasize, self.timeline.areasize].debug("2");
+		self.areasize = timeline.areasize;
+		//[self.areasize, self.timeline.areasize].debug("4");
 	},
 
 	asView: { arg self;

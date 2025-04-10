@@ -210,7 +210,70 @@ TrackTemplateDef(\AutomationRack, (
 		str;
 	},
 
+	recorder: { arg self;
+		if(self[\recorder_obj].isNil) {
+			self[\recorder_obj] = ProtoTemplateDef(\AutomationRackRecorder).new(self);
+		};
+		self[\recorder_obj];
+	},
+
 ));
+
+
+ProtoTemplateDef(\AutomationRackRecorder,(
+	isRecording: false,
+	new: { arg self, rack;
+		self = ProtoClass((parent:self));
+	
+		self.rack = { rack };
+	
+		self;
+	},
+	isRecording_: { arg self, val;
+		if(val == true) {
+			self.startRecording;
+		} {
+			self.stopRecording;
+		};
+	},
+
+	startRecording: { arg self;
+		var con;
+		"AutomationRack.startRecording".debug;
+		if(self.isRecording == false) {
+			var rack = self.rack;
+			self[\isRecording] = true;
+
+			con = SimpleController(Param).put(\lastTweaked, {
+				var param = Param.lastTweaked;
+				param.debug("AutomationRack.lastTweaked");
+				rack.addAutomation(param);
+				rack.getParamTimeline(param).startRecording;
+			});
+			self.controller = con;
+			self.changed(\isRecording);
+			self.changed(\startedRecording);
+		};
+	},
+
+	stopRecording: { arg self;
+		"AutomationRack.stopRecording".debug;
+		if(self.isRecording == true) {
+			self[\isRecording] = false;
+			self.controller.remove;
+			self.rack.automationList.do { arg item, idx;
+				item.paramTimeline.stopRecording;
+			};
+
+			self.changed(\isRecording);
+			self.changed(\stoppedRecording);
+
+		};
+
+	},
+));
+
+
 WindowDef(\AutomationRack, { arg def, model;
 	var childview = View.new;
 	childview.followChange(model, \automationList, {
@@ -219,8 +282,8 @@ WindowDef(\AutomationRack, { arg def, model;
 			*model.automationList.collect { arg item, idx;
 				item.debug("view item");
 				HLayout (
+					Param(Message(item.paramTimeline), \bypassed, ParamBoolSpec()).asCheckBox.string_("").fixedWidth_(20),
 					PlayerWrapperView(PlayerWrapper(item.paramTimeline)).label_("").asView.fixedSize_(30),
-					Param(Message(item.paramTimeline), \bypassed, ParamBoolSpec()).asButton("Dsbl").fixedSize_(30),
 					item.param.asStaticTextLabel(\full).fixedWidth_(100).attachContextMenu,
 					item.paramTimeline.asPreview;
 				)
@@ -232,7 +295,14 @@ WindowDef(\AutomationRack, { arg def, model;
 			PlayerWrapper(model).asView,
 			BasicButton.new.string_("Add ParamTimeline").action_({
 				model.addParamDialog;
-			})
+			}),
+			RecordButton.new(model.recorder),
+			BasicButton.new.string_("Refresh").action_({
+				model.changed(\automationList);
+			}),
+			//BasicButton.new.string_("Rec").action_({
+				//model.recorder.startRecording;
+			//})
 		),
 		childview
 	)

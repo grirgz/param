@@ -2153,6 +2153,10 @@ ProtoTemplateDef(\ParamTimelinePanelView, (
 	},
 
 	zoomFitAction: { arg self;
+		self.timeline_model.zoomFitWithView(self.timeline);
+	},
+
+	zoomFitAction_old: { arg self;
 		// TODO: use timeline.spec to get initial maxy and miny
 		var timeline = self.timeline;
 		var spec;
