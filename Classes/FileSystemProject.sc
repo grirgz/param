@@ -24,15 +24,16 @@ FileSystemProject : TrackDef {
 
 			open: { arg self;
 				// not used, seems deprecated, use loadProject instead
-				if(self.isOpening != true) {
-					self.server.waitForBoot {
-						self.isOpening = true;
-						FileSystemProject.cwd = self.path;
-						FileSystemProject.current = self;
-						FileSystemProject.load("init.scd");
-						self.isOpening = false;
-					}
-				}
+				self.loadProject;
+				//if(self.isOpening != true) {
+					//self.server.waitForBoot {
+						//self.isOpening = true;
+						//FileSystemProject.cwd = self.path;
+						//FileSystemProject.current = self;
+						//FileSystemProject.load("init.scd");
+						//self.isOpening = false;
+					//}
+				//}
 			},
 
 			loadProject: { arg self, path;
