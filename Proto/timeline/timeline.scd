@@ -561,7 +561,7 @@ ProtoClassDef(\ClipTimeline, (
 			muted: false,
 		)});
 		self.tracks_bypassed = Set.new;
-		self.recorder = ProtoTemplateDef(\SampleClipTimelineMultiTrackRecorder).new(self) !? { arg x; {x} };
+		self.recorder = ProtoTemplateDef(\ClipTimelineTrackRecorder_main).new(self) !? { arg x; {x} };
 
 		self.clipList = ProtoClassDef(\ClipTimelineClipList).new(self) !? { arg x; {x} };
 		//"=============clipTimeline: end init".debug;
@@ -957,7 +957,18 @@ ProtoClassDef(\NoteTimeline, (
 			//Log(\Param).debug("now in cutPatternFunction of NoteTimeline, off:%, dur:%", offset, dur);
 
 			if(self.param.notNil and: {self.composeParamPattern == true}) {
-				inpat = self.param.target <> inpat;
+				var keyRemover = Pfunc({ arg ev;
+					//ev.debug("before");
+					//ev.removeAt(\dur);
+					//ev.removeAt(\delta);
+					//ev.removeAt(\degree);
+					//ev.removeAt(\note);
+					//ev.removeAt(\midinote);
+					//ev.removeAt(\freq);
+					//ev.debug("after");
+					ev;
+				});
+				inpat = ( keyRemover <> self.param.target ) <> inpat;
 				//if(self.eventFactory.notNil and: {self.eventFactory.mode == \event}) {
 					////"Event mode!".debug;
 					//pat = self.param.target <> pat;
@@ -1153,16 +1164,12 @@ ProtoClassDef(\ParamTimeline, (
 			var pat;
 			// FIXME: this should be an event
 			if(self.param.notNil and:{ self.param.target.isKindOf(Bus).not }) {
-				// FIXME: bus mode should be generic
-				//if([EventPatternProxy, NodeProxy].any({ arg x; self.param.target.isKindOf(x) })) {
-					//self.param.target.set(self.param.property, self.outBus.asMap);
-					//self.param.changed(\inBusMode);
-				//} {
-					//self.param.set(self.outBus.asMap);
-				//};
 				if(self.bypassed_val == true) { // can't this be unsynced with self.bypassed ?
 					self.param.unset;
 				} {
+					//self.outBus.set(self.param.get);
+					self.param.get.debug("setting param bus initial value");
+					self.outBus.asCachedBus.set(self.param.get);
 					self.param.setBus(self.outBus.asMap);
 				};
 				{
@@ -1197,7 +1204,8 @@ ProtoClassDef(\ParamTimeline, (
 						if(ev[\next_level].isNil) { // last one should be rest
 							\rest
 						} {
-							if(ev[\time].notNil and: {ev[\time] < 0.051}, {
+							// TODO: compare in seconds not in beats
+							if(ev[\time].notNil and: {ev[\time] < 0.0051}, {
 								ev[\array] = [ ev[\level] ];
 								//ev.debug("envTimeline: asPattern: busmode!");
 								\bus;
@@ -1683,77 +1691,6 @@ ProtoClassDef(\KitTimeline, (
 		}
 	},
 
-
-	//asPattern_old: { arg self, relStartTime, totalDur, repeatCount;
-		//// there is 3 kinds of call to asPattern:
-		//// - the gui: currently relative startPosition to absTime_0 : asPatternAbs
-		//// - the live code: no startPosition given, defaulting to start event : asPattern
-		//// - when embedded in bigger timeline: startPosition is relative to start event : embedInTimeline
-
-		//// timeline_pattern take a start time relative to firstEvent
-		//// XEventList.relStartTime is relative to firstEvent
-		////self.proxy.source = Plazy({
-		//var pat = Plazy({
-			//var eventlist = self.eventloop.list;
-			//var pat;
-			//var xrelStartTime, xtotalDur;
-
-			//xrelStartTime = relStartTime.value ? eventlist.relStartTime;
-			//xtotalDur = totalDur.value ? eventlist.totalDur;
-
-			//self.eventloop.list.changed(\cursor, \play);
-			////pat = Pfindur(xtotalDur, ~timeline_pattern.(
-			////	Pn(self.eventloop.list, 1),
-			////	xrelStartTime
-			////));
-			//if(xtotalDur <= 0) {
-				//"ERROR: totalDur is negative or zero".postln;
-				//xtotalDur = 2
-			//};
-
-
-			//pat = Pfindur(xtotalDur, Pembed(
-				//Pn(self.eventloop.list.clone, 1), // clone avoid lose of sync when adding note but require to wait the end of loop
-				//xrelStartTime
-			//));
-
-
-			//if(self.kit.notNil and: {self.composeParamPattern == true}) {
-				//pat = PdrumStep(self.kit, pat, 1, key: \kitIndex);
-				//if(self.wrapper.postChain.notNil) {
-					////"post!".debug;
-					//pat = self.wrapper.postChain <> pat;
-				//};
-				//if(self.postChain.notNil) {
-					////"post!".debug;
-					//pat = self.postChain <> pat;
-				//};
-				//if(self.wrapper.preChain.notNil) {
-					////"pre!".debug;
-					//pat = pat <> self.wrapper.preChain;
-				//};
-				//if(self.preChain.notNil) {
-					////"pre!".debug;
-					//pat = pat <> self.preChain;
-				//};
-			//};
-
-			////if(self.param.notNil and: {self.composeParamPattern == true}) {
-			////	if(self.eventFactory.mode == \event) {
-			////		"Event mode!".debug;
-			////		pat = self.param.target <> pat;
-			////	} {
-			////		"Normal mode!".debug;
-			////		pat = pat <> self.param.target;
-			////	}
-			////};
-
-			//pat;
-		//}).repeat(repeatCount ? self.repeatCount);
-		////self.proxy;
-		//pat
-	//},
-
 	edit: { arg self;
 		var x = ProtoTemplateDef(\KitTimelinePanelView).new(self);
 		self.editor = { x };
@@ -2104,6 +2041,7 @@ ProtoClassDef(\LoopMaster, (
 					startEventOffset = 0;
 				};
 				dur = totalDur - startEventOffset;
+				[startEventOffset, sloop.startEventOffset, sloop.firstEventOffset].debug("start, sloopstart, sloopstartabs");
 				firstEventOffset = startEventOffset + sloop.startEventAbsTime - sloop.firstEventAbsTime;
 				//self.cutAndEmbedPattern(pat, firstEventOffset, dur);
 				ret = self.embedPattern(cutFunction, firstEventOffset, dur)
@@ -2138,7 +2076,7 @@ ProtoClassDef(\LoopMaster, (
 				var finalStartAbsTime;
 				var dur;
 
-				if(self.timeline.isRecording) {
+				if(self.timeline.isRecording and: { self.timeline.bindPlayWithRecord != true }) {
 					Log(\Param).debug("timeline is recording, playing is muted");
 					ret = Event.silent(1).yield;
 				} {

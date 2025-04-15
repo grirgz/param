@@ -13,6 +13,11 @@
 			}
 		}
 	}
+
+	asCachedBus { 
+		^CachedBus.new(this.rate, this.index, this.numChannels, this.server);
+	}
+
 }
 
 

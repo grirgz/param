@@ -11,6 +11,7 @@ ProtoDef(\GlobalLibrary, (
 		},
 		clipFactories_keys: { arg self;
 			self.init_default_clip_factories;
+			self[\clipFactories_keys];
 		},
 	),
 
@@ -112,7 +113,9 @@ ProtoDef(\GlobalLibrary, (
 		switch(model.type, 
 			\pattern, {
 				if(model.timeline.notNil) {
+					//Log(\Param).debug("eventToLibId: eventType %, %", model.timeline.eventType, self.clipFactories_keys);
 					if(self.clipFactories_keys.includes(model.timeline.eventType)) {
+						//Log(\Param).debug("ok");
 						libId = self.clipFactories[model.timeline.eventType].eventToLibId(model);
 					};
 				} {

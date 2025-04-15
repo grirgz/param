@@ -491,7 +491,7 @@ TimelineEventLoop {
 
 	var <key, <func;
 	var <list, <task, <isRecording = false;
-	var recStartTime, then;
+	var <recStartTime, then;
 	var <>keysToRecord;
 	var >clock;
 
@@ -720,11 +720,12 @@ TimelineEventLoop {
 		^recEvent; // added by ggz, needed to set noteOff/sustain
 	}
 
-	stopRec {
+	stopRec { arg latency = 0;
 		if (isRecording.not) { ^this };
 
 		isRecording = false;
-		list.finish(this.getAbsTime);
+		//TempoClock.default.beats.debug("beats");
+		list.finish(this.getAbsTime + latency);
 		this.addList;
 		recStartTime = nil;
 

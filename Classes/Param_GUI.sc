@@ -154,6 +154,23 @@ ParamViewToolBox {
 		};
         ^view;
 	}
+
+	*refreshLimit { arg obj, fun, timelimit;
+		var prev = obj.getHalo(\refreshLimiter);
+		timelimit = timelimit ? 0.1;
+		if(prev.isNil or: { Main.elapsedTime - prev > timelimit }) {
+			obj.addHalo(\refreshLimiter, Main.elapsedTime);
+			//Log(\Param).debug("refreshLimit: refresh: %",( Main.elapsedTime - (prev ? 0 ) ));
+			// if we record a 3 notes chord, only the first will be printed
+			// we use defer to prevent this
+			{
+				fun.value;
+			}.defer(timelimit);
+		} {
+			//Log(\Param).debug("refreshLimit: prevent refresh: %",( Main.elapsedTime - (prev ? 0 ) ));
+		};
+
+	}
 }
 
 
@@ -590,7 +607,7 @@ ParamGroupLayout {
 
 			})
 		}).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
-			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 			if(buttonNumber == 1) {
 				Menu(
 					Menu(

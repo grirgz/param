@@ -40,6 +40,24 @@ WindowDef(\ParamDebugView, { arg def, param;
 				TextField.new.string_(param.getBus.asCompileString),
 			],
 			[
+				StaticText.new.string_("getBus sync / cached"),
+				{
+
+					var map = param.getBus;
+					var sync, cached;
+					var bus;
+					if(map.isKindOf(Symbol)) {
+						bus = map.asBus;
+						sync = bus.getSynchronous.asCompileString;
+						cached = bus.asCachedBus.getCached.asCompileString;
+					};
+					HLayout (
+						TextField.new.string_(sync),
+						TextField.new.string_(cached),
+					)
+				}.value
+			],
+			[
 				StaticText.new.string_("getRaw"),
 				TextField.new.string_(param.getRaw.asCompileString),
 			],

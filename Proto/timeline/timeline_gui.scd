@@ -194,10 +194,67 @@ ProtoTemplateDef(\TimelinePanelView, (
 	},
 
 	update_track_header: { arg self;
+		// this code is for ClipTimeline 
 		var track_count = self.timeline_model.track_count;
 		var track_header_block = { arg x;
 			var idx = track_count - 1 - x; // reverse index to have first track at bottom
-			var res = View.new.layout_(
+			var res; 
+			var recordSource;
+			var tracks = self.timeline_model.tracks;
+			var recsrclabel = tracks[idx].recordSourceLabel ?? { "Rec source" };
+			recordSource = BasicButton.new.string_(recsrclabel).action_({
+				Menu(
+					Menu(*TagSpecDef(\BusDef_audio).list.collect { arg asso, busidx;
+						MenuAction(asso.key, {
+							//self.timeline_model.tracks[idx].recordBus = asso.value;
+							tracks[idx].recordSource = asso.value;
+							tracks[idx].recordSourceLabel = asso.key;
+							tracks[idx].debug("set rec bus");
+							recordSource.string_(tracks[idx].recordSourceLabel);
+						})
+					}).title_("Record audio bus"),
+					Menu(
+						MenuAction("Record tweaked params", {
+							tracks[idx].recordSource = \lastTweaked;
+							tracks[idx].recordSourceLabel = "lastTweaked";
+							recordSource.string_(tracks[idx].recordSourceLabel);
+						}),
+						MenuAction("Choose in dialog", {
+
+							WindowDef(\ParamSelectDialog).front(nil, { arg param;
+								param.debug("selected");
+								tracks[idx].recordSource = param;
+								tracks[idx].recordSourceLabel = param.fullLabel;
+								recordSource.string_(tracks[idx].recordSourceLabel);
+							})
+						}),
+					).title_("Record param"),
+					MenuAction("Record notes", {
+						WindowDef(\GlobalLibrary_select).front(nil, { arg val; 
+							val.debug("selected");
+							tracks[idx].recordSource = val.last.value;
+							tracks[idx].recordSourceLabel = "Pdef %".format(val.last.key);
+							recordSource.string_(tracks[idx].recordSourceLabel);
+						}, [
+							\Pdef
+						]);
+					}),
+					// TODO
+					//MenuAction("Record kit", {
+						//WindowDef(\GlobalLibrary_select).front(nil, { arg val; 
+							//val.debug("selected");
+							//tracks[idx].recordSource = val.last.value;
+							//tracks[idx].recordSourceLabel = "Kit %".format(val.last.key);
+							//recordSource.string_(tracks[idx].recordSourceLabel);
+						//}, [
+							//\PatKitDef
+						//]);
+
+					//}),
+				).front;
+			});
+
+			res = View.new.layout_(
 				VLayout(
 					HLayout(
 						//XSimpleButton.new.label_("track %".format(x)).
@@ -210,7 +267,8 @@ ProtoTemplateDef(\TimelinePanelView, (
 						}),
 					).spacing_(0).margins_(2),
 					HLayout (
-						Param(Message(self.timeline_model.tracks[idx]), \recordBus, TagSpecDef(\BusDef_object)).asPopUpMenu.maxWidth_(100),
+						recordSource,
+						//Param(Message(self.timeline_model.tracks[idx]), \recordBus, TagSpecDef(\BusDef_object)).asPopUpMenu.maxWidth_(100),
 						Param(Message(self.timeline_model.tracks[idx]), \recordArmed, XBoolSpec()).asButton(" ●").maxWidth_(20),
 						nil,
 					).spacing_(0).margins_(2),
@@ -1888,19 +1946,6 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 	makeBottomPanelView: { },
 
 	make_header: { arg self;
-		//var mute_button = Button.new.states_([
-			//[ "Mute", Color.black, Color.white ],
-			//[ "Unmute", Color.black, ParamViewToolBox.color_ligth ],
-		//]).followChange(self.track_selector, \selected_index, { arg view;
-			//view.value = if(self.timeline_model.is_track_bypassed(self.track_selector.selected_index)) {
-				//1
-			//} {
-				//0
-			//}
-		//}).action_({
-			//self.timeline_model.toggle_bypass_track(self.track_selector.selected_index);
-			//self.track_selector.viewInit.(self.track_selector.selected_view, self.track_selector.selected_index);
-		//});
 
 		//Log(\Param).debug("recorder %", self.timeline_model.recorder);
 		self.header_layout = HLayout(
@@ -1910,15 +1955,29 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 			BasicButton.new.label_("Add track").action_({
 				self.add_track;
 			}),
-			//mute_button, // useless with "M" button
 			self.make_quant_popup,
 			self.make_undo_system_buttons,
-			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
-			//Param(Message(self.timeline_model), \isRecording, XBoolSpec()).asButton("Rec"),
 			RecordButton(self.timeline_model, \recorder, "Rec"),
-			//Param(Message(self.timeline_model), \bindPlayWithRecord, XBoolSpec()).asButton("PlayRec"),
-			//BasicButton.new.label_("Samples").action_({
-				//WindowDef("%_SampleManager".format(self.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(self.timeline_model);
+			PlayerWrapper(Pdef(\metronome)).asView,
+			//RecordButton(self.timeline_model, \recorder, "Rec").view.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				//if(self.timeline_model.isRecording) {
+					//false;
+					//nil;
+				//} {
+					//Menu(
+						//MenuAction("Record audio", {
+							//"Record audio".debug;
+							//self.timeline_model.recorder.startRecording;
+						//}),
+						//MenuAction("Record automation", {
+							//"Record automation".debug;
+							//self.timeline_model.automationRecorder.startRecording;
+
+						//}),
+					//).front;
+					//true;
+				//};
 			//}),
 			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
@@ -1959,7 +2018,7 @@ ProtoTemplateDef(\ClipTimelinePanelView, (
 		);
 		//"clipTimelinePanelView.makeLayout: part 2".debug;
 		self.timeline.followChange(self.timeline_model, \eventFactory, {
-			Log(\Param).debug("eventFactory change!!!!");
+			//Log(\Param).debug("eventFactory change!!!!");
 			self.timeline.eventFactory = self.timeline_model.eventFactory;
 		});
 		self.timeline.mouseDownAction = { arg me, px, py, mod, buttonNumber, clickCount, chosennode;
@@ -2749,6 +2808,7 @@ WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 
 	libid = lib.eventToLibId(clip);
 	target = lib.libIdToTarget(libid);
+	//Log(\Param).debug("clip libid target %", [clip, libid, target]);
 	wrapper = lib.libIdToWrapper(libid);
 
 	params = [
@@ -2855,7 +2915,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 				//var scorelibid = ProtoDef(\GlobalLibrary).targetToLibId(score);
 				var score = factory.value.value(label);
 				var scorelibid = [factory.key, (label -> score)];
-				Log(\Param).debug("************** addClip id %", scorelibid);
+				//Log(\Param).debug("************** addClip id %", scorelibid);
 				model.addClipIdToClipList(scorelibid);
 				idef.closeWindow;
 			} {
@@ -2918,7 +2978,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 
 WindowDef(\TimelineOverlayMenu, { arg def, model, view, x=600, y=600; // deprecated
 	var inview, layout;
-	Log(\Param).debug("xy: %, %", x, y);
+	//Log(\Param).debug("xy: %, %", x, y);
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
 		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
@@ -2998,8 +3058,8 @@ WindowDef(\ClipList_ContextMenu, { arg def, model, view, selected;
 WindowDef(\ClipList_OverlayMenu, { arg def, model, view, x=600, y=600, selected; // deprecated
 	// deprecated for Menu
 	var inview, layout;
-	Log(\Param).debug("xy: %, %", x, y);
-	Log(\Param).debug("selected: %", selected);
+	//Log(\Param).debug("xy: %, %", x, y);
+	//Log(\Param).debug("selected: %", selected);
 	def.windowDo { arg win;
 		var ab = view !? {view.absoluteBounds} ? Rect(0,0,600,600);
 		win.bounds = Rect(x+ab.origin.x, Window.screenBounds.height - ab.top - y, 200,100);
@@ -3044,7 +3104,7 @@ WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 	var lib = ProtoDef(\GlobalLibrary);
 	var selectedLibId;
 	var selectedCallback = { arg libid, strings, clickCount;
-		Log(\Param).debug("selectedCallback itemId:%, str:%", libid, strings);
+		//Log(\Param).debug("selectedCallback itemId:%, str:%", libid, strings);
 		trackInstrumentLabel.string = lib.libIdToLabel(libid);
 		selectedLibId = libid;
 		selectedHook.(def, libid, strings, clickCount)
@@ -3072,7 +3132,7 @@ WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 				if(namefield.string.trim != "") {
 					label = namefield.name;
 				};
-				Log(\Param).debug("okhook itemId:%, str:%", selectedLibId, label);
+				//Log(\Param).debug("okhook itemId:%, str:%", selectedLibId, label);
 				okHook.(def, selectedLibId, label);
 			}),
 			BasicButton.new.string_("Cancel").action_({
@@ -3148,7 +3208,7 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook, tagSpec;
 				if(namefield.string.trim != "") {
 					def.closeWindow;
 					label = namefield.string.asSymbol;
-					Log(\Param).debug("okhook fac:%, str:%", selectedFactory.asCompileString, label);
+					//Log(\Param).debug("okhook fac:%, str:%", selectedFactory.asCompileString, label);
 					okHook.(def, selectedFactory, label);
 				} {
 					Log(\Param).error("Please provide a name");

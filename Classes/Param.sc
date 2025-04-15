@@ -9,7 +9,7 @@ Param {
 	classvar <>defaultUpdateMode = \dependants;
 	classvar <>defaultPollRate = 0.2;
 	classvar <>editFunction;
-	classvar <>lastTweaked;
+	classvar <lastTweaked;
 	classvar <>trace = false;
 	classvar <>midiFuncList;
 
@@ -421,6 +421,11 @@ Param {
 		wrapper.spec = val;
 	}
 
+	*lastTweaked_ { arg val;
+		lastTweaked = val;
+		this.changed(\lastTweaked);
+	}
+
 	///// combinator
     // need refactoring
 
@@ -691,7 +696,6 @@ Param {
 					action.value(self, this);
 					customAction.value(self, this);
 					Param.lastTweaked = this; // FIXME: only work when there is a GUI, should add in MIDI too
-					Param.changed(\lastTweaked);
 				};
 			}.defer;
 

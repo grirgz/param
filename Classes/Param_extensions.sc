@@ -174,9 +174,9 @@
 		exclude = exclude ?? { [] };
 
 		//// retrieve existing keys
-		isPbindef.debug("asParamGroup: isPbindef");
+		//isPbindef.debug("asParamGroup: isPbindef");
 		if(isPbindef) { // Pbindef support
-			this.source.pairs.debug("asParamGroup: pairs");
+			//this.source.pairs.debug("asParamGroup: pairs");
 			this.source.pairs.clump(2).do { arg pair, idx;
 				if(exclude.includes(pair[0]).not) {
 					if(pair[1].source.isKindOf(PstepSeq)) {

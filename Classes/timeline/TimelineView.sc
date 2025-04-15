@@ -1584,9 +1584,11 @@ TimelineView : SCViewHolder {
 				controller.remove;
 			} {
 				//"TimelineView get a refresh signal!".debug;
-				{
-					this.refreshEventList;
-				}.defer
+				ParamViewToolBox.refreshLimit(this, {
+					{
+						this.refreshEventList;
+					}.defer
+				})
 			};
 		});
 		controller.put(\redraw, {
@@ -2611,6 +2613,7 @@ TimelineViewNodeBase {
 }
 
 TimelineViewEventNode : TimelineViewNodeBase {
+	var <>refreshLimiter;
 	var <>colorSelected;
 	var <>colorDeselected;
 
@@ -2730,9 +2733,11 @@ TimelineViewEventNode : TimelineViewNodeBase {
 			if(parent.view.isNil) {
 				this.free;
 			} {
-				{
-					this.refresh;
-				}.defer
+				ParamViewToolBox.refreshLimit(this, {
+					{
+						this.refresh;
+					}.defer
+				})
 			}
 		})
 	}
@@ -3100,7 +3105,7 @@ TimelineViewEventListNode : TimelineViewEventNode {
 		^enablePreview && this.parent.enablePreview;
 	}
 
-	makeUpdater {
+	makeUpdater_old {
 		if(controller.notNil) {controller.remove};
 		controller = SimpleController(model).put(\refresh, {
 			{

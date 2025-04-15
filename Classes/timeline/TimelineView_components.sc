@@ -1178,7 +1178,9 @@ CursorTimelineView : TimelineView {
 		//"==================************-----------(##############)".debug("cursor STOP");
 		if(playtask.notNil) {
 			//this.isPlaying = false;
-			playtask.stop;
+			{
+				playtask.stop;
+			}.defer(Server.default.latency)
 		};
 		
 	}

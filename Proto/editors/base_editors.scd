@@ -244,6 +244,7 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 			};
 			midi = MIDIFunc.cc({ arg ... args;
 				//args.debug("MENU MIDI Func");
+				Param.lastTweaked = param;
 				param.normSet(args[0]/127)
 			}).fix.learn;
 			param.target.addHalo(\MIDIFunc, param.property, midi);
