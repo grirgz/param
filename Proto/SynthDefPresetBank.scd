@@ -1,11 +1,14 @@
 
 (
 ProtoTemplateDef(\SynthDefPresetBank, (
-	new: { arg self, target;
+	new: { arg self, target, instr;
 		self = ProtoClass((parent:self));
 
 		//if(target.isKindOf(Pdef)) {
 		self.target = target;
+		if(instr.notNil) {
+			self.instrument = instr;
+		};
 		//};
 		if(Archive.global.at(\Param, \SynthDefPresetBank, self.instrument).notNil) {
 			self.loadArchive;
@@ -39,6 +42,7 @@ ProtoTemplateDef(\SynthDefPresetBank, (
 		var preset = IdentityDictionary.new;
 		var data = IdentityDictionary.new;
 		preset[\data] = data;
+		preset[\instrument] = self.instrument;
 		self.target.asParamGroup.do { arg param, idx;
 			if(param.isSet) {
 				data[param.propertyRoot] = param.get;
@@ -59,23 +63,35 @@ ProtoTemplateDef(\SynthDefPresetBank, (
 		self.changed(\bank);
 	},
 
-	loadPreset: { arg self, key;
+	loadPreset: { arg self, key, mode;
 		var preset;
 		preset = self.presetDict[key];
 		if(preset.isNil) {
+			self.presetDict.keys.debug("presetDict");
 			"no preset named %".format(key).error;
 		} {
-			self.loadPresetFromObject(preset);
+			self.loadPresetFromObject(preset, mode);
 		}
 	},
 
-	loadPresetFromObject: { arg self, preset;
-		var pg = self.target.asParamGroup.asPropertyDict;
-		pg.keys.do { arg pkey, idx;
-			if(preset[\data][pkey].notNil) {
-				pg[pkey].set(preset[\data][pkey])
-			} {
-				pg[pkey].unset;
+	loadPresetFull: { arg self, key;
+		self.loadPreset(key, \full)
+	},
+
+	loadPresetFromObject: { arg self, preset, mode;
+		if(mode == \full) {
+			preset[\data].keys.do { arg pkey, idx;
+				[pkey, preset[\data][pkey]].debug("---- loadPresetFromObject \full");
+				Param(self.target, pkey -> \source).set(preset[\data][pkey])
+			};
+		} {
+			var pg = self.target.asParamGroup.asPropertyDict;
+			pg.keys.do { arg pkey, idx;
+				if(preset[\data][pkey].notNil) {
+					pg[pkey].set(preset[\data][pkey])
+				} {
+					pg[pkey].unset;
+				};
 			};
 		};
 		//preset[\data].keys.do { arg pkey, idx;
@@ -165,7 +181,8 @@ ProtoTemplateDef(\SynthDefPresetBank, (
 					var instrp = Param(proxy, \instrument -> \source);
 					var preset = libid.last.value;
 					preset[\instrument].asCompileString.debug("setting instrument");
-					ProtoTemplateDef(\SynthDefPresetBank).new(proxy).loadPreset(preset[\presetName]);
+					proxy.source = PbindProxy();
+					ProtoTemplateDef(\SynthDefPresetBank).new(proxy, preset[\instrument]).loadPresetFull(preset[\presetName]);
 					// setting instrument should be after loading preset, 
 					// because some preset have instrument in data and some not
 					instrp.set(preset[\instrument]); 
