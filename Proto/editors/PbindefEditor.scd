@@ -478,7 +478,8 @@ WindowDef(\PbindefEditor, (
 				self.updateParamGroupView;
 			};
 		};
-		Menu(
+		var bank = ProtoTemplateDef(\SynthDefPresetBank).new(self.proxy);
+		Menu(* [
 			Menu(*
 				self.optionalEventKeys.collect { arg item, idx;
 					MenuAction(item, {
@@ -509,6 +510,22 @@ WindowDef(\PbindefEditor, (
 			).asMenu("Slider controller"),
 
 			MenuAction.separator,
+			MenuAction("Save preset", {
+				//var group = ProtoT.update(pgkey, target.asParamGroup);
+				WindowDef(\ListSaveDialog).front(bank.presetDict.keys.asArray, { arg name;
+					bank.savePreset(name);
+				}, "preset1", "Choose preset name")
+			}),
+			if(bank.hasSavedPresets) {
+				//var group = ParamGroupDef.update(pgkey, target.asParamGroup);
+				Menu(
+					* bank.presetDict.keys.asArray.collect { arg prekey;
+						MenuAction(prekey, {
+							bank.loadPreset(prekey)
+						})
+					}
+				).title_("Load preset")
+			},
 			MenuAction("Load from Pdef", {
 				WindowDef(\GlobalLibrary_select).front(nil, { arg libid;
 					var pdef = libid.last.value;
@@ -540,7 +557,7 @@ WindowDef(\PbindefEditor, (
 					self.updateFxView;
 				})
 			}),
-		).front;
+		].select(_.notNil)).front;
 
 	},
 
