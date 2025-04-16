@@ -1357,6 +1357,9 @@ TagSpecDef('GlobalLibrary.type.SynthDef', [
 	\SynthDef,
 ]);
 
+TagSpecDef('GlobalLibrary.type.Preset', [
+	\SynthDefPreset,
+]);
 
 TagSpecDef('GlobalLibrary.type.TrackInstrumentTarget', [ // maybe deprecated
 	\SynthDef,

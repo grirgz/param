@@ -128,7 +128,44 @@ ProtoTemplateDef(\SynthDefPresetBank, (
 		Archive.global.put(\Param, \SynthDefPresetBank, self.instrument, nil);
 		self.presetDict[self.instrument] = nil;
 		self.changed(\bank);
-	}
+	},
+
+	allPresets: { arg self;
+		var res = List.new;
+		
+		Archive.global.at(\Param, \SynthDefPresetBank).keysValuesDo({ arg key, val; 
+			val.at(\presetDict).keys.do({ arg presetkey; 
+				var preset = val.at(\presetDict).at(presetkey);
+				preset[\instrument] = key;
+				preset[\presetName] = presetkey;
+				res.add("%.%".format(key, presetkey).asSymbol -> preset);
+			}) 
+		});
+		res;
+	},
+
+	loadFromPresetDialog: { arg self, proxy, callback;
+		WindowDef(\GlobalLibrary_select).front(nil, { arg libid;
+			case(
+				{ libid.first == \Pdef }, {
+					var pdef = libid.last.value;
+					proxy.source = pdef.source.copy;
+					proxy.envir = pdef.envir.copy;
+				},
+				{ libid.first == \SynthDefPreset }, {
+					var instrp = Param(proxy, \instrument -> \source);
+					var preset = libid.last.value;
+					preset[\instrument].asCompileString.debug("setting instrument");
+					instrp.set(preset[\instrument]);
+					ProtoTemplateDef(\SynthDefPresetBank).new(proxy).loadPreset(preset[\presetName]);
+					instrp.set(preset[\instrument]);
+				}, {
+					Log(\Param).error("SynthDefPresetBank.loadFromPresetDialog: Preset not recognized %", libid);
+				}
+			);
+			callback.value(libid);
+		}, [\Pdef, \Preset])
+	},
 
 ));
 
@@ -337,4 +374,9 @@ ProtoTemplateDef(\PresetGraphBank, (
 	},
 
 ));
+
+TagSpecDef(\SynthDefPreset, {
+	ProtoTemplateDef(\SynthDefPresetBank).allPresets
+});
+
 )

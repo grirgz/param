@@ -527,15 +527,21 @@ WindowDef(\PbindefEditor, (
 				).title_("Load preset")
 			},
 			MenuAction("Load from Pdef", {
-				WindowDef(\GlobalLibrary_select).front(nil, { arg libid;
-					var pdef = libid.last.value;
-					self.proxy.source = pdef.source.copy;
-					self.proxy.envir = pdef.envir.copy;
+				bank.loadFromPresetDialog(self.proxy, {
 					self.proxy.convertToPbindef;
 					self.updateParamGroupView;
 					self.updateModulatorView;
 					self.updateFxView;
-				}, \Pdef)
+				});
+				//WindowDef(\GlobalLibrary_select).front(nil, { arg libid;
+					//var pdef = libid.last.value;
+					//self.proxy.source = pdef.source.copy;
+					//self.proxy.envir = pdef.envir.copy;
+					//self.proxy.convertToPbindef;
+					//self.updateParamGroupView;
+					//self.updateModulatorView;
+					//self.updateFxView;
+				//}, [\Pdef, \Preset])
 			}),
 
 			MenuAction.separator,
@@ -676,7 +682,7 @@ WindowDef(\PbindefEditor, (
 			var innerView;
 			//if(true) {
 			//[view, model, msg, args].debug("args");
-			[param, cparam].debug("followChange test");
+			//[param, cparam].debug("followChange test");
 			if(param === cparam) {
 				//Log(\Param).debug("editorView: followChange: %, %", param.property, param.spec);
 				editorView.removeAll;
