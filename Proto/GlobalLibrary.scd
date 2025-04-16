@@ -1763,7 +1763,10 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 	};
 
 	lay = VLayout (
-		searchBox,
+		HLayout (
+			StaticText.new.string_("Search:"),
+			searchBox,
+		),
 		[resultView, stretch:3],
 		[HLayout (
 			typeView,

@@ -130,15 +130,24 @@ ProtoTemplateDef(\SynthDefPresetBank, (
 		self.changed(\bank);
 	},
 
+	presetsBySynthDef: { arg self, instr;
+		var sd = Archive.global.at(\Param, \SynthDefPresetBank, instr);
+		sd.at(\presetDict);
+	},
+
 	allPresets: { arg self;
 		var res = List.new;
 		
 		Archive.global.at(\Param, \SynthDefPresetBank).keysValuesDo({ arg key, val; 
 			val.at(\presetDict).keys.do({ arg presetkey; 
 				var preset = val.at(\presetDict).at(presetkey);
+				var suffix = "";
 				preset[\instrument] = key;
 				preset[\presetName] = presetkey;
-				res.add("%.%".format(key, presetkey).asSymbol -> preset);
+				if(SynthDesc(key).isNil) {
+					suffix = "  [undef]";
+				};
+				res.add("%.%%".format(key, presetkey, suffix).asSymbol -> preset);
 			}) 
 		});
 		res;
@@ -156,9 +165,11 @@ ProtoTemplateDef(\SynthDefPresetBank, (
 					var instrp = Param(proxy, \instrument -> \source);
 					var preset = libid.last.value;
 					preset[\instrument].asCompileString.debug("setting instrument");
-					instrp.set(preset[\instrument]);
 					ProtoTemplateDef(\SynthDefPresetBank).new(proxy).loadPreset(preset[\presetName]);
-					instrp.set(preset[\instrument]);
+					// setting instrument should be after loading preset, 
+					// because some preset have instrument in data and some not
+					instrp.set(preset[\instrument]); 
+					proxy.changed(\set, [\instrument])
 				}, {
 					Log(\Param).error("SynthDefPresetBank.loadFromPresetDialog: Preset not recognized %", libid);
 				}
