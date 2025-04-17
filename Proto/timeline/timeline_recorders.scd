@@ -3,7 +3,7 @@
 
 // can record seqPlayerGroup (NoteTimeline) and parPlayerGroup (KitTimeline)
 ProtoTemplateDef(\PlayerGroupRecorder, (
-	inQuantMode: false,
+	inQuantMode: false, // notes are not quantized, but recording Pdef launching is quantized
 	recordOnlyIndex: true,
 	new: { arg self, group;
 		self = self.deepCopy;
@@ -60,6 +60,7 @@ ProtoTemplateDef(\PlayerGroupRecorder, (
 		self.startRecordingTime = self.tempoClock.beats;
 		self.installlListener;
 		self.eventLoop.startRec(false, self.quant ? Pdef.defaultQuant, if(self.inQuantMode ) { 0 });
+		//self.eventLoop.startRec(false, self.quant ? Pdef.defaultQuant, 0);
 		self.changed(\startedRecording);
 		self.changed(\isRecording);
 		self.startRecordingHook;

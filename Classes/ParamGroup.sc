@@ -180,8 +180,11 @@ ParamGroup : List {
 		// TODO: write asPresetCompileStringNdef and Pdef and each other Param type
 		^"\nPbind(\n\t%\n)\n".format(
 			this.collect({ arg p; 
-				"%, %,".format(p.property.asCompileString, p.getRaw.asCompileString)
-			}).join("\n\t")
+				var rval = p.getRaw;
+				if(rval.notNil and: { rval != Event.default[p.propertyRoot] }) {
+					"%, %,".format(p.property.asCompileString, rval.asCompileString)
+				};
+			}).select(_.notNil).join("\n\t")
 		)
 	}
 
@@ -305,7 +308,7 @@ ParamGroup : List {
 		}
 	}
 
-    *getPbindefCompileString { arg pbindef, exkeys;
+	*getPbindefCompileString { arg pbindef, exkeys;
 		// use Pbindef source and Pdef.envir
 		var params;
 		var setpairs;
@@ -337,8 +340,13 @@ ParamGroup : List {
 			}
 		}.join;
 		setpairs = this.getPdefCompileString(pbindef);
-		^"Pbindef(%,\n%);\n%\n".format(pbindef.key.asCompileString, params, setpairs)
-    }
+
+		if(params.size > 0) {
+			^"Pbindef(%,\n%);\n%\n".format(pbindef.key.asCompileString, params, setpairs)
+		} {
+			^"%\n".format(setpairs)
+		};
+	}
 }
 
 ParamGroupDef {
