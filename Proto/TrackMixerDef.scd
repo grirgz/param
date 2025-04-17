@@ -269,6 +269,10 @@ ProtoClassDef(\TrackMixerDef, (
 		self[\obj_insertFxList];
 	},
 
+	existingInsertFxList: { arg self;
+		self.insertFxList.select(_.notNil).asList;
+	},
+
 	insertFxAt: { arg self, idx, offset;
 		if(offset.isNil) {
 			offset = self.stages.postfx;
@@ -306,9 +310,16 @@ ProtoClassDef(\TrackMixerDef, (
 	},
 
 	presetCompileString: { arg self;
+		var insertfx;
+		insertfx = self.existingInsertFxList.collect { arg item, idx;
+			item.presetCompileString("%.insertFxAt(%)".format(self.refCompileString, item.index - self.stages.postfx));
+		}.join($\n);
 		self.asParamGroup.getSetCompileString(self.refCompileString)
 		++
-		"%.outBus = %;".format(self.refCompileString, self.outbus.asCompileString);
+		"%.outBus = %;\n".format(self.refCompileString, self.outbus.asCompileString)
+		++
+		insertfx
+		;
 	},
 	//enableInsertFx: { arg self, idx, val = true, offset;
 		//if(offset.isNil) {
@@ -374,6 +385,32 @@ ProtoTemplateDef(\TrackMixer_InsertFx, (
 
 	isEmpty: { arg self;
 		self.proxy.isNil or: { self.synthName.isNil } or: { self.synthName == self.synthNameDefault }
+	},
+
+	presetCompileString: { arg self, ref;
+		"%.synthName = %;\n".format(ref, self.synthName.asCompileString)
+		++
+		if(self.synthName.notNil) {
+			if(self.proxy[self.index].notNil) {
+				"%.enabled = true;\n".format(ref); // insert fx code in Ndef
+			} {
+				"%.enabled = false;\n".format(ref);
+			};
+		} { 
+			"";	   
+		};
+	},
+
+	enabled: { arg self;
+		self.proxy[self.index].isNil
+	},
+
+	enabled_: { arg self, val;
+		if(val == true) {
+			self.play;
+		} {
+			self.stop;
+		};
 	},
 
 	updateFx: { arg self;
