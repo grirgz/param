@@ -193,23 +193,30 @@ ParamGroup : List {
 	}
 
 	getBufferCompileString { arg param;
+		^this.class.getBufferCompileString(param)
+	}
+
+	*getBufferCompileString { arg param;
 		// if val is a buffer, try to build BufDef compile string, else return val.asCompileString
 		var val = param.get;
 		case(
+			{ val.isKindOf(Number) }, {
+				val = Buffer.cachedBufferAt(Server.default, val).asCompileString;
+			},
 			{ param.spec.isKindOf(ParamBufferSpec) }, {
-				var path = TagSpecDef(\BufDef).unmapKey(val);
+				var path = param.spec.tagSpec.unmapKey(val);
 				if(path.notNil) {
-					val = "BufDef(%)".format(path.asCompileString)
+					val = BufDef(path).asCompileString; // problematic because it lose channumber
 				} {
-					val.asCompileString;
+					val = val.asCompileString;
 				}
-				
 			},
 			{ val.isKindOf(Buffer) }, {
+				// should be handled by class extension Buffer.asCompileString
 				if(val.path.notNil) {
 					val = "BufDef(%)".format(val.path.asCompileString)
 				} {
-					val.asCompileString;
+					val = val.asCompileString;
 				}
 			}, {
 				val = val.asCompileString;
@@ -328,9 +335,10 @@ ParamGroup : List {
 				param;
 			};
 			if(param.spec.isKindOf(ParamBufferSpec)) {
+				//var key = param.spec.tagSpec.unmapKey(param.get);
 				"\t%, %,\n".format(
 					param.propertyRoot.asCompileString,
-					"BufDef(%)".format(param.spec.tagSpec.unmapKey(param.get).asCompileString)
+					this.getBufferCompileString(param)
 				)
 			} {
 				"\t%, %,\n".format(

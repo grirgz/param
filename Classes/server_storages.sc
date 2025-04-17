@@ -387,7 +387,11 @@ BufDef {
 	}
 
 	*presetCompileString { arg name;
+		// this method define the BufDef while bufferCompileString is just a reference
+		// but for path as key buffer, this is the same
+		// FIXME: should support numChannels and .mono/.stereo
 		var buf = this.all[name];
+		name.debug("BufDef.presetCompileString");
 		if(buf.isKindOf(Buffer)) {
 			var path = this.abspath_to_relpath(this.all.at(name).path);
 			^"BufDef(%, %)".format(name.asCompileString, path.asCompileString);
@@ -404,10 +408,45 @@ BufDef {
 		// Buffer.asCompileString is added in Param_extensions.sc
 		if(buffer.notNil) {
 			if(buffer.key.notNil) {
-				^"BufDef(%)".format(buffer.key.asCompileString)
+				var fileNumChan;
+				var rpath = this.all[buffer.key];
+				var path = this.relpath_to_abspath(rpath).asSymbol;
+				if( BufDef.bufferChannelCache[path].notNil ) {
+					fileNumChan = BufDef.bufferChannelCache[path][\numChannels];
+				};
+				[ buffer.key.asCompileString, rpath.asCompileString, path.asCompileString, fileNumChan, buffer.numChannels ].debug("bufferCompileString key");
+				if(fileNumChan == buffer.numChannels) {
+					^"BufDef(%)".format(buffer.key.asCompileString)
+				} {
+					var meth;
+					meth = switch(buffer.numChannels,
+						1, { ".mono" },
+						2, { ".stereo" },
+						{ "" },
+					);
+					^"BufDef%(%)".format(meth, buffer.key.asCompileString)
+				};
 			} {
 				if(buffer.path.notNil) {
-					^"BufDef(%)".format(buffer.path.asCompileString)
+					var fileNumChan;
+					var rpath = this.all[buffer.key];
+					var path = this.relpath_to_abspath(rpath).asSymbol;
+					if( BufDef.bufferChannelCache[path].notNil ) {
+						fileNumChan = BufDef.bufferChannelCache[path][\numChannels];
+					};
+					[ buffer.path.asCompileString, rpath.asCompileString, path.asCompileString, fileNumChan, buffer.numChannels ].debug("bufferCompileString path");
+					if(fileNumChan == buffer.numChannels) {
+						^"BufDef(%)".format(buffer.path.asCompileString)
+					} {
+						var meth;
+						meth = switch(buffer.numChannels,
+							1, { ".mono" },
+							2, { ".stereo" },
+							{ "" },
+						);
+						//^"BufDef%(%)".format(meth, buffer.key.asCompileString)
+						^"BufDef%(%)".format(meth, buffer.path.asCompileString)
+					};
 				} {
 					Log(\Param).warning("WARNING: BufDef.bufferCompileString: Can't get compile string of buffer %".format(buffer));
 					^buffer.asCompileString;

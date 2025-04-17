@@ -939,7 +939,7 @@
 			^this.getHalo(\asCompileString)
 		} {
 			if(this.key.notNil) {
-				^"BufDef(%)".format(this.key.asCompileString)
+				^BufDef.bufferCompileString(this);
 			} {
 				^super.asCompileString;
 			}

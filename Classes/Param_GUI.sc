@@ -623,6 +623,7 @@ ParamGroupLayout {
 
 							MenuAction(key, {
 								var path = val[val.size.rand].value;
+								[path, param.spec.numChannels].debug("loading random sample");
 								switch(param.spec.numChannels,
 									1, { param.set(BufDef.mono(path).bufnum) },
 									2, { param.set(BufDef.stereo(path).bufnum) },
