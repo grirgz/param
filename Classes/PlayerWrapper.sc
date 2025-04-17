@@ -621,6 +621,16 @@ PlayerWrapper_EventPatternProxy : PlayerWrapper_Base {
 		}
 	}
 
+	presetCompileString {
+		var ret;
+		if(this.key.isKindOf(Symbol)) {
+			^this.asParamGroup.getPbindefCompileString;
+		} {
+			Log(\Param).error("ERROR: can't save a EventPlayerWrapper");
+			^nil;
+		}
+	}
+
 	isEmpty { 
 		^this.target.source.isNil
 	}

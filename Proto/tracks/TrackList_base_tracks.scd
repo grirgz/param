@@ -176,7 +176,7 @@ TrackTemplateDef(\NoteTimelineTrack, (
 		var str;
 		str = List.new;
 		str.add( "%.source = %;".format(self.refCompileString, self.source.asCompileString));
-		str.add( "%.playerSynthDef = %;".format(self.refCompileString, self.playerSynthDef.asCompileString));
+		//str.add( "%.playerSynthDef = %;".format(self.refCompileString, self.playerSynthDef.asCompileString));
 		str.add( PlayerWrapper(self.source).presetCompileString );
 		str.join($\n);
 	},
