@@ -314,11 +314,11 @@ ProtoClassDef(\TrackMixerDef, (
 		insertfx = self.existingInsertFxList.collect { arg item, idx;
 			item.presetCompileString("%.insertFxAt(%)".format(self.refCompileString, item.index - self.stages.postfx));
 		}.join($\n);
-		self.asParamGroup.getSetCompileString(self.refCompileString)
-		++
 		"%.outBus = %;\n".format(self.refCompileString, self.outbus.asCompileString)
 		++
 		insertfx
+		++ "\n" ++
+		self.asParamGroup.getSetCompileString(self.refCompileString)
 		;
 	},
 	//enableInsertFx: { arg self, idx, val = true, offset;

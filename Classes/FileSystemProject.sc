@@ -23,8 +23,11 @@ FileSystemProject : TrackDef {
 			},
 
 			open: { arg self;
-				// not used, seems deprecated, use loadProject instead
-				self.loadProject;
+				// do nothing if already open to prevent overwriting current data
+				if(FileSystemProject.current != self) {
+					self.loadProject;
+				};
+				self;
 				//if(self.isOpening != true) {
 					//self.server.waitForBoot {
 						//self.isOpening = true;

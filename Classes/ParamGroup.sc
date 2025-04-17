@@ -200,16 +200,17 @@ ParamGroup : List {
 		// if val is a buffer, try to build BufDef compile string, else return val.asCompileString
 		var val = param.get;
 		case(
-			{ val.isKindOf(Number) }, {
-				val = Buffer.cachedBufferAt(Server.default, val).asCompileString;
-			},
 			{ param.spec.isKindOf(ParamBufferSpec) }, {
-				var path = param.spec.tagSpec.unmapKey(val);
-				if(path.notNil) {
-					val = BufDef(path).asCompileString; // problematic because it lose channumber
+				if( val.isKindOf(Number) ) {
+					val = Buffer.cachedBufferAt(Server.default, val).asCompileString;
 				} {
-					val = val.asCompileString;
-				}
+					var path = param.spec.tagSpec.unmapKey(val);
+					if(path.notNil) {
+						val = BufDef(path).asCompileString; // problematic because it lose channumber
+					} {
+						val = val.asCompileString;
+					}
+				};
 			},
 			{ val.isKindOf(Buffer) }, {
 				// should be handled by class extension Buffer.asCompileString
