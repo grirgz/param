@@ -30,7 +30,7 @@ WindowDef(\ParamSelectDialog,{ arg def, selectedHook, okHook, defaultValue;
 		paramList.items = selectedParamGroup
 			.collect { arg item, idx;
 				//item.debug("item");
-				item.property;
+				item.propertyRoot
 			}
 		;
 	};

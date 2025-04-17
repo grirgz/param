@@ -426,44 +426,52 @@ ProtoTemplateDef(\TimelinePanelView, (
 	getTimelineKeyDownActionForNodeMove: { arg self;
 		var reorderButKeepSelection = {
 			// FIXME: this is ugly, should integrate in TimelineView with a clean algo
-			var selmodels = IdentitySet.new;
-			var selnodes = List.new;
-			self.timeline.selNodes.do { arg node;
-				selmodels.add(node.model);
-			};
-			self.timeline.model.reorder;
-			self.timeline.model.changed(\refresh);
-			self.timeline.nodes.do { arg node;
-				if(selmodels.matchItem(node.model)) {
-					selnodes.add(node)
-				}
-			};
-			self.timeline.selectNodes(selnodes);
+			//var selmodels = IdentitySet.new;
+			//var selnodes = List.new;
+			//self.timeline.selNodes.do { arg node;
+				//[node, node.identityHash].debug("reorderButKeepSelection: add node");
+				//selmodels.add(node.model);
+			//};
+			//self.timeline.model.reorder;
+			//self.timeline.model.changed(\refresh);
+			self.timeline.model.changed(\redraw);
+			//self.timeline.model.changed(\redraw);
+			//self.timeline.nodes.do { arg node;
+				//[node, node.identityHash].debug("reorderButKeepSelection: sel node?");
+				//if(selmodels.matchItem(node.model)) {
+					//[node, node.identityHash].debug("reorderButKeepSelection: sel node!!!");
+					//selnodes.add(node)
+				//}
+			//};
+			//self.timeline.selectNodes(selnodes);
+			//self.timeline.selNodes.debug("selnodes after");
 		};
 		var handleMove = { arg distance, keycode;
 			if(keycode == 65364) { // down key
 				self.timeline.selNodes.do{ arg node;
 					node.model[node.posyKey] = node.model[node.posyKey]-distance.y;
-					//node.model.changed(\refresh);
+					node.model.changed(\refresh);
 				};
 				reorderButKeepSelection.();
 			};
 			if(keycode == 65362) { // up key
 				self.timeline.selNodes.do{ arg node;
 					node.model[node.posyKey] = node.model[node.posyKey]+distance.y;
-					//node.model.changed(\refresh);
+					node.model.changed(\refresh);
 				};
 				reorderButKeepSelection.();
 			};
 			if(keycode == 65361) { // left key
 				self.timeline.selNodes.do{ arg node;
 					node.model[node.timeKey] = node.model[node.timeKey]-distance.x;
+					node.model.changed(\refresh);
 				};
 				reorderButKeepSelection.();
 			};
 			if(keycode == 65363) { // right key
 				self.timeline.selNodes.do{ arg node;
 					node.model[node.timeKey] = node.model[node.timeKey]+distance.x;
+					node.model.changed(\refresh);
 				};
 				reorderButKeepSelection.();
 			};
@@ -2937,7 +2945,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 			model.setBrushToClipId(model.clipList[view.value]);
 		}).followChange(model, \clipList, { arg view;
 			view.items_(model.clipList.collect({ arg clipId;
-				Log(\Param).debug("clipList: add to listview: %", clipId);
+				//Log(\Param).debug("clipList: add to listview: %", clipId);
 				model.clipIdLabel(clipId)
 			}));
 			// since selected item is deleted, need to reselect
@@ -2946,7 +2954,7 @@ WindowDef(\ClipTimelineClipList, { arg def, model;
 			};
 		}).followChange(model, \brushClipId, { arg view;
 			view.value = model.clipList.detectIndex({ arg clipId;
-				Log(\Param).debug("clipList: change brushClipId %", model.brushClipId);
+				//Log(\Param).debug("clipList: change brushClipId %", model.brushClipId);
 				clipId == model.brushClipId;
 			})
 		}).followChange(FileSystemProject.current, \tracklist_selected_track, { 

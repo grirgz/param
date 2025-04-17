@@ -1168,7 +1168,7 @@ ProtoClassDef(\ParamTimeline, (
 					self.param.unset;
 				} {
 					//self.outBus.set(self.param.get);
-					self.param.get.debug("setting param bus initial value");
+					//self.param.get.debug("setting param bus initial value");
 					self.outBus.asCachedBus.set(self.param.get);
 					self.param.setBus(self.outBus.asMap);
 				};
@@ -1811,7 +1811,9 @@ ProtoClassDef(\ClipTimelineClipList, (
 	gatherClips: { arg self;
 		//"gat".debug;
 		self.timeline.eventList.do { arg clip;
-			self.addToClipList(clip)
+			if([\start, \end].includes(clip.type).not) {
+				self.addToClipList(clip)
+			};
 		};
 		self.gatherClipsFromTrackList;
 	},
@@ -1846,15 +1848,15 @@ ProtoClassDef(\ClipTimelineClipList, (
 			{ arg pos, nodesize;
 				var ev = (absTime: pos.x, midinote: pos.y, legato:1, sustain: nodesize);
 				var clipev;
-				Log(\Param).debug("ev fac: brush:%, clipev:%", self.brushClipId, clipev);
+				//Log(\Param).debug("ev fac: brush:%, clipev:%", self.brushClipId, clipev);
 				if(self.brushClipId.isNil) {
-					Log(\Param).debug("No brush selected");
+					//Log(\Param).debug("No brush selected");
 					clipev = ev;
 				} {
 					clipev = self.clipIdToEvent(self.brushClipId, ev);
 					//clipev.putAll(ev);
 				};
-				Log(\Param).debug("ev fac: brush:%, clipev:%", self.brushClipId, clipev);
+				//Log(\Param).debug("ev fac: brush:%, clipev:%", self.brushClipId, clipev);
 				clipev;
 			}
 		};
@@ -2041,7 +2043,7 @@ ProtoClassDef(\LoopMaster, (
 					startEventOffset = 0;
 				};
 				dur = totalDur - startEventOffset;
-				[startEventOffset, sloop.startEventOffset, sloop.firstEventOffset].debug("start, sloopstart, sloopstartabs");
+				//[startEventOffset, sloop.startEventOffset, sloop.firstEventOffset].debug("start, sloopstart, sloopstartabs");
 				firstEventOffset = startEventOffset + sloop.startEventAbsTime - sloop.firstEventAbsTime;
 				//self.cutAndEmbedPattern(pat, firstEventOffset, dur);
 				ret = self.embedPattern(cutFunction, firstEventOffset, dur)

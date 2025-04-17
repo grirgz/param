@@ -131,6 +131,7 @@ TimelineView : SCViewHolder {
 		};
 
 		selNodes = IdentitySet.new;
+		//selNodes.debug("initParaSpace: selNodes after");
 		quant = Point(1/8,1);
 		viewport = viewport ?? Rect(0,0,1,1);
 		areasize = areasize ?? Point(2,128);
@@ -1980,6 +1981,7 @@ TimelineView : SCViewHolder {
 	selectNode { arg node;
 		node.selectNode;
 		selNodes.add(node);
+		//selNodes.debug("selectNode: selNodes after");
 		this.changed(\selectedNodes)
 	}
 
@@ -1989,12 +1991,15 @@ TimelineView : SCViewHolder {
 			node.selectNode;
 		};
 		selNodes.addAll(nodes);
-		this.changed(\selectedNodes)
+		//selNodes.debug("selectNodeS: selNodes after");
+		this.changed(\selectedNodes);
+		//selNodes.debug("selectNodeS: selNodes after2");
 	}
 
 	deselectNode { arg node;
 		node.deselectNode;
 		selNodes.remove(node);
+		//selNodes.debug("DEselectNode: selNodes after2");
 		this.changed(\selectedNodes)
 	}
 
@@ -2003,6 +2008,7 @@ TimelineView : SCViewHolder {
 			node.deselectNode;
 		};
 		selNodes.removeAll(nodes);
+		//selNodes.debug("DEselectNodeS: selNodes after2");
 		this.changed(\selectedNodes);
 		//this.refresh;
 	}
@@ -2032,6 +2038,8 @@ TimelineView : SCViewHolder {
 			node.free;
 		};
 		selNodes = IdentitySet.new;
+		//selNodes.debug("clearSpace: selNodes after");
+		//this.dumpBackTrace;
 		paraNodes = List.new;
 		connections = List.new;
 		nodeCount = 0;
@@ -2734,9 +2742,9 @@ TimelineViewEventNode : TimelineViewNodeBase {
 				this.free;
 			} {
 				ParamViewToolBox.refreshLimit(this, {
-					{
+					//{
 						this.refresh;
-					}.defer
+					//}.defer
 				})
 			}
 		})
@@ -2796,12 +2804,15 @@ TimelineViewEventNode : TimelineViewNodeBase {
 	}
 
 	selectNode {
+		//[this, this.identityHash, this.model].debug("select node");
 		selected = true;
 		this.refloc = this.nodeloc;
 		//outlineColor = this.colorSelected;
 	}
 
 	deselectNode {
+		//[this, this.identityHash, this.model].debug("deselect node");
+		selected = true;
 		selected = false;
 		//outlineColor = this.colorDeselected;
 	}

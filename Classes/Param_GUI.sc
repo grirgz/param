@@ -163,10 +163,16 @@ ParamViewToolBox {
 			//Log(\Param).debug("refreshLimit: refresh: %",( Main.elapsedTime - (prev ? 0 ) ));
 			// if we record a 3 notes chord, only the first will be printed
 			// we use defer to prevent this
-			{
-				fun.value;
-			}.defer(timelimit);
+			fun.value;
 		} {
+			if(obj.getHalo(\refreshLimiter_refreshIsScheduled).isNil) {
+				obj.addHalo(\refreshLimiter_refreshIsScheduled, true);
+				{
+					obj.addHalo(\refreshLimiter, Main.elapsedTime);
+					obj.addHalo(\refreshLimiter_refreshIsScheduled, nil);
+					fun.value;
+				}.defer(timelimit);
+			};
 			//Log(\Param).debug("refreshLimit: prevent refresh: %",( Main.elapsedTime - (prev ? 0 ) ));
 		};
 
