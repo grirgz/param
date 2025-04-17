@@ -47,7 +47,7 @@ SimpleServerMeterView : SCViewHolder {
 	//}
 
 	bus_ { arg abus;
-		Log(\Param).debug("SimpleServerMeterView: set bus %".format(abus));
+		//Log(\Param).debug("SimpleServerMeterView: set bus %".format(abus));
 		if(abus.isKindOf(Bus)) {
 			busLabel = abus.key ?? { abus.index };
 			bus = abus.index;
@@ -127,7 +127,7 @@ SimpleServerMeterView : SCViewHolder {
 			var insynth;
 			serverCleanupFuncs.put(server, \input, {
 				// when stopped
-				Log(\Param).debug(">-< ServerMeterView: serverCleanupFuncs run: input freed %", insynth);
+				//Log(\Param).debug(">-< ServerMeterView: serverCleanupFuncs run: input freed %", insynth);
 				serverCleanupFuncs.removeAt(server, \input);
 				ServerTree.remove(initFun, server);
 				{ // if freed too early, synth has not launched yet
@@ -147,7 +147,7 @@ SimpleServerMeterView : SCViewHolder {
 				var in = In.ar(NumOutputBuses.ir, server.options.numInputBusChannels);
 				SendPeakRMS.kr(in, updateFreq, 3, "/" ++ server.name ++ "InLevels")
 			}).play(RootNode(server), nil, \addToHead);
-			Log(\Param).debug("--- startInputMeter: launch synth %", insynth);
+			//Log(\Param).debug("--- startInputMeter: launch synth %", insynth);
 
 
 		}
@@ -158,7 +158,7 @@ SimpleServerMeterView : SCViewHolder {
 		this.stopInputResponder;
 		if(serverMeterViews[server][\input].size == 0 and: (serverCleanupFuncs.notNil)) {
 			serverCleanupFuncs[server][\input].value;
-			Log(\Param).debug("ServerMeterView.stop: cleanup: bus %, server %, data %".format(bus, server, serverMeterViews.at(server, bus)));
+			//Log(\Param).debug("ServerMeterView.stop: cleanup: bus %, server %, data %".format(bus, server, serverMeterViews.at(server, bus)));
 		};
 	}
 
@@ -206,7 +206,7 @@ SimpleServerMeterView : SCViewHolder {
 		//	  solved by reseting it in ServerTree
 		// The problem is stop should only stop if there is no more instance playing
 		
-		Log(\Param).debug("startOutputMeter %".format(numOuts));
+		//Log(\Param).debug("startOutputMeter %".format(numOuts));
 
 		if(numOuts < 1) {
 			^\abort
@@ -231,7 +231,7 @@ SimpleServerMeterView : SCViewHolder {
 			name = "%_%_%".format(server.name, bus, "OutputLevels");
 			serverCleanupFuncs.put(server, bus, {
 				// when stopped
-				Log(\Param).debug(">------< ServerMeterView: serverCleanupFuncs run: output freed %", outsynth);
+				//Log(\Param).debug(">------< ServerMeterView: serverCleanupFuncs run: output freed %", outsynth);
 				serverCleanupFuncs.removeAt(server, bus);
 				ServerTree.remove(initFun, server);
 				{ // if freed too early, synth has not launched yet
@@ -246,13 +246,13 @@ SimpleServerMeterView : SCViewHolder {
 			};
 			ServerTree.add(initFun, server);
 
-			Log(\Param).debug("ServerMeterView: outputSynthFunc run. numOuts %".format(numOuts));
+			//Log(\Param).debug("ServerMeterView: outputSynthFunc run. numOuts %".format(numOuts));
 
 			outsynth = SynthDef(name, {
 				var in = In.ar(bus, numOuts);
 				SendPeakRMS.kr(in, updateFreq, 3, ( "/" ++ server.name ++ bus ++ "OutLevels" ))
 			}).play(RootNode(server), nil, \addToTail);
-			Log(\Param).debug("-------- outputSynthFunc: launch synth %", outsynth);
+			//Log(\Param).debug("-------- outputSynthFunc: launch synth %", outsynth);
 
 
 		}
@@ -263,7 +263,7 @@ SimpleServerMeterView : SCViewHolder {
 		this.stopOutputResponder;
 		if(serverMeterViews[server][bus].size == 0 and: (serverCleanupFuncs.notNil)) {
 			serverCleanupFuncs[server][bus].value;
-			Log(\Param).debug("ServerMeterView.stop: cleanup: bus %, server %, data %".format(bus, server, serverMeterViews.at(server, bus)));
+			//Log(\Param).debug("ServerMeterView.stop: cleanup: bus %, server %, data %".format(bus, server, serverMeterViews.at(server, bus)));
 		};
 	}
 
