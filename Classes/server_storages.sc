@@ -192,6 +192,27 @@ BufDef {
 		^this.bufferChannelCache[path][channels]
 	}
 
+	*bufferList { arg numChannels;
+		^BufDef.all.keys.as(Array).sort
+		.collect({ arg k; 
+			var path;
+			var buf;
+			var cache;
+			//k.asCompileString.debug("TagSpecDef BufDef_stereo key");
+			path = BufDef.relpath_to_abspath(BufDef.all[k]).asSymbol;
+			//path.asCompileString.debug("TagSpecDef BufDef_stereo path");
+			cache = BufDef.bufferChannelCache[path];
+			//cache.debug("TagSpecDef BufDef_stereo cache");
+			if(cache.notNil) {
+				numChannels = numChannels ?? { cache[\numChannels] };
+				buf = cache[numChannels];
+				if(buf.notNil) {
+					k -> buf
+				};
+			};
+		}).select(_.notNil)
+	}
+
 	*watchServer { |server|
 		if(NotificationCenter.registrationExists(server,\newAllocators,this).not,{
 			NotificationCenter.register(server,\newAllocators,this,{

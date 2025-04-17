@@ -1194,21 +1194,12 @@ TagSpecDef(\BufDef_nozero, {
 });
 
 TagSpecDef(\BufDef_mono, {
-	[\0->0] ++ BufDef.all.keys.as(Array).sort
-		.collect({ arg k; k -> BufDef(k) })
-		.select({ arg kv; kv.value.numChannels == 1 }) 
+	BufDef.bufferList(1)
 		.collect({ arg kv; kv.key -> kv.value.bufnum })
 });
 
 TagSpecDef(\BufDef_stereo, {
-	[\0->0] ++ BufDef.bufferChannelCache.keys.as(Array).sort
-		.collect({ arg k; 
-			var buf = BufDef.bufferChannelCache[k][2];
-			if(buf.notNil) {
-				k -> buf
-			};
-		})
-		.select({ arg kv; kv.notNil and: {kv.value.numChannels == 2 }}) 
+	BufDef.bufferList(2)
 		.collect({ arg kv; kv.key -> kv.value.bufnum })
 });
 
