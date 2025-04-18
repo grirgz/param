@@ -1183,6 +1183,20 @@ TrackTemplateDef(\PlayerGridSection, (
 			};
 		});
 	},
+
+	source: { arg self;
+		self.children.collect { arg item, idx;
+			if(item.notNil) {
+				item.source
+			};
+		};
+	},
+
+	source_: { arg self, val;
+		val.do { arg item, idx;
+			self.childAt(idx).source = item;
+		};
+	},
 ));
 );
 

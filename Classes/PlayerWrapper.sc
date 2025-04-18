@@ -79,11 +79,13 @@ PlayerWrapper  {
 		^capturePlayerHook.(player)
 	}
 
-	*doWithQuant { arg quant, fun;
+	*doWithQuant { arg quant, fun, clock;
 		if(quant.isNil) {
 			fun.()
 		} {
-			TempoClock.default.schedAbs(TempoClock.default.nextTimeOnGrid(quant), fun)
+			// should return nil, else if fun return 0 it create an infinite loop
+			clock = clock ?? { TempoClock.default };
+			clock.schedAbs(clock.nextTimeOnGrid(quant), { fun.value; nil })
 		}
 	}
 
@@ -354,11 +356,7 @@ PlayerWrapper_Base {
 	}
 
 	doWithQuant { arg fun;
-		if(this.quant.isNil) {
-			fun.()
-		} {
-			this.clock.schedAbs(this.clock.nextTimeOnGrid(this.quant), fun)
-		}
+		PlayerWrapper.doWithQuant(this.quant, fun, this.clock);
 	}
 
 	clock {
@@ -1037,11 +1035,7 @@ PlayerWrapperGroup : List {
 	}
 
 	doWithQuant { arg fun;
-		if(this.quant.isNil) {
-			fun.()
-		} {
-			TempoClock.default.schedAbs(TempoClock.default.nextTimeOnGrid(this.quant), fun)
-		}
+		PlayerWrapper.doWithQuant(this.quant, fun)
 	}
 
 	play { 
