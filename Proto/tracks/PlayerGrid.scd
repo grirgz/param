@@ -677,6 +677,10 @@ TrackTemplateDef(\PlayerGrid, (
 	sectionClass: { TrackTemplateDef(\PlayerGridSection) },
 	lineClass: { arg self; self.sectionClass },
 
+	trackKey: { arg self;
+		self.key;
+	},
+
 	source_: { arg self, array;
 		array.collect({ arg val, idx;
 			self.childAt(idx).source = val;
@@ -895,6 +899,10 @@ TrackTemplateDef(\PlayerGrid, (
 		self.linePlayers[idx];
 	},
 
+	sectionAtOffset: { arg self, idx;
+		self.sectionAt(idx + self.gridOffset.y);
+	},
+
 	linePlayerAtOffset: { arg self, idx;
 		self.linePlayerAt(idx + self.gridOffset.y);
 	},
@@ -942,7 +950,7 @@ TrackTemplateDef(\PlayerGrid, (
 
 TrackTemplateDef(\PlayerGridSection, (
 	new: { arg self, parent, idx; 
-		self = self.deepCopy;
+		self = ProtoClass((parent: self));
 	
 		
 		self.parentTrack = { parent };
@@ -953,6 +961,11 @@ TrackTemplateDef(\PlayerGridSection, (
 	label: { arg self;
 		"% line %".format(self.parentTrack.label, self.index.asInteger)
 	},
+
+	trackKey: { arg self;
+		"%_sec%".format(self.parentTrack.trackKey, self.index).asSymbol;
+	},
+
 	isLinePlayer: true,
 
 	quant: { arg self;
