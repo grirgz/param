@@ -7,12 +7,6 @@ TrackTemplateDef(\PlayerTrackPart, (
 	// believing something is currently playing
 	modeTrigger: false, 
 
-	label: { arg self; 
-		"%: %".format(self.index, if(self.proxy.notNil, { self.proxy.label }, { "-" }))
-	},
-
-	defaultSource: nil,
-
 	new: { arg self, parent, index;
 		self = ProtoClass((parent: self));
 
@@ -21,6 +15,12 @@ TrackTemplateDef(\PlayerTrackPart, (
 		self[\storeOn] = { arg self, str; str << self.refCompileString };
 		self;
 	},
+
+	label: { arg self; 
+		"%: %".format(self.index, if(self.proxy.notNil, { self.proxy.label }, { "-" }))
+	},
+
+	defaultSource: nil,
 
 	trackTemplate: { arg self;
 		self.parent;
@@ -142,11 +142,20 @@ TrackTemplateDef(\PlayerTrackPart, (
 		}, [\Player])
 	},
 
+	enableOnePlayerPerTrack: { arg self;
+		if(self.parentTrack.notNil and: { self.parentTrack.parentTrack.notNil }) {
+			self.parentTrack.parentTrack.enableOnePlayerPerTrack
+		} {
+			true
+		};
+	},
+
 	stopInternal: { arg self;
 		// this is called when another child start playing
 		// can be overridden when parentTrack.proxy should not be stopped, like in FileCodeTrack
-		self.stop;
-		
+		if(self.enableOnePlayerPerTrack != false) {
+			self.stop;
+		};
 	},
 
 	play: { arg self;
@@ -677,6 +686,11 @@ TrackTemplateDef(\PlayerGrid, (
 	sectionClass: { TrackTemplateDef(\PlayerGridSection) },
 	lineClass: { arg self; self.sectionClass },
 
+	enableAutoSetOutbus: true,
+	enableOnePlayerPerTrack: true,
+	isMixerEnabled: true,
+	//mixer:nil, // TODO: make a container for child mixers here with handy methods
+
 	trackKey: { arg self;
 		self.key;
 	},
@@ -917,12 +931,9 @@ TrackTemplateDef(\PlayerGrid, (
 	},
 
 
-	enableAutoSetOutbus: true,
 	enableMixer: { arg self; // compat
 		self.isMixerEnabled;
 	},
-	isMixerEnabled: true,
-	//mixer:nil, // TODO: make a container for child mixers here with handy methods
 
 	selectChild: { arg self, idx;
 		self.activeIndex = idx; // this one is the good one
@@ -954,7 +965,7 @@ TrackTemplateDef(\PlayerGridSection, (
 	
 		
 		self.parentTrack = { parent };
-		self.index = idx; // line index
+		self.index = idx.asInteger; // line index
 	
 		self;
 	},
@@ -1149,7 +1160,7 @@ TrackTemplateDef(\PlayerGridSection, (
 	repeatCount: inf,
 
 	refCompileString: { arg self;
-		"TrackDef(%).linePlayerAt(%)".format(self.parentTrack.key.asCompileString, self.index.asCompileString);
+		"TrackDef(%).sectionAt(%)".format(self.parentTrack.key.asCompileString, self.index.asInteger.asCompileString);
 	},
 
 	presetCompileString: { arg self;

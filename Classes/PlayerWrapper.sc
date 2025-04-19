@@ -297,7 +297,7 @@ PlayerWrapper_Base {
 	stop {
 		target.changed(\PlayerWrapper, \userStopped);
 		this.doWithQuant {
-			target.stop;
+			target.stop; // in Pdef, stop is not quantied but play yes
 			target.changed(\PlayerWrapper, \stopped);
 		};
 	}
