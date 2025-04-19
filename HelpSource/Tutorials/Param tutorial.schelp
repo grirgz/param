@@ -322,100 +322,6 @@ ParamGroupDef(\mygroup).loadPreset(\mypreset1); // load it later
 ::
 
 
-section:: Morphing
-
-You can morph your presets using ParamMorpher, it take a ParamGroup and a list of preset to morph from
-
-code::
-~pg = ParamGroup([
-	[Ndef(\ndef_scalar), \freq],
-	[Ndef(\ndef_scalar), \pan], 
-	[Ndef(\ndef_scalar), \amp],
-]);
-
-// first lets define some presets 
-~pg.edit // change the values before saving each new preset else morphing is useless
-~pg.savePreset(\preset1);
-~pg.savePreset(\preset2);
-~pg.savePreset(\preset3);
-
-(
-~m = ParamMorpher( ~pg,
-	[
-		\preset1,
-		\preset2,
-		\preset3,
-	]
-);
-)
-::
-
-There is 3 presets, so the value to set range from 0 to 2, 0 is the first preset (\mypreset1), 1 the second and 2 the third. 0.5 is the morphing between preset 0 and preset 1
-
-code::
-~m.set(1); 
-~m.set(1.5); 
-~m.edit; // morph between presets using the default GUI
-
-~m.normSet(0.3) // or just use normSet to set the value ranging from 0 to 1, whatever the number of preset is in the ParamMorpher
-::
-
-~m is like a Param, you can control it in your GUI or MIDI controller
-
-code::
-(
-	var slider, win;
-	win = Window.new;
-	slider = Slider.new;
-	win.layout = HLayout(slider);
-	slider.mapParam(~m); // map the morpher ~m to the slider
-	win.front;
-)
-
-MIDIMap(\k1, ~m); // map it to the MIDI knob \k1
-::
-
-If your group is a ParamGroupDef, you can just use its name
-
-code::
-(
-~pgd = ParamGroupDef(\mygroup, [
-	[Ndef(\ndef_scalar), \freq],
-	[Ndef(\ndef_scalar), \pan], 
-	[Ndef(\ndef_scalar), \amp],
-]);
-
-~m = ParamMorpher(\mygroup,
-	[
-		\preset1,
-		\preset2,
-		\preset3,
-	]
-);
-)
-
-// you must redefine the presets because this is another ParamGroup, but for simplicity, let's just copy the presets of the previous group
-ParamGroupDef(\mygroup).presets = ~pg.presets;
-
-ParamGroupDef(\mygroup).edit; // same as ~pgd.edit
-~m.edit;
-::
-
-
-Just like ParamGroupDef, there is a ParamMorpherDef:
-
-code::
-(
-ParamMorpherDef(\mymorpher, \mygroup, [
-		\preset1,
-		\preset2,
-		\preset3,
-]);
-)
-
-ParamMorpherDef(\mymorpher).normSet(0.3);
-ParamMorpherDef(\mymorpher).edit;
-::
 
 section:: Working with patterns
 
@@ -502,6 +408,7 @@ Param try to ease this by providing a method to switch between desired behavior:
 
 code::
 Pdef(\pdef_scalar).setBusMode(\freq); // now freq is in bus mode
+~p.setBusMode; // alternative way to activate bus mode
 
 ~p.set(250); // now the change is immediate
 
