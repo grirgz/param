@@ -35,13 +35,26 @@
 	}
 
 	asParamGroup { arg target;
-		var sgroup = SpecGroup.newFrom(this.params);
-		if(sgroup.notNil) {
-			^sgroup.asParamGroup(target)
-		} {
-			Log(\Param).info("SynthDesc: synth definition not found: %", this.name);
-			^ParamGroup.new
-		}
+		//var sgroup = SpecGroup.newFrom(this.params);
+		var group;
+		target = target ?? { (instrument: this.synthDefKey) };
+		group = this.params.collect({ arg param_spec;
+			if(param_spec.isSequenceableCollection.not) {
+				param_spec = [param_spec]
+			};
+			if(param_spec.size > 1) {
+				Param(target, param_spec[0], param_spec[1]);
+			} {
+				Param(target, param_spec[0]);
+			}
+		});
+		^ParamGroup(group);
+		//if(sgroup.notNil) {
+			//^sgroup.asParamGroup(target)
+		//} {
+			//Log(\Param).info("SynthDesc: synth definition not found: %", this.name);
+			//^ParamGroup.new
+		//}
 	}
 
 	specs {
