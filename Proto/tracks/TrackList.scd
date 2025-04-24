@@ -315,6 +315,11 @@ TrackTemplateDef(\CustomTrack, (
 		}
 	},
 
+	fullLabel: { arg self;
+		//"s%: % %".format(self.index.asInteger, self.parentTrack.label, self.label)
+		"% % - %".format(self.parentTrack.parentTrack.sectionAt(self.index).label, self.parentTrack.label, self.parentTrack.parentTrack.label);
+	},
+
 	outBus_: { arg self, outBus;
 		self[\outBus] = outBus;
 		self.existingChildren.do({ arg child;
@@ -465,7 +470,7 @@ TrackTemplateDef(\CustomTrack, (
 ));
 
 TrackTemplateDef(\CustomTrackPart, (
-	parent: TrackTemplateDef(\playerwrapper),
+	parent: TrackTemplateDef(\PlayerTrackPart),
 	eventType: \instrumenttrackpart,
 
 	new: { arg self, parent, index;
@@ -480,6 +485,18 @@ TrackTemplateDef(\CustomTrackPart, (
 	initTrack: { arg self; 
 		self.parentTrack.initChild(self);
 	},
+
+	label: { arg self; 
+		//"s%.%: %".format(self.index, self.parentIndex, self.trackKey)
+		//"% %".format(self.parentTrack.parentTrack.sectionAt(self.index).label, self.parentTrack.label);
+		//"%".format(self.index);
+		"% % - % %.%".format(self.parentTrack.parentTrack.sectionAt(self.index).label, self.parentTrack.label, self.parentTrack.parentTrack.label, self.index, self.parentTrack.index);
+	},
+	fullLabel: { arg self;
+		//"s%: % %".format(self.index.asInteger, self.parentTrack.label, self.label)
+		"% % - %".format(self.parentTrack.parentTrack.sectionAt(self.index).label, self.parentTrack.label, self.parentTrack.parentTrack.label);
+	},
+
 
 	//////// properties
 
@@ -690,7 +707,7 @@ TrackTemplateDef(\CustomTrackPart, (
 ));
 
 TrackTemplateDef(\TrackListSection, (
-	parent: TrackTemplateDef(\lineplayer),
+	parent: TrackTemplateDef(\PlayerGridSection),
 	eventType: \tracklistpart,
 	
 	new: { arg self, parent, idx; 
@@ -702,7 +719,7 @@ TrackTemplateDef(\TrackListSection, (
 		self;
 	},
 	trackKey: { arg self;
-		"%.part%".format(self.parentTrack.key, self.index.asInteger).asSymbol;
+		"%.sec%".format(self.parentTrack.key, self.index.asInteger).asSymbol;
 	},
 ));
 );

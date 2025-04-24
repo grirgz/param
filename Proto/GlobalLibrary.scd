@@ -43,7 +43,7 @@ ProtoDef(\GlobalLibrary, (
 				};
 				if(self.clipFactories_keys.includes(ttype)) {
 					fac = self.clipFactories[ttype];
-					//Log(\Param).debug("fac.libIdKey: %", fac.libIdKey);
+					Log(\Param).debug("fac.libIdKey: %", fac.libIdKey);
 					//libId = [fac.libIdKey, target.key -> target]
 					// TODO: find a way to address anonymous track children
 					//	for the moment, i use track.trackKey but no addressing is done
@@ -68,12 +68,37 @@ ProtoDef(\GlobalLibrary, (
 		[libid.last.key.asString, libid.first.asString]
 	},
 
-	libIdToLabel: { arg self, libid;
+	libIdToLabel: { arg self, libid, mode;
 		var wrapper = self.libIdToWrapper(libid);
-		"% (%)".format(wrapper.libIdTargetKey, wrapper.libIdKey);
+		//"% (%)".format(wrapper.libIdTargetKey, wrapper.libIdKey);
+		switch(mode,
+			nil, {
+				"% (%)".format(wrapper.label, wrapper.libIdKey);
+			},
+			\section_track, { 
+				switch(wrapper.libIdKey,
+					\TrackListPart, { 
+						var target = wrapper.getTarget;
+						"% (%)".format(target.label, wrapper.libIdKey);
+					},
+					\InstrumentTrackPart, {  
+						var target = wrapper.getTarget;
+						"% (%)".format(target.label, wrapper.libIdKey);
+						//"% % (%)".format(target.parentTrack.parentTrack.sectionAt(target.index).label, target.parentTrack.label, wrapper.libIdKey);
+					},
+					{
+						"% (%)".format(wrapper.label, wrapper.libIdKey);
+					}
+				);
+			},
+			{ 
+				"todolabel"
+			},
+		);
 	},
 
 	libIdToFactory: { arg self, libid;
+		// use libIdToWrapper to have a personalized copy of the factory with its libId
 		var fac;
 		if(self.clipFactories.isNil) {
 			self.init_default_clip_factories;
@@ -215,6 +240,7 @@ ProtoDef(\GlobalLibrary, (
 			},
 
 			targetToLibId: { arg self, target;
+				[ target, target.key ].debug("parentFactory.targetToLibId");
 				[self.libIdKey, target.key -> target];
 			},
 
@@ -412,6 +438,12 @@ ProtoDef(\GlobalLibrary, (
 			parent: superself.clipFactories_parent,
 			key: 'trackdef',
 			libIdKey: 'TrackDef',
+
+			label: { arg self; self.libId.last.value.label },
+
+			targetToLibId: { arg self, target;
+				[self.libIdKey, target.trackKey -> target];
+			},
 
 			keylist: {
 				TrackDef.all.keys.asArray.sort; 
@@ -708,10 +740,11 @@ ProtoDef(\GlobalLibrary, (
 			},
 		);
 
-		superself.clipFactories.instrumenttrackpart = ().putAll(superself.clipFactories_parent).putAll((
+		superself.clipFactories.instrumenttrackpart = (
+			parent: superself.clipFactories.tracklist,
 			key: 'instrumenttrackpart',
 			libIdKey: 'InstrumentTrackPart',
-			label: { arg self; self.key.asString },
+			//label: { arg self; self.key.asString },
 			keylist: {
 				// TODO (done in TagSpecDef)
 				[]
@@ -798,7 +831,7 @@ ProtoDef(\GlobalLibrary, (
 					timeline: KitTimeline(scorekey, self.getTarget)
 				)
 			},
-		));
+		);
 
 		superself.clipFactories.bufdef = ().putAll(superself.clipFactories_parent).putAll((
 			key: 'bufdef',

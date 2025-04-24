@@ -764,7 +764,7 @@ ProtoClassDef(\TrackTimeline, (
 		if(self.all[name].notNil) {
 			self = self.all[name]
 		} {
-			self = self.deepCopy;
+			self = ProtoClass((parent:self));
 			self.prAdd(name).init(tracks);
 		};
 	
@@ -828,17 +828,7 @@ ProtoClassDef(\TrackTimeline, (
 
 
 	updateClipList: { arg self;
-		var clips = self.tracks.collect { arg track, idx;
-			track.children.collect { arg clip, idx;
-				var id;
-				if(clip.isEmpty.not) {
-					id = ProtoDef(\GlobalLibrary).targetToLibId(clip);
-					//Log(\Param).debug("id %", id);
-					self.clipList.addClipIdToClipList(id);
-					id;
-				}
-			};
-		};
+		self.clipList.gatherClips;
 	},
 
 
@@ -1724,7 +1714,7 @@ ProtoClassDef(\KitTimeline, (
 
 ProtoClassDef(\ClipTimelineClipList, (
 	new: { arg self, timeline;
-		self = self.deepCopy;
+		self = ProtoClass((parent:self));
 	
 		self.lib = ProtoDef(\GlobalLibrary);
 		self.clipList = List.new;
@@ -1766,7 +1756,7 @@ ProtoClassDef(\ClipTimelineClipList, (
 
 	addClipIdToClipList: { arg self, clipId;
 		if(clipId.notNil) {
-			if(self.clipList.includesEqual(clipId).not) {
+			if(self.clipListIncludes(clipId).not) {
 				self.clipList.add(clipId);
 				if(self.clipList.size == 1) {
 					self.setBrushToClipId(self.clipList.first)
@@ -1778,6 +1768,24 @@ ProtoClassDef(\ClipTimelineClipList, (
 			Log(\Param).debug("addClipIdToClipList: no clipId %", clipId);
 		};
 		self.changed(\clipList);
+	},
+
+	clipListIncludes: { arg self, val;
+		self.clipList.any { arg id;
+			id.last.value === val.last.value;
+		};
+		//self.clipList.any { arg id;
+			//id.first == id.first and: {
+				//id.last.key == id.last.key and: {
+					//id.last.value === id.last.value;
+				//}
+			//}
+		//}
+	},
+
+	sortClipList: { arg self;
+		//self.clipList = self.clipList.sort({ arg a, b; a.last.key.asString < b.last.key.asString })
+		self.clipList = self.clipList.sort({ arg a, b; a.last.value.label < b.last.value.label })
 	},
 
 	clearClipList: { arg self;
@@ -1812,23 +1820,42 @@ ProtoClassDef(\ClipTimelineClipList, (
 		//"gat".debug;
 		self.timeline.eventList.do { arg clip;
 			if([\start, \end].includes(clip.type).not) {
+				clip.debug("gatherClips: from timeline");
 				self.addToClipList(clip)
 			};
 		};
 		self.gatherClipsFromTrackList;
+		//self.sortClipList;
+		self.changed(\clipList);
 	},
 
 	gatherClipsFromTrackList: { arg self;
+		var cl = List.new;
+		var fcl;
 		if(self.timeline.mainTrack.notNil) {
-			self.timeline.mainTrack.existingChildren.collect { arg track, idx;
-				if(track.notNil and: { track.isEmpty.not }) {
-					track.existingChildren.collect { arg child, idx;
-						var clipId = self.lib.targetToLibId(child);
-						self.addClipIdToClipList(clipId);
-					};
-				}
+			self.timeline.mainTrack.existingSections.do { arg section, idx;
+				var clipId = self.lib.targetToLibId(section);
+				cl.add(clipId);
+				clipId.debug("gatherClips: from grid: section");
+				section.existingChildren.do { arg item, idx;
+					clipId = self.lib.targetToLibId(item);
+					cl.add(clipId);
+					clipId.debug("gatherClips: from grid: trackpart");
+				};
 			};
-		}
+			//self.timeline.mainTrack.existingChildren.collect { arg track, idx;
+				//if(track.notNil and: { track.isEmpty.not }) {
+					//track.existingChildren.collect { arg child, idx;
+						//var clipId = self.lib.targetToLibId(child);
+						//self.addClipIdToClipList(clipId);
+					//};
+				//}
+			//};
+		};
+		fcl = self.clipList.reject({ arg x; 
+			cl.any({ arg clx; clx.last.value === x.last.value  })
+		});
+		self.clipList = ( cl ++ fcl ).asList;
 	},
 	
 	edit: { arg self;
@@ -1839,7 +1866,7 @@ ProtoClassDef(\ClipTimelineClipList, (
 		if(clipId.isNil) {
 			"nil"
 		} {
-			self.lib.libIdToLabel(clipId);
+			self.lib.libIdToLabel(clipId, \section_track);
 		}
 	},
 

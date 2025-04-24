@@ -19,6 +19,11 @@ TrackTemplateDef(\PlayerTrackPart, (
 	label: { arg self; 
 		"%: %".format(self.index, if(self.proxy.notNil, { self.proxy.label }, { "-" }))
 	},
+	fullLabel: { arg self;
+		// TODO
+		//"s%: % %".format(self.index.asInteger, self.parentTrack.label, self.label)
+		self.label;
+	},
 
 	defaultSource: nil,
 
@@ -415,6 +420,11 @@ TrackTemplateDef(\PlayerTrack, (
 	label: { arg self; 
 		"%: playertrack".format(self.index)
 	},
+	fullLabel: { arg self;
+		// TODO
+		//"s%: % %".format(self.index.asInteger, self.parentTrack.label, self.label)
+		self.label;
+	},
 
 	new: { arg self, parent, index;
 		self = ProtoClass((parent: self));
@@ -808,6 +818,14 @@ TrackTemplateDef(\PlayerGrid, (
 		}
 	},
 
+	existingSections: { arg self;
+		self.linePlayers.collect { arg item, idx;
+			if(item.notNil and: { item.isEmpty.not }) {
+				item;
+			};
+		}.select(_.notNil);
+	},
+
 	linePlayers: { arg self;
 		self[\obj_linePlayers] ?? { 
 			self[\obj_linePlayers] = SparseArray.new;
@@ -913,6 +931,10 @@ TrackTemplateDef(\PlayerGrid, (
 		self.linePlayers[idx];
 	},
 
+	sections: { arg self;
+		self.linePlayers;
+	},
+
 	sectionAtOffset: { arg self, idx;
 		self.sectionAt(idx + self.gridOffset.y);
 	},
@@ -970,11 +992,14 @@ TrackTemplateDef(\PlayerGridSection, (
 		self;
 	},
 	label: { arg self;
-		"% line %".format(self.parentTrack.label, self.index.asInteger)
+		"sec %".format(self.index.asInteger, self.parentTrack.label, self.index.asInteger)
+	},
+	fullLabel: { arg self;
+		"s%: % %".format(self.index.asInteger, self.parentTrack.label, self.label)
 	},
 
 	trackKey: { arg self;
-		"%_sec%".format(self.parentTrack.trackKey, self.index).asSymbol;
+		"%.sec%".format(self.parentTrack.trackKey, self.index).asSymbol;
 	},
 
 	isLinePlayer: true,

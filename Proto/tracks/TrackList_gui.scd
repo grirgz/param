@@ -647,6 +647,52 @@ WindowDef(\TrackList, (
 		self.model
 	},
 
+	makeSectionSelector: { arg self;
+		self.sectionIndexView = StaticText.new;
+		self.sectionLabel = TextField.new;
+		self.sectionLabel.followChange(self.model, \selectedPart, {
+			self.sectionLabel.string = self.model.sectionAt(self.model.selectedPart).label;
+			self.sectionIndexView.string = "% ".format(self.model.selectedPart.asInteger);
+		});
+		HLayout (
+			self.sectionIndexView,
+			self.sectionLabel.action_({
+				self.model.sectionAt(self.model.selectedPart).label = self.sectionLabel.string;
+			}),
+			BasicButton.new.string_("<").fixedWidth_(20).action_({
+				self.model.selectedPart = ( self.model.selectedPart - 1 ).clip(0,inf);
+			}),
+			BasicButton.new.string_("v").fixedWidth_(20).action_({
+				var nextfreeidx = self.nextFreeSectionIndex;
+				Menu(
+					* self.model.existingSections.asArray.collect({ arg sec, idx;
+						MenuAction(sec.label, {
+							self.model.selectedPart = sec.index;
+						});
+					}) 
+					++ [ MenuAction("Next Free: %".format(nextfreeidx), {
+						self.model.selectedPart = nextfreeidx;
+					}) ]
+				).front;
+			}),
+			BasicButton.new.string_(">").fixedWidth_(20).action_({
+				self.model.selectedPart = self.model.selectedPart + 1;
+			}),
+		).spacing_(0)
+		
+	},
+
+	nextFreeSectionIndex: { arg self;
+		block { arg break;
+			self.model.sections.do { arg item, idx;
+				if(item.isEmpty) {
+					break.value(item.index);
+				};
+			};
+			self.model.sections.size;
+		}
+	},
+
 	makeToolbar: { arg self;
 		var model = self.model;
 		var playButton;
@@ -669,14 +715,15 @@ WindowDef(\TrackList, (
 					};
 				).front;
 			}),
-			HLayout (
+			[HLayout (
 				StaticText.new.string_("Section:"),
-				Param(Message(model), \selectedPart, ControlSpec(0,16,\lin,1)).asNumberBox,
-			),
-			HLayout (
+				self.makeSectionSelector,
+				//Param(Message(model), \selectedPart, ControlSpec(0,16,\lin,1)).asNumberBox,
+			), stretch:10],
+			[HLayout (
 				StaticText.new.string_("Len:"),
-				Param(Message(model), \areasizex, ControlSpec(1,128,\lin)).asTextField,
-			),
+				Param(Message(model), \areasizex, ControlSpec(1,128,\lin)).asTextField.maxWidth_(50),
+			), stretch:0],
 			BasicButton.new.string_("Mixer").action_({
 				WindowDef(( \TrackListMixer_++model.key ).asSymbol, WindowDef(\TrackListMixer)).front(model);
 			}),
@@ -998,12 +1045,17 @@ WindowDef(\TrackList, (
 		chanview;
 	},
 
+	lib: { arg self;
+		ProtoDef(\GlobalLibrary);
+	},
+
 	makeTrackView: { arg self, child;
 		var rowHeight = 30;
 		var rowHeight_inset = rowHeight - 5;
 		var model = self.model;
 		var idx = model.selectedPart.asInteger;
 		var cell = child.childAt(idx);
+		var section = model.sectionAt(idx);
 		var linename = "%.%".format(model.key, idx).asSymbol;
 		var name = "%.%.%".format(model.key, childidx, idx).asSymbol;
 		var playbut = PlayerWrapper(cell).label_("").asView;
@@ -1083,9 +1135,9 @@ WindowDef(\TrackList, (
 			viewSelector.select_item(childidx);
 			if(FileSystemProject.current.notNil) {
 
-				FileSystemProject.current.tracklist_selected_track = [\TrackListPart, linename -> model.linePlayerAt(idx)];
+				FileSystemProject.current.tracklist_selected_track = self.lib.targetToLibId(section);
 				FileSystemProject.current.changed(\tracklist_selected_track);
-				FileSystemProject.current.tracklist_selected_track = [\InstrumentTrackPart, name -> cell];
+				FileSystemProject.current.tracklist_selected_track = self.lib.targetToLibId(cell);
 				FileSystemProject.current.changed(\tracklist_selected_track);
 				//FileSystemProject.current.tracklist_selected_track.debug("sel track");
 			}
