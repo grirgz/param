@@ -1054,6 +1054,7 @@ CursorTimelineView : TimelineView {
 				} {
 					start_beat =  TempoClock.default.beats;
 				};
+				//[start_beat, this.cursor.startTime, startAbsTime, finalDur].debug("start_beat, startTime, startAbsTime, finalDur");
 
 				while({
 					currentDur < finalDur;

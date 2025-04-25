@@ -1148,7 +1148,7 @@ ProtoClassDef(\ParamTimeline, (
 		self.param.getBus != self.outBus.asMap;
 	},
 
-	cutPatternFunction: { arg self;
+	cutPatternFunction: { arg self, parentEvent, parentTimeline;
 		{ arg sloop, offset, dur;
 			var postpat, prepat;
 			var pat;
@@ -1220,6 +1220,9 @@ ProtoClassDef(\ParamTimeline, (
 				offset, dur,
 			);
 			//pat = postpat.trace(prefix:"postpat: ") <> pat.trace(prefix:"pat: ") <> prepat.trace(prefix:"prepat: ");
+			if(parentTimeline.notNil) {
+				pat = parentTimeline.mutingPattern(parentEvent) <> pat;
+			};
 			pat = postpat <> pat <> prepat;
 
 			~pat = pat;
