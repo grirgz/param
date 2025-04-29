@@ -174,7 +174,14 @@ ProtoTemplateDef(\SynthDefPresetBank, (
 			case(
 				{ libid.first == \Pdef }, {
 					var pdef = libid.last.value;
-					proxy.source = pdef.source.copy;
+					if(pdef.source.isKindOf(PbindProxy)) {
+						proxy.source = PbindProxy();
+						pdef.source.pairs.clump(2).do { arg pair, idx;
+							proxy.source.set(pair[0], pair[1].source.copy);
+						};
+					} {
+						proxy.source = pdef.source.copy;
+					};
 					proxy.envir = pdef.envir.copy;
 				},
 				{ libid.first == \SynthDefPreset }, {
