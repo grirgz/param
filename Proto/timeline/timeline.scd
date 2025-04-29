@@ -811,7 +811,7 @@ ProtoClassDef(\TrackTimeline, (
 
 	tracks_: { arg self, tracks;
 		// FIXME: i removed support for PlayerWrapperGroup, think to add it back
-		self[\tracks] = { tracks.children };
+		self[\tracks] = { tracks.firstChildren };
 		self.mainTrack = tracks;
 		//self.tracks = { tracks.children };
 		self.areasize = Point(self.areasize.x, self.tracks.size );

@@ -603,6 +603,17 @@ TrackTemplateDef(\PlayerTrack, (
 		}
 	},
 
+	firstChildren: { arg self;
+		// return all children until the last existing one
+		var ch = self.children.asArray;
+		var last = ch.reverse.detectIndex { arg x; x.isEmpty.not };
+		if(last.notNil) {
+			ch[0..ch.size - last - 1]
+		} {
+			[]
+		};
+	},
+
 	// mimic modality
 	elAt: { arg self ...args;
 		self.childAt(*args)
@@ -816,6 +827,17 @@ TrackTemplateDef(\PlayerGrid, (
 		self.children.select { arg child, idx;
 			child.notNil and: { child.isEmpty.not }
 		}
+	},
+
+	firstChildren: { arg self;
+		// return all children until the last existing one
+		var ch = self.children.asArray;
+		var last = ch.reverse.detectIndex { arg x; x.isEmpty.not };
+		if(last.notNil) {
+			ch[0..ch.size - last - 1]
+		} {
+			[]
+		};
 	},
 
 	existingSections: { arg self;
