@@ -329,9 +329,25 @@ Param {
 		this.storeOn(stream); // storeOn call storeArgs
 	}
 
-	storeArgs { arg stream;
-		^init_args
-		//stream << ("Param.new(" ++ init_args.asCompileString ++ ")");
+	//storeArgs { arg stream;
+		//^init_args
+		////stream << ("Param.new(" ++ init_args.asCompileString ++ ")");
+	//}
+
+	storeOn { arg stream;
+		// ugly hack because Pbindef print all argument and break everything
+		var ret;
+		if(init_args[0].isKindOf(Pdef)) {
+			ret = init_args.copy;
+			ret[0] = "Pdef(%)".format(init_args[0].key.asCompileString);
+			init_args[1..].do { arg item, idx;
+				ret[idx+1] = item.asCompileString;
+			};
+			if(ret[2] == "nil") {
+				ret = ret.keep(2);
+			};
+		};
+		stream << "Param(" << ret.join(", ") << ")";
 	}
 
 	== { arg param;
