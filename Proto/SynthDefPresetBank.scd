@@ -169,20 +169,31 @@ ProtoTemplateDef(\SynthDefPresetBank, (
 		res;
 	},
 
+	clonePdef: { arg self, newKey, pdef;
+		var proxy;
+		if(newKey.isKindOf(EventPatternProxy)) {
+			proxy = newKey;
+		} {
+			proxy = Pdef(newKey);
+		};
+		if(pdef.source.isKindOf(PbindProxy)) {
+			proxy.source = PbindProxy();
+			pdef.source.pairs.clump(2).do { arg pair, idx;
+				proxy.source.set(pair[0], pair[1].source.copy);
+			};
+		} {
+			proxy.source = pdef.source.copy;
+		};
+		proxy.envir = pdef.envir.copy;
+		proxy;
+	},
+
 	loadFromPresetDialog: { arg self, proxy, callback;
 		WindowDef(\GlobalLibrary_select).front(nil, { arg libid;
 			case(
 				{ libid.first == \Pdef }, {
 					var pdef = libid.last.value;
-					if(pdef.source.isKindOf(PbindProxy)) {
-						proxy.source = PbindProxy();
-						pdef.source.pairs.clump(2).do { arg pair, idx;
-							proxy.source.set(pair[0], pair[1].source.copy);
-						};
-					} {
-						proxy.source = pdef.source.copy;
-					};
-					proxy.envir = pdef.envir.copy;
+					self.clonePdef(proxy, pdef);
 				},
 				{ libid.first == \SynthDefPreset }, {
 					var instrp = Param(proxy, \instrument -> \source);

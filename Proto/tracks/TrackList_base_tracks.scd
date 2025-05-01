@@ -181,6 +181,11 @@ TrackTemplateDef(\NoteTimelineTrack, (
 		str.join($\n);
 	},
 
+	cloneScore: { arg self;
+		// WARN: CustomTrack cloneScore should assign score while CustomTrackPart cloneScore should return score
+		self[\source] = ProtoTemplateDef(\SynthDefPresetBank).clonePdef("%.instr".format(self.trackKey).asSymbol, self.source);
+	},
+
 
 	playerSynthDef_: { arg self, instr;
 		// not used anymore, editor use PbindefEditor to change instrument
@@ -353,6 +358,13 @@ TrackTemplateDef(\KitTimelineTrack, (
 		( self.trackKey++\_kit ).asSymbol;
 	},
 
+	cloneScore: { arg self;
+		var newkit;
+		newkit = PatKitDef(self.defaultKitKey);
+		newkit.loadFrom(self.kit);
+		self.kit = newkit;
+	},
+
 	makeScore: { arg self;
 		self.kit = PatKitDef(self.defaultKitKey);
 		//self[\source] = Pdef("%.%.instr".format(self.key, self.index).asSymbol, Pbind());
@@ -382,7 +394,7 @@ TrackTemplateDef(\KitTimelineTrackPart, (
 
 
 	makeScore: { arg self;
-		self.score = KitTimeline(self.name+++\score);
+		self.score = KitTimeline(self.name+++\score, self.parentTrack.kit);
 	},
 
 	scorePresetCompileString: { arg self;
@@ -440,6 +452,10 @@ TrackTemplateDef(\SampleTimelineTrack, (
 			Param(Message(self), \recordArmed, ParamBoolSpec()).asButton("●").maxWidth_(20),
 			Param(Message(self), \recBus, ParamAudioBusSpec()).asPopUpMenu.minWidth_(5),
 		).margins_(0).spacing_(0)
+	},
+
+	cloneScore: { arg self;
+		// NOOP
 	},
 
 	makeScore: { arg self;
@@ -526,6 +542,10 @@ TrackTemplateDef(\ParamTimelineTrack, (
 		).margins_(0).spacing_(0)
 	},
 
+	cloneScore: { arg self;
+		// NOOP
+	},
+
 	makeScore: { arg self;
 		//self[\source] = Pdef("%.%.instr".format(self.key, self.index).asSymbol, Pbind());
 		//self.isEmpty = false;
@@ -537,7 +557,7 @@ TrackTemplateDef(\ParamTimelineTrackPart, (
 
 	cloneScore: { arg self;
 		var newscore;
-		newscore = ParamTimeline(self.name+++\score, self.parentTrack.targetParam);
+		newscore = ParamTimeline(self.name+++\score, self.score.param);
 		newscore.eventList = self.score.eventList.clone;
 		newscore.buffer = self.score.buffer;
 		newscore.outBus = self.parentTrack.outBus;
@@ -596,6 +616,10 @@ TrackTemplateDef(\ClipTimelineTrack, (
 		//str.add( "%.source = %;".format(self.refCompileString, self.source.asCompileString));
 		//str.add( PlayerWrapper(self.source).presetCompileString );
 		str.join($\n);
+	},
+
+	cloneScore: { arg self;
+		// NOOP
 	},
 
 	makeScore: { arg self;

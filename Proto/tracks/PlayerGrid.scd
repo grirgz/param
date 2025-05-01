@@ -840,20 +840,6 @@ TrackTemplateDef(\PlayerGrid, (
 		};
 	},
 
-	existingSections: { arg self;
-		self.linePlayers.collect { arg item, idx;
-			if(item.notNil and: { item.isEmpty.not }) {
-				item;
-			};
-		}.select(_.notNil);
-	},
-
-	linePlayers: { arg self;
-		self[\obj_linePlayers] ?? { 
-			self[\obj_linePlayers] = SparseArray.new;
-			self[\obj_linePlayers];
-		};
-	},
 
 	childAt: { arg self, idx, idx2;
 		var ret;
@@ -946,6 +932,18 @@ TrackTemplateDef(\PlayerGrid, (
 		self.sectionAt(idx);
 	},
 
+	existingSections: { arg self;
+		self.linePlayers.collect { arg item, idx;
+			if(item.notNil and: { item.isEmpty.not }) {
+				item;
+			};
+		}.select(_.notNil);
+	},
+
+	linePlayers: { arg self;
+		self.sections;
+	},
+
 	sectionAt: { arg self, idx;
 		if(self.linePlayers[idx].isNil) {
 			self.linePlayers[idx] = self.sectionClass.new(self, idx);
@@ -954,7 +952,10 @@ TrackTemplateDef(\PlayerGrid, (
 	},
 
 	sections: { arg self;
-		self.linePlayers;
+		self[\obj_sections] ?? { 
+			self[\obj_sections] = SparseArray.new;
+			self[\obj_sections];
+		};
 	},
 
 	sectionAtOffset: { arg self, idx;

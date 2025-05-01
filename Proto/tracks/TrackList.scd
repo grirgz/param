@@ -89,6 +89,18 @@ TrackTemplateDef(\TrackList, (
 		self.changed(\trackCount);
 	},
 
+	clone: { arg self, newKey;
+		self = TrackDef(newKey, self.copy);
+		self.children = self.children.collect({ arg item, idx;
+			item.clone(self, idx);
+		});
+		self.sections = self.sections.collect({ arg item, idx;
+			item.clone(self, idx);
+		});
+		self;
+		
+	},
+
 	////// others
 
 	keepSamplesInUse: { arg self;
@@ -108,14 +120,14 @@ TrackTemplateDef(\TrackList, (
 	selectedPart: 0,
 	selectedPart_: { arg self, val;
 		if(val != self[\selectedPart]) {
-			var isPlaying = self.linePlayerAt(self.selectedPart).isPlaying;
+			var isPlaying = self.sectionAt(self.selectedPart).isPlaying;
 			self[\selectedPart] = val;
 			self.changed(\selectedPart);
 			self.changed(\tracklist);
 			//self.isPlaying.debug("test playing");
 			if(isPlaying) {
 				//self.selectedPart.debug("test playing yes!");
-				self.linePlayerAt(self.selectedPart).play;
+				self.sectionAt(self.selectedPart).play;
 			};
 		}
 	},
@@ -181,13 +193,13 @@ TrackTemplateDef(\TrackList, (
 
 	presetCompileString: { arg self;
 		"%\n".format([
-			"TrackDef(%, %);".format(self.key.asCompileString, "TrackTemplateDef(\\TrackList)"),
-			"TrackDef(%).presetCompileStringSavePath = PathName(thisProcess.nowExecutingPath).pathOnly;".format(self.key.asCompileString),
+			"TrackDef(%, %);".format(self.refCompileString, "TrackTemplateDef(\\TrackList)"),
+			"TrackDef(%).presetCompileStringSavePath = PathName(thisProcess.nowExecutingPath).pathOnly;".format(self.refCompileString),
 			"",
 			self.linePlayers.collect { arg lplayer, idx;
 				lplayer.presetCompileString
 			}.select(_.notNil).join("\n"),
-			"\nTrackDef(%).loadPresetCompileString;".format(self.key.asCompileString),
+			"\nTrackDef(%).loadPresetCompileString;".format(self.refCompileString),
 		].join("\n"))
 	},
 
@@ -284,6 +296,23 @@ TrackTemplateDef(\CustomTrack, (
 		}
 	},
 
+	clone: { arg self, parent, index;
+		// WARN: CustomTrack cloneScore should assign score while CustomTrackPart cloneScore should return score
+		self = self.copy;
+
+		self.parentTrack = {parent};
+		self.index = index.asInteger;
+		self.cloneScore;
+		self.children = self.children.collect({ arg item, idx;
+			item.clone(self, idx);
+		});
+		if(self.mixer_obj.notNil) {
+			self.mixer_obj = self.mixer_obj.clone("%.%".format(self.parentTrack.key, self.index).asSymbol);
+			self.outBus = self.mixer_obj.inbus;
+		};
+		self;
+		
+	},
 
 	///// properties
 
@@ -416,7 +445,7 @@ TrackTemplateDef(\CustomTrack, (
 				if(self.mixer_obj.isNil) {
 					var mix;
 					ParamProto.init;
-					self.mixer_obj = ProtoClassDef(\TrackMixerDef).new(self.parentTrack.key+++"."+++self.index);
+					self.mixer_obj = ProtoClassDef(\TrackMixerDef).new("%.%".format(self.parentTrack.key, self.index).asSymbol);
 					self.mixer_obj[\soloModeHook] = { arg mself, val;
 						// track is soloed, should mute all other tracks
 						// val is true if current track is soloed, else false
@@ -720,6 +749,13 @@ TrackTemplateDef(\TrackListSection, (
 	},
 	trackKey: { arg self;
 		"%.sec%".format(self.parentTrack.key, self.index.asInteger).asSymbol;
+	},
+
+	clone: { arg self, parentTrack, index;
+		self = self.copy;
+		self.parentTrack = { parentTrack };
+		self.index = index.asInteger;
+		self;
 	},
 ));
 );

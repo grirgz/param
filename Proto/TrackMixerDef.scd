@@ -121,6 +121,25 @@ ProtoClassDef(\TrackMixerDef, (
 		self.defineMixerHook;
 	},
 
+	clone: { arg self, newKey;
+		var obj = ProtoClassDef(\TrackMixerDef).new(newKey, self.numChannels, self.outbus);
+		[\prefader, \postfader, \mute, \solo].do { arg key, idx;
+			obj.getParam(key).set(self.proxy.get(key));
+		};
+		self.proxy.nodeMap.keys.do { arg key, idx;
+			if(key.asString.beginsWith("send")) {
+				obj.getParam(key).set(self.proxy.get(key));
+			};
+		};
+		obj.insertFxList = self.insertFxList.collect { arg item, idx;
+			if(item.notNil) {
+				item.clone(obj.proxy, idx, obj.key);
+			};
+		};
+		//self.proxy.copy(obj.proxy.key);
+		obj;
+	},
+
 	muteMode_: { arg self, val;
 		self.proxy.set(\mute, val.asInteger);
 		self.changed(\muteMode);
@@ -387,6 +406,25 @@ ProtoTemplateDef(\TrackMixer_InsertFx, (
 		self.proxy.isNil or: { self.synthName.isNil } or: { self.synthName == self.synthNameDefault }
 	},
 
+	clone: { arg self, proxy, index, mixerKey;
+		var obj = self.copy;
+		obj.proxy = proxy;
+		obj.index = index;
+		obj.mixerKey = mixerKey;
+		self.asParamGroup.do { arg param, idx;
+			[param.propertyRoot, param.get].debug("clone TrackMixer_InsertFx");
+			// NOTE: broken: propertyRoot has already index, can't change it
+			// but work when cloning all insertfx of the fx because index stay the same
+			//obj.getParam(param.propertyRoot).set(param.get);
+			if(param.isSet) {
+				obj.proxy.set(param.propertyRoot, param.get);
+			};
+		};
+		obj.enabled = self.enabled;
+		obj;
+	},
+
+
 	presetCompileString: { arg self, ref;
 		"%.synthName = %;\n".format(ref, self.synthName.asCompileString)
 		++
@@ -402,7 +440,7 @@ ProtoTemplateDef(\TrackMixer_InsertFx, (
 	},
 
 	enabled: { arg self;
-		self.proxy[self.index].isNil
+		self.proxy[self.index].notNil
 	},
 
 	enabled_: { arg self, val;
@@ -612,6 +650,7 @@ ProtoTemplateDef(\TrackMixer_InsertFx_equi, (
 			self.getParam(key)
 		}));
 	},
+
 
 	getParam: { arg self, val, spec;
 		var oldval = val;
