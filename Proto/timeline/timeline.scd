@@ -1985,7 +1985,7 @@ ProtoClassDef(\LoopMaster, (
 		// deprecated. Now I use embedPattern with a cutFunction as argument
 		if(dur < 0.01) {
 			dur = 1;
-			Log(\Param).debug("prevent too short loop");
+			Log(\Param).debug("cutAndEmbedPattern: prevent too short loop");
 		};
 		self.currentLoopDur = dur;
 		self.currentLoopStartAbsTime = firstEventOffset + self.firstEventAbsTime;
@@ -2040,7 +2040,7 @@ ProtoClassDef(\LoopMaster, (
 	embedPattern: { arg self, cutFunction, firstEventOffset, dur;
 		if(dur < 0.01) {
 			dur = 1;
-			Log(\Param).debug("prevent too short loop");
+			Log(\Param).debug("embedPattern: prevent too short loop");
 		};
 		self.currentLoopDur = dur;
 		self.currentLoopStartAbsTime = firstEventOffset + self.firstEventAbsTime;

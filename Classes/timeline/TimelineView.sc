@@ -1734,6 +1734,16 @@ TimelineView : SCViewHolder {
 		this.viewport = this.gridRectToNormRect(Rect(el.startTime, 0, totalDur ?? { el.totalDur }, this.areasize.y));
 	}
 
+	viewWithCursor {
+		// WIP
+		var cursorview = CursorTimelineView.new;
+		^StackLayout(
+			cursorview.view,
+			this.selectionView,
+			this.view,
+		).mode_(1)
+	}
+
 	///////////////// coordinates conversion
 
 	clipGridPoint { arg point;

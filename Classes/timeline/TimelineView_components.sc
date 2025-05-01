@@ -982,6 +982,12 @@ CursorTimelineView : TimelineView {
 		})
 	}
 
+	mapModel { arg val;
+		// used for tracking PmodEnv
+		model = val;
+		this.makeUpdater;
+	}
+
 	mimicCursor { arg othercur;
 		//[cursor, othercur].debug("mimicCursor");
 		if(mimicCursorController.notNil) {
@@ -1187,6 +1193,125 @@ CursorTimelineView : TimelineView {
 	}
 }
 
+SimpleCursorTimelineView : CursorTimelineView {
+	// used as cursor for PmodEnvView, avoid all dependencies to timeline panel
+	var <>cursorPos = 0;
+	var <>playtask;
+	var <>cursor;
+	var <>cursorController;
+	var <>mimicCursorController;
+	var <>isPlaying = false;
+	var <>refreshRate = 16;
+	var <>bandWidth = 5;
+	var <>controllerTarget;
+	var <>startIsScheduled = false;
+
+	mapControllerTarget { arg val;
+		// used for tracking PmodEnv
+		controllerTarget = val;
+		this.makeUpdater;
+	}
+
+	makeUpdater {
+		if(controller.notNil) {
+			controller.remove;
+		};
+		if(playtask.isPlaying) {
+			playtask.stop;
+		};
+		if(controllerTarget.notNil) {
+			controller = SimpleController(controllerTarget).put(\cursor, { arg obj, msg, arg1;
+				if(this.view.isNil) {
+					controller.remove;
+				} {
+					//[obj, msg, arg1].debug("CursorTimelineView get a refresh signal!");
+					//{
+					if(arg1 == \play) {
+						this.play;
+					} {
+						if(arg1 == \stop) {
+							this.stop;
+						};
+					}
+					//}.defer(Server.default.latency)
+
+				};
+			});
+			controller.put(\redraw, {
+				this.refresh;
+			});
+		};
+	}
+
+	play {
+		//"==================************-----------(##############)".debug("cursor PLAY");
+		if(playtask.isNil) {
+			playtask = TaskProxy.new;
+			playtask.quant = 0;
+		};
+
+		fork {
+			startIsScheduled = true;
+			//startIsScheduled.debug("set startIsScheduled");
+			Server.default.latency.wait; // compense for pattern latency
+
+			playtask.source = {
+				var startAbsTime = 0;
+				var finalDur = this.areasize.x;
+				var start_beat;
+				var currentDur = 0;
+
+				start_beat = TempoClock.default.beats;
+				[start_beat, startAbsTime, finalDur].debug("start_beat, startTime, startAbsTime, finalDur");
+
+				while({
+					currentDur < finalDur;
+					//true;
+				}, {
+					currentDur = TempoClock.default.beats - start_beat;
+					cursorPos = startAbsTime + currentDur;
+					//sloop.timeline.refCompileString.debug("cursor of timeline");
+					//cursorPos.debug("cursorPos");
+					[ currentDur, finalDur, ( this.refreshRate.reciprocal * this.clock.tempo) ].debug("currentDur, finalDur, wait");
+					{
+						if(this.view.isNil or: { this.view.isClosed }) {
+							this.stop;
+						} {
+							this.view.refresh;
+						};
+					}.defer;
+					( this.refreshRate.reciprocal * this.clock.tempo).wait; 
+				});
+				cursorPos = startAbsTime + finalDur;
+				{ this.view.refresh; }.defer;
+				nil;
+			};
+			playtask.play(TempoClock.default);
+			{
+				// ugly fix
+				// since stop is defered by s.latency, it stop the just started next loop
+				startIsScheduled = false;
+				//startIsScheduled.debug("reset startIsScheduled");
+			}.defer(0.1);
+		}
+
+	}
+
+	stop {
+		//"==================************-----------(##############)".debug("cursor STOP");
+		if(playtask.notNil) {
+			//this.isPlaying = false;
+			{
+				//startIsScheduled.debug("test startIsScheduled");
+				if(startIsScheduled == false) {
+					playtask.stop;
+				};
+			}.defer(Server.default.latency)
+		};
+		
+	}
+
+}
 
 //////////////////////////////// utilities
 

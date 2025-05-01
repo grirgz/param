@@ -236,33 +236,37 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 		).title_("Edit text"),
 		MenuAction.separator,
 
-		MenuAction("MIDI CC learn and map", {
-			var midi = param.target.getHalo(\MIDIFunc, param.property);
-			if(midi.notNil) {
-				midi.free;
-				param.target.addHalo(\MIDIFunc, param.property, nil);
-			};
-			midi = MIDIFunc.cc({ arg ... args;
-				//args.debug("MENU MIDI Func");
-				Param.lastTweaked = param;
-				param.normSet(args[0]/127)
-			}).fix.learn;
-			param.target.addHalo(\MIDIFunc, param.property, midi);
-		}),
-		MenuAction(
-			if(param.target.getHalo(\MIDIFunc, param.property).notNil) {
-				"Clear MIDI (%)".format(param.target.getHalo(\MIDIFunc, param.property).msgNum);
-			} {
-				"Clear MIDI (not set)";
-			},
-		   	{
-				var midi = param.target.getHalo(\MIDIFunc, param.property);
-				if(midi.notNil) {
-					midi.free;
-					param.target.addHalo(\MIDIFunc, param.property, nil);
-				};
-			}
-		),
+		if(param.type == \scalar) {
+			[
+				MenuAction("MIDI CC learn and map", {
+					var midi = param.target.getHalo(\MIDIFunc, param.property);
+					if(midi.notNil) {
+						midi.free;
+						param.target.addHalo(\MIDIFunc, param.property, nil);
+					};
+					midi = MIDIFunc.cc({ arg ... args;
+						//args.debug("MENU MIDI Func");
+						Param.lastTweaked = param;
+						param.normSet(args[0]/127)
+					}).fix.learn;
+					param.target.addHalo(\MIDIFunc, param.property, midi);
+				}),
+				MenuAction(
+					if(param.target.getHalo(\MIDIFunc, param.property).notNil) {
+						"Clear MIDI (%)".format(param.target.getHalo(\MIDIFunc, param.property).msgNum);
+					} {
+						"Clear MIDI (not set)";
+					},
+					{
+						var midi = param.target.getHalo(\MIDIFunc, param.property);
+						if(midi.notNil) {
+							midi.free;
+							param.target.addHalo(\MIDIFunc, param.property, nil);
+						};
+					}
+				)
+			]
+		},
 		// view is only the label, can't work, must find another way
 		//if(param.propertyArray.last == \source) {
 			//MenuAction("Convert to bare param")
@@ -271,51 +275,17 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 			//})
 		//},
 
-		MenuAction.separator,
-		//if(param.hasCombinator) {
-		if(TagSpecDef(\Modulators).list.size > 0) {
-			var checkedfun = false; // checked if modulator already added
-			if(param.hasCombinator) {
-				var combi = param.getCombinator;
-				checkedfun = { arg x; combi.inputObjects.includes(x) }
-			};
-			Menu(*
-				TagSpecDef(\Modulators).list.collect { arg asso, idx;
-					var child = asso.value;
-					MenuAction(asso.key, {
-						var combi;
-						var pa = param;
-						var nextidx;
-						if(checkedfun.(child)) { // if already added
-							var idx;
-							combi = param.getCombinator;
-							idx = combi.inputObjects.indexOf(child);
-							combi.inputParam.at(idx).set(0);
-							combi.inputObjects[idx] = nil;
-							param.target.changed(\keyForm, param); // for PbindefEditor
-						} {
-							if(param.hasCombinator.not) {
-								if(param.property.value == \source) {
-									pa = param.parent;
-								};
-								ParamCombinator(pa).setBusMode(true);
-							};
-							combi = param.getCombinator;
-							nextidx = combi.nextFreeInput;
-							if(nextidx.notNil) {
-								combi.inputParam.at(nextidx).setBus(PlayerWrapper(child).outBus.asMap);
-								combi.inputObjects[nextidx] = child;
-								//pa.at(\source).set(combi);
-								child.play;
-								param.target.changed(\keyForm, param); // for PbindefEditor
-							} {
-								Log(\Param).error("No free input for param % combi %".format(param, combi));
-							};
-						};
-					}).checked_(checkedfun.(child))
-				} ++ [
+		if(param.type == \scalar) {
+			[
+				MenuAction.separator,
+				if(TagSpecDef(\Modulators).list.size > 0) {
+					var checkedfun = false; // checked if modulator already added
+					if(param.hasCombinator) {
+						var combi = param.getCombinator;
+						checkedfun = { arg x; combi.inputObjects.includes(x) }
+					};
 					Menu(*
-						TagSpecDef(\BusDef).list.collect { arg asso, idx;
+						TagSpecDef(\Modulators).list.collect { arg asso, idx;
 							var child = asso.value;
 							MenuAction(asso.key, {
 								var combi;
@@ -338,34 +308,69 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 									combi = param.getCombinator;
 									nextidx = combi.nextFreeInput;
 									if(nextidx.notNil) {
-										combi.inputParam.at(nextidx).setBus(child.asMap);
+										combi.inputParam.at(nextidx).setBus(PlayerWrapper(child).outBus.asMap);
 										combi.inputObjects[nextidx] = child;
+										//pa.at(\source).set(combi);
+										child.play;
 										param.target.changed(\keyForm, param); // for PbindefEditor
 									} {
 										Log(\Param).error("No free input for param % combi %".format(param, combi));
 									};
 								};
-							})
-						};
-					).title_("Modulate by bus"),
-					newmodmenu,
-				];
-			).title_("Add modulator")
-		} {
-			newmodmenu
-			//MenuAction("Add modulator", {
-				//var combi;
-				//var pa = param;
-				//if(param.property.value == \source) {
+							}).checked_(checkedfun.(child))
+						} ++ [
+							Menu(*
+								TagSpecDef(\BusDef).list.collect { arg asso, idx;
+									var child = asso.value;
+									MenuAction(asso.key, {
+										var combi;
+										var pa = param;
+										var nextidx;
+										if(checkedfun.(child)) { // if already added
+											var idx;
+											combi = param.getCombinator;
+											idx = combi.inputObjects.indexOf(child);
+											combi.inputParam.at(idx).set(0);
+											combi.inputObjects[idx] = nil;
+											param.target.changed(\keyForm, param); // for PbindefEditor
+										} {
+											if(param.hasCombinator.not) {
+												if(param.property.value == \source) {
+													pa = param.parent;
+												};
+												ParamCombinator(pa).setBusMode(true);
+											};
+											combi = param.getCombinator;
+											nextidx = combi.nextFreeInput;
+											if(nextidx.notNil) {
+												combi.inputParam.at(nextidx).setBus(child.asMap);
+												combi.inputObjects[nextidx] = child;
+												param.target.changed(\keyForm, param); // for PbindefEditor
+											} {
+												Log(\Param).error("No free input for param % combi %".format(param, combi));
+											};
+										};
+									})
+								};
+							).title_("Modulate by bus"),
+							newmodmenu,
+						];
+					).title_("Add modulator")
+				} {
+					newmodmenu
+					//MenuAction("Add modulator", {
+					//var combi;
+					//var pa = param;
+					//if(param.property.value == \source) {
 					//pa = param.parent;
-				//};
-				//combi = ParamCombinator(pa).setBusMode(true);
-				//if(TrackDef(\ModulatorRack).parent.notNil) { // if ModulatorRack is loaded
+					//};
+					//combi = ParamCombinator(pa).setBusMode(true);
+					//if(TrackDef(\ModulatorRack).parent.notNil) { // if ModulatorRack is loaded
 					//// automatically create and connect a modulator
 					//var mod;
 
 					//if( TrackDef(\ModulatorRack).existingChildren.size == 0) {
-						//TrackDef(\ModulatorRack).addModulator;
+					//TrackDef(\ModulatorRack).addModulator;
 					//};
 					//mod = TrackDef(\ModulatorRack).existingChildren.first;
 					//combi.inputParam.at(0).setBus(mod.outBus.asMap);
@@ -373,37 +378,39 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 					////pa.at(\source).set(combi);
 					//mod.play;
 					//param.target.changed(\keyForm, param); // for PbindefEditor
-				//} {
+					//} {
 					//WindowDef(\ParamCombinatorModulatorEditor).front(pa)
 
-				//};
-			//})
-		},
-		if(param.hasCombinator) {
-			[
-				Menu(
-					CustomViewAction(
-						View.new.layout_(WindowDef(\ParamCombinatorModulatorEditor).asView(param))
-					)
-				).title_("Modulator panel"),
-				MenuAction("Clear combinator inputs", {
-					param.getCombinator.clear(false);
-				}),
-				MenuAction("Fully remove combinator", {
-					param.getCombinator.clear(true);
+					//};
+					//})
+				};
+				if(param.hasCombinator) {
+					[
+						Menu(
+							CustomViewAction(
+								View.new.layout_(WindowDef(\ParamCombinatorModulatorEditor).asView(param))
+							)
+						).title_("Modulator panel"),
+						MenuAction("Clear combinator inputs", {
+							param.getCombinator.clear(false);
+						}),
+						MenuAction("Fully remove combinator", {
+							param.getCombinator.clear(true);
+						}),
+					]
+				},
+				MenuAction("Combinator editor", {
+					var combi;
+					var pa = param;
+					if(param.property.value == \source) {
+						pa = param.parent;
+					};
+					combi = ParamCombinator(pa).setBusMode(true);
+					WindowDef(( \ParamCombinator_++pa.fullLabel ).asSymbol, WindowDef(\ParamCombinatorEditor)).front(combi);
+					//param.set(param.default)
 				}),
 			]
 		},
-		MenuAction("Combinator editor", {
-			var combi;
-			var pa = param;
-			if(param.property.value == \source) {
-				pa = param.parent;
-			};
-			combi = ParamCombinator(pa).setBusMode(true);
-			WindowDef(( \ParamCombinator_++pa.fullLabel ).asSymbol, WindowDef(\ParamCombinatorEditor)).front(combi);
-			//param.set(param.default)
-		}),
 
 		MenuAction.separator,
 		MenuAction("Param Debug View", { WindowDef(\ParamDebugView).front(param) }),
