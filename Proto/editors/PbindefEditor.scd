@@ -1137,18 +1137,18 @@ WindowDef(\PbindefEditor, (
 		var exc;
 		var out;
 		if(self.showSynthDefParams == true) {
-			plist = plist.addAll(self.proxy.asParamGroup(nil, false, [\freq, \gate, \doneAction, \instrument]).as(Array));
+			plist = plist.addAll(self.proxy.asParamGroup(nil, false, [\freq, \gate, \doneAction, \instrument, \NoteTimeline]).as(Array));
 		};
 		if(self.showOnlySetParams == true) {
 			plist = plist.select({ arg p; p.isSet });
 		};
-		exc = plist.collect(_.propertyRoot);
+		exc = plist.collect(_.propertyRoot); // to exclude from cust list
 		// put out Param to top
 		out = plist.detect({ arg p; p.propertyRoot == \out });
 		if(out.notNil) {
 			plist = plist.reject({ arg p; p.propertyRoot == \out });
 		};
-		[ cust ++ plist ].debug("pbjkeys");
+		[ cust, plist ].debug("pbjkeys");
 		//pbkeys = self.pbindefKeysParamList(cust ++ plist);
 		//plist = plist.addAll(pbkeys);
 		cust.do { arg item, idx;
@@ -1381,27 +1381,27 @@ WindowDef(\PbindefEditor, (
 			self.removeParam(\dur);
 			self.noteTimeline.param = Param(self.strippedPattern, \midinote);
 			self.proxy.source.set(\NoteTimeline, { self.noteTimeline });
-			// TODO: move Prout to NoteTimeline().asDurPattern
-			self.proxy.source.set(\dur, Prout({ arg ev;
-				//ev.debug("PbindefEditor NoteTimeline dur Prout");
-				if(ev[\disableNoteTimeline] == true) {
-					loop {
-						ev = ev[\dur].yield;
-					}
-				} {
-					var pat;
-					//ev.debug("PbindefEditor NoteTimeline dur now in pattern mode");
-					pat = ev[\NoteTimeline].value.asPattern;
-					pat.do { arg val;
-						ev.putAll(val);
-						//ev[\midinote] = val[\midinote];
-						//ev[\type] = val[\type];
-						//ev[\sustain] = val[\sustain];
-						ev = val.dur.yield;
-					};
-				};
-				ev;
-			}));
+			self.proxy.source.set(\dur, Plazy({ arg ev; ev[\NoteTimeline].value.asDurPattern }));
+			//self.proxy.source.set(\dur, Prout({ arg ev;
+				////ev.debug("PbindefEditor NoteTimeline dur Prout");
+				//if(ev[\disableNoteTimeline] == true) {
+					//loop {
+						//ev = ev[\dur].yield;
+					//}
+				//} {
+					//var pat;
+					////ev.debug("PbindefEditor NoteTimeline dur now in pattern mode");
+					//pat = ev[\NoteTimeline].value.asPattern;
+					//pat.do { arg val;
+						//ev.putAll(val);
+						////ev[\midinote] = val[\midinote];
+						////ev[\type] = val[\type];
+						////ev[\sustain] = val[\sustain];
+						//ev = val.dur.yield;
+					//};
+				//};
+				//ev;
+			//}));
 		} {
 			self.removeParam(\NoteTimeline);
 			self.proxy.source.set(\dur, 1);
@@ -1410,7 +1410,7 @@ WindowDef(\PbindefEditor, (
 	},
 
 	isNoteTimelineModeEnabled: { arg self;
-		self.proxy.source.at(\dur).source.isKindOf(Prout) and: {
+		self.proxy.source.at(\dur).source.isKindOf(Plazy) and: {
 			var val;
 			val = self.proxy.source.at(\NoteTimeline).source.value;
 			val.isKindOf(ProtoClass) and: { val.eventType == \noteTimeline }
@@ -1516,29 +1516,57 @@ WindowDef(\PbindefEditor, (
 
 	presetCompileString: { arg self;
 		var params;
-		params = self.pbindefKeysParamList([], false).collect { arg param, idx;
+		var str;
+		var ntidx;
+		params = self.pbindefKeysParamList([], false);
+		str = params.collect { arg param, idx;
 			// needed because instrumentParam is already a source subparam
 			// and double source in propertyPath return wrong value
+			var val;
 			param = if(
-				PdefParam.associationToArray(param.propertyPath).last != \source
+				param.propertyArray.last != \source
 			) {
 				param.at(\source)
 			} {
 				param;
 			};
-			if(param.spec.isKindOf(ParamBufferSpec)) {
-				"\t%, %,\n".format(
-					param.propertyRoot.asCompileString,
+
+			val = case(
+				{ param.spec.isKindOf(ParamBufferSpec) }, {
 					"BufDef(%)".format(param.spec.tagSpec.unmapKey(param.get).asCompileString)
-				)
-			} {
-				"\t%, %,\n".format(
-					param.propertyRoot.asCompileString,
-					param.getRaw.asCompileString, // getRaw to keep double brackets for arrays
-				)
-			}
+				},
+				{ param.inBusMode }, {
+					param.get.asCompileString; // to get bus value
+				},
+				{ param.propertyRoot == \NoteTimeline }, {
+					"{ % }".format(param.get.value.asCompileString)
+				}, {
+					param.getRaw.asCompileString; // getRaw to keep double brackets for arrays
+				}
+			);
+
+			"\t%, %,\n".format(
+				param.propertyRoot.asCompileString,
+				val,
+			)
+
 		}.join;
-		"Pbindef(%,\n%);".format(self.proxy.key.asCompileString, params)
+		str = "Pbindef(%,\n%);".format(self.proxy.key.asCompileString, str);
+		ntidx = params.detectIndex { arg p; p.propertyRoot == \NoteTimeline };
+		if(ntidx.notNil) {
+			var param;
+			param = params[ntidx];
+			param = if(
+				param.propertyArray.last != \source
+			) {
+				param.at(\source)
+			} {
+				param;
+			};
+			[ param, param.get.value ].debug("NoteTimeline param");
+			str = "%\n%".format(str, param.get.value.presetCompileString)
+		};
+		str;
 	},
 
 	asView: { arg self, def, proxy;

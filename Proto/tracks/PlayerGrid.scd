@@ -758,6 +758,14 @@ TrackTemplateDef(\PlayerGrid, (
 		self.controllerList;
 	},
 
+	addResource: { arg self ...args;
+		if(self.presetCompileStringSavePath.notNil) {
+			args.do { arg item, idx;
+				PlayerWrapper(item).presetCompileStringSavePath = self.presetCompileStringSavePath;
+			};
+		};
+		self.resources = self.resources ++ args;
+	},
 
 	///////// presetCompileString saving system
 
@@ -785,6 +793,7 @@ TrackTemplateDef(\PlayerGrid, (
 	},
 
 	presetCompileStringSavePath_: { arg self, val;
+		// this is a directory since it need several files to save/load
 		self[\presetCompileStringSavePath] = val;
 		self.children.do({ arg column;
 			column.children.do({ arg track;
@@ -802,7 +811,28 @@ TrackTemplateDef(\PlayerGrid, (
 	},
 
 	loadPresetCompileStringDialog: { arg self;
-		PlayerWrapper(self).loadPresetCompileStringDialog;
+		//PlayerWrapper(self).loadPresetCompileStringDialog;
+	},
+
+	openPresetCompileStringDialog: { arg self;
+		WindowDef(\filedialog_tracklist).front(nil, { arg mypath, name;
+			[mypath, name].debug("filedialog open ok callback");
+			if(name.notNil) {
+				var grid = FileSystemProject.load(mypath+/+name);
+				if(grid.isKindOf(String)) {
+					grid.error;
+				} {
+					if(grid.isKindOf(TrackDef)) {
+						grid.edit;
+					} {
+						grid.debug("openPresetCompileStringDialog: don't know what to do with");
+					};
+				};
+			};
+			//self.presetCompileStringSavePath = mypath +/+ name;
+			//this.loadPresetCompileString(mypath +/+ name, action);
+		})
+		
 	},
 
 

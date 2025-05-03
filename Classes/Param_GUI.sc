@@ -393,6 +393,7 @@ ParamGroupLayout {
 		var minWidth_main = 150;
 		var minWidth_label = 80;
 		var minWidth_right = 70;
+		var labelView, controlView, textView;
    
 		var scalar_entry = { arg param;
 			var lay;
@@ -401,7 +402,7 @@ ParamGroupLayout {
 			} {
               var control; 
 				HLayout(
-					if(label_mode == \full) {
+					labelView = if(label_mode == \full) {
 						var st = param.asStaticTextLabel(\full);
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
@@ -411,8 +412,12 @@ ParamGroupLayout {
 						st;
 					}.fixedWidth_(minWidth_label),
 					control = param.asSlider.orientation_(\horizontal).minWidth_(minWidth_main),
-					param.asTextField(6).fixedWidth_(minWidth_right),
-				).addUniqueMethod(\slider, { control })
+					textView = param.asTextField(6).fixedWidth_(minWidth_right),
+				)
+				.addUniqueMethod(\slider, { control }) // backward compat
+				.addUniqueMethod(\labelView, { labelView })
+				.addUniqueMethod(\controlView, { control })
+				.addUniqueMethod(\textView, { textView })
 			};
 			lay;
 		};
@@ -422,7 +427,7 @@ ParamGroupLayout {
 				nil;
 			} {
 				VLayout(
-					if(label_mode == \full) {
+					labelView = if(label_mode == \full) {
 						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
 						var st;
@@ -430,9 +435,12 @@ ParamGroupLayout {
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					},
-					param.asEnvelopeView.minHeight_(minHeight),
-					param.asTextField,
+					controlView = param.asEnvelopeView.minHeight_(minHeight),
+					textView = param.asTextField,
 				)
+				.addUniqueMethod(\labelView, { labelView })
+				.addUniqueMethod(\controlView, { controlView })
+				.addUniqueMethod(\textView, { textView })
 			};
 			lay;
 		};
@@ -443,7 +451,7 @@ ParamGroupLayout {
 			} {
 				var control;
 				VLayout(
-					if(label_mode == \full) {
+					labelView = if(label_mode == \full) {
 						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
 						var st;
@@ -452,8 +460,11 @@ ParamGroupLayout {
 						st;
 					},
 					control = param.asMultiSlider.minHeight_(minHeight).attachContextMenu,
-					param.asTextField,
+					textView = param.asTextField,
 				).addUniqueMethod(\slider, { control })
+				.addUniqueMethod(\labelView, { labelView })
+				.addUniqueMethod(\controlView, { control })
+				.addUniqueMethod(\textView, { textView })
 			};
 			lay;
 		};
@@ -463,7 +474,7 @@ ParamGroupLayout {
 				nil;
 			} {
 				HLayout(
-					if(label_mode == \full) {
+					labelView = if(label_mode == \full) {
 						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
 						var st;
@@ -471,9 +482,12 @@ ParamGroupLayout {
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					}.fixedWidth_(minWidth_label),
-					param.asPopUpMenu.minWidth_(minWidth_main),
+					controlView = param.asPopUpMenu.minWidth_(minWidth_main),
 					//param.asTextField.minWidth_(70),
 				)
+				.addUniqueMethod(\labelView, { labelView })
+				.addUniqueMethod(\controlView, { controlView })
+				.addUniqueMethod(\textView, { textView })
 			};
 			lay;
 		};
@@ -483,7 +497,7 @@ ParamGroupLayout {
 				nil;
 			} {
 				HLayout(
-					if(label_mode == \full) {
+					labelView = if(label_mode == \full) {
 						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
 						var st;
@@ -491,7 +505,7 @@ ParamGroupLayout {
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					}.fixedWidth_(minWidth_label),
-					param.asPopUpMenu.minWidth_(minWidth_main).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+					controlView = param.asPopUpMenu.minWidth_(minWidth_main).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 						//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 						if(buttonNumber == 1) {
 							WindowDef(\GlobalLibrary_select).front(nil, { arg val; 
@@ -502,7 +516,7 @@ ParamGroupLayout {
 						}
 					}),
 
-					BasicButton.new.string_("Load").fixedWidth_(minWidth_right).action_({
+					textView = BasicButton.new.string_("Load").fixedWidth_(minWidth_right).action_({
 						WindowDef(\filedialog_sample).front(nil, { arg path;
 							switch(param.spec.numChannels,
 								1, { param.set(BufDef.mono(path).bufnum) },
@@ -517,6 +531,9 @@ ParamGroupLayout {
 						})
 					})
 				)
+				.addUniqueMethod(\labelView, { labelView })
+				.addUniqueMethod(\controlView, { controlView })
+				.addUniqueMethod(\textView, { textView })
 			};
 			lay;
 		};
@@ -526,7 +543,7 @@ ParamGroupLayout {
 				nil;
 			} {
 				HLayout(
-					if(label_mode == \full) {
+					labelView = if(label_mode == \full) {
 						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
 						var st;
@@ -534,9 +551,12 @@ ParamGroupLayout {
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					}.fixedWidth_(minWidth_label),
-					param.asBusPopUpMenu.minWidth_(minWidth_main),
+					controlView = param.asBusPopUpMenu.minWidth_(minWidth_main),
 					//param.asTextField.minWidth_(70),
 				)
+				.addUniqueMethod(\labelView, { labelView })
+				.addUniqueMethod(\controlView, { controlView })
+				.addUniqueMethod(\textView, { textView })
 			};
 			lay;
 		};
@@ -546,7 +566,7 @@ ParamGroupLayout {
 				nil;
 			} {
 				HLayout(
-					if(label_mode == \full) {
+					labelView = if(label_mode == \full) {
 						param.asStaticTextLabel(\full).attachContextMenu;
 					} {
 						var st;
@@ -554,9 +574,12 @@ ParamGroupLayout {
 						ParamViewToolBox.attachContextMenu(param, st);
 						st;
 					}.fixedWidth_(minWidth_label),
-					param.asStaticText.minWidth_(minWidth_main),
+					controlView = param.asStaticText.minWidth_(minWidth_main),
 					//param.asTextField.minWidth_(70),
 				)
+				.addUniqueMethod(\labelView, { labelView })
+				.addUniqueMethod(\controlView, { controlView })
+				.addUniqueMethod(\textView, { textView })
 			};
 			lay;
 		};

@@ -531,13 +531,18 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	};
 
 	proto.check_name_field = { arg self, callback;
-		var node = nodeClass.new(self.choosedNode.parentNode.fullPath +/+ name_field.string);
-		if(node.isChoosable) {
-			self.chooseNode(node);
-			callback.();
+		var node;
+		if(self.choosedNode.notNil) {
+			node = nodeClass.new(self.choosedNode.parentNode.fullPath +/+ name_field.string);
+			if(node.isChoosable) {
+				self.chooseNode(node);
+				callback.();
+			} {
+				"Can't open: file doesn't exist: %".format(node.fullPath).error;
+			}
 		} {
-			"Can't open: file doesn't exist: %".format(node.fullPath).error;
-		}
+			"Can't open: no chosen file: %".format(self.choosedNode).error;
+		};
 	};
 
 	proto.chooseNode = { arg self, node, alsoPlay=false;
@@ -690,8 +695,9 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 					};
 				} {
 					proto.check_name_field {
+						// specialFileName is used to load specific file in a project dir
 						proto.add_to_recent_files(proto.current_file);
-						callback.(proto.current_file);
+						callback.(proto.current_file, proto.choosedNode.specialFileName);
 						def.closeWindow;
 					};
 				}

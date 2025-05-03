@@ -457,9 +457,9 @@ ProtoClassDef(\EventTimeline, (
 
 	loadPresetCompileString: { arg self;
 		if(self.presetCompileStringSavePath.notNil) {
-			FileSystemProject.load(self.presetCompileStringSavePath)
+			FileSystemProject.load(self.presetCompileStringSaveFile)
 		} {
-			"%.savePresetCompileString: no file to load: %".format(
+			"%.loadPresetCompileString: no file to load: %".format(
 				self.refCompileString, 
 				self.presetCompileStringSavePath
 			).error;
@@ -758,11 +758,15 @@ ProtoClassDef(\ClipTimeline, (
 
 ProtoClassDef(\TrackTimeline, (
 	parent: ProtoClassDef(\ClipTimeline),
+	eventType: \trackTimeline,
 	all: { PresetDictionary.new(\trackTimeline) },
 	new: { arg self, name, tracks;
 
 		if(self.all[name].notNil) {
-			self = self.all[name]
+			self = self.all[name];
+			if(tracks.notNil) {
+				self.tracks = tracks;
+			};
 		} {
 			self = ProtoClass((parent:self));
 			self.prAdd(name).init(tracks);
@@ -811,17 +815,22 @@ ProtoClassDef(\TrackTimeline, (
 
 	tracks_: { arg self, tracks;
 		// FIXME: i removed support for PlayerWrapperGroup, think to add it back
-		self[\tracks] = { tracks.firstChildren };
-		self.mainTrack = tracks;
-		//self.tracks = { tracks.children };
-		self.areasize = Point(self.areasize.x, self.tracks.size );
-		if(self.recorder.notNil) {
-			self.recorder.stopRecording;
-			self.recorder.target = self.mainTrack;
+		if(tracks.notNil) {
+			
+			self[\tracks] = { tracks.firstChildren };
+			self.mainTrack = tracks;
+			//self.tracks = { tracks.children };
+			self.areasize = Point(self.areasize.x, self.tracks.size );
+			if(self.recorder.notNil) {
+				self.recorder.stopRecording;
+				self.recorder.target = self.mainTrack;
+			} {
+				self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.mainTrack) !? { arg x; {x} };
+				self.recorder.inQuantMode = true; // listen to \playing instead of \play
+				self.recorder.eventLoop = self.eventLoop;
+			};
 		} {
-			self.recorder = ProtoTemplateDef(\PlayerGroupRecorder).new(self.mainTrack) !? { arg x; {x} };
-			self.recorder.inQuantMode = true; // listen to \playing instead of \play
-			self.recorder.eventLoop = self.eventLoop;
+			
 		};
 		self.changed(\tracks);
 	},
@@ -848,6 +857,27 @@ ProtoClassDef(\TrackTimeline, (
 			name = self.key.asCompileString
 		};
 		"TrackTimeline(%)".format(name)
+	},
+
+	presetCompileString: { arg self;
+		var str = "";
+		if(self.label != self.key) {
+			str = str ++ "%.label = %;\n".format(self.refCompileString(self.key.asCompileString), self.label.asCompileString);
+		};
+		if(self.mainTrack.notNil) {
+			str = str ++ "%.tracks = %;\n".format(self.refCompileString(self.key.asCompileString), self.mainTrack.asCompileString);
+		} {
+			str = str ++ "%.tracks = %;\n".format(self.refCompileString(self.key.asCompileString), self.tracks.asCompileString);
+
+		};
+		// enclose in function to workaround the selector table size limit
+		str = str ++ "{\n%.eventList = %\n }.value;\n".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString);
+		if(self.recordedEvents.notNil) {
+			str = str ++ "%.recordedEvents = %;\n".format(self.refCompileString(self.key.asCompileString), self.recordedEvents.asCompileString);
+		};
+		self.keepSamplesInUse;
+		str = str ++ "\n%\n".format(self.samplesPresetCompileString);
+		str;
 	},
 ));
 
@@ -1012,6 +1042,29 @@ ProtoClassDef(\NoteTimeline, (
 
 	asView: { arg self;
 		ProtoTemplateDef(\NoteTimelinePanelView).newView(self).makeLayout;
+	},
+
+	asDurPattern: { arg self;
+		Prout({ arg ev;
+			//ev.debug("PbindefEditor NoteTimeline dur Prout");
+			if(ev[\disableNoteTimeline] == true) {
+				loop {
+					ev = ev[\dur].yield;
+				}
+			} {
+				var pat;
+				//ev.debug("PbindefEditor NoteTimeline dur now in pattern mode");
+				pat = self.asPattern;
+				pat.do { arg val;
+					ev.putAll(val);
+					//ev[\midinote] = val[\midinote];
+					//ev[\type] = val[\type];
+					//ev[\sustain] = val[\sustain];
+					ev = val.dur.yield;
+				};
+			};
+			ev;
+		});
 	},
 
 	refCompileString: { arg self, name;

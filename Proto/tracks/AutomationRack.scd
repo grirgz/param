@@ -109,7 +109,11 @@ TrackTemplateDef(\AutomationRack, (
 	},
 
 	asPreview: { arg self, param;
-		self.getParamTimeline(param).asPreview
+		if(param.isNil) {
+			View.new.layout_(self.asStackPreview);
+		} {
+			self.getParamTimeline(param).asPreview
+		};
 	},
 
 	asStackPreview: { arg self, initfun;
@@ -309,4 +313,4 @@ WindowDef(\AutomationRack, { arg def, model;
 	
 });
 
-TagSpecDef(\CustomTrackTemplate).addUnique(\ParamTimelineRackTrack -> TrackTemplateDef(\ParamTimelineRackTrack));
+TagSpecDef(\CustomTrackTemplate).addUnique(\AutomationRackTrack -> TrackTemplateDef(\AutomationRackTrack));

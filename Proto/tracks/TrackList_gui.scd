@@ -728,7 +728,9 @@ WindowDef(\TrackList, (
 				WindowDef(( \TrackListMixer_++model.key ).asSymbol, WindowDef(\TrackListMixer)).front(model);
 			}),
 			BasicButton.new.string_("Timeline").action_({
-				TrackTimeline(model.key, model).edit;
+				var tt = TrackTimeline(model.key, model);
+				model.addResource(tt);
+				tt.edit;
 			}),
 			BasicButton.new.string_("Grid").action_({
 				model.editGrid;
@@ -796,6 +798,9 @@ WindowDef(\TrackList, (
 			}),
 			MenuAction("Load", {
 				self.model.loadPresetCompileStringDialog;
+			}),
+			MenuAction("Open", {
+				self.model.openPresetCompileStringDialog;
 			}),
 			MenuAction("Copy refString to clipboard", { 
 				self.model.refCompileString.pbcopy;

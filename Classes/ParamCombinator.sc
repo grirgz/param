@@ -23,7 +23,7 @@ ParamCombinator : Pattern {
     var <>inputObjects; // to store pointers to modulators objects for editing and such
 
 	*new { arg param, size=3;
-		var halokey = ( \ParamCombinator_++param.property ).asSymbol;
+		var halokey = ( \ParamCombinator_++param.propertyRoot ).asSymbol;
 		//Class.initClassTree(ParamGroupLayout); // FIXME: why ?
 		//if(param.getRaw.isKindOf(ParamCombinator).not) {
 		if(param.hasCombinator.not) {

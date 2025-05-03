@@ -343,9 +343,11 @@ Param {
 			init_args[1..].do { arg item, idx;
 				ret[idx+1] = item.asCompileString;
 			};
-			if(ret[2] == "nil") {
-				ret = ret.keep(2);
-			};
+		} {
+			ret = init_args.collect(_.asCompileString);
+		};
+		if(ret[2] == "nil") {
+			ret = ret.keep(2);
 		};
 		stream << "Param(" << ret.join(", ") << ")";
 	}

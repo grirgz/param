@@ -193,23 +193,33 @@ TrackTemplateDef(\TrackList, (
 
 	presetCompileString: { arg self;
 		"%\n".format([
-			"TrackDef(%, %);".format(self.refCompileString, "TrackTemplateDef(\\TrackList)"),
-			"TrackDef(%).presetCompileStringSavePath = PathName(thisProcess.nowExecutingPath).pathOnly;".format(self.refCompileString),
+			"TrackDef(%, %);".format(self.key.asCompileString, "TrackTemplateDef(\\TrackList)"),
+			"%.presetCompileStringSavePath = PathName(thisProcess.nowExecutingPath).pathOnly;".format(self.refCompileString),
 			"",
 			self.linePlayers.collect { arg lplayer, idx;
 				lplayer.presetCompileString
 			}.select(_.notNil).join("\n"),
-			"\nTrackDef(%).loadPresetCompileString;".format(self.refCompileString),
-		].join("\n"))
+			"",
+			if(self.resources.notNil and: { self.resources.size > 0 }) {
+				"%.addResource(*%);".format(self.refCompileString, self.resources.asCompileString)
+			},
+			"",
+			"\n%.loadPresetCompileString;".format(self.refCompileString),
+		].select(_.notNil).join("\n"))
 	},
 
 	loadPresetCompileString: { arg self;
 		// this function should not load the main file because it is the main file that call this function
 		if(self.isEmpty) {
+			//PathName(self.presetCompileStringSavePath +/+ "TrackDef_%".format(self.key)).files.do { arg file, idx;
+				////"Loading TrackDef sub file %".format(file.fullPath).debug;
+				//FileSystemProject.load(file.fullPath);
+			//};
 			self.resources.do { arg res;
 				PlayerWrapper(res).loadPresetCompileString;
 			}; 
 			// FIXME: find a not hardcoded way
+			// 	idea: call .loadPresetCompileString on child creation if presetCompileStringSavePath exist
 			16.do { arg idx;
 				self.childAt(idx).loadPresetCompileString;
 			};
@@ -519,7 +529,11 @@ TrackTemplateDef(\CustomTrackPart, (
 		//"s%.%: %".format(self.index, self.parentIndex, self.trackKey)
 		//"% %".format(self.parentTrack.parentTrack.sectionAt(self.index).label, self.parentTrack.label);
 		//"%".format(self.index);
-		"% % - % %.%".format(self.parentTrack.parentTrack.sectionAt(self.index).label, self.parentTrack.label, self.parentTrack.parentTrack.label, self.index, self.parentTrack.index);
+		if(self.parentTrack.parentTrack.notNil) {
+			"% % - % %.%".format(self.parentTrack.parentTrack.sectionAt(self.index).label, self.parentTrack.label, self.parentTrack.parentTrack.label, self.index, self.parentTrack.index);
+		} {
+			"% %.%".format(self.parentTrack.label, self.index, self.parentTrack.index);
+		};
 	},
 	fullLabel: { arg self;
 		//"s%: % %".format(self.index.asInteger, self.parentTrack.label, self.label)

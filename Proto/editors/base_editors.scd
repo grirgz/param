@@ -383,7 +383,7 @@ WindowDef(\ParamGenericContextMenuEntries, { arg def, param, view;
 
 					//};
 					//})
-				};
+				},
 				if(param.hasCombinator) {
 					[
 						Menu(

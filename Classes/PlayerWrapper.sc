@@ -429,13 +429,50 @@ PlayerWrapper_Base {
 			if(this.presetCompileStringSavePath.notNil and: { force_dialog==false }) {
 				this.savePresetCompileString(this.presetCompileStringSavePath, action);
 			} {
-				Dialog.savePanel({ arg mypath;
-					//mypath.debug("save panel: path");
-					this.savePresetCompileString(mypath, action);
-					this.presetCompileStringSavePath = mypath;
-				},{
-					//"cancelled".postln;
-				});
+				if(WindowDef(\filedialog_save).notNil) {
+					WindowDef(\filedialog_save).front(nil, { arg mypath, name;
+						[mypath, name].debug("filedialog_save ok callback");
+						this.savePresetCompileString(mypath +/+ name, action);
+						this.presetCompileStringSavePath = mypath +/+ name;
+					})
+				} {
+					Dialog.savePanel({ arg mypath;
+						//mypath.debug("save panel: path");
+						this.savePresetCompileString(mypath, action);
+						this.presetCompileStringSavePath = mypath;
+					},{
+						//"cancelled".postln;
+					});
+				};
+			}
+
+		};
+	}
+
+	loadPresetCompileStringDialog { arg path, action, force_dialog=false;
+		// WIP
+		if(path.notNil) {
+			this.loadPresetCompileString(path, action);
+			this.presetCompileStringSavePath = path;
+		} {
+			if(this.presetCompileStringSavePath.notNil and: { force_dialog==false }) {
+				this.loadPresetCompileString(this.presetCompileStringSavePath, action);
+			} {
+				if(WindowDef(\filedialog).notNil) {
+					WindowDef(\filedialog).front(nil, { arg mypath, name;
+						[mypath, name].debug("filedialog open ok callback");
+						this.presetCompileStringSavePath = mypath +/+ name;
+						this.loadPresetCompileString(mypath +/+ name, action);
+					})
+				} {
+					Dialog.savePanel({ arg mypath;
+						//mypath.debug("save panel: path");
+						this.presetCompileStringSavePath = mypath;
+						this.loadPresetCompileString(mypath, action);
+					},{
+						//"cancelled".postln;
+					});
+				};
 			}
 
 		};
@@ -834,11 +871,15 @@ PlayerWrapper_ProtoClass : PlayerWrapper_Base {
 	}
 
 	loadPresetCompileString { arg ...args;
-		if(this.presetCompileStringSavePath.notNil) {
-			FileSystemProject.load(this.presetCompileStringSavePath);
-		} {
-			"ERROR: no presetCompileStringSavePath defined for %".format(this).postln;
-		}
+		if(this.target[\loadPresetCompileString].notNil) {
+			^this.target.loadPresetCompileString(*args);
+		} {
+			if(this.presetCompileStringSavePath.notNil) {
+				FileSystemProject.load(this.presetCompileStringSavePath);
+			} {
+				"ERROR: no presetCompileStringSavePath defined for %".format(this).postln;
+			}
+		};
 	}
 
 	presetCompileStringSavePath {

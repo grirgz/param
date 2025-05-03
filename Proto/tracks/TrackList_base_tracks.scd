@@ -78,7 +78,8 @@ TrackTemplateDef(\PbindefTrack, (
 		self.changed(\outBus);
 	},
 	makeScore: { arg self;
-		self[\score] = Pbindef(self.trackKey, \instrument, \default);
+		self[\score] = Pdef(self.trackKey); // first create Pdef to avoid asCompileString showing all keys
+		Pbindef(self.trackKey, \instrument, \default);
 		//self.isEmpty = false;
 	},
 ));
@@ -137,7 +138,8 @@ TrackTemplateDef(\PbindefTrackPart, (
 	},
 
 	makeScore: { arg self;
-		self.score = Pbindef(self.trackKey).source_(PbindProxy());
+		self.score = Pdef(self.trackKey);
+		Pbindef(self.trackKey).source_(PbindProxy());
 		//self.proxy.debug("makeScore proxy end");
 	},
 	selectSourceDialog: { arg self;

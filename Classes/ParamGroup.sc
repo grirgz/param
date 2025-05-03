@@ -128,6 +128,12 @@ ParamGroup : List {
 		}
 	}
 
+	propertyList {
+		^this.collect { arg param;
+			param.propertyRoot;
+		}
+	}
+
 	asPropertyDict {
 		// note: params with same property will be hidden
 		var dict = IdentityDictionary.new;
