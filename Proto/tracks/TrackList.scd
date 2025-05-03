@@ -195,7 +195,7 @@ TrackTemplateDef(\TrackList, (
 	presetCompileString: { arg self;
 		"%\n".format([
 			"TrackDef(%, %);".format(self.key.asCompileString, "TrackTemplateDef(\\TrackList)"),
-			"%.presetCompileStringSavePath = PathName(thisProcess.nowExecutingPath).pathOnly;".format(self.refCompileString),
+			"%.presetCompileStringSavePath = FileSystemProject.nowExecutingFolder;".format(self.refCompileString),
 			"",
 			self.linePlayers.collect { arg lplayer, idx;
 				lplayer.presetCompileString

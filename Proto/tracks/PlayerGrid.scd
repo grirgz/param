@@ -519,6 +519,12 @@ TrackTemplateDef(\PlayerTrack, (
 		self.children.collect({ arg x; x.source });
 	},
 
+	savePresetCompileString: { arg self;
+		self.existingChildren.do({ arg player;
+			player.savePresetCompileString;
+		});
+	},
+
 	refCompileString: { arg self;
 		if(self.parentTrack.notNil) {
 			"%.childAt(%)".format(self.parentTrack.refCompileString, self.index);
@@ -769,7 +775,7 @@ TrackTemplateDef(\PlayerGrid, (
 
 	///////// presetCompileString saving system
 
-	savePresetCompileString: { arg self;
+	savePresetCompileString_old: { arg self;
 		self.existingChildren.do({ arg column;
 			column.savePresetCompileString;
 			column.existingChildren.do({ arg track;
@@ -781,23 +787,93 @@ TrackTemplateDef(\PlayerGrid, (
 		}; 
 	},
 
+	savePresetCompileString: { arg self, path, onDoneAction;
+		// currently, this require to give an absolute path to a directory that does not 
+		//		exist and that will contains all the save files
+
+
+		// path should be an absolute folder path
+		// FIXME: giving path as argument is broken: self.dataPath is not defined
+		var savefile;
+		if(path.isNil and: {self.presetCompileStringSavePath.isNil}) {
+			"savePresetCompileString: presetCompileStringSavePath is nil, can't save".error;
+		} {
+			var pathexists;
+			//path = path ?? { (self.presetCompileStringSavePath +/+ "TrackDef_%.scd".format(self.key)) };
+			path = path ?? { self.presetCompileStringSavePath };
+			//path.debug("TrackList.savePresetCompileString");
+			savefile = path +/+ "TrackDef_%.scd".format(self.key);
+			pathexists = File.exists(path);
+			if(pathexists.not or: {self.loadedFromPath == path}) {
+				if(pathexists.not) {
+					File.mkdir(path);
+				};
+				self.loadedFromPath = path;
+				self.presetCompileStringSavePath = path;
+				File.mkdir(self.dataPath);
+				PlayerWrapper_Base.savePresetCompileStringHelper(savefile, onDoneAction, self.refCompileString, self.presetCompileString, false);
+				self.existingChildren.do({ arg column;
+					column.savePresetCompileString;
+				});
+				self.resources.do { arg res;
+					[res, PlayerWrapper(res).presetCompileStringSavePath].debug("trying to save resource");
+					PlayerWrapper(res).savePresetCompileString;
+				}; 
+				Log(\Param).info("TrackList % saved.", self.key);
+			} {
+				"savePresetCompileString: can't save on existing project. (loadedFromPath is different)".error;
+			}
+		}
+	},
+
+	presetCompileString: { arg self;
+		"%\n".format([
+			"TrackDef(%, %);".format(self.key.asCompileString, "TrackTemplateDef(\\PlayerGrid)"),
+			"%.presetCompileStringSavePath = FileSystemProject.nowExecutingFolder;".format(self.refCompileString),
+			"",
+			self.existingSections.collect { arg lplayer, idx;
+				lplayer.presetCompileString
+			}.select(_.notNil).join("\n"),
+			"",
+			"%.source = %;".format(self.refCompileString, self.source.asCompileString),
+			if(self.resources.notNil and: { self.resources.size > 0 }) {
+				"%.addResource(*%);".format(self.refCompileString, self.resources.asCompileString)
+			},
+			"",
+			"\n%.loadPresetCompileString;".format(self.refCompileString),
+		].select(_.notNil).join("\n"))
+	},
+
+	dataPath: { arg self;
+		if(self.presetCompileStringSavePath.notNil) {
+			self.presetCompileStringSavePath +/+ "TrackDef_%/".format(self.key);
+		}
+	},
+
 	loadPresetCompileString: { arg self;
-		self.resources.do { arg res;
-			PlayerWrapper(res).loadPresetCompileString;
-		}; 
-		self.children.do({ arg column;
-			column.children.do({ arg track;
-				track.loadPresetCompileString;
-			})
-		});
+		if(self.presetCompileStringSavePath.notNil) {
+			self.resources.do { arg res;
+				PlayerWrapper(res).loadPresetCompileString;
+			}; 
+			PathName(self.dataPath).files.do { arg file, idx;
+				FileSystemProject.load(file.fullPath);
+			};
+			self.children.do({ arg column;
+				column.children.do({ arg track;
+					track.loadPresetCompileString;
+				})
+			});
+		};
+		self; // should return self for save file to work
 	},
 
 	presetCompileStringSavePath_: { arg self, val;
 		// this is a directory since it need several files to save/load
 		self[\presetCompileStringSavePath] = val;
+		// NOTE: maybe retrieve it from parent in children instead of setting it in parent to all children
 		self.children.do({ arg column;
 			column.children.do({ arg track;
-				track.presetCompileStringSavePath = val;
+				track.presetCompileStringSavePath = self.dataPath;
 			})
 		});
 		"===== setting path of resources".debug;
@@ -935,8 +1011,8 @@ TrackTemplateDef(\PlayerGrid, (
 	edit: { arg self;
 		var wkey = \Grid_ +++ self.key;
 		var editor;
-		if(WindowDef(\customgrid).notNil) {
-			editor = \customgrid;
+		if(WindowDef(\TrackGrid).notNil) {
+			editor = \TrackGrid;
 		} {
 			editor = \playergrid;
 		};

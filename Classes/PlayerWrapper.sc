@@ -417,8 +417,8 @@ PlayerWrapper_Base {
 
 	loadPresetCompileString { arg ...args;
 		//"loadPresetCompileString: TODO".debug;
-		NotYetImplementedError.throw
-		//"ERROR: %.loadPresetCompileString: not implemented for %".format(this, this.targetClass).postln;
+		//NotYetImplementedError.throw
+		"ERROR: %.loadPresetCompileString: not implemented for %".format(this, this.targetClass).error;
 	}
 
 	savePresetCompileStringDialog { arg path, action, force_dialog=false;

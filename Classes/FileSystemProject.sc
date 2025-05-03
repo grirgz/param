@@ -300,6 +300,10 @@ FileSystemProject : TrackDef {
 		this.changed(\project, val);
 	}
 
+	*nowExecutingFolder {
+		^PathName(thisProcess.nowExecutingPath).pathOnly;
+	}
+
 }
 
 FileSystemProjectTemplate : ProtoTemplateDef {
