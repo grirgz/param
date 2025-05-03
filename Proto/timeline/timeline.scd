@@ -408,6 +408,7 @@ ProtoClassDef(\EventTimeline, (
 			myfolderpathname = FileSystemProject.resolve(myfolderpath);
 			if(myfolderpathname.notNil) {
 				mypath = myfolderpathname.fullPath +/+ PathName(mypath).fileName;
+				[myfolderpathname.fullPath.asCompileString,PathName(mypath).fileName.asCompileString, myfolderpathname.fullPath +/+ PathName(mypath).fileName].debug("path");
 				"Trying to write preset to file %".format(mypath.asCompileString).postln;
 				File.use(mypath, "w", { arg file;
 					var relpath = FileSystemProject.unresolve(mypath);

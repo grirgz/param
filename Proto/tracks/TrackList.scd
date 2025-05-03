@@ -178,6 +178,7 @@ TrackTemplateDef(\TrackList, (
 					column.savePresetCompileString;
 				});
 				self.resources.do { arg res;
+					[res, PlayerWrapper(res).presetCompileStringSavePath].debug("trying to save resource");
 					PlayerWrapper(res).savePresetCompileString;
 				}; 
 				Log(\Param).info("TrackList % saved.", self.key);
@@ -244,7 +245,7 @@ TrackTemplateDef(\TrackList, (
 		self[\presetCompileStringSavePath] = val;
 		//val.debug("===== setting resources save path. path:");
 		self.resources.do { arg track;
-			PlayerWrapper(track).presetCompileStringSavePath = "%%_%.scd".format(val, PlayerWrapper(track).targetClass, track.key);
+			PlayerWrapper(track).presetCompileStringSavePath = val;
 		};
 	},
 

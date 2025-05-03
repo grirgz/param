@@ -277,42 +277,74 @@ WindowDef(\TrackGrid, (
 
 	showGeneralOverlayMenu: { arg self, view, x, y;
 		Menu(
-			MenuAction("Save", {
-				self.maintrack.savePresetCompileStringDialog;
-			}),
-			MenuAction("Load", {
-				self.maintrack.loadPresetCompileStringDialog;
-			}),
-			MenuAction.separator,
-			Param(Message(self.maintrack), \showMixerView, ParamBoolSpec()).asMenuAction,
-			Param(Message(self.maintrack), \enableAutoSetOutbus, ParamBoolSpec()).asMenuAction,
-			Menu(
-				* WindowDef(\TrackMixerDef_advanced).proto.displayOptions.collect { arg item, idx;
-					var curval;
-					if(self.maintrack.displayConfig.isNil) {
-						self.maintrack.displayConfig = ();
-					};
-					curval = self.maintrack.displayConfig.perform(item);
-					curval = curval ?? { self.trackFaders.first.proto.perform(item) };
-					self.maintrack.displayConfig.perform(item.asSetter, curval.not);
-					MenuAction(item, {
-						self.trackFaders.do { arg mixerview, idx;
-							mixerview.proto.perform(item.asSetter, curval.not)
+			*[
+				if(self.maintrack.presetCompileStringSavePath.notNil) {
+					[
+						MenuAction("Save", {
+							self.maintrack.savePresetCompileStringDialog;
+						}),
+						MenuAction("Save as...", {
+							self.maintrack.savePresetCompileStringDialog(nil,nil,true);
+						}),
+					]
+				} {
+					MenuAction("Save as...", {
+						self.maintrack.savePresetCompileStringDialog;
+					})
+				},
+				if(self.maintrack.presetCompileStringSavePath.notNil and: { self.maintrack.isEmpty }) {
+					MenuAction("Load", {
+						self.maintrack.loadPresetCompileStringDialog;
+					})
+				},
+				MenuAction("Open", {
+					self.maintrack.openPresetCompileStringDialog;
+				}),
+
+				MenuAction.separator,
+				MenuAction("Mixer", {
+					WindowDef(( \TrackListMixer_++self.maintrack.key ).asSymbol, WindowDef(\TrackListMixer)).front(self.maintrack);
+				}),
+				MenuAction("Timeline", {
+					var tt = TrackTimeline(self.maintrack.key, self.maintrack);
+					self.maintrack.addResource(tt);
+					tt.edit;
+				}),
+				MenuAction("TrackList", {
+					self.maintrack.edit;
+				}),
+
+				MenuAction.separator,
+				Param(Message(self.maintrack), \showMixerView, ParamBoolSpec()).asMenuAction,
+				Param(Message(self.maintrack), \enableAutoSetOutbus, ParamBoolSpec()).asMenuAction,
+				Menu(
+					* WindowDef(\TrackMixerDef_advanced).proto.displayOptions.collect { arg item, idx;
+						var curval;
+						if(self.maintrack.displayConfig.isNil) {
+							self.maintrack.displayConfig = ();
 						};
-					}).checked_(curval)
-				}
-				++ [
-					Param(Message(self.maintrack), \showTrackHeaders, ParamBoolSpec()).asMenuAction(),
-					Param(Message(self.maintrack), \showRecorderView, ParamBoolSpec()).asMenuAction(),
-				]
-			).title_("Mixer layout"),
-			Param(
-				Message(self.maintrack),
-				\controller, 
-				ControllerDef.getTagSpec(\launchpad)
-			).asMenu( "Grid controller" ),
+						curval = self.maintrack.displayConfig.perform(item);
+						curval = curval ?? { self.trackFaders.first.proto.perform(item) };
+						self.maintrack.displayConfig.perform(item.asSetter, curval.not);
+						MenuAction(item, {
+							self.trackFaders.do { arg mixerview, idx;
+								mixerview.proto.perform(item.asSetter, curval.not)
+							};
+						}).checked_(curval)
+					}
+					++ [
+						Param(Message(self.maintrack), \showTrackHeaders, ParamBoolSpec()).asMenuAction(),
+						Param(Message(self.maintrack), \showRecorderView, ParamBoolSpec()).asMenuAction(),
+					]
+				).title_("Mixer layout"),
+				Param(
+					Message(self.maintrack),
+					\controller, 
+					ControllerDef.getTagSpec(\launchpad)
+				).asMenu( "Grid controller" ),
+			].flat.select(_.notNil)
 		).front
-		
+
 	},
 
 	showGeneralOverlayMenu_old: { arg self, view, x, y;
@@ -779,45 +811,60 @@ WindowDef(\TrackList, (
 	showGeneralOverlayMenu: { arg self, view, x, y;
 		var sectionEmpty = self.model.sectionAt(self.model.selectedPart).isEmpty;
 		Menu(
-			if(sectionEmpty) {
-				MenuAction("Paste section", {
-					self.pasteSection;
-				}).enabled_(self.clipboardSection.notNil)
-			} {
-				MenuAction("Copy section", {
-					self.copySection;
-				})
-			},
-			MenuAction("Duplicate section", {
-				self.duplicateSection
-			}).enabled_(sectionEmpty.not),
+			*[
+				if(sectionEmpty) {
+					MenuAction("Paste section", {
+						self.pasteSection;
+					}).enabled_(self.clipboardSection.notNil)
+				} {
+					MenuAction("Copy section", {
+						self.copySection;
+					})
+				},
+				MenuAction("Duplicate section", {
+					self.duplicateSection
+				}).enabled_(sectionEmpty.not),
 
-			MenuAction.separator,
-			MenuAction("Save", {
-				self.model.savePresetCompileStringDialog;
-			}),
-			MenuAction("Load", {
-				self.model.loadPresetCompileStringDialog;
-			}),
-			MenuAction("Open", {
-				self.model.openPresetCompileStringDialog;
-			}),
-			MenuAction("Copy refString to clipboard", { 
-				self.model.refCompileString.pbcopy;
-			}),
-			MenuAction.separator,
-			//Param(Message(self.model), \showMixerView, ParamBoolSpec()).asMenuAction,
-			//Param(Message(self.model), \enableAutoSetOutbus, ParamBoolSpec()).asMenuAction,
-			MenuAction("Edit properties", {
-				self.model.editProperties;
-			}).enabled_(self.model[\editProperties].notNil),
-			Param(
-				Message(self.model),
-				\controller, 
-				ControllerDef.getTagSpec(\launchpad)
-			).asMenu( "Grid controller" ),
+				MenuAction.separator,
+				if(self.model.presetCompileStringSavePath.notNil) {
+					[
+						MenuAction("Save", {
+							self.model.savePresetCompileStringDialog;
+						}),
+						MenuAction("Save as...", {
+							self.model.savePresetCompileStringDialog(nil,nil,true);
+						}),
+					]
+				} {
+					MenuAction("Save as...", {
+						self.model.savePresetCompileStringDialog;
+					})
+				},
+				if(self.model.presetCompileStringSavePath.notNil and: { self.model.isEmpty }) {
+					MenuAction("Load", {
+						self.model.loadPresetCompileStringDialog;
+					})
+				},
+				MenuAction("Open", {
+					self.model.openPresetCompileStringDialog;
+				}),
+				MenuAction("Copy refString to clipboard", { 
+					self.model.refCompileString.pbcopy;
+				}),
+				MenuAction.separator,
+				//Param(Message(self.model), \showMixerView, ParamBoolSpec()).asMenuAction,
+				//Param(Message(self.model), \enableAutoSetOutbus, ParamBoolSpec()).asMenuAction,
+				MenuAction("Edit properties", {
+					self.model.editProperties;
+				}).enabled_(self.model[\editProperties].notNil),
+				Param(
+					Message(self.model),
+					\controller, 
+					ControllerDef.getTagSpec(\launchpad)
+				).asMenu( "Grid controller" ),
+			].flat.select(_.notNil)
 		).front
-		
+
 	},
 
 	makeTrackList: { arg self;

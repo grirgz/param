@@ -806,8 +806,8 @@ TrackTemplateDef(\PlayerGrid, (
 		};
 	},
 
-	savePresetCompileStringDialog: { arg self;
-		PlayerWrapper(self).savePresetCompileStringDialog;
+	savePresetCompileStringDialog: { arg self, path, action, force_dialog=false;
+		PlayerWrapper(self).savePresetCompileStringDialog(path, action, force_dialog);
 	},
 
 	loadPresetCompileStringDialog: { arg self;
