@@ -19,6 +19,13 @@ TrackTemplateDef(\PlayerTrackPart, (
 	label: { arg self; 
 		"%: %".format(self.index, if(self.proxy.notNil, { self.proxy.label }, { "-" }))
 	},
+	label_: { arg self, val;
+		if(val == "") {
+			self.removeAt(\label)
+		} {
+			self[\label] = val;
+		};
+	},
 	fullLabel: { arg self;
 		// TODO
 		//"s%: % %".format(self.index.asInteger, self.parentTrack.label, self.label)
