@@ -338,7 +338,16 @@ TrackTemplateDef(\PlayerTrackPart, (
 				savepath = val +/+ "%_%.scd".format(player_prefix, player.key);
 				savepath.debug("savepath");
 
-				playerwrapper.presetCompileStringSavePath = savepath;
+				// problem: 
+				// - if i put a TrackList in the PlayerWrapper, it will save it inside PlayerGrid, we do not want it
+				// - if i test if presetCompileStringSavePath is not, when saving to multiple folders, some players will save at some place and some other at some other place
+				//		- i can prevent this if i store the presetCompileStringSavePath in cell instead of target
+				// - if i test type, what to do with NoteTimeline ?
+				if(playerwrapper.presetCompileStringSavePath.isNil) {
+					// prevent setting save path 
+
+					playerwrapper.presetCompileStringSavePath = savepath;
+				};
 			}
 		} { arg ex;
 			ex.reportError;
@@ -777,7 +786,7 @@ TrackTemplateDef(\PlayerGrid, (
 				PlayerWrapper(item).presetCompileStringSavePath = self.presetCompileStringSavePath;
 			};
 		};
-		self.resources = self.resources ++ args;
+		self.resources = IdentitySet.newFrom(self.resources ++ args);
 	},
 
 	///////// presetCompileString saving system
@@ -890,7 +899,7 @@ TrackTemplateDef(\PlayerGrid, (
 	},
 
 	savePresetCompileStringDialog: { arg self, path, action, force_dialog=false;
-		PlayerWrapper(self).savePresetCompileStringDialog(path, action, force_dialog);
+		PlayerWrapper(self).savePresetCompileStringDialog(path, action, force_dialog, \filedialog_tracklist_save);
 	},
 
 	loadPresetCompileStringDialog: { arg self;

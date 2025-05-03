@@ -44,7 +44,7 @@ TrackTemplateDef(\PlayerWrapperTrackPart, (
 	scorePresetCompileString: { arg self;
 		var str;
 		str = List.new;
-		str.add( "%.source = %;".format(self.refCompileString, PlayerWrapper(self.source).presetCompileString));
+		str.add( "%.source = %".format(self.refCompileString, PlayerWrapper(self.source).presetCompileString));
 		str.join($\n);
 	},
 

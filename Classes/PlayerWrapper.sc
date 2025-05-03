@@ -421,7 +421,8 @@ PlayerWrapper_Base {
 		"ERROR: %.loadPresetCompileString: not implemented for %".format(this, this.targetClass).error;
 	}
 
-	savePresetCompileStringDialog { arg path, action, force_dialog=false;
+	savePresetCompileStringDialog { arg path, action, force_dialog=false, dialogKey;
+		dialogKey = dialogKey ? \filedialog_save;
 		if(path.notNil) {
 			this.savePresetCompileString(path, action);
 			this.presetCompileStringSavePath = path;
@@ -429,8 +430,8 @@ PlayerWrapper_Base {
 			if(this.presetCompileStringSavePath.notNil and: { force_dialog==false }) {
 				this.savePresetCompileString(this.presetCompileStringSavePath, action);
 			} {
-				if(WindowDef(\filedialog_save).notNil) {
-					WindowDef(\filedialog_save).front(nil, { arg mypath, name;
+				if(WindowDef(dialogKey).notNil) {
+					WindowDef(dialogKey).front(nil, { arg mypath, name;
 						[mypath, name].debug("filedialog_save ok callback");
 						this.savePresetCompileString(mypath +/+ name, action);
 						this.presetCompileStringSavePath = mypath +/+ name;
