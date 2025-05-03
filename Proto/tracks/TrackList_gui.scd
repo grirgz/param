@@ -968,7 +968,7 @@ WindowDef(\TrackList, (
 
 	pasteScore: { arg self, fromcell, tocell;
 		var cell = tocell;
-		if(self.clipboard.notNil) {
+		if(fromcell.notNil) {
 			cell.parentTrack.children[cell.index] = fromcell.clone(cell.parentTrack, cell.index);
 			cell.parentTrack.parentTrack.changed(\tracklist);
 		};
