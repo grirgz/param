@@ -418,7 +418,12 @@ PlayerWrapper_Base {
 	loadPresetCompileString { arg ...args;
 		//"loadPresetCompileString: TODO".debug;
 		//NotYetImplementedError.throw
-		"ERROR: %.loadPresetCompileString: not implemented for %".format(this, this.targetClass).error;
+		//"ERROR: %.loadPresetCompileString: not implemented for %".format(this, this.targetClass).error;
+		if(this.presetCompileStringSavePath.notNil) {
+			FileSystemProject.load(this.presetCompileStringSavePath);
+		} {
+			"ERROR: no presetCompileStringSavePath defined for %".format(this).postln;
+		}
 	}
 
 	savePresetCompileStringDialog { arg path, action, force_dialog=false, dialogKey;

@@ -456,7 +456,7 @@ WindowDef(\TrackGrid, (
 			playerview.labelView.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
 				if(buttonNumber == 1) {
-					child.editTrackTemplate;
+					//child.editTrackTemplate;
 				};
 			});
 
@@ -487,7 +487,7 @@ WindowDef(\TrackGrid, (
 	makeOverlayMenu: { arg self, view, x, y, amodel;
 		var model = amodel;
 		var track = model.parentTrack;
-		if(self.eventType == \trackList) {
+		if(track.eventType == \instrumenttrack) {
 			Menu(
 				* [
 					if(model.isLinePlayer == true) {
@@ -552,6 +552,8 @@ WindowDef(\TrackGrid, (
 										model.parentTrack.clearTrack;
 									}),
 								]
+							} {
+								Param( Message(track), \trackTemplate, TagSpecDef(\CustomTrackTemplate) ).asMenu("Choose track template");
 							},
 							MenuAction.separator,
 							Param(Message(model.parentTrack), \isMixerEnabled, ParamBoolSpec()).asMenuAction("Enable mixer"),
@@ -567,6 +569,7 @@ WindowDef(\TrackGrid, (
 	makePlayerGridOverlayMenu: { arg self, view, x, y, amodel;
 		var model = amodel;
 		var track = model.parentTrack;
+		var grid = track.parentTrack;
 		Menu(
 			* [
 				if(model.isLinePlayer == true) {
@@ -598,6 +601,12 @@ WindowDef(\TrackGrid, (
 								}),
 							]
 						} {
+							var res;
+							if(grid.resources.notNil) {
+								res = grid.resources.includes(model.proxy.target);
+							} {
+								res = false;
+							};
 							[
 								MenuAction("Edit cell", {
 									model.edit;
@@ -609,6 +618,9 @@ WindowDef(\TrackGrid, (
 								MenuAction("Erase cell", {
 									model.clearTrack;
 								}),
+								MenuAction("Add to resources", {
+									grid.addResource(model.proxy.target);
+								}).checkable_(true).checked_(res),
 							]
 						},
 						MenuAction.separator,

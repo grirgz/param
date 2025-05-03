@@ -202,7 +202,7 @@ TrackTemplateDef(\TrackList, (
 			}.select(_.notNil).join("\n"),
 			"",
 			if(self.resources.notNil and: { self.resources.size > 0 }) {
-				"%.addResource(*%);".format(self.refCompileString, self.resources.asCompileString)
+				"%.addResource(*%);".format(self.refCompileString, self.resources.asArray.asCompileString)
 			},
 			"",
 			"\n%.loadPresetCompileString;".format(self.refCompileString),
@@ -245,7 +245,7 @@ TrackTemplateDef(\TrackList, (
 		self[\presetCompileStringSavePath] = val;
 		//val.debug("===== setting resources save path. path:");
 		self.resources.do { arg track;
-			PlayerWrapper(track).presetCompileStringSavePath = val;
+			PlayerWrapper(track).presetCompileStringSavePath = self.dataPath +/+ "%_%.scd".format(PlayerWrapper(track).targetClass, track.key);
 		};
 	},
 
@@ -689,7 +689,7 @@ TrackTemplateDef(\CustomTrackPart, (
 	savePresetCompileString: { arg self, path, onDoneAction;
 		if(self.isEmpty.not) {
 			var file;
-			path = path ? self.presetCompileStringSavePath;
+			path = path ?? { self.presetCompileStringSavePath };
 			PlayerWrapper_Base.savePresetCompileStringHelper(path, onDoneAction, self.refCompileString, self.presetCompileString, false);
 		}
 	},

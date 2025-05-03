@@ -27,8 +27,31 @@ TrackTemplateDef(\PlayerWrapperTrackPart, (
 	asPreview: { arg self;
 		StaticText.new.string_(self.proxy.target.asCompileString).mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 			//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
-			if(buttonNumber == 0) {
-				self.selectSourceDialog;
+			if(buttonNumber == 1) {
+				var res;
+				var grid = self.parentTrack.parentTrack;
+				if(grid.resources.notNil) {
+					res = grid.resources.includes(self.proxy.target);
+				} {
+					res = false;
+				};
+				Menu(
+					*[
+						MenuAction("Select player...", {
+							self.selectSourceDialog;
+						}),
+						if(self.isEmpty.not) {
+							[
+								MenuAction("Edit", {
+									self.edit;
+								}),
+								MenuAction("Add to resources", {
+									grid.addResource(self.proxy.target);
+								}).checkable_(true).checked_(res),
+							]
+						},
+					].flat.select(_.notNil)
+				).front;
 			} {
 				self.edit;
 			};
@@ -42,9 +65,10 @@ TrackTemplateDef(\PlayerWrapperTrackPart, (
 	},
 
 	scorePresetCompileString: { arg self;
+		// should not save Player presetCompileString, add it to resources instead
 		var str;
 		str = List.new;
-		str.add( "%.source = %".format(self.refCompileString, PlayerWrapper(self.source).presetCompileString));
+		str.add( "%.source = %;".format(self.refCompileString, self.source.asCompileString));
 		str.join($\n);
 	},
 

@@ -305,22 +305,36 @@ TrackTemplateDef(\PlayerTrackPart, (
 		}
 	},
 
-	savePresetCompileString: { arg self;
-		if(self.isEmpty.not and: { self.proxy.presetCompileStringSavePath.notNil }) {
-			self.proxy.savePresetCompileString;
+	presetCompileString: { arg self;
+		if(self[\label].isKindOf(String)) {
+			"%.label = %;".format(self.label)
+		} {
+			"";
+		};
+	},
+
+	savePresetCompileString: { arg self, path, onDoneAction;
+		if(self.isEmpty.not) {
+			path = path ?? { self.presetCompileStringSavePath };
+			PlayerWrapper_Base.savePresetCompileStringHelper(path, onDoneAction, self.refCompileString, self.presetCompileString, false);
 		}
 	},
 
 	loadPresetCompileString: { arg self;
-		if(self.isEmpty.not and: { self.proxy.presetCompileStringSavePath.notNil }) {
-			self.proxy.loadPresetCompileString;
-		}
+		//TODO
+		//if(self.isEmpty.not and: { self.proxy.presetCompileStringSavePath.notNil }) {
+			//self.proxy.loadPresetCompileString;
+		//}
 	},
 
 	presetCompileStringSavePath: { arg self;
-		if(self.proxy.notNil) {
-			self.proxy.presetCompileStringSavePath;
-		}
+		if(self.parentTrack.notNil and:{ self.parentTrack.parentTrack.notNil }) {
+			var grid = self.parentTrack.parentTrack;
+			grid.dataPath +/+ "%_%.%.%.scd".format("TrackDef", grid.key, self.parentTrack.index, self.index);
+		};
+		//if(self.proxy.notNil) {
+			//self.proxy.presetCompileStringSavePath;
+		//}
 	},
 
 	presetCompileStringSavePath_: { arg track, val;
@@ -539,6 +553,15 @@ TrackTemplateDef(\PlayerTrack, (
 		self.existingChildren.do({ arg player;
 			player.savePresetCompileString;
 		});
+	},
+
+	presetCompileStringSavePath: { arg self;
+		if(self.parentTrack.notNil) {
+			self.parentTrack.presetCompileStringSavePath;
+		};
+		//if(self.proxy.notNil) {
+			//self.proxy.presetCompileStringSavePath;
+		//}
 	},
 
 	refCompileString: { arg self;
@@ -783,7 +806,7 @@ TrackTemplateDef(\PlayerGrid, (
 	addResource: { arg self ...args;
 		if(self.presetCompileStringSavePath.notNil) {
 			args.do { arg item, idx;
-				PlayerWrapper(item).presetCompileStringSavePath = self.presetCompileStringSavePath;
+				PlayerWrapper(item).presetCompileStringSavePath = self.dataPath +/+ "%_%.scd".format(PlayerWrapper(item).targetClass, item.key);
 			};
 		};
 		self.resources = IdentitySet.newFrom(self.resources ++ args);
@@ -853,7 +876,7 @@ TrackTemplateDef(\PlayerGrid, (
 			"",
 			"%.source = %;".format(self.refCompileString, self.source.asCompileString),
 			if(self.resources.notNil and: { self.resources.size > 0 }) {
-				"%.addResource(*%);".format(self.refCompileString, self.resources.asCompileString)
+				"%.addResource(*%);".format(self.refCompileString, self.resources.asArray.asCompileString)
 			},
 			"",
 			"\n%.loadPresetCompileString;".format(self.refCompileString),
@@ -886,15 +909,15 @@ TrackTemplateDef(\PlayerGrid, (
 	presetCompileStringSavePath_: { arg self, val;
 		// this is a directory since it need several files to save/load
 		self[\presetCompileStringSavePath] = val;
-		// NOTE: maybe retrieve it from parent in children instead of setting it in parent to all children
-		self.children.do({ arg column;
-			column.children.do({ arg track;
-				track.presetCompileStringSavePath = self.dataPath;
-			})
-		});
+		// retrieve it from parent in children instead of setting it in parent to all children
+		//self.children.do({ arg column;
+			//column.children.do({ arg track;
+				//track.presetCompileStringSavePath = self.dataPath;
+			//})
+		//});
 		"===== setting path of resources".debug;
 		self.resources.do { arg track;
-			PlayerWrapper(track).presetCompileStringSavePath = val +/+ "%_%.scd".format(PlayerWrapper(track).targetClass, track.key);
+			PlayerWrapper(track).presetCompileStringSavePath = self.dataPath +/+ "%_%.scd".format(PlayerWrapper(track).targetClass, track.key);
 		};
 	},
 
