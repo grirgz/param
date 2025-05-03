@@ -310,9 +310,11 @@ WindowDef(\TrackGrid, (
 					self.maintrack.addResource(tt);
 					tt.edit;
 				}),
-				MenuAction("TrackList", {
-					self.maintrack.edit;
-				}),
+				if(self.maintrack.eventType == \trackList) {
+					MenuAction("TrackList", {
+						self.maintrack.edit;
+					})
+				},
 
 				MenuAction.separator,
 				Param(Message(self.maintrack), \showMixerView, ParamBoolSpec()).asMenuAction,
@@ -325,7 +327,7 @@ WindowDef(\TrackGrid, (
 						};
 						curval = self.maintrack.displayConfig.perform(item);
 						curval = curval ?? { self.trackFaders.first.proto.perform(item) };
-						self.maintrack.displayConfig.perform(item.asSetter, curval.not);
+						//self.maintrack.displayConfig.perform(item.asSetter, curval.not);
 						MenuAction(item, {
 							self.trackFaders.do { arg mixerview, idx;
 								mixerview.proto.perform(item.asSetter, curval.not)
@@ -485,70 +487,139 @@ WindowDef(\TrackGrid, (
 	makeOverlayMenu: { arg self, view, x, y, amodel;
 		var model = amodel;
 		var track = model.parentTrack;
+		if(self.eventType == \trackList) {
+			Menu(
+				* [
+					if(model.isLinePlayer == true) {
+						CustomViewAction(
+							View.new.layout_(HLayout (
+								StaticText.new.string_("Section label"),
+								Param( Message(model), \label, ParamStringSpec()).asTextField.minWidth_(200),
+							))
+						)
+					} {
+						[
+							if(track.isEmpty.not) {
+								[
+									CustomViewAction(
+										View.new.layout_(HLayout (
+											StaticText.new.string_("Cell label"),
+											Param( Message(model), \label, ParamStringSpec()).asTextField.minWidth_(200),
+										))
+									),
+									if(model.isEmpty) {
+										[
+											MenuAction("Create cell", {
+												[model, model[\makeScore].asCompileString].debug("model");
+												model.makeScore;
+											}),
+											MenuAction("Create and edit cell", {
+												//[model].debug("model");
+												model.makeScore;
+												model.edit;
+											}),
+											MenuAction("Paste cell", {
+												if(self.clipboard.notNil) {
+													model.parentTrack.children[model.index] = self.clipboard.clone(model.parentTrack, model.index);
+													model.parentTrack.changed(\children);
+												};
+											}),
+										]
+									} {
+										[
+											MenuAction("Edit cell", {
+												model.edit;
+											}),
+											MenuAction("Copy cell", {
+												self.clipboard = model;
+											}),
+											MenuAction.separator,
+											MenuAction("Erase cell", {
+												model.clearTrack;
+											}),
+										]
+									},
+									MenuAction.separator,
+									Menu(
+										CustomViewAction(
+											Param( Message(track), \label, ParamStringSpec()).asTextField.minWidth_(200),
+										)
+									).title_("Track label"),
+									MenuAction("Edit track instrument", {
+										model.parentTrack.editInstrument;
+									}),
+									MenuAction("Erase track", {
+										model.parentTrack.clearTrack;
+									}),
+								]
+							},
+							MenuAction.separator,
+							Param(Message(model.parentTrack), \isMixerEnabled, ParamBoolSpec()).asMenuAction("Enable mixer"),
+						]
+					}
+				].flat.select(_.notNil) 
+			).front;
+		} {
+			self.makePlayerGridOverlayMenu(view, x, y, amodel);
+		};
+	},
+
+	makePlayerGridOverlayMenu: { arg self, view, x, y, amodel;
+		var model = amodel;
+		var track = model.parentTrack;
 		Menu(
 			* [
 				if(model.isLinePlayer == true) {
-					Menu(
-						CustomViewAction(
+					CustomViewAction(
+						View.new.layout_(HLayout (
+							StaticText.new.string_("Section label"),
 							Param( Message(model), \label, ParamStringSpec()).asTextField.minWidth_(200),
-						)
-					).title_("Section label")
+						))
+					)
 				} {
 					[
-						if(track.isEmpty.not) {
+						CustomViewAction(
+							View.new.layout_(HLayout (
+								StaticText.new.string_("Cell label"),
+								Param( Message(model), \label, ParamStringSpec()).asTextField.minWidth_(200),
+							))
+						),
+						MenuAction("Select player...", {
+							model.selectSourceDialog
+						}),
+						MenuAction.separator,
+						if(model.isEmpty) {
 							[
-								Menu(
-									CustomViewAction(
-										Param( Message(model), \label, ParamStringSpec()).asTextField.minWidth_(200),
-									)
-								).title_("Cell label"),
-								if(model.isEmpty) {
-									[
-										MenuAction("Create cell", {
-											[model, model[\makeScore].asCompileString].debug("model");
-											model.makeScore;
-										}),
-										MenuAction("Create and edit cell", {
-											//[model].debug("model");
-											model.makeScore;
-											model.edit;
-										}),
-										MenuAction("Paste cell", {
-											if(self.clipboard.notNil) {
-												model.parentTrack.children[model.index] = self.clipboard.clone(model.parentTrack, model.index);
-												model.parentTrack.changed(\children);
-											};
-										}),
-									]
-								} {
-									[
-										MenuAction("Edit cell", {
-											model.edit;
-										}),
-										MenuAction("Copy cell", {
-											self.clipboard = model;
-										}),
-										MenuAction.separator,
-										MenuAction("Erase cell", {
-											model.clearTrack;
-										}),
-									]
-								},
-								MenuAction.separator,
-								Menu(
-									CustomViewAction(
-										Param( Message(track), \label, ParamStringSpec()).asTextField.minWidth_(200),
-									)
-								).title_("Track label"),
-								MenuAction("Edit track instrument", {
-									model.parentTrack.editInstrument;
+								MenuAction("Paste cell", {
+									if(self.clipboard.notNil) {
+										model.parentTrack.children[model.index].source = self.clipboard.proxy.target;
+										model.parentTrack.changed(\children);
+									};
 								}),
-								MenuAction("Erase track", {
-									model.parentTrack.clearTrack;
+							]
+						} {
+							[
+								MenuAction("Edit cell", {
+									model.edit;
+								}),
+								MenuAction("Copy cell", {
+									self.clipboard = model;
+								}),
+								MenuAction.separator,
+								MenuAction("Erase cell", {
+									model.clearTrack;
 								}),
 							]
 						},
-						Param( Message(track), \trackTemplate, TagSpecDef(\CustomTrackTemplate) ).asMenu("Choose track template"),
+						MenuAction.separator,
+						Menu(
+							CustomViewAction(
+								Param( Message(track), \label, ParamStringSpec()).asTextField.minWidth_(200),
+							)
+						).title_("Track label"),
+						MenuAction("Erase track", {
+							model.parentTrack.clearTrack;
+						}),
 						MenuAction.separator,
 						Param(Message(model.parentTrack), \isMixerEnabled, ParamBoolSpec()).asMenuAction("Enable mixer"),
 					]
