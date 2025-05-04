@@ -935,6 +935,9 @@ ProtoDef(\GlobalLibrary, (
 //		the list is stored in GlobalLibraryCategory tag
 // Each category is defined in the tag GlobalLibrary.type.CATEGORYNAME with the list of raw tags
 
+
+//////// SynthDefs
+
 TagSpecDef(\SynthDef_all, {
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat.sort;
 });
@@ -970,7 +973,7 @@ TagSpecDef(\SynthDef_blocklist,
 	}
 );
 
-//// jitlib
+//////// Jitlib
 
 TagSpecDef(\Pdef, {
 	Pdef.all.asAssociations;
@@ -992,7 +995,7 @@ TagSpecDef(\Fdef, {
 	Fdef.all.asAssociations;
 });
 
-//// timelines
+//////// Timelines
 
 TagSpecDef(\SampleTimeline, {
 	SampleTimeline.proto.all.asAssociations;
@@ -1014,6 +1017,43 @@ TagSpecDef(\ParamTimeline, {
 	ProtoClassDef(\ParamTimeline).all.asAssociations;
 });
 
+//////// TrackDef
+
+//TagSpecDef(\TrackList, { }); // updated by TrackTemplateDef(\TrackList) when adding a track
+
+TagSpecDef(\TrackListSection, {
+	var tracklists = TagSpecDef(\TrackList).valueList;
+	tracklists.collect({ arg tracklist;
+		var sizes = tracklist.existingChildren.collect({ arg channel;
+			// for each channel, count the number of part
+			channel.existingChildren.size; 
+		});
+		var channelIdxWithMostParts = sizes.maxIndex;
+		// now the max number of part is the number of part of the tracklist
+		if(sizes.size > 0) {
+
+			(0..sizes[channelIdxWithMostParts]-1).collect({ arg idx;
+				// format: (libLabel -> libObj)
+				// type is added by TagSpecDef key
+				var line = tracklist.linePlayerAt(idx);
+				//(("%.part%".format(tracklist.key, idx)) -> ( tracklist.linePlayerAt(idx) ));
+				line.trackKey -> line;
+			})
+		} {
+			nil
+		}
+	}).flatten.select(_.notNil)
+});
+
+TagSpecDef(\CustomTrack, {
+	TagSpecDef(\TrackList).valueList.collect({ arg tracklist;
+		tracklist.existingChildren.collect { arg track;
+			track.trackKey -> track
+		}
+	}).flatten;
+});
+
+//////// Others quark types
 
 TagSpecDef(\PatKitDef, {
 	PatKitDef.all.asAssociations;
@@ -1034,7 +1074,7 @@ TagSpecDef(\TrackMixerDef_insertFx, {
 });
 
 
-/////
+///////// Modulators
 
 TagSpecDef(\Modulators, {
 	TagSpecDef(\ParamCombinatorInput).list 
@@ -1043,7 +1083,7 @@ TagSpecDef(\Modulators, {
 	})
 });
 
-///// BusDef
+///////// BusDef
 
 TagSpecDef(\BusDef, {
 	TagSpecDef(\BusDef_object).list
@@ -1109,8 +1149,12 @@ TagSpecDef(\BusDef_asMap, {
 	};
 };
 
+TagSpecDef(\BusDefDefault, {
+	[\default -> nil] ++ TagSpecDef(\BusDef).list
+});
 
-///// BufDef
+
+///////// BufDef
 
 TagSpecDef(\BufDef, {
 	[\0->0] ++ BufDef.all.keys.as(Array).sort.collect({ arg k; k -> BufDef(k).bufnum }) 
@@ -1130,10 +1174,6 @@ TagSpecDef(\BufDef_stereo, {
 		.collect({ arg kv; kv.key -> kv.value.bufnum })
 });
 
-TagSpecDef(\BusDefDefault, {
-	[\default -> nil] ++ TagSpecDef(\BusDef).list
-});
-
 TagSpecDef(\WavetableDef, {
 	WavetableDef.all.keys.as(Array).sort.collect({ arg k; k -> WavetableDef(k).bufnum }) 
 });
@@ -1142,45 +1182,16 @@ TagSpecDef(\WavetableDef_object, {
 	WavetableDef.all.keys.as(Array).sort.collect({ arg k; k -> WavetableDef(k) }) 
 });
 
+///////// Others
+
 TagSpecDef(\Spec, {
 	Spec.specs
 });
 
+
+
 ///////////////////
 
-//TagSpecDef(\TrackList, { }); // updated by TrackTemplateDef(\TrackList) when adding a track
-
-TagSpecDef(\TrackListSection, {
-	var tracklists = TagSpecDef(\TrackList).valueList;
-	tracklists.collect({ arg tracklist;
-		var sizes = tracklist.existingChildren.collect({ arg channel;
-			// for each channel, count the number of part
-			channel.existingChildren.size; 
-		});
-		var channelIdxWithMostParts = sizes.maxIndex;
-		// now the max number of part is the number of part of the tracklist
-		if(sizes.size > 0) {
-
-			(0..sizes[channelIdxWithMostParts]-1).collect({ arg idx;
-				// format: (libLabel -> libObj)
-				// type is added by TagSpecDef key
-				var line = tracklist.linePlayerAt(idx);
-				//(("%.part%".format(tracklist.key, idx)) -> ( tracklist.linePlayerAt(idx) ));
-				line.trackKey -> line;
-			})
-		} {
-			nil
-		}
-	}).flatten.select(_.notNil)
-});
-
-TagSpecDef(\CustomTrack, {
-	TagSpecDef(\TrackList).valueList.collect({ arg tracklist;
-		tracklist.existingChildren.collect { arg track;
-			track.trackKey -> track
-		}
-	}).flatten;
-});
 
 
 ///// new objects
@@ -1191,8 +1202,8 @@ TagSpecDef(\ClipTimeline_newPlayer, [
 	'KitTimeline' -> { arg name; KitTimeline(name) },
 	'SampleTimeline' -> { arg name; SampleTimeline(name) },
 	'ParamTimeline' -> { arg name; ParamTimeline(name) },
-	'TrackList' -> { arg name; TrackDef(name, \CustomTrackList) },
-	'PlayerGrid' -> { arg name; TrackDef(name, \playergrid) },
+	'TrackList' -> { arg name; TrackDef(name, \TrackList) },
+	'PlayerGrid' -> { arg name; TrackDef(name, \PlayerGrid) },
 	//'TrackTimeline' -> { arg name; TrackTimeline(name) },
 	//'Pdef' -> { arg name; Pdef(name) },
 	'Pbindef' -> { arg name; Pbindef(name) },
@@ -1244,7 +1255,7 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\Kit,
 	\TrackPart,
 	\TrackGrid,
-	\LineTrack,
+	\TrackSection,
 	\Track,
 	\AllTracks,
 	\Clip,
@@ -1309,25 +1320,24 @@ TagSpecDef('GlobalLibrary.type.Editable', [
 ]);
 
 TagSpecDef('GlobalLibrary.type.TrackGrid', [
-	\playergrid,
+	\PlayerGrid,
 	\TrackList,
-	\CustomTrackList,
 ]);
 
-TagSpecDef('GlobalLibrary.type.LineTrack', [
-	\lineplayer,
+TagSpecDef('GlobalLibrary.type.TrackSection', [
 	\TrackListSection,
+	//\lineplayer,
 ]);
 
 TagSpecDef('GlobalLibrary.type.TrackPart', [
 	\CustomTrackPart,
-	\playerwrapper,
+	//\playerwrapper, // PlayerGrid don't have to register its children
 ]);
 
 
 TagSpecDef('GlobalLibrary.type.Track', [
 	\CustomTrack,
-	\playertrack,
+	//\playertrack,
 ]);
 
 TagSpecDef('GlobalLibrary.type.AudioBuffer', [
@@ -1336,7 +1346,7 @@ TagSpecDef('GlobalLibrary.type.AudioBuffer', [
 
 // group track players of all kind and level
 TagSpecDef('GlobalLibrary.type.AllTracks', {
-	[\TrackGrid, \LineTrack, \TrackPart, \Track].collect { arg item, idx;
+	[\TrackGrid, \TrackSection, \TrackPart, \Track].collect { arg item, idx;
 		TagSpecDef("GlobalLibrary.type.%".format(item).asSymbol).list
 	}.flat;
 });
@@ -1353,12 +1363,12 @@ TagSpecDef('GlobalLibrary.type.Player', {
 		\SampleTimeline,
 		\ClipTimeline,
 		\ParamTimeline,
-		\CustomTrackList,
+		\TrackList,
 		\ProtoPlayer,
 		\TrackMixerDef,
 		\TrackMixerDef_insertFx,
 	] ++
-	[\TrackGrid, \LineTrack, \TrackPart, \Track].collect { arg item, idx;
+	[\TrackGrid, \TrackSection, \TrackPart, \Track].collect { arg item, idx;
 		TagSpecDef("GlobalLibrary.type.%".format(item).asSymbol).list
 	}.flat;
 });

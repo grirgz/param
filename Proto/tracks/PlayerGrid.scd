@@ -769,7 +769,7 @@ TrackTemplateDef(\PlayerGrid, (
 	},
 
 	initProto: { arg self;
-		TagSpecDef(\playergrid).addUnique(self.key -> self)
+		TagSpecDef(\PlayerGrid).addUnique(self.key -> self)
 	},
 
 	isActive: true, // compat when grid used as a cell in another grid

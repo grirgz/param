@@ -69,6 +69,10 @@ TrackTemplateDef(\TrackList, (
 		self.defineTrack(trackidx, trackTemplate, label)
 	},
 
+	initProto: { arg self;
+		TagSpecDef(\TrackList).addUnique(self.key -> self)
+	},
+
 	defineTrack: { arg self, trackidx, trackTemplate, label;
 		var trackkey;
 		var newtrack = self.childAt(trackidx);
