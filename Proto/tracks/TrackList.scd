@@ -220,7 +220,7 @@ TrackTemplateDef(\TrackList, (
 
 TrackTemplateDef(\CustomTrack, (
 	parent: TrackTemplateDef(\PlayerTrack),
-	eventType: \instrumenttrack,
+	eventType: \customtrack,
 	childClass: { TrackTemplateDef(\CustomTrackPart) },
 	makeScoreOnInitTrack: true, // WIP
 
@@ -338,7 +338,7 @@ TrackTemplateDef(\CustomTrack, (
 	///// editor
 
 	editTrackTemplate: { arg self;
-		WindowDef(\CustomInstrumentTrack_TemplateEditor).front(self)
+		WindowDef(\CustomTrack_TemplateEditor).front(self)
 	},
 	editInstrument: { arg self;
 		var te = self.trackEditor;
@@ -477,7 +477,7 @@ TrackTemplateDef(\CustomTrack, (
 
 TrackTemplateDef(\CustomTrackPart, (
 	parent: TrackTemplateDef(\PlayerTrackPart),
-	eventType: \instrumenttrackpart,
+	eventType: \customtrackpart,
 
 	new: { arg self, parent, index;
 		self = ProtoClass(( parent: self ));
@@ -718,7 +718,7 @@ TrackTemplateDef(\CustomTrackPart, (
 
 TrackTemplateDef(\TrackListSection, (
 	parent: TrackTemplateDef(\PlayerGridSection),
-	eventType: \tracklistpart,
+	eventType: \tracklistsection,
 	
 	new: { arg self, parent, idx; 
 		self = ProtoClass((parent: self));

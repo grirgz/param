@@ -487,7 +487,7 @@ WindowDef(\TrackGrid, (
 	makeOverlayMenu: { arg self, view, x, y, amodel;
 		var model = amodel;
 		var track = model.parentTrack;
-		if(track.eventType == \instrumenttrack) {
+		if(track.eventType == \customtrack) {
 			Menu(
 				* [
 					if(model.isLinePlayer == true) {
@@ -1159,7 +1159,7 @@ WindowDef(\TrackList, (
 				} {
 					var preview;
 					//var preview = cell.score.timeline.asPreview.fixedHeight_(rowHeight_inset);
-					//Log(\Param).debug("InstrumentTrackPart: cell %", cell);
+					//Log(\Param).debug("CustomTrackPart: cell %", cell);
 					preview = ( cell.asPreview ?? { View.new } ).fixedHeight_(rowHeight_inset);
 					//timelinePreviewList.add(preview);
 					//preview.timeline.areasize.x = model.areasizex ?? { preview.timeline.areasize.x };
@@ -1176,9 +1176,9 @@ WindowDef(\TrackList, (
 			viewSelector.select_item(childidx);
 			if(FileSystemProject.current.notNil) {
 
-				FileSystemProject.current.tracklist_selected_track = [\TrackListPart, linename -> model.linePlayerAt(idx)];
+				FileSystemProject.current.tracklist_selected_track = [\TrackListSection, linename -> model.linePlayerAt(idx)];
 				FileSystemProject.current.changed(\tracklist_selected_track);
-				FileSystemProject.current.tracklist_selected_track = [\InstrumentTrackPart, name -> cell];
+				FileSystemProject.current.tracklist_selected_track = [\CustomTrackPart, name -> cell];
 				FileSystemProject.current.changed(\tracklist_selected_track);
 				//FileSystemProject.current.tracklist_selected_track.debug("sel track");
 			}
@@ -1265,7 +1265,7 @@ WindowDef(\TrackList, (
 				} {
 					var preview;
 					//var preview = cell.score.timeline.asPreview.fixedHeight_(rowHeight_inset);
-					//Log(\Param).debug("InstrumentTrackPart: cell %", cell);
+					//Log(\Param).debug("CustomTrackPart: cell %", cell);
 					preview = ( cell.asPreview ?? { View.new } ).fixedHeight_(rowHeight_inset);
 					//timelinePreviewList.add(preview);
 					//preview.timeline.areasize.x = model.areasizex ?? { preview.timeline.areasize.x };

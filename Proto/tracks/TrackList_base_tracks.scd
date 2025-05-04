@@ -17,7 +17,7 @@ TrackTemplateDef(\PlayerWrapperTrack, (
 	},
 ));
 TrackTemplateDef(\PlayerWrapperTrackPart, (
-	parent: TrackTemplateDef(\CustomInstrumentTrackPart),
+	parent: TrackTemplateDef(\CustomTrackPart),
 	selectSourceDialog: { arg self;
 		TrackTemplateDef(\PlayerTrackPart)[\selectSourceDialog].value(self, {
 			self.parentTrack.parentTrack.changed(\tracklist);
@@ -108,7 +108,7 @@ TrackTemplateDef(\PbindefTrack, (
 	},
 ));
 TrackTemplateDef(\PbindefTrackPart, (
-	parent: TrackTemplateDef(\CustomInstrumentTrackPart),
+	parent: TrackTemplateDef(\CustomTrackPart),
 	scorePresetCompileString: { arg self;
 		var str;
 		str = List.new;
@@ -229,7 +229,7 @@ TrackTemplateDef(\NoteTimelineTrack, (
 	},
 ));
 TrackTemplateDef(\NoteTimelineTrackPart, (
-	parent: TrackTemplateDef(\CustomInstrumentTrackPart),
+	parent: TrackTemplateDef(\CustomTrackPart),
 	edit: { arg self;
 		self.score.edit;
 	},
