@@ -995,7 +995,7 @@ ProtoClassDef(\NoteTimeline, (
 			};
 
 			pat = self.postChain <> sloop.cutPattern(
-				inpat.trace,
+				inpat,
 				offset, dur,
 			);
 
