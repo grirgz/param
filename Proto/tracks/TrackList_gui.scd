@@ -935,6 +935,18 @@ WindowDef(\TrackList, (
 					self.model.refCompileString.pbcopy;
 				}),
 				MenuAction.separator,
+				if(self.model.resources.notNil and: { self.model.resources.size > 0 }) {
+					[
+						Menu(
+							*self.model.resources.collect ({ arg res;
+								MenuAction("%".format(res.asCompileString), {
+									PlayerWrapper(res).edit;
+								})
+							}).asArray
+						).title_("Resources"),
+						MenuAction.separator,
+					]
+				},
 				//Param(Message(self.model), \showMixerView, ParamBoolSpec()).asMenuAction,
 				//Param(Message(self.model), \enableAutoSetOutbus, ParamBoolSpec()).asMenuAction,
 				MenuAction("Edit properties", {

@@ -338,6 +338,7 @@ TrackTemplateDef(\PlayerTrackPart, (
 	},
 
 	presetCompileStringSavePath_: { arg track, val;
+		// deprecated, now use parentTrack.presetCompileStringSavePath
 		var playerwrapper;
 		var player_prefix;
 		var savepath;
@@ -855,11 +856,22 @@ TrackTemplateDef(\PlayerGrid, (
 					column.savePresetCompileString;
 				});
 				self.resources.do { arg res;
+					var fname;
 					[res, PlayerWrapper(res).presetCompileStringSavePath].debug("trying to save resource");
-					PlayerWrapper(res).savePresetCompileString;
+					//fname = self.dataPath +/+ "%_%.scd".format(PlayerWrapper(res).targetClass, PlayerWrapper(res).key);
+					fname = self.dataPath;
+					if(res.isKindOf(Event)) {
+						res.presetCompileStringSavePath = fname;
+						res.loadedFromPath = fname; // FIXME: bypass security
+						res.savePresetCompileString;
+					} {
+						PlayerWrapper(res).presetCompileStringSavePath = fname;
+						PlayerWrapper(res).savePresetCompileString;
+					};
 				}; 
 				Log(\Param).info("TrackList % saved.", self.key);
 			} {
+				[self.key, path, self.loadedFromPath].debug("path, loadedFromPath");
 				"savePresetCompileString: can't save on existing project. (loadedFromPath is different)".error;
 			}
 		}
@@ -908,6 +920,9 @@ TrackTemplateDef(\PlayerGrid, (
 
 	presetCompileStringSavePath_: { arg self, val;
 		// this is a directory since it need several files to save/load
+		if(val.endsWith(".scd")) {
+			val = PathName(val).pathOnly;
+		};
 		self[\presetCompileStringSavePath] = val;
 		// retrieve it from parent in children instead of setting it in parent to all children
 		//self.children.do({ arg column;
@@ -915,10 +930,11 @@ TrackTemplateDef(\PlayerGrid, (
 				//track.presetCompileStringSavePath = self.dataPath;
 			//})
 		//});
-		"===== setting path of resources".debug;
-		self.resources.do { arg track;
-			PlayerWrapper(track).presetCompileStringSavePath = self.dataPath +/+ "%_%.scd".format(PlayerWrapper(track).targetClass, track.key);
-		};
+		// now set at save time
+		//"===== setting path of resources".debug;
+		//self.resources.do { arg track;
+			//PlayerWrapper(track).presetCompileStringSavePath = self.dataPath +/+ "%_%.scd".format(PlayerWrapper(track).targetClass, track.key);
+		//};
 	},
 
 	savePresetCompileStringDialog: { arg self, path, action, force_dialog=false;

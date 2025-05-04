@@ -149,44 +149,7 @@ TrackTemplateDef(\TrackList, (
 
 	////// save/load
 
-	savePresetCompileString: { arg self, path, onDoneAction;
-		// currently, this require to give an absolute path to a directory that does not 
-		//		exist and that will contains all the save files
-
-
-		// path should be an absolute folder path
-		// FIXME: giving path as argument is broken: self.dataPath is not defined
-		var savefile;
-		if(path.isNil and: {self.presetCompileStringSavePath.isNil}) {
-			"savePresetCompileString: presetCompileStringSavePath is nil, can't save".error;
-		} {
-			var pathexists;
-			//path = path ?? { (self.presetCompileStringSavePath +/+ "TrackDef_%.scd".format(self.key)) };
-			path = path ? self.presetCompileStringSavePath;
-			//path.debug("TrackList.savePresetCompileString");
-			savefile = path +/+ "TrackDef_%.scd".format(self.key);
-			pathexists = File.exists(path);
-			if(pathexists.not or: {self.loadedFromPath == path}) {
-				if(pathexists.not) {
-					File.mkdir(path);
-				};
-				self.loadedFromPath = path;
-				self.presetCompileStringSavePath = path;
-				File.mkdir(self.dataPath);
-				PlayerWrapper_Base.savePresetCompileStringHelper(savefile, onDoneAction, self.refCompileString, self.presetCompileString, false);
-				self.existingChildren.do({ arg column;
-					column.savePresetCompileString;
-				});
-				self.resources.do { arg res;
-					[res, PlayerWrapper(res).presetCompileStringSavePath].debug("trying to save resource");
-					PlayerWrapper(res).savePresetCompileString;
-				}; 
-				Log(\Param).info("TrackList % saved.", self.key);
-			} {
-				"savePresetCompileString: can't save on existing project. (loadedFromPath is different)".error;
-			}
-		}
-	},
+	// savePresetCompileString is defined in PlayerGrid
 
 	refCompileString: { arg self;
 		"TrackDef(%)".format(self.key.asCompileString);
@@ -242,6 +205,9 @@ TrackTemplateDef(\TrackList, (
 	presetCompileStringSavePath_: { arg self, val;
 		// FIXME: path should either be asbsolute or relative
 		// savePresetCompileString does not resolve the path
+		if(val.endsWith(".scd")) {
+			val = PathName(val).pathOnly;
+		};
 		self[\presetCompileStringSavePath] = val;
 		//val.debug("===== setting resources save path. path:");
 		self.resources.do { arg track;
