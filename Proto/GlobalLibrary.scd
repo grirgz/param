@@ -930,9 +930,9 @@ ProtoDef(\GlobalLibrary, (
 /////////////////////////////
 ///// Tag definitions
 // there is raw tags like Pdef or Ndef in the form \name -> object
-// all theses tags are registered in the GlobalLibraryType tag
+// all theses tags are registered in the GlobalLibrary.type tag
 // Since there is a lot of types, we want to group them in categories, 
-//		the list is stored in GlobalLibraryCategory tag
+//		the list is stored in GlobalLibrary.category tag
 // Each category is defined in the tag GlobalLibrary.type.CATEGORYNAME with the list of raw tags
 
 
@@ -1222,33 +1222,37 @@ TagSpecDef(\MainProject_newObject, {
 
 //////////////////////////////////////
 ////////////////////////// Categories
+// GlobalLibrary.type are the types of all objects in the lib
+// GlobalLibrary.category are group of types for convenient filtering
 
-// FIXME: rename to GlobalLibrary.type
-TagSpecDef(\GlobalLibraryType, [
+TagSpecDef('GlobalLibrary.type', [
+	\SynthDef,
 	\BusDef,
 	\BufDef,
-	\SynthDef,
 	\Pdef,
 	\Ndef,
 	\Tdef,
 	\Fdef,
+
+	\TrackListSection,
+	\CustomTrackPart,
+
 	\NoteTimeline,
 	\TrackTimeline,
 	\KitTimeline,
 	\SampleTimeline,
 	\ClipTimeline,
 	\ParamTimeline,
+	\Clip,
+
 	\PatKitDef,
 	\Sample,
-	\TrackListSection,
-	\CustomTrackPart,
 	\ProtoPlayer,
 ]);
 
 // TODO: add GlobalLibrary.tag which should be the list of tags displayed by browser
 
-// FIXME: rename to GlobalLibrary.category
-TagSpecDef(\GlobalLibraryCategory, [
+TagSpecDef('GlobalLibrary.category', [
 	\Effect,
 	\Score,
 	\Preset,
@@ -1258,7 +1262,6 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\TrackSection,
 	\Track,
 	\AllTracks,
-	\Clip,
 	\Timeline,
 	\Editable,
 	\Player,
@@ -1268,33 +1271,17 @@ TagSpecDef(\GlobalLibraryCategory, [
 
 
 
+//// categories definitions
 
-TagSpecDef('GlobalLibrary.type.SynthDef', [
+TagSpecDef('GlobalLibrary.category.SynthDef', [
 	\SynthDef,
 ]);
 
-TagSpecDef('GlobalLibrary.type.Preset', [
+TagSpecDef('GlobalLibrary.category.Preset', [
 	\SynthDefPreset,
 ]);
 
-TagSpecDef('GlobalLibrary.type.Clip', [ // deprecated, use Player instead
-	//\SynthDef, // FIXME: not implemented yet
-	//\BufDef, // FIXME: not implemented yet
-	\Sample,
-	\Pdef,
-	\Ndef,
-	\Tdef,
-	\Fdef,
-	\NoteTimeline,
-	\TrackTimeline,
-	\KitTimeline,
-	\SampleTimeline,
-	\ClipTimeline,
-	\ParamTimeline,
-	\ProtoPlayer,
-]);
-
-TagSpecDef('GlobalLibrary.type.Timeline', [
+TagSpecDef('GlobalLibrary.category.Timeline', [
 	\NoteTimeline,
 	\TrackTimeline,
 	\KitTimeline,
@@ -1303,11 +1290,11 @@ TagSpecDef('GlobalLibrary.type.Timeline', [
 	\ParamTimeline,
 ]);
 
-TagSpecDef('GlobalLibrary.type.Kit', [
+TagSpecDef('GlobalLibrary.category.Kit', [
 	\PatKitDef,
 ]);
 
-TagSpecDef('GlobalLibrary.type.Editable', [
+TagSpecDef('GlobalLibrary.category.Editable', [
 	\NoteTimeline,
 	\TrackTimeline,
 	\KitTimeline,
@@ -1319,39 +1306,39 @@ TagSpecDef('GlobalLibrary.type.Editable', [
 	\Ndef,
 ]);
 
-TagSpecDef('GlobalLibrary.type.TrackGrid', [
+TagSpecDef('GlobalLibrary.category.TrackGrid', [
 	\PlayerGrid,
 	\TrackList,
 ]);
 
-TagSpecDef('GlobalLibrary.type.TrackSection', [
+TagSpecDef('GlobalLibrary.category.TrackSection', [
 	\TrackListSection,
 	//\lineplayer,
 ]);
 
-TagSpecDef('GlobalLibrary.type.TrackPart', [
+TagSpecDef('GlobalLibrary.category.TrackPart', [
 	\CustomTrackPart,
 	//\playerwrapper, // PlayerGrid don't have to register its children
 ]);
 
 
-TagSpecDef('GlobalLibrary.type.Track', [
+TagSpecDef('GlobalLibrary.category.Track', [
 	\CustomTrack,
 	//\playertrack,
 ]);
 
-TagSpecDef('GlobalLibrary.type.AudioBuffer', [
+TagSpecDef('GlobalLibrary.category.AudioBuffer', [
 	\BufDef,
 ]);
 
 // group track players of all kind and level
-TagSpecDef('GlobalLibrary.type.AllTracks', {
+TagSpecDef('GlobalLibrary.category.AllTracks', {
 	[\TrackGrid, \TrackSection, \TrackPart, \Track].collect { arg item, idx;
-		TagSpecDef("GlobalLibrary.type.%".format(item).asSymbol).list
+		TagSpecDef("GlobalLibrary.category.%".format(item).asSymbol).list
 	}.flat;
 });
 
-TagSpecDef('GlobalLibrary.type.Player', {
+TagSpecDef('GlobalLibrary.category.Player', {
 	[
 		\Pdef,
 		\Ndef,
@@ -1369,7 +1356,7 @@ TagSpecDef('GlobalLibrary.type.Player', {
 		\TrackMixerDef_insertFx,
 	] ++
 	[\TrackGrid, \TrackSection, \TrackPart, \Track].collect { arg item, idx;
-		TagSpecDef("GlobalLibrary.type.%".format(item).asSymbol).list
+		TagSpecDef("GlobalLibrary.category.%".format(item).asSymbol).list
 	}.flat;
 });
 
@@ -1533,12 +1520,12 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		};
 		filteredTypes = selectedCategories.collect({ arg superkey;
 			var rlist;
-			rlist = TagSpecDef("GlobalLibrary.type.%".format(superkey).asSymbol).keyList;
+			rlist = TagSpecDef("GlobalLibrary.category.%".format(superkey).asSymbol).keyList;
 
 			// allow types in categoryWhitelist
 			//rlist.debug("rlist");
 			if(rlist.size == 0) {
-				if(TagSpecDef(\GlobalLibraryType).keyList.includes(superkey)) {
+				if(TagSpecDef('GlobalLibrary.type').keyList.includes(superkey)) {
 					rlist = [ superkey ];
 				};
 			};
@@ -1572,8 +1559,8 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 	categoryView = ListView.new
 		.items_(
 			{
-				var catlist = TagSpecDef(\GlobalLibraryCategory).keyList;
-				var typelist = TagSpecDef(\GlobalLibraryType).keyList;
+				var catlist = TagSpecDef('GlobalLibrary.category').keyList;
+				var typelist = TagSpecDef('GlobalLibrary.type').keyList;
 				var rlist;
 
 				rlist = catlist.select({ arg superitem;

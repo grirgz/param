@@ -3130,7 +3130,7 @@ WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 				trackInstrumentLabel,
 			),
 			WindowDef(\GlobalLibrary).asView(lib, selectedCallback, [
-				\Clip, \AllTracks, \Timeline,
+				\Player, \AllTracks, \Timeline,
 			]),
 		),
 		HLayout(

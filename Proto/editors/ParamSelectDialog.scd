@@ -1,10 +1,10 @@
 
 (
 
-TagSpecDef(\GlobalLibraryCategory).addUnique(\ParamGroup);
+TagSpecDef('GlobalLibrary.category').addUnique(\ParamGroup);
 
 
-TagSpecDef('GlobalLibrary.type.ParamGroup', [
+TagSpecDef('GlobalLibrary.category.ParamGroup', [
 	\Ndef,
 	\Pdef,
 	\ParamGroupDef,

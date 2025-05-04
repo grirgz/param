@@ -805,7 +805,7 @@ with code::val.last.value::
 code::
 (
 WindowDef(\GlobalLibrary).front(nil, { arg val; val.debug("selected") }, [
-	\Clip, \AllTracks, \Timeline,
+	\Player, \AllTracks, \Timeline,
 ]);
 )
 ::
@@ -815,7 +815,7 @@ You may prefer to have OK/Cancel button:
 code::
 (
 WindowDef(\GlobalLibrary_select).front(nil, { arg val; val.debug("selected") }, [
-	\Clip, \AllTracks, \Timeline,
+	\Player, \AllTracks, \Timeline,
 ]);
 )
 ::
