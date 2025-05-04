@@ -898,7 +898,8 @@ ProtoClassDef(\NoteTimeline, (
 			if(param.notNil) { self.param = param };
 		} {
 			//self = self.deepCopy;
-			self = NoteTimeline.newFromProto(self.deepCopy);
+			//self = NoteTimeline.newFromProto(self.deepCopy);
+			self = NoteTimeline.newFromProto((parent:self));
 			self.prAdd(name).init(param);
 		};
 	
@@ -994,7 +995,7 @@ ProtoClassDef(\NoteTimeline, (
 			};
 
 			pat = self.postChain <> sloop.cutPattern(
-				inpat,
+				inpat.trace,
 				offset, dur,
 			);
 

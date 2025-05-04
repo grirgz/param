@@ -1609,14 +1609,14 @@ ProtoTemplateDef(\TimelinePanelView, (
 							Menu(
 								MenuAction("Disabled", {
 									am.disabled = (am.disabled ? false).not;
-									self.showParamPanel(self.selectedAutomationParam.property); // refresh
+									self.showParamPanel(self.selectedAutomationParam.propertyRoot); // refresh
 								}).checkable_(true).checked_(am.disabled),
 								MenuAction("Edit", {
 									am.paramTimeline.edit;
 								}),
 								MenuAction("Remove", {
 									rack.removeAutomation(self.selectedAutomationParam);
-									self.showParamPanel(self.selectedAutomationParam.property); // refresh
+									self.showParamPanel(self.selectedAutomationParam.propertyRoot); // refresh
 								}),
 							).title_("Automation: %".format(self.selectedAutomationParam.propertyRoot)),
 						]
@@ -1624,7 +1624,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 						[
 							MenuAction.separator,
 							MenuAction("Create automation for %".format(self.selectedAutomationParam.propertyRoot), {
-								self.showAutomation(self.selectedAutomationParam.property);
+								self.showAutomation(self.selectedAutomationParam.propertyRoot);
 							})
 						]
 
@@ -1636,7 +1636,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 					var ptline = self.timeline_model.automationRack.getParamTimeline(param);
 
 					MenuAction(param.propertyRoot, {
-						self.showParamPanel(param.property);
+						self.showParamPanel(param.propertyRoot);
 					}).checkable_(true).checked_(ptline.notNil)
 				}
 			].flat.reject(_.isNil)
@@ -1694,6 +1694,7 @@ ProtoTemplateDef(\TimelinePanelView, (
 		var keyspec;
 		var height = 150;
 		var param = Param(self.timeline_model.param.target, prop);
+		[param, prop].debug("showVelocityView param");
 		self.velocityTimeline = VelocityTimelineView.new;
 		//self.velocityTimeline.fixedHeight = height;
 		self.velocityTimeline.mimicTimeline(self.timeline, \horizontal);
@@ -2493,6 +2494,9 @@ ProtoTemplateDef(\NoteTimelinePanelView, (
 			//NumberBox.new.mapParam(Param(Message(self.timeline_model.eventLoop), \currIndex, ControlSpec(0,32,\lin,1))),
 			self.recordButton,
 			PlayerWrapper(Pdef(\metronome)).asView, // TODO: make a good one and define it a init
+			BasicButton.new.string_("Edit source").action_({
+				PlayerWrapper(self.timeline_model.param.target).edit;
+			}),
 			BasicButton.new.string_("...").mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
 				var model = self.timeline_model;
 				//[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
