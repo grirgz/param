@@ -212,20 +212,6 @@ ProtoDef(\GlobalLibrary, (
 		
 	},
 
-	//// tracklist deprecated
-
-	libIdToTrackInstrument: { arg self, libid, name;
-		ProtoDef(\trackInstrument).new(libid, name)
-	},
-
-	libIdToScore: { arg self, libid, name;
-		self.libIdToWrapper(libid).makeScore(name)
-	},
-
-	setTrackInstrument: { arg self, target, trackinstr;
-		self.libIdToWrapper(self.targetToLibId(target)).setTrackInstrument(trackinstr)
-	},
-
 
 	//// clip factories
 
@@ -763,112 +749,6 @@ ProtoDef(\GlobalLibrary, (
 			},
 		);
 
-		// instrument of InstrumentTrack, used to create new timelines
-		// maybe deprecated
-		superself.clipFactories.trackinstrument = ().putAll(superself.clipFactories_parent).putAll((
-			key: 'trackinstrument',
-			libIdKey: 'TrackInstrument',
-			label: { arg self; self.key.asString },
-			keylist: {
-				// TODO (done in TagSpecDef)
-				[]
-			},
-
-			targetToLibId: { arg self, target;
-				[self.libIdKey, target.trackKey -> target];
-			},
-
-			libIdTargetKey: { arg self;
-				self.libId.last.key; // work only when label is a key
-			},
-
-
-			getEventTarget: { arg self, ev;
-				// depends pattern event, player event
-				if(ev.pattern.isKindOf(Pdef)) {
-					// pattern type
-					ev.pattern;
-				} {
-					// player type
-					var tar = ev.receiver.value;
-					tar.key; // PlayerWrapper has key wrapper
-					if(tar.isKindOf(PlayerWrapper)) {
-						tar = tar.target;
-					};
-					if(tar.isKindOf(Pdef)) {
-						tar;
-					} {
-						Log(\Param).error("clipFactories.trackinstrument: ERROR: getEventTarget: don't know what type!!!");
-						nil;
-					}; 
-				}
-				
-			},
-
-			getTarget: { arg self;
-				// libid: [type, label -> linePlayer]
-				// NOTE: not by key reference, directly use object
-				self.libId.last.value;
-			},
-
-			classObject: {
-				// TODO
-				ProtoClass
-			},
-
-			getEventTargetKey: { arg self, ev;
-				self.getTarget(ev).key;
-			},
-
-			editSelected: { arg self, model;
-				var player;
-				//player = model.receiver.value;
-				//player.asParamGroup.debug("Edit: pattern");
-				//if(player.class == PlayerWrapper) {
-				//	player = player.target;
-				//};
-				//player.debug("clipeditor: player");
-				//player.getHalo(\edit).debug("clipeditor: player, edit");
-				player = self.getTarget(model);
-				if(player.isKindOf(Pdef)) {
-					if(player.getHalo(\edit).notNil) {
-						//player.getHalo(\edit).debug("clipeditor: player, halo edit");
-						player.getHalo(\edit).value;
-					} {
-						//player.getHalo(\edit).debug("clipeditor: normal edit");
-						player.asParamGroup.edit;
-					}
-				} {
-					Log(\Param).error("clipFactories.trackinstrument: ERROR: edit: don't know what to do with type of %", player)
-				}
-			},
-
-			redefineClip: { arg self, curname, model;
-				self.redefineClipAsPatternEvent(curname, model);
-			},
-
-			redefineClipAsPatternEvent: { arg self, curname, model;
-				PatternEvent.redefine(model);
-				// need a closed function to use eventList.asCompileString as preset
-				model[\timeline] = "{ % }".format(self.getTarget.refCompileString).interpret; 
-				//model.changed(\refresh);
-				superself.parent_model.changed(\refresh);
-			},
-
-
-			redefineClipAsPlayerEvent: { arg self, curname, model;
-				PlayerEvent.redefine(model);
-				model[\receiver] = PlayerWrapper(self.getTarget);
-				//model.changed(\refresh);
-				superself.parent_model.changed(\refresh);
-			},
-
-			makeScore: { arg self, scorekey;
-				(
-					timeline: KitTimeline(scorekey, self.getTarget)
-				)
-			},
-		));
 	},
 
 	init_other_factories: { arg superself;
@@ -1302,15 +1182,6 @@ TagSpecDef(\CustomTrack, {
 });
 
 
-// maybe should rename to TrackInstrument_ClipTimeline
-TagSpecDef('TrackInstrument', [ // maybe deprecated
-	\ClipTimelineTrack,
-	\KitTimelineTrack,
-	\NoteTimelineTrack,
-	\SampleTimelineTrack,
-	\ParamTimelineTrack,
-]);
-
 ///// new objects
 
 TagSpecDef(\ClipTimeline_newPlayer, [
@@ -1359,7 +1230,6 @@ TagSpecDef(\GlobalLibraryType, [
 	\Sample,
 	\TrackListSection,
 	\CustomTrackPart,
-	\TrackInstrument,
 	\ProtoPlayer,
 ]);
 
@@ -1367,7 +1237,6 @@ TagSpecDef(\GlobalLibraryType, [
 
 // FIXME: rename to GlobalLibrary.category
 TagSpecDef(\GlobalLibraryCategory, [
-	\TrackInstrument,
 	\Effect,
 	\Score,
 	\Preset,
@@ -1385,15 +1254,8 @@ TagSpecDef(\GlobalLibraryCategory, [
 	\SynthDef,
 ]);
 
-//TagSpecDef('GlobalLibrary.type.TrackInstrument', [
-	//\ClipTimelineTrackX,
-//]);
 
 
-// FIXME: rename to GlobalLibrary.category.TrackInstrument
-TagSpecDef('GlobalLibrary.type.TrackInstrument', [ // maybe deprecated
-	\TrackInstrument,
-]);
 
 TagSpecDef('GlobalLibrary.type.SynthDef', [
 	\SynthDef,
@@ -1401,15 +1263,6 @@ TagSpecDef('GlobalLibrary.type.SynthDef', [
 
 TagSpecDef('GlobalLibrary.type.Preset', [
 	\SynthDefPreset,
-]);
-
-TagSpecDef('GlobalLibrary.type.TrackInstrumentTarget', [ // maybe deprecated
-	\SynthDef,
-	\Pdef,
-	\Ndef,
-	\PatKitDef,
-	\BufDef,
-	\Sample,
 ]);
 
 TagSpecDef('GlobalLibrary.type.Clip', [ // deprecated, use Player instead

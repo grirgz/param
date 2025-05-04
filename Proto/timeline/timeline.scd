@@ -920,12 +920,6 @@ ProtoClassDef(\NoteTimeline, (
 	},
 
 
-	trackInstrument_: { arg self, instr;
-		//Log(\Param).debug("NoteTimeline % trackInstrument_: %", self.key, [instr.hash, instr.target, instr.libId]);
-		self[\trackInstrument] = instr;
-		self.param = instr.target;
-	},
-
 	param_: { arg self, param;
 		if(param.isNil) {
 			param = Param(Pdef(\NoteTimeline_default, Pbind()), \midinote);
@@ -1638,12 +1632,6 @@ ProtoClassDef(\KitTimeline, (
 		self.basicInit;
 		self.kit = kit ?? { PatKitDef(\PatKitDef_default) };
 		
-	},
-
-	trackInstrument_: { arg self, instr;
-		Log(\Param).debug("KitTimeline % trackInstrument_: %", self.key, [instr.hash, instr.target, instr.libId]);
-		self[\trackInstrument] = instr;
-		self.kit = instr.target;
 	},
 
 	kit_: { arg self, kit;
