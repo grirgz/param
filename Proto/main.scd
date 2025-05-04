@@ -22,6 +22,8 @@
 		"editors/debug_editors.scd",
 		"editors/base_dialogs.scd",
 		"editors/FileDialog.scd",
+		"editors/FileDialog_project.scd",
+		"editors/FileDialog_tracklist.scd",
 		"editors/ParamSelectDialog.scd",
 		"editors/PatKitDefEditor.scd",
 		"editors/PbindefEditor.scd",

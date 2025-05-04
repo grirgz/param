@@ -417,7 +417,7 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 				// and with a delay
 				proto.disable_play = false;
 			}.defer(1/4);
-			Log(\Param).debug("end disable play file");
+			//Log(\Param).debug("end disable play file");
 		}
 	};
 
