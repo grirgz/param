@@ -216,7 +216,6 @@ ProtoDef(\GlobalLibrary, (
 	//// clip factories
 
 	init_default_clip_factories: { arg superself;
-		var tl;
 		var parentFactory;
 		superself.clipFactories = ();
 
@@ -432,6 +431,8 @@ ProtoDef(\GlobalLibrary, (
 	},
 
 	init_timeline_clip_factories: { arg superself;
+		var tl;
+		var parentFactory = superself.clipFactories_parent;
 		tl = (
 			parent: superself.clipFactories_parent,
 			key: 'generictimeline',
