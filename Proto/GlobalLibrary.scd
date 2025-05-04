@@ -1024,24 +1024,27 @@ TagSpecDef(\ParamTimeline, {
 TagSpecDef(\TrackListSection, {
 	var tracklists = TagSpecDef(\TrackList).valueList;
 	tracklists.collect({ arg tracklist;
-		var sizes = tracklist.existingChildren.collect({ arg channel;
-			// for each channel, count the number of part
-			channel.existingChildren.size; 
-		});
-		var channelIdxWithMostParts = sizes.maxIndex;
-		// now the max number of part is the number of part of the tracklist
-		if(sizes.size > 0) {
+		tracklist.existingSections.asArray.collect { arg sec, idx;
+			sec.trackKey -> sec
+		};
+		//var sizes = tracklist.existingChildren.collect({ arg channel;
+			//// for each channel, count the number of part
+			//channel.existingChildren.size; 
+		//});
+		//var channelIdxWithMostParts = sizes.maxIndex;
+		//// now the max number of part is the number of part of the tracklist
+		//if(sizes.size > 0) {
 
-			(0..sizes[channelIdxWithMostParts]-1).collect({ arg idx;
-				// format: (libLabel -> libObj)
-				// type is added by TagSpecDef key
-				var line = tracklist.linePlayerAt(idx);
-				//(("%.part%".format(tracklist.key, idx)) -> ( tracklist.linePlayerAt(idx) ));
-				line.trackKey -> line;
-			})
-		} {
-			nil
-		}
+			//(0..sizes[channelIdxWithMostParts]-1).collect({ arg idx;
+				//// format: (libLabel -> libObj)
+				//// type is added by TagSpecDef key
+				//var line = tracklist.linePlayerAt(idx);
+				////(("%.part%".format(tracklist.key, idx)) -> ( tracklist.linePlayerAt(idx) ));
+				//line.trackKey -> line;
+			//})
+		//} {
+			//nil
+		//}
 	}).flatten.select(_.notNil)
 });
 
@@ -1051,6 +1054,17 @@ TagSpecDef(\CustomTrack, {
 			track.trackKey -> track
 		}
 	}).flatten;
+});
+
+TagSpecDef(\CustomTrackPart, {
+	TagSpecDef(\TrackList).valueList.collect({ arg tracklist;
+		tracklist.existingChildren.collect { arg track;
+			track.existingChildren.collect { arg item, idx;
+				item.trackKey -> item
+			};
+		}
+	}).flatten(2);
+	// .flat produce strange error
 });
 
 //////// Others quark types
