@@ -11,7 +11,8 @@ ProtoDef(\GlobalLibrary, (
 		},
 		clipFactories_keys: { arg self;
 			self.init_default_clip_factories;
-			self[\clipFactories_keys];
+			self.clipFactories.keys.asArray.sort;
+			//self[\clipFactories_keys];
 		},
 	),
 
@@ -425,7 +426,10 @@ ProtoDef(\GlobalLibrary, (
 		superself.init_trackdef_clip_factories;
 		superself.init_other_factories;
 
-		superself.clipFactories_keys = superself.clipFactories.keys.asArray.sort;
+		//superself.clipFactories_keys = superself.clipFactories.keys.asArray.sort;
+		superself.clipFactories_keys = {
+			superself.clipFactories.keys.asArray.sort;
+		};
 		
 		superself.clipFactories
 	},
@@ -467,7 +471,10 @@ ProtoDef(\GlobalLibrary, (
 		superself.clipFactories_timeline_parent = tl;
 
 		// TODO: add and test TrackTimeline
-		[\noteTimeline, \clipTimeline, \modStepTimeline, \kitTimeline].do { arg key;
+		[
+			\noteTimeline, \clipTimeline, \modStepTimeline, \kitTimeline,
+			\paramTimeline, \sampleTimeline
+		].do { arg key;
 			var uckey = (key.asString[0].toUpper ++ key.asString[1..]).asSymbol;
 			superself.clipFactories[key] = (
 				key: key,
@@ -476,15 +483,15 @@ ProtoDef(\GlobalLibrary, (
 				classObject: "{ ProtoClassDef(%) }".format(uckey.asCompileString).interpret,
 			);
 		};
-		[\paramTimeline, \sampleTimeline].do { arg key;
-			var uckey = (key.asString[0].toUpper ++ key.asString[1..]);
-			superself.clipFactories[key] = (
-				key: key,
-				libIdKey: uckey.asSymbol,
-				parent: tl,
-				classObject: "{ ProtoClassDef(%) }".format(uckey.asCompileString).interpret,
-			);
-		};
+		//[\paramTimeline, \sampleTimeline].do { arg key;
+			//var uckey = (key.asString[0].toUpper ++ key.asString[1..]);
+			//superself.clipFactories[key] = (
+				//key: key,
+				//libIdKey: uckey.asSymbol,
+				//parent: tl,
+				//classObject: "{ ProtoClassDef(%) }".format(uckey.asCompileString).interpret,
+			//);
+		//};
 
 		superself.clipFactories.clip = (
 			// i think it is used in ClipTimeline to have an event in ClipList
@@ -1452,15 +1459,15 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 
 		view.clear;
 
-		//[model, view, msg, selectedTypes, selectedCategories, filteredTypes].debug("category change");
+		[model, view, selectedTypes, selectedCategories, filteredTypes].debug("category change");
 		itemIds = selectedTypes.collect({ arg typeitem;
-			//Log(\Param).debug("typeitem %", typeitem);
+			Log(\Param).debug("typeitem %", typeitem);
 			TagSpecDef(typeitem.value).list.collect ({ arg item;
-				//Log(\Param).debug("item %", item);
+				Log(\Param).debug("item %", item);
 				[typeitem, item];
 			})
 		}).flatten;
-		//Log(\Param).debug("itemIds %", itemIds);
+		Log(\Param).debug("itemIds %", itemIds);
 
 		tagList = Set.new;
 		itemIds = itemIds.collect({ arg id;

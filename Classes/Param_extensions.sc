@@ -171,7 +171,7 @@
 		var isPbindef = this.source.isKindOf(PbindProxy);
 
 		list = List.new;
-		exclude = exclude ?? { [] };
+		exclude = exclude ?? { [\gate] };
 
 		//// retrieve existing keys
 		//isPbindef.debug("asParamGroup: isPbindef");

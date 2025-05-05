@@ -2820,7 +2820,7 @@ WindowDef(\ClipTimeline_ClipEditor, { arg def, clip, eventlist;
 
 	libid = lib.eventToLibId(clip);
 	target = lib.libIdToTarget(libid);
-	//Log(\Param).debug("clip libid target %", [clip, libid, target]);
+	Log(\Param).debug("ClipTimeline_ClipEditor: clip libid target %", [clip, libid, target]);
 	wrapper = lib.libIdToWrapper(libid);
 
 	params = [
@@ -3324,7 +3324,10 @@ WindowDef(\ClipTimelineContextMenu, { arg def, viewmodel, view;
 	Menu(*
 		[
 			Param(Message(viewmodel.timeline), \enablePreview, ParamBoolSpec()).asMenuAction("Display preview"),
-			Param(Message(viewmodel.leftPaneView), \visible, ParamBoolSpec()).asMenuAction("Display right panel"),
+			if(viewmodel.leftPaneView.notNil) {
+				
+				Param(Message(viewmodel.leftPaneView), \visible, ParamBoolSpec()).asMenuAction("Display right panel")
+			},
 			Param(Message(viewmodel.timeline_model), \bindPlayWithRecord, ParamBoolSpec()).asMenuAction("Bind play with record button"),
 			MenuAction.separator,
 			MenuAction("Add track", {
