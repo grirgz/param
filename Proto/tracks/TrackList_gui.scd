@@ -994,6 +994,7 @@ WindowDef(\TrackList, (
 		var cell = tocell;
 		if(fromcell.notNil) {
 			cell.parentTrack.children[cell.index] = fromcell.clone(cell.parentTrack, cell.index);
+			cell.parentTrack.children[cell.index].outBus.debug("pasteScore out");
 			cell.parentTrack.parentTrack.changed(\tracklist);
 		};
 	},

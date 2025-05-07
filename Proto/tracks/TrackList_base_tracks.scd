@@ -251,7 +251,9 @@ TrackTemplateDef(\NoteTimelineTrackPart, (
 		newscore.eventList = self.score.eventList.clone;
 		self.score.automationRack.cloneTo(newscore.automationRack);
 		newscore.controller = self.parentTrack.inputController;
-		newscore.outBus = self.parentTrack.outBus;
+		//[newscore.outBus, self.score.outBus].debug("cloneScore: new old");
+		newscore.outBus = self.score.outBus;
+		//[newscore.outBus, self.score.outBus].debug("cloneScore: new old2");
 		newscore;
 	},
 
@@ -289,14 +291,15 @@ TrackTemplateDef(\NoteTimelineTrackPart, (
 	score_: { arg self, score;
 		self[\score] = score;
 		self.score.controller = self.parentTrack.inputController;
-		self.score.outBus = self.parentTrack.outBus; // does it override when loading ?
 		self.proxy = PlayerWrapper(self.score);
+		// do not assign outBus to allow outBus copy when copying sections
 		//self.proxy.debug("makeScore proxy end");
 	},
 
 	makeScore: { arg self;
 		//self.proxy.debug("makeScore proxy start");
 		self.score = NoteTimeline(self.name+++\score, self.parentTrack.source);
+		self.score.outBus = self.parentTrack.outBus;
 	}
 ));
 
@@ -305,8 +308,8 @@ TagSpecDef(\CustomTrackTemplate).addUnique(\NoteTimelineTrack -> TrackTemplateDe
 
 WindowDef(\PdefInstrumentEditor, { arg def, instr;
 
-	instr.debug("instr");
-	instr.source.debug("source");
+	//instr.debug("instr");
+	//instr.source.debug("source");
 	WindowDef(\PbindefEditor).asView(instr.source);
 
 	//var target = instr.source;

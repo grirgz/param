@@ -358,6 +358,9 @@ ProtoClassDef(\EventTimeline, (
 	presetCompileString: { arg self;
 		var str = List.new;
 		str = str.add("%.param = %;".format(self.refCompileString(self.key.asCompileString), self.param.asCompileString));
+		if(self.outBus.notNil) {
+			str = str.add("%.outBus = %;".format(self.refCompileString(self.key.asCompileString), self.outBus.asCompileString));
+		};
 		str = str.add("%.eventList = %".format(self.refCompileString(self.key.asCompileString), self.eventList.presetCompileString));
 		if(self.automationRack.notNil and: { self.automationRack.isEmpty == false }) {
 			str = str.add(self.automationRack.presetCompileString("%.automationRack".format(self.refCompileString)))
