@@ -415,8 +415,6 @@ TrackTemplateDef(\KitTimelineTrackPart, (
 
 	score_: { arg self, score;
 		self[\score] = score;
-		self.score.outBus = self.parentTrack.outBus; // does it override when loading ?
-		self.score.recorder.recBus = self.parentTrack.recBus ?? { self[\score].recorder.recBus  };
 		self.proxy = PlayerWrapper(self.score);
 		//self.proxy.debug("makeScore proxy end");
 	},
@@ -424,6 +422,8 @@ TrackTemplateDef(\KitTimelineTrackPart, (
 
 	makeScore: { arg self;
 		self.score = KitTimeline(self.name+++\score, self.parentTrack.kit);
+		self.score.outBus = self.parentTrack.outBus;
+		self.score.recorder.recBus = self.parentTrack.recBus ?? { self[\score].recorder.recBus  };
 	},
 
 	scorePresetCompileString: { arg self;
@@ -508,7 +508,6 @@ TrackTemplateDef(\SampleTimelineTrackPart, (
 
 	score_: { arg self, score;
 		self[\score] = score;
-		self.score.outBus = self.parentTrack.outBus; // does it override when loading ?
 		self.score.recorder.recBus = self.parentTrack.recBus ?? { self[\score].recorder.recBus  };
 		self.proxy = PlayerWrapper(self.score);
 		//self.proxy.debug("makeScore proxy end");
@@ -517,6 +516,7 @@ TrackTemplateDef(\SampleTimelineTrackPart, (
 
 	makeScore: { arg self;
 		self.score = SampleTimeline(self.name+++\score);
+		self.score.outBus = self.parentTrack.outBus;
 	},
 
 	scorePresetCompileString: { arg self;
@@ -596,7 +596,6 @@ TrackTemplateDef(\ParamTimelineTrackPart, (
 
 	score_: { arg self, score;
 		self[\score] = score;
-		self.score.outBus = self.parentTrack.outBus; // does it override when loading ?
 		self.proxy = PlayerWrapper(self.score);
 		//self.proxy.debug("makeScore proxy end");
 	},
@@ -705,7 +704,6 @@ TrackTemplateDef(\ClipTimelineTrackPart, (
 	score_: { arg self, val;
 		self[\score] = val;
 		self.score.controller = self.parentTrack.inputController;
-		self.score.outBus = self.parentTrack.outBus;
 		self.proxy = PlayerWrapper(self.score);
 	},
 
