@@ -78,7 +78,7 @@ WindowDef(\ListSaveDialog, { arg def, list, okHook, defaultValue, label;
 		};
 	};
 	savefun = {
-		var name = textfield.value.trim();
+		var name = textfield.value.stripWhiteSpace;
 		if(name != "") {
 			name = name.asSymbol;
 			if(listitems.includes(name)) {
@@ -164,7 +164,7 @@ WindowDef(\ListSelectDialog, { arg def, list, okHook, defaultValue, label;
 			StaticText.new.string_("Search: "),
 			textfield = TextField.new.keyUpAction_({ arg me, key, modifiers, unicode, keycode;
 				//[me, key.asCompileString, modifiers, unicode, keycode].debug("keyUpAction");
-				if(me.string.trim != "") {
+				if(me.string.stripWhiteSpace != "") {
 					filteredList = listitems.select({ arg item, idx;
 						item.key.asString.toLower.contains(me.string.toLower)
 					});

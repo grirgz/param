@@ -39,7 +39,7 @@ WindowDef(\ParamSelectDialog,{ arg def, selectedHook, okHook, defaultValue;
 		var label;
 		//"okHook".debug;
 		def.closeWindow;
-		if(namefield.string.trim != "") {
+		if(namefield.string.stripWhiteSpace != "") {
 			label = namefield.name;
 		};
 		okHook.(paramCompileStringField.string.interpret, selectedParam);

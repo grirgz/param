@@ -3141,7 +3141,7 @@ WindowDef(\ClipList_AddClip, { arg def, selectedHook, okHook;
 			BasicButton.new.string_("OK").action_({
 				var label;
 				def.closeWindow;
-				if(namefield.string.trim != "") {
+				if(namefield.string.stripWhiteSpace != "") {
 					label = namefield.name;
 				};
 				//Log(\Param).debug("okhook itemId:%, str:%", selectedLibId, label);
@@ -3217,7 +3217,7 @@ WindowDef(\ClipList_NewClip, { arg def, selectedHook, okHook, tagSpec;
 		HLayout(
 			BasicButton.new.string_("OK").action_({
 				var label;
-				if(namefield.string.trim != "") {
+				if(namefield.string.stripWhiteSpace != "") {
 					def.closeWindow;
 					label = namefield.string.asSymbol;
 					//Log(\Param).debug("okhook fac:%, str:%", selectedFactory.asCompileString, label);

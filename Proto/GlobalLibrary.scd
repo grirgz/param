@@ -1489,7 +1489,7 @@ WindowDef(\GlobalLibrary, { arg def, lib, selectedCallback, categoryWhitelist, d
 		}).select({ arg obj;
 			//// searchbox filtering
 			//Log(\Param).debug("search strings to add %", obj.strings);
-			if(searchBox.string.trim != "") {
+			if(searchBox.string.stripWhiteSpace != "") {
 				obj.strings.join(" ").toLower.contains(searchBox.string.toLower)
 			} {
 				true
