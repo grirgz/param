@@ -43,7 +43,7 @@ NoteTimeline(\note1).edit; // using it create it automatically
 
 Use Ctrl-click to create nodes.
 
-By default, it code::Pdef(\NoteTimeline_default):: as the instrument for the
+By default, it use code::Pdef(\NoteTimeline_default):: as the instrument for the
 notes. You want to provide your own Pdef so you can tweak SynthDef parameters.
 
 code::
