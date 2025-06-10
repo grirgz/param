@@ -637,7 +637,7 @@ TrackTemplateDef(\CustomTrackPart, (
 		self.index = index.asInteger;
 		self.score = self.cloneScore;
 		self[\cloneScore].asCompileString.debug("cloneScore fun");
-		self.score.outBus.debug("clone: outBus");
+		//self.score.outBus.debug("clone: outBus");
 		self;
 	},
 

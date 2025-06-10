@@ -219,6 +219,14 @@ ProtoClassDef(\EventTimeline, (
 		self.proxy.isPlaying;
 	},
 
+	isPlaying_: { arg self, val;
+		if(val == true) {
+			self.play;
+		} {
+			self.stop;
+		};
+	},
+
 	/////////////// backward compat (old way before ProtoClass)
 
 	asPatternAbs_old: { arg self, startPosition, endPosition, repeatCount;
