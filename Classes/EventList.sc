@@ -252,9 +252,19 @@ TimelineEventList : List {
 	}
 
 	//////////// added by ggz
-
+	
 	removeEvent { arg event, refresh=true;
 		this.remove(event);
+		if(refresh == true) {
+			this.calcRelDurs;
+			this.setPlayDursToRelDur;
+			this.changed(\refresh);
+		}
+	}
+
+	removeEvents { arg criteria, refresh=true;
+		var events = this.select(criteria);
+		this.removeAll(events);
 		if(refresh == true) {
 			this.calcRelDurs;
 			this.setPlayDursToRelDur;

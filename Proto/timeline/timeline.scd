@@ -599,6 +599,57 @@ ProtoClassDef(\ClipTimeline, (
 		//self.areasize = Point(self.areasize.x, self.tracks.size ); // areasize is deprecated, use track_count
 	},
 
+	insert_track: { arg self, idx;
+		//idx.debug("insert_track");
+		self.addHistorySnapshot;
+		
+		// shift nodes
+		self.eventList.do { arg ev;
+			var val = ev[\midinote];
+			//ev.debug("ev");
+			if(val.isKindOf(Number) and: { val >= idx  }) {
+				//[idx, val, val -1].debug("to change");
+				ev[\midinote] = ( val + 1 ).asInteger;
+			};
+		};
+
+		self.eventList.calcRelDurs;
+		self.eventList.changed(\refresh);
+		self.tracks = self.tracks.insert(idx, (
+			index: idx,
+			recordBus: 0,
+			recordArmed: false,
+			muted: false,
+			solo: false,
+		));
+	},
+
+	remove_track: { arg self, idx;
+		self.addHistorySnapshot;
+		self.eventList.removeEvents({ arg ev;
+			var val = ev[\midinote];
+			if(val.isKindOf(Number)) {
+				val == idx;
+			} {
+				false
+			};
+		});
+		// shift nodes
+		self.eventList.do { arg ev;
+			var val = ev[\midinote];
+			//ev.debug("ev");
+			if(val.isKindOf(Number) and: { val > idx  }) {
+				//[idx, val, val -1].debug("to change");
+				ev[\midinote] = ( val - 1 ).asInteger;
+			};
+		};
+
+		self.eventList.calcRelDurs;
+		self.tracks.removeAt(idx);
+		self.tracks = self.tracks;
+		self.eventList.changed(\refresh);
+	},
+
 	remove_last_track: { arg self;
 		self.tracks = self.tracks[0..self.tracks.size-2];
 	},
@@ -639,12 +690,13 @@ ProtoClassDef(\ClipTimeline, (
 	},
 
 	is_track_bypassed: { arg self, track_index;
+		// is track muted ?
 		// used by mutingPattern, SampleTimeline and steptimeline
 		//self.tracks[track_index] !? _.muted ? false or: {self.tracks_bypassed.includes(track_index)};
 		if(self.soloTracks.notNil) {
-			self.soloTracks.includes(track_index).not
+			self.soloTracks.includes(track_index).not and: { self.tracks[track_index].muted == true }
 		} {
-			false
+			self.tracks[track_index].muted == true
 		};
 	},
 

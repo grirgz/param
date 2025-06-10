@@ -45,7 +45,7 @@ ProtoTemplateDef(\ViewSelector, (
 
 	makeViews: { arg self;
 		self.selector_count.collect({ arg x;
-			XSimpleButton.new
+			BasicButton.new
 				.minWidth_(15) 
 				.action_({
 					self.select_item(x);

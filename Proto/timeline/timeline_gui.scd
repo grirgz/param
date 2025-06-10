@@ -253,7 +253,24 @@ ProtoTemplateDef(\TimelinePanelView, (
 					//}),
 				).front;
 			});
+			self.track_selector.views[idx].mouseDownAction_({ 
+				arg view, x, y, modifiers, buttonNumber, clickCount;
+				[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+				if(buttonNumber == 1) {
+					Menu(
+						MenuAction("Insert track before", {
+							self.timeline_model.insert_track(idx);
+						}),
+						MenuAction("Remove track", {
 
+							WindowDef(\ConfirmDialog).front("Removing track will remove all clips on the track and can't be undone, are you sure ?", {
+								self.timeline_model.remove_track(idx)
+
+							})
+						}),
+					).front;
+				};
+			});
 			res = View.new.layout_(
 				VLayout(
 					HLayout(
@@ -279,11 +296,12 @@ ProtoTemplateDef(\TimelinePanelView, (
 		};
 		self.track_selector = ProtoTemplateDef(\ViewSelector).new(track_count, {}, { arg view, x; 
 			//x = track_count - x;
-			if(self.timeline_model.is_track_bypassed(x)) {
-				view.label_("[track %]".format(x));
-			} {
-				view.label_("track %".format(x));
-			}
+			view.label_("track %".format(x));
+			//if(self.timeline_model.is_track_bypassed(x)) {
+				//view.label_("[track %]".format(x));
+			//} {
+				//view.label_("track %".format(x));
+			//}
 		});
 		self.track_header.canvas_(
 			self.track_header_view = View.new.layout_(
@@ -2126,10 +2144,11 @@ ProtoTemplateDef(\TrackTimelinePanelView, (
 		self.areasize.y = self.timeline_model.tracks.size;
 		track_count = self.areasize.y.asInteger;
 		track_header_block = { arg x;
+			var idx = track_count - 1 - x;
 			var res = View.new.layout_(
 				HLayout(
 					//XSimpleButton.new.label_("track %".format(x)).
-					self.track_selector.views[track_count - 1 - x]
+					self.track_selector.views[idx]
 				)
 			);
 			//res.background_(Color.blue);
@@ -2138,11 +2157,12 @@ ProtoTemplateDef(\TrackTimelinePanelView, (
 		//"trackTimelinePanelView.update_track_header: part 1".debug;
 		self.track_selector = ProtoTemplateDef(\ViewSelector).new(track_count, {}, { arg view, x; 
 			//x = track_count - x;
-			if(self.timeline_model.is_track_bypassed(x)) {
-				view.label_("[%]".format(self.timeline_model.tracks[x].label));
-			} {
-				view.label_("%".format(self.timeline_model.tracks[x].label));
-			}
+			view.label_("%".format(self.timeline_model.tracks[x].label));
+			//if(self.timeline_model.is_track_bypassed(x)) {
+				//view.label_("[%]".format(self.timeline_model.tracks[x].label));
+			//} {
+				//view.label_("%".format(self.timeline_model.tracks[x].label));
+			//}
 		});
 		//"trackTimelinePanelView.update_track_header: part 2".debug;
 		self.track_header.canvas_(
@@ -3333,9 +3353,9 @@ WindowDef(\ClipTimelineContextMenu, { arg def, viewmodel, view;
 			MenuAction("Add track", {
 				viewmodel.add_track;
 			}),
-			MenuAction("Remove last track", {
-				viewmodel.remove_last_track;
-			}),
+			//MenuAction("Remove last track", {
+				//viewmodel.remove_last_track;
+			//}),
 			MenuAction("Sample manager", {
 				WindowDef("%_SampleManager".format(viewmodel.timeline_model.key).asSymbol, WindowDef(\ClipTimeline_SampleManager)).front(viewmodel.timeline_model);
 			}),
