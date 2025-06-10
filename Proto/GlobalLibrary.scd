@@ -949,19 +949,18 @@ TagSpecDef(\SynthDef_all, {
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat.sort;
 });
 
+
 TagSpecDef(\SynthDef_keys, {
-	var blocklist = TagSpecDef(\SynthDef_blocklist).valueList.collect({ arg x; Constraint(x) });
-	blocklist = blocklist.reduce('or');
+	var blocklist = TagSpecDef(\SynthDef_blocklist).valueList;
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.keys.as(Array) }).flat.reject({ arg item;
-		blocklist.value(item)
+		blocklist.any { arg f; f.value(item) };
 	}).sort;
 }).default_(\default);
 
 TagSpecDef(\SynthDef, {
-	var blocklist = TagSpecDef(\SynthDef_blocklist).valueList.collect({ arg x; Constraint(x) });
-	blocklist = blocklist.reduce('or');
+	var blocklist = TagSpecDef(\SynthDef_blocklist).valueList;
 	SynthDescLib.all.values.asList.collect({arg lib; lib.synthDescs.asAssociations}).flat.reject({ arg item;
-		blocklist.value(item.key)
+		blocklist.any { arg f; f.value(item.key) };
 	});
 });
 
