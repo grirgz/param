@@ -998,15 +998,15 @@ Pbindef(\myseq,
 	\degree, Pseq(0!8,inf),
 	\lpfr, PstepSeq(1!8,inf),
 	\rq, Pseq(0.1!8,inf),
-	\isRest, Pseq(false!8,inf),
-	\muter, Pif(Pkey(\isRest), \rest, 0),
+	\muteseq, Pseq(false!8,inf),
+	\muter, Pif(Pkey(\muteseq), \rest, 0),
 	\dur, 1/8,
 	\amp, 0.1,
 ).play;
 
 // add some specs
 SynthDesc(\saw).addSpec(\lpfr,ControlSpec(0.1,4,\lin) );
-Spec.add(\isRest, ParamBoolSpec(reverse:true));
+Spec.add(\muteseq, ParamBoolSpec(reverse:true));
 Spec.add(\degree, ControlSpec(0,14,\lin,1));
 )
 
