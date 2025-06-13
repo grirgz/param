@@ -425,6 +425,15 @@ ProtoTemplateDef(\TimelinePanelView, (
 					self.timeline_model.playNow(1);
 				};
 				// quantize
+				if(key == $D) {
+					self.currentBrush = \pen;
+				};
+				if(key == $E) {
+					self.currentBrush = \eraser;
+				};
+				if(key == $S) {
+					self.currentBrush = \move;
+				};
 
 				if(key == $q) {
 					self.quantizeAction;
@@ -878,14 +887,27 @@ ProtoTemplateDef(\TimelinePanelView, (
 		self.verticalScroller.mapTimeline(self.timeline);
 	},
 
+	brushModes: { arg self;
+		self[\brushModes] = [
+			\move -> (label:"👆", desc:"Set move mode"),
+			\pen -> (label:"✎", desc:"Set draw mode"),
+			\eraser -> (label:"⎚", desc:"Set erase mode"),
+		];
+		self[\brushModes];
+	},
+
+	currentBrush_: { arg self, brush;
+		self.timeline.currentBrush = brush;
+		self.timeline.changed(\currentBrush);
+	},
+	currentBrush: { arg self;
+		self.timeline.currentBrush;
+	},
+
 	makeBrushSelectorView: { arg self;
 		var brushmove, brushpen;
 		var buttons;
-		var modes = [
-			\move -> (label:"👆", desc:"Set move mode"),
-			\pen -> (label:"✎", desc:"Set write mode"),
-			\eraser -> (label:"⎚", desc:"Set eraser mode"),
-		];
+		var modes = self.brushModes;
 
 		buttons = modes.collect { arg asso, idx;
 			brushmove = BasicButton.new.string_(asso.value.label).fixedSize_(20@20).action_({
