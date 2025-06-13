@@ -10,19 +10,29 @@ There is two special events, the start event and the end event, they delimit the
 
 However, there is two other markers which are displayed as blue lines, this is the preview loop. It provide the ability to temporaly listen to a specific part of your clip without changing the intended start and end of the clip. 
 
-There is no true undo system for the moment, so you must take care of not messing up. In the waiting time, there is a kind of history stack available. You can change it using the number box at right of the metronome (use mouse wheel). For example, if you delete a note, go to index 1 and the note will be back. Then hit Ctrl-K to copy the current eventList to the top of the eventList stack, and go back to index 0. The reason is only the index 0 is saved on disk so you will lose everything you do in other indexes. There is no history stacked when moving notes however.
-
 Note it is possible to recursively embed the timeline into itself. There is some protection to disallow timeline of zero length but do it at your own (infinite loop) risk.
+
+SECTION:: Quantization
+
+link::Classes/Quant##Quantization:: delay the playing/stopping of timelines to
+allow to sync several timelines in live.
+ClipTimelines are a kind of Pdef, they follow link::Classes/Pdef#*defaultQuant:: by default
+(which is 1 beat), but also have a code::quant:: property to change it only for
+this timeline. Stopping the timeline is also subject to quantization (unlike
+Pdef.stop which oddly doesn't obey to quant).
+
+Not to be confused with resolution, which is the spatial quantization of notes
+or clips when you add or move them. It is available in the top bar (by default
+1/8)
 
 SECTION:: Add clips
 
-There is a side panel at the right of the timeline (you can hide it using the
-">" button). The selected player in the list is the one added when you hold
-Ctrl then click somewhere on the timeline. At first the list is empty, use the "Add" button to
+There is a side panel at the right of the timeline. The selected player in the list is the one added when you hold
+Ctrl then click somewhere on the timeline (or in draw mode just click). At first the list is empty, use the "Add" button to
 open the global library dialog, you can choose in this list a Pdef, Ndef or
 other timelines. Not every object is supported currently, the focus is on Pdef
 and other timelines. Ndef can be also used but there is sometime some timing
-issues.
+issues, see link::Guides/Timeline_limitations::.
 
 When you select a clip, the name is displayed in the bottom bar, you can change it to other players from the popup menus. You can also edit it. It open an event editor dialog to allow you to change gain (work only with SampleTimeline for the moment), start time or duration, you can also open the editor for the target of the clip. 
 
@@ -30,6 +40,21 @@ There is a difference between a SampleTimeline and the event in the ClipTimeline
 
 
 SECTION:: Recording
+
+There is actually 3 kinds of source you can record with ClipTimeline:
+list::
+## Audio : record from a bus and write audio data in a link::Classes/SampleTimeline::
+## Param : listen to a Param and record its curve in a
+link::Classes/ParamTimeline::. This is a kind of automation system that can
+record MIDI controller knobs.
+## Notes : listen to a PlayerGroup and record notes in a
+link::Classes/NoteTimeline::. You can record your MIDI keyboard performance with this.
+::
+
+You can choose the recording source in the header of any track by clicking on
+the button emphasis::Rec source::.
+
+SUBSECTION:: Audio recording
 
 You can record any audio bus directly to ClipTimeline. This will create a buffer and its link::Classes/SampleTimeline:: and embed it in the current ClipTimeline.
 
@@ -49,18 +74,49 @@ table::
     ## Play Button || Play the preview loop or the clip loop if there is no preview loop defined. Infinite repeat by default (use quant)
     ## Stop button || Stop playing and erase the preview loop markers (with quant)
     ## Save as / Save || Open a dialog to select a file in which save the timeline. If a file was already selected, the button is called "Save" and directly save to the previous file.
-    ## Add track || Add a new track. There is no way to remove track with GUI currently, you have to use code::mytimeline.trackCount = 4;:: to set it to 4 track for example. Each clip have the track number in its properties, so removing a track does not lose any clip, only the record/mute/bus state of the track.
+    ## Add track || Add a new track at the end. To remove or insert a track, right click on the
+button with track number on the left of the track you want to remove.
     ## Grid quant menu || quantize selection, new notes, moving notes
-    ## History stack number box || represent the index of the displayed event list in the history stack
-    ## Rec button || Start/stop recording. It only record tracks marked for record. Follow the default clock quant.
-    ## PlayRec button || This is a toggle button. Play the timeline when recording start
-    ## Samples button || When recording buffers in the timeline, you can choose which one to keep on disk or which one to delete permanently
+    ## History buttons || Undo and redo changes in the timeline
+    ## Rec button || Start/stop recording. It only record tracks marked for
+record. Follow the default TempoClock quant.
+	## Metronome player || Start or stop the metronome (the metronome is really code::Pdef(\metronome)::)
+	## Menu ... || Display menu with more actions available
 ::
 
-Z button at the right of time ruler is used to zoom vertically to the notes of the event list.
+SUBSECTION::Menu ...
+
+table::
+    ## Display preview || Display a preview of the content of each clip when
+drawing the clip. Could consume CPU and disturb timing
+    ## Display right panel || Display the right panel list of clip
+    ## Bind play with record button || Allow you to play the parallel tracks
+when recording. Clicking record button will automatically play the timeline at
+the same time
+    ## Add track || Add a new track at the end. To remove or insert a track, right click on the
+button with track number on the left of the track you want to remove.
+    ## Sample manager || When recording buffers in the timeline, you can choose which one to keep on disk or which one to delete permanently
+    ## Save as / Save || Open a dialog to select a file in which save the timeline. If a file was already selected, the button is called "Save" and directly save to the previous file.
+    ## Copy refString to clipboard || Put in clipboard a compile string containing the timeline object so you can easily use it in your code
+::
+
+SUBSECTION::Mode button
+
+At the top left of the window.
+
+table::
+    ## Move mode (finger icon) || Move node by dragging them, draw selection
+rectangle, create nodes by holding Ctrl, change curve by holding shift and
+dragging
+    ## Draw Mode (pen icon) || Clicking on empty space will create a node
+    ## Erase Mode (square icon) || Clicking on a node will erase it
+::
+
+SUBSECTION::Zoom buttons
+
+At the top right of the window there is vertical and horizontal arrow buttons.  They allow to set the vertical and horizontal zoom such as all nodes are visible.
 
 < and > buttons at the bottom right are used to grow or shrink the viewport of the timeline. Use it when you have no more room for writing your melody. Note that even if notes are not visible in the viewport, they are still present and played.
-
 
 SECTION:: Keyboard shortcuts:
 
@@ -96,6 +152,13 @@ table::
 	## Copy part of a clip || Select an area and hit Ctrl + c. If only a part of a clip is selected, only this part will be pasted with Ctrl + v
 	## Paste a copied area || click somewhere on a track to set where the bottom of the area you copied will be pasted. Buf: If you click on the top track, all your clips will be pasted too high to be seen in the timeline, you have to adjust the number of track to see them again.
 
+::
+
+Changing mode (timeline canvas should have the focus)
+table::
+    ## Move || Shift + s
+    ## Draw || Shift + d
+    ## Erase || Shift + e
 ::
 
 

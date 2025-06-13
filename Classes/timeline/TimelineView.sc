@@ -714,7 +714,7 @@ TimelineView : SCViewHolder {
 		} {
 			////// moving
 
-			if( buttonNumber == 0 ) {
+			if( buttonNumber == 0 and: { currentBrush != \eraser } ) {
 
 				////// move selection
 				if(isClickOnSelection == true ) {

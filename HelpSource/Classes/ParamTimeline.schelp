@@ -42,13 +42,13 @@ table::
     ## Move mode (finger icon) || Move node by dragging them, draw selection
 rectangle, create nodes by holding Ctrl, change curve by holding shift and
 dragging
-    ## Write Mode (pen icon) || Clicking on empty space will create a node
+    ## Draw Mode (pen icon) || Clicking on empty space will create a node
     ## Eraser Mode (square icon) || Clicking on a node will erase it
 ::
 
 SUBSECTION::Zoom buttons
 
-At the top right of the window there is Vertical and horizontal arrow buttons.  They allow to set the vertical and horizontal zoom such as all nodes are visible.
+At the top right of the window there is vertical and horizontal arrow buttons.  They allow to set the vertical and horizontal zoom such as all nodes are visible.
 
 < and > buttons at the bottom right are used to grow or shrink the viewport of the timeline. Use it when you have no more room for writing your melody. Note that even if notes are not visible in the viewport, they are still present and played.
 

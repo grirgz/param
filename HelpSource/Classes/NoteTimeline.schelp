@@ -84,6 +84,12 @@ table::
     ## Move left or right selected notes by grid quant * 8 || Ctrl + Left or Ctrl + Right arrow keys
 ::
 
+Changing mode (timeline canvas should have the focus)
+table::
+    ## Move || Shift + s
+    ## Draw || Shift + d
+    ## Erase || Shift + e
+::
 
 CLASSMETHODS::
 
