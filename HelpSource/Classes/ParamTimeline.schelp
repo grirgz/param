@@ -6,7 +6,15 @@ related:: Classes/Param, Classes/NoteTimeline, Classes/ClipTimeline
 DESCRIPTION::
 ParamTimeline allow you to use a curve to automate a link::Classes/Param::
 
-SECTION:: Graphical interfaces:
+subsection:: Begining/end of playing region
+
+There is two special events, the start event and the end event, they delimit the clip loop which will be played when using the CODE::play:: method or when embeded in another pattern.
+
+However, there is two other markers which are displayed as blue lines, this is the preview loop. It provide the ability to temporaly listen to a specific part of your clip without changing the intended start and end of the clip. 
+
+Recording is working, but you need to write some code for your controller to be able to communicate with NoteTimeline. In the waiting you can use the virtual keyboard in the special menu (button named "...")
+
+SECTION:: Graphical interface
 
 SUBSECTION::Top bar
 

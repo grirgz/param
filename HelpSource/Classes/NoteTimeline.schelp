@@ -6,15 +6,43 @@ related:: Classes/Param
 DESCRIPTION::
 NoteTimeline is a timeline for editing events representing notes. Currently only the \midinote is supported in the GUI but the implementation is just a list of events, so it can virtually contains anything.
 
+subsection:: Architecture
+
+The basic idea behind NoteTimeline is you have a link::Classes/Pbind:: defining all
+characteristics of your sound like code::\instrument:: and code::\lpf:: and you
+link::Classes/Pchain##chain:: it to a pattern that contains pitch and timing.
+This pattern can be stored as a list of events, and can be edited with a
+pianoroll interface.
+
+code::
+Pbind(
+	\instrument, \saw,
+	\lpf, 400,
+) <>
+Pseq([
+	(midinote: 60, dur: 1/2),
+	(midinote: 72, dur: 1),
+])
+::
+
+The Pbind is stored in a Pdef so link::Classes/Param:: can be used to edit its
+values. It is provided as the second argument at initialization:
+code::NoteTimeline(\some_name, Pdef(\my_instrument))::
+
+Each SynthDef parameter like \lpf can also be edited for each indivdual event, using the
+bottom button named emphasis::Params::.
+
+A new feature also allow automation for any SynthDef parameter. 
+
+subsection:: Begining/end of playing region
+
 There is two special events, the start event and the end event, they delimit the clip loop which will be played when using the CODE::play:: method or when embeded in another pattern.
 
 However, there is two other markers which are displayed as blue lines, this is the preview loop. It provide the ability to temporaly listen to a specific part of your clip without changing the intended start and end of the clip. 
 
-There is no true undo system for the moment, so you must take care of not messing up. In the waiting time, there is a kind of history stack available. You can change it using the number box at right of the metronome (use mouse wheel). For example, if you delete a note, go to index 1 and the note will be back. Then hit Ctrl-K to copy the current eventList to the top of the eventList stack, and go back to index 0. The reason is only the index 0 is saved on disk so you will lose everything you do in other indexes. There is no history stacked when moving notes however.
-
 Recording is working, but you need to write some code for your controller to be able to communicate with NoteTimeline. In the waiting you can use the virtual keyboard in the special menu (button named "...")
 
-SECTION:: Graphical interfaces:
+SECTION:: Graphical interface
 
 Top bar: 
 
@@ -38,17 +66,18 @@ table::
     ## Controller menu || Select the controller used to record new notes
 ::
 
-Z button at the right of time ruler is used to zoom vertically to the notes of the event list.
-
-< and > buttons at the bottom right are used to grow or shrink the viewport of the timeline. Use it when you have no more room for writing your melody. Note that even if notes are not visible in the viewport, they are still present and played.
-
 Velocity panel:
-This panel is not very usable for the moment.
 table::
     ## > button || show/hide the velocity panel
-    ## parameter choose menu || Show the current parameter which is edited in the velocity panel
+    ## parameter choose menu named emphasis::Params:: || Show the current parameter which is edited in the velocity panel
     ## parameter value || Show the value of the selected note for current parameter
 ::
+
+SUBSECTION::Zoom buttons
+
+At the top right of the window there is vertical and horizontal arrow buttons.  They allow to set the vertical and horizontal zoom such as all nodes are visible.
+
+< and > buttons at the bottom right are used to grow or shrink the viewport of the timeline. Use it when you have no more room for writing your melody. Note that even if notes are not visible in the viewport, they are still present and played.
 
 
 SECTION:: Keyboard shortcuts:
