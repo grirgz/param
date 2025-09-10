@@ -127,6 +127,7 @@ FileSystemProject : TrackDef {
 	*loadFileTillEnd { arg path, silent=false;
 		var res = path;
 		var ret;
+		var compcode;
 		if(loadingFiles.includesEqual(path)) {
 			Log(\Param).info("Already loading this file, do nothing: %\nFileSystemProject.clearLoadingFiles; // use this to reset", path);
 			^nil;
@@ -149,7 +150,16 @@ FileSystemProject : TrackDef {
 				try {
 					oldpath = thisProcess.nowExecutingPath;
 					thisProcess.nowExecutingPath = path;
-					ret = code.interpret;
+					compcode = code.compile;
+					if(compcode.isNil) {
+						// syntax error
+						loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }));
+					} {
+						ret = compcode.value;
+						loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }));
+						loadedFiles = loadedFiles ?? { Set.new };
+						loadedFiles.add(path);
+					};
 					thisProcess.nowExecutingPath = oldpath;
 				} { arg e;
 					thisProcess.nowExecutingPath = oldpath;
@@ -158,9 +168,6 @@ FileSystemProject : TrackDef {
 					loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }));
 					e.throw;
 				};
-				loadingFiles.removeAt(loadingFiles.detectIndex({ arg x; x == path }));
-				loadedFiles = loadedFiles ?? { Set.new };
-				loadedFiles.add(path);
 			} {
 				if(silent == false) {
 					Log(\Param).error("ERROR: FileSystemProject: File don't exists: %", path);
