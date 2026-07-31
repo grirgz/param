@@ -364,6 +364,36 @@ ProtoClassDef(\TrackMixerDef, (
 		//self.proxy[idx].isNil;
 	//},
 
+	isEmpty: { arg self;
+		var zerokeys = [\postfader, \prefader, \postdelay, \solo, \mute];
+		var emptyParams = self.asParamGroup.any { arg param, idx;
+			// return true is has some change from default val
+			if(param.isSet) {
+				case(
+					{ 
+						param.propertyRoot.asString.beginsWith("send") 
+						and: { param.propertyRoot.asString.beginsWith("sendbus").not }
+					}, {
+						param.get != 0 
+					},
+					{ zerokeys.includes(param.propertyRoot) }, {
+						param.get != 0 
+					}, {
+						false
+					}
+				)
+			} {
+				false
+			}
+			
+		}.not;
+
+		emptyParams and: {
+			self.insertFxList.size == 0
+		}
+		
+	},
+
 ));
 ~trackMixerDef = ProtoClassDef(\TrackMixerDef);
 

@@ -703,14 +703,17 @@
 				Halo.lib.removeAt(this);
 			} {
 				//[model, key, fun, init].debug("update followChange3");
-				try {
-					fun.(* [this] ++ args);
-				//[model, key, fun, init].debug("update followChange4");
-				} { arg err;
-				//[model, key, fun, init].debug("update followChange5");
-					"In View.followChange: key:%".format(key).error;
-					err.reportError;
-				}
+				{
+					try {
+
+						fun.(* [this] ++ args);
+						//[model, key, fun, init].debug("update followChange4");
+					} { arg err;
+						//[model, key, fun, init].debug("update followChange5");
+						"In View.followChange: key:%".format(key).error;
+						err.reportError;
+					}
+				}.defer;
 			};
 		});
 		this.addHalo(\followChangeController, con);

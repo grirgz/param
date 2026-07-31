@@ -382,7 +382,7 @@ PlayerWrapper_Base {
 			myfolderpathname = FileSystemProject.resolve(myfolderpath);
 			if(myfolderpathname.notNil) {
 				mypath = myfolderpathname.fullPath +/+ PathName(mypath).fileName;
-				"Trying to write preset to file %".format(mypath.asCompileString).postln;
+				"Writing preset file %".format(mypath.asCompileString).postln;
 				File.use(mypath, "w", { arg file;
 					var relpath = FileSystemProject.unresolve(mypath);
 					var preset;

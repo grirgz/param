@@ -186,7 +186,7 @@ WindowDef(\TrackGrid, (
 					playerviews.collect({ arg track, idx;
 
 						//[track.first.view, track.first.model, track.first.model.parentTrack].debug("make_view: follower");
-						track.first.view.followChange(track.first.model.parentTrack, \children, { {map_players.()}.defer });
+						track.first.view.followChange(track.first.model.parentTrack, \children, { map_players.() });
 						track.collect({ arg child;
 							var view = child.asView;
 							view.button.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;

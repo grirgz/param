@@ -83,8 +83,24 @@ ControllerDef {
 		source.value(this, *args)
 	}
 
+	stopControl {
+		var oldLastUse = lastUse;
+		lastUse = nil;
+		oldLastUse.first.changed(\hasControl); // if lastUse is SeqPlayerGroup, this update hasControl views
+		this.changed(\hasControl);
+		source.value(this, nil)
+	}
+
 	hasControl { arg ... args;
 		^lastUse == args;
+	}
+
+	hasControl_ { arg val;
+		if(val) {
+			this.startControl; // with what args ?
+		} {
+			this.stopControl;
+		};
 	}
 
 	// make printOn return the same than storeOn

@@ -154,6 +154,14 @@ ProtoClassDef(\EventTimeline, (
 		self.loopMaster.getPatternSlices(self.cutPatternFunction, repeatCount ? self.repeatCount, self.automationPattern(repeatCount));
 	},
 
+	asMetadataSlices: { arg self;
+		self.loopMaster.getMetadataSlices;
+	},
+
+	asMetadataSlice: { arg self, startLocator, endLocator;
+		self.loopMaster.getMetadataSlice(startLocator, endLocator);
+	},
+
 	asSelectedPattern: { arg self, repeatCount;
 		self.asPatternAbs({self.cursor.startPosition}, {self.cursor.endPosition}, repeatCount)
 	},
@@ -2030,6 +2038,10 @@ ProtoClassDef(\LoopMaster, (
 		self.timeline.eventList;
 	},
 
+	tempoClock: { arg self;
+		self.timeline.tempoClock;
+	},
+
 	///////////////////////// tool functions
 
 	firstEventAbsTime: { arg self;
@@ -2353,13 +2365,15 @@ ProtoClassDef(\LoopMaster, (
 		}
 	},
 
-	getPatternSlice: { arg self, cutFunction, marker_start, marker_end, repeatCount, parallelPat;
+	getMetadataSlice: { arg self, marker_start, marker_end;
 		var start, end;
 		var loclist = self.eventList.select({arg x; self.isLocator(x)});
 		var origmarker_start = marker_start;
+		var tempo = self.tempoClock.tempo;
 		marker_start = self.locatorLabelToIndex(loclist, marker_start);
 		if(marker_start.isNil) {
-			Log(\Param).error("ERROR: getPatternSlice: Can't find marker %".format(origmarker_start.asCompileString));
+			Log(\Param).error("ERROR: getMetadataSlice: Can't find marker %".format(origmarker_start.asCompileString));
+			nil;
 		} {
 			marker_start = marker_start % ( loclist.size - 1 ); // -1 to avoid start to be end
 
@@ -2370,8 +2384,42 @@ ProtoClassDef(\LoopMaster, (
 			start = loclist[marker_start].absTime;
 			end = loclist[marker_end].absTime;
 			// FIXME: the parallelPat is not sliced
-			self.getPreviewLoopPattern(cutFunction, start, end, repeatCount, parallelPat)
+			(
+				startBeat: start,
+				endBeat: end,
+				startSecond: start/tempo,
+				endSecond: end/tempo,
+				durBeat: end-start,
+				durSecond: end-start/tempo,
+			)
 		};
+	},
+
+	getPatternSlice: { arg self, cutFunction, marker_start, marker_end, repeatCount, parallelPat;
+		var md = self.getMetadataSlice(marker_start, marker_end);
+		if(md.isNil) {
+			nil;
+		} {
+			self.getPreviewLoopPattern(cutFunction, md[\startBeat], md[\endBeat], repeatCount, parallelPat)
+		};
+	},
+
+	getMetadataSlices: { arg self;
+		var tempo = self.tempoClock.tempo;
+		var loclist = self.eventList.select({arg x; self.isLocator(x)});
+		loclist.drop(-1).collect({ arg loc, idx;
+			var start, end;
+			start = loclist[idx].absTime;
+			end = loclist[idx+1].absTime;
+			(
+				startBeat: start,
+				endBeat: end,
+				startSecond: start/tempo,
+				endSecond: end/tempo,
+				durBeat: end-start,
+				durSecond: end-start/tempo,
+			)
+		});
 	},
 
 	getPatternSlices: { arg self, cutFunction, repeatCount=1, parallelPat;

@@ -303,7 +303,7 @@ ProtoTemplateDef(\filemanager_recent_files, (
 	},
 
 	children: { arg self;
-		ProtoTemplateDef(\filemanager_quicklist).recent_files_list.collect { arg path, idx;
+		ProtoTemplateDef(\filemanager_quicklist).recent_files_list.as(Array).reverse.collect { arg path, idx;
 			ProtoTemplateDef(\filemanager_node).new(path);
 		};
 	},
@@ -324,7 +324,6 @@ ProtoTemplateDef(\filemanager_recent_files, (
 		ProtoTemplateDef(\filemanager_quicklist).new;
 	},
 ));
-		ProtoTemplateDef(\filemanager_quicklist)[\parent][\parent];
 
 WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=false;
 	// callback(file_full_path_to_open)
@@ -579,10 +578,11 @@ WindowDef(\filedialog_generic, { arg def, path, callback, nodeClass, isSaving=fa
 	};
 
 	proto.show_recent_files = { arg self;
+		// not used anymore, use filemanager_recent_files.children instead
 		var newnode;
 		//[path, nodeClass.keys].debug("changepath: ");
 		proto.disable_play = true;
-		fileview.items = proto.recent_files_list.as(Array);
+		fileview.items = proto.recent_files_list.as(Array).reverse;
 		//view.items.debug("changepath items");
 		{
 			// hack because selectionAction is triggered even without valueAction_

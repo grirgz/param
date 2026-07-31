@@ -1,0 +1,43 @@
+title:: Timeline limitations
+categories:: Libraries>Param
+summary:: Current limitations of the Param timeline system
+
+section:: Can't always start in the middle of a clip
+
+In classical DAW, timelines are a simple list of notes, but i made the choice to
+allow patterns in timelines. Timelines are just regular supercollider patterns
+under the hood. But patterns does not allow to say "start at the 10th second of
+the pattern". Timelines include a system to unroll the pattern so you can start
+it a any point. This can cause some delay if this is a big pattern. 
+Unfortunately, there is no way to do that with Ndef, because on server side,
+UGen graph can only start from the begining.
+
+This is specificaly visible with ClipTimeline. You can start in the middle of a
+Pdef, but you can't start in the middle of a Ndef, it will just play from the
+start.
+
+section:: Stopping can't stop currently playing events
+
+Timelines are built on the supercollider pattern system. Currently I don't know
+a way to stop a currently playing note when we stop the pattern that produced
+it.
+
+code::
+Pdef(\aa, Pbind(\dur, 5)).play;
+Pdef(\aa).stop; // prevent the next note from starting, but do not touch the current one 
+::
+
+This also apply to ClipTimeline, this means that when a Ndef clip is played and
+you stop the ClipTimeline, the Ndef will continue to play its whole sustain
+time.
+
+NoteTimeline or Pdef clips doesn't suffer from this because under the hood, they
+are embeded in the pattern. This means that the notes produced by the Pdef will
+continue to play its whole sustain time, but the Pdef clip itself will stop and
+not trigger the playing of the next Pdef notes.
+
+section:: Undo/Redo system
+
+Does not add history point when moving nodes to avoid cluttering the history.
+Only adding/deleting nodes is recorded.
+Does not handle track adding/deleting in ClipTimeline

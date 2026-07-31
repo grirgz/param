@@ -159,9 +159,15 @@ TrackTemplateDef(\TrackList, (
 		"TrackDef(%)".format(self.key.asCompileString);
 	},
 
+	refTemplateCompileString: { arg self;
+		"TrackTemplateDef(\\TrackList)";
+	},
+
 	presetCompileString: { arg self;
 		"%\n".format([
-			"TrackDef(%, %);".format(self.key.asCompileString, "TrackTemplateDef(\\TrackList)"),
+			//"TrackDef(%, %);".format(self.key.asCompileString, "TrackTemplateDef(\\TrackList)"),
+			//"TrackDef(%, %);".format(self.key.asCompileString, self.trackTemplate.asCompileString),
+			"TrackDef(%, %);".format(self.key.asCompileString, self.refTemplateCompileString),
 			"%.presetCompileStringSavePath = FileSystemProject.nowExecutingFolder;".format(self.refCompileString),
 			"",
 			self.linePlayers.collect { arg lplayer, idx;
@@ -739,9 +745,15 @@ TrackTemplateDef(\TrackListSection, (
 	},
 
 	clone: { arg self, parentTrack, index;
+		var sourceself = self;
 		self = self.copy;
 		self.parentTrack = { parentTrack };
 		self.index = index.asInteger;
+		sourceself.children.do { arg child, idx;
+			if(child.isEmpty.not) {
+				child.clone(child.parentTrack, index)
+			};
+		};
 		self;
 	},
 ));

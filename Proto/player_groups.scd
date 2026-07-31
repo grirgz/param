@@ -451,14 +451,25 @@ ProtoTemplateDef(\SeqPlayerGroup, (
 		}
 	},
 
+	stopControl: { arg self;
+		self.hasControl = false;
+	},
+
 	hasControl: { arg self;
 		self.controller.notNil and: {
 			self.controller.hasControl(self);
 		}
 	},
 
+	hasControl_: { arg self, val;
+		if(self.controller.notNil) {
+			self.controller.hasControl = val;
+		};
+	},
+
 	controller_: { arg self, val;
 		self[\controller] = val;
+		self.changed(\controller);
 		self.startControl;
 	},
 

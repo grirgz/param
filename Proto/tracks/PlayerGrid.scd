@@ -6,6 +6,8 @@ TrackTemplateDef(\PlayerTrackPart, (
 	// should emit changed(\PlayerWrapper, \stopped) in play method to prevent PlayerWrapper from
 	// believing something is currently playing
 	modeTrigger: false, 
+	\trackRole: \part,
+
 
 	new: { arg self, parent, index;
 		self = ProtoClass((parent: self));
@@ -430,6 +432,9 @@ TrackTemplateDef(\PlayerTrackPart, (
 	},
 
 	parentChildPlayed: { arg self, fun;
+		// tell the parent track that a child is playing, so it can refresh
+		//  it's playing test and eventually start the mixer
+		// useful when the player is in each part instead of global to track
 		if(self.parentTrack.notNil) {
 			self.parentTrack.childPlayed(fun);
 		} {
@@ -448,6 +453,7 @@ TrackTemplateDef(\PlayerTrackPart, (
 ));
 TrackTemplateDef(\PlayerTrack, (
 	childClass: { TrackTemplateDef(\playerwrapper) },
+	\trackRole: \track,
 	label: { arg self; 
 		"%: playertrack".format(self.index)
 	},
@@ -589,6 +595,8 @@ TrackTemplateDef(\PlayerTrack, (
 	},
 
 	childPlayed: { arg self, fun;
+		// called when a child was played, to activate track resources like mixer
+		// and send changed signal. fun can be used to change changed signal
 		if(self.mixer.notNil) {
 			self.mixer.play;
 		};
@@ -749,6 +757,7 @@ TrackTemplateDef(\PlayerTrack, (
 TrackTemplateDef(\PlayerGrid, (
 	label: { arg self; "%".format(self.key) },
 	protoClass: \playergrid,
+	\trackRole: \grid,
 	childClass: { TrackTemplateDef(\playertrack) },
 	sectionClass: { TrackTemplateDef(\PlayerGridSection) },
 	lineClass: { arg self; self.sectionClass },
@@ -783,7 +792,7 @@ TrackTemplateDef(\PlayerGrid, (
 
 	gridOffset_: { arg self, pos;
 		//[pos, Point(pos.x.clip(0,inf), pos.y.clip(0,inf))].debug("expliquez moi comment c'est possible!");
-		self.obj_gridOffset = Point(pos.x.clip(0,inf), pos.y.clip(0,inf));
+		self.obj_gridOffset = Point(pos.x.clip(0,inf).asInteger, pos.y.clip(0,inf).asInteger);
 		self.changed(\gridOffset);
 	},
 
@@ -1166,6 +1175,7 @@ TrackTemplateDef(\PlayerGrid, (
 ));
 
 TrackTemplateDef(\PlayerGridSection, (
+	\trackRole: \section,
 	new: { arg self, parent, idx; 
 		self = ProtoClass((parent: self));
 	
@@ -1406,6 +1416,10 @@ TrackTemplateDef(\PlayerGridSection, (
 
 	childAt: { arg self, idx;
 		self.parentTrack.childAt(idx, self.index)
+	},
+
+	childAtOffset: { arg self, pos;
+		self.childAt(self.parentTrack.gridPosToAbsPos(Point(0,pos)).y);
 	},
 
 	children: { arg self;

@@ -1672,8 +1672,12 @@ Param {
 				};
 			}.defer
 		};
+		view.mouseDownAction_({ arg view, x, y, modifiers, buttonNumber, clickCount;
+			[view, x, y, modifiers, buttonNumber, clickCount].debug("mouseDownAction");
+			this.normSet(0);
+		});
 		this.makeSimpleController(view, { arg view, param;
-			// no action
+			// no action method in StaticText
 		}, update, nil, action)
 	}
 
